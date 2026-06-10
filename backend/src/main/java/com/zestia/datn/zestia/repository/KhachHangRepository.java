@@ -5,16 +5,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface KhachHangRepository
-        extends JpaRepository<KhachHang, Integer> {
+public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
+
+    Optional<KhachHang> findByMaKhachHang(String maKhachHang);
 
     Optional<KhachHang> findByEmail(String email);
 
     Optional<KhachHang> findBySoDienThoai(String soDienThoai);
 
-    Optional<KhachHang> findByMaKhachHang(String maKhachHang);
-
     boolean existsByEmail(String email);
 
     boolean existsBySoDienThoai(String soDienThoai);
+
+    boolean existsByMaKhachHang(String maKhachHang);
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import SectionTitle from '@/components/common/SectionTitle.vue'
-import ProductCard from '@/components/common/ProductCard.vue'
+// import SectionTitle from '@/components/common/SectionTitle.vue'
+// import ProductCard from '@/components/common/ProductCard.vue'
 
 const newProducts = [
   {

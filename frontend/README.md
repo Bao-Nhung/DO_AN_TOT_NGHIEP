@@ -1,48 +1,95 @@
-# frontend
+# LUMIÈRE — Vue 3 + Bootstrap 5
 
-This template should help get you started developing with Vue 3 in Vite.
+Chuyển đổi từ HTML thuần sang Vue 3 với Bootstrap 5, Vite, Vue Router.
 
-## Recommended IDE Setup
+## 🚀 Cài đặt & chạy
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
 npm install
+npm run dev       # Dev server: http://localhost:5173
+npm run build     # Build production
+npm run preview   # Preview build
 ```
 
-### Compile and Hot-Reload for Development
+## 📁 Cấu trúc dự án
 
-```sh
-npm run dev
+```
+lumiere/
+├── index.html                      # Entry HTML
+├── vite.config.js                  # Vite config (alias @→src)
+├── package.json
+│
+└── src/
+    ├── main.js                     # App entry — mount Vue, router
+    ├── App.vue                     # Root: cursor, navbar, cart drawer, transitions
+    │
+    ├── assets/
+    │   └── main.css                # Design tokens + global utility classes
+    │
+    ├── composables/                # Reactive logic (không phụ thuộc component)
+    │   ├── useCart.js              # Cart state (items, open/close, qty, format)
+    │   ├── useToast.js             # Toast notification state
+    │   ├── useReveal.js            # Scroll-reveal IntersectionObserver
+    │   └── useProducts.js          # Dữ liệu sản phẩm dùng chung
+    │
+    ├── components/
+    │   ├── layout/                 # Khung sườn toàn trang
+    │   │   ├── AppNavbar.vue       # Navbar cố định + scroll effect
+    │   │   ├── AppFooter.vue       # Footer 4 cột
+    │   │   ├── CartDrawer.vue      # Slide-in cart từ phải
+    │   │   └── ToastNotification.vue # Toast góc dưới phải
+    │   │
+    │   └── ui/                     # Component tái sử dụng
+    │       ├── ProductCard.vue     # Card sản phẩm (badge, wish, quick-add)
+    │       ├── CollectionCard.vue  # Card danh mục (hover overlay)
+    │       └── MarqueeStrip.vue    # Dải chạy chữ đen-vàng
+    │
+    └── pages/                      # Một file = một route
+        ├── HomePage.vue            # /           → Hero + collections + products
+        ├── ProductsPage.vue        # /collections → Grid lọc
+        ├── ProductDetail.vue       # /product/:id → Gallery + thông tin + mua
+        ├── WishlistPage.vue        # /wishlist   → Danh sách yêu thích
+        ├── ProfilePage.vue         # /profile    → Đơn hàng / cài đặt / địa chỉ
+        └── LoginPage.vue           # /login      → 2 cột visual + form
 ```
 
-### Type-Check, Compile and Minify for Production
+## 🧩 Routing (Vue Router 4 – Hash mode)
 
-```sh
-npm run build
+| Route              | Component          | Mô tả               |
+|--------------------|--------------------|---------------------|
+| `/`                | HomePage           | Trang chủ           |
+| `/collections`     | ProductsPage       | Bộ sưu tập + lọc   |
+| `/product/:id`     | ProductDetail      | Chi tiết sản phẩm   |
+| `/wishlist`        | WishlistPage       | Yêu thích           |
+| `/profile`         | ProfilePage        | Tài khoản           |
+| `/login`           | LoginPage          | Đăng nhập           |
+
+## 🗄️ State (Composables)
+
+- **useCart** — singleton reactive state, không cần Pinia
+- **useToast** — singleton, gọi `showToast(msg)` từ bất kỳ đâu
+- **useReveal** — gọi trong `onMounted` của mỗi page để kích hoạt scroll reveal
+- **useProducts** — mảng sản phẩm tĩnh, thay bằng API call khi cần
+
+## 🎨 Design System
+
+Tất cả màu sắc và font định nghĩa trong `src/assets/main.css` dưới `:root`:
+
+```css
+--lm-cream, --lm-beige, --lm-black, --lm-gold   /* palette */
+--lm-font-display  /* Cormorant Garamond */
+--lm-font-body     /* Inter */
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+Các class tiện ích bắt đầu bằng `.lm-` để không xung đột với Bootstrap.
 
-```sh
-npm run lint
-```
+## 📦 Dependencies
+
+| Package           | Phiên bản | Dùng cho              |
+|-------------------|-----------|-----------------------|
+| vue               | ^3.4      | Framework             |
+| vue-router        | ^4.3      | SPA routing           |
+| bootstrap         | ^5.3      | Grid, utilities       |
+| bootstrap-icons   | ^1.11     | Icon set              |
+| vite              | ^5.2      | Build tool            |
+| @vitejs/plugin-vue| ^5.0      | Vue SFC support       |

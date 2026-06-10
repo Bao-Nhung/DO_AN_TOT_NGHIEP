@@ -1,114 +1,66 @@
-<script setup lang="ts">
-const currentYear = new Date().getFullYear()
-</script>
-
 <template>
-  <footer class="footer bg-dark text-white pt-5">
+  <footer class="lm-footer py-5">
     <div class="container">
-      <div class="row">
-        <!-- About -->
-        <div class="col-lg-4 mb-4">
-          <h5 class="fw-bold mb-3">ZESTIA<span class="text-danger">.</span></h5>
-          <p class="text-white-50">
-            Zestia là thương hiệu thời trang nữ hàng đầu Việt Nam, mang đến những thiết kế váy đầm
-            tinh tế, sang trọng và hiện đại cho phái đẹp.
+      <div class="row g-5 mb-5">
+
+        <!-- Brand -->
+        <div class="col-lg-4">
+          <div class="lm-footer-logo mb-3">LUM<span class="lm-gold-text">I</span>ÈRE</div>
+          <p class="text-secondary" style="font-size:12px;font-weight:300;line-height:1.8;max-width:260px">
+            Thương hiệu thời trang & lifestyle cao cấp Việt Nam. Được truyền cảm hứng từ vẻ đẹp tinh tế và sự sang trọng vượt thời gian.
           </p>
-          <div class="social-links mt-3">
-            <a href="#" class="text-white me-2"><i class="bi bi-facebook fs-5"></i></a>
-            <a href="#" class="text-white me-2"><i class="bi bi-instagram fs-5"></i></a>
-            <a href="#" class="text-white me-2"><i class="bi bi-tiktok fs-5"></i></a>
-            <a href="#" class="text-white me-2"><i class="bi bi-youtube fs-5"></i></a>
-            <a href="#" class="text-white"><i class="bi bi-pinterest fs-5"></i></a>
+          <div class="d-flex gap-2 mt-3">
+            <a class="lm-social-link"><i class="bi bi-instagram"></i></a>
+            <a class="lm-social-link"><i class="bi bi-facebook"></i></a>
+            <a class="lm-social-link"><i class="bi bi-youtube"></i></a>
           </div>
         </div>
 
-        <!-- Quick Links -->
-        <div class="col-lg-2 col-md-4 mb-4">
-          <h6 class="fw-bold mb-3 text-uppercase">Danh mục</h6>
-          <ul class="list-unstyled footer-links">
-            <li><a href="#" class="text-white-50 text-decoration-none">Váy dạ hội</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Váy công sở</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Váy dạo phố</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Đầm suông</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Chân váy</a></li>
+        <!-- Products -->
+        <div class="col-6 col-lg-2">
+          <h4 class="lm-footer-heading mb-4">Sản Phẩm</h4>
+          <ul class="list-unstyled d-flex flex-column gap-2">
+            <li><RouterLink class="lm-footer-link" to="/collections">Bộ sưu tập mới</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections">Đầm & Váy</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections">Áo khoác</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections">Phụ kiện</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections">Sale</RouterLink></li>
           </ul>
         </div>
 
-        <!-- Customer Service -->
-        <div class="col-lg-2 col-md-4 mb-4">
-          <h6 class="fw-bold mb-3 text-uppercase">Hỗ trợ</h6>
-          <ul class="list-unstyled footer-links">
-            <li><a href="#" class="text-white-50 text-decoration-none">Trung tâm trợ giúp</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Hướng dẫn mua hàng</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Chính sách đổi trả</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Chính sách bảo mật</a></li>
-            <li><a href="#" class="text-white-50 text-decoration-none">Điều khoản sử dụng</a></li>
+        <!-- Services -->
+        <div class="col-6 col-lg-2">
+          <h4 class="lm-footer-heading mb-4">Dịch Vụ</h4>
+          <ul class="list-unstyled d-flex flex-column gap-2">
+            <li><a class="lm-footer-link">Tư vấn phong cách</a></li>
+            <li><a class="lm-footer-link">Đặt hàng riêng</a></li>
+            <li><a class="lm-footer-link">Đổi trả hàng</a></li>
+            <li><a class="lm-footer-link">Bảo hành</a></li>
+            <li><a class="lm-footer-link">Theo dõi đơn hàng</a></li>
           </ul>
         </div>
 
-        <!-- Newsletter -->
-        <div class="col-lg-4 col-md-4 mb-4">
-          <h6 class="fw-bold mb-3 text-uppercase">Đăng ký nhận tin</h6>
-          <p class="text-white-50 small">
-            Nhận ưu đãi 10% cho đơn hàng đầu tiên và cập nhật xu hướng mới nhất.
-          </p>
-          <div class="newsletter-form d-flex">
-            <input
-              type="email"
-              class="form-control rounded-start-pill border-0"
-              placeholder="Email của bạn"
-            />
-            <button class="btn btn-danger rounded-end-pill px-3">
-              <i class="bi bi-send"></i>
-            </button>
-          </div>
-          <div class="mt-3">
-            <span class="text-white-50 small me-2">Chấp nhận thanh toán:</span>
-            <i class="bi bi-credit-card text-white-50 me-1"></i>
-            <span class="text-white-50 small">Visa, Mastercard, MoMo, ZaloPay</span>
-          </div>
+        <!-- Contact -->
+        <div class="col-lg-3">
+          <h4 class="lm-footer-heading mb-4">Liên Hệ</h4>
+          <ul class="list-unstyled d-flex flex-column gap-2">
+            <li><a class="lm-footer-link">hello@lumiere.vn</a></li>
+            <li><a class="lm-footer-link">1800 1234 (miễn phí)</a></li>
+            <li><a class="lm-footer-link">36 Tràng Tiền, Hoàn Kiếm</a></li>
+            <li><a class="lm-footer-link">T2–T7: 9:00–21:00</a></li>
+          </ul>
         </div>
       </div>
 
-      <hr class="border-secondary" />
-
-      <div class="row py-3">
-        <div class="col-md-6 text-center text-md-start">
-          <p class="text-white-50 small mb-0">
-            &copy; {{ currentYear }} Zestia. Tất cả quyền được bảo lưu.
-          </p>
-        </div>
-        <div class="col-md-6 text-center text-md-end">
-          <img
-            src="https://placehold.co/200x30/ffffff/999999?text=Payment+Methods"
-            alt="Payment methods"
-            class="img-fluid"
-            style="max-height: 25px"
-          />
-        </div>
+      <div class="d-flex justify-content-between align-items-center pt-4"
+           style="border-top:1px solid var(--lm-beige)">
+        <p class="mb-0" style="font-size:11px;color:var(--lm-gray-light)">© 2025 LUMIÈRE. Tất cả quyền được bảo lưu.</p>
+        <p class="mb-0" style="font-size:11px;color:var(--lm-gray-light)">Thiết kế tại Việt Nam với ♥</p>
       </div>
     </div>
   </footer>
 </template>
 
-<style scoped>
-.footer-links li {
-  margin-bottom: 8px;
-}
-.footer-links a {
-  transition: color 0.3s, padding-left 0.3s;
-}
-.footer-links a:hover {
-  color: #e91e63 !important;
-  padding-left: 5px;
-}
-.newsletter-form input:focus {
-  box-shadow: none;
-}
-.social-links a {
-  transition: color 0.3s;
-}
-.social-links a:hover {
-  color: #e91e63 !important;
-}
-</style>
+<script setup>
+// No logic needed — purely presentational
+</script>

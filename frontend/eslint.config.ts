@@ -22,5 +22,12 @@ export default defineConfigWithVueTs(
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
+  {
+    name: 'app/vue3-overrides',
+    rules: {
+      'vue/no-multiple-template-root': 'off',
+    },
+  },
+
   skipFormatting,
 )

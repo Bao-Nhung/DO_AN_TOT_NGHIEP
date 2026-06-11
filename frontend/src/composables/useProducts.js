@@ -1,33 +1,52 @@
-// Shared product data — import wherever needed
-export const products = [
-  {
-    id: 1, name: 'Silk Wrap Dress', category: 'Đầm',
-    price: 4290000, salePrice: null, badge: 'Mới',
-    letter: 'A', bg: 'linear-gradient(160deg,#EDE6D8,#C5B89A)'
-  },
-  {
-    id: 2, name: 'Cashmere Blazer', category: 'Áo khoác',
-    price: 9890000, salePrice: 7490000, badge: 'Sale',
-    letter: 'B', bg: 'linear-gradient(160deg,#E0D4C4,#B8A88A)'
-  },
-  {
-    id: 3, name: 'Wide Leg Linen Trousers', category: 'Quần',
-    price: 2190000, salePrice: null, badge: null,
-    letter: 'C', bg: 'linear-gradient(160deg,#DEDCD8,#A8A49E)'
-  },
-  {
-    id: 4, name: 'Structured Tote Bag', category: 'Phụ kiện',
-    price: 5890000, salePrice: null, badge: 'Limited',
-    letter: 'D', bg: 'linear-gradient(160deg,#E8E2D8,#CBBEA8)'
-  },
-  {
-    id: 5, name: 'A-Line Midi Skirt', category: 'Váy',
-    price: 1890000, salePrice: null, badge: null,
-    letter: 'E', bg: 'linear-gradient(160deg,#E4DDD2,#C0B49E)'
-  },
-  {
-    id: 6, name: 'Linen Button Shirt', category: 'Áo',
-    price: 2190000, salePrice: 1490000, badge: 'Sale',
-    letter: 'F', bg: 'linear-gradient(160deg,#DEDAD4,#ABAAA6)'
-  },
+import { ref } from 'vue'
+import { api } from './useApi'
+
+const letters = ['Z', 'e', 's', 't', 'i', 'a']
+const bgs = [
+  'linear-gradient(160deg,#F3E8E6,#D4A99E)',
+  'linear-gradient(160deg,#E8DDD6,#C4A98E)',
+  'linear-gradient(160deg,#E6E0DA,#A8A49E)',
+  'linear-gradient(160deg,#F0E8E0,#D4C0A8)',
+  'linear-gradient(160deg,#E4DDD2,#C0B49E)',
+  'linear-gradient(160deg,#F5EDE3,#E8CFC9)',
 ]
+
+export function mapProduct(p, i) {
+  const hasDiscount = p.giaBanGoc && Number(p.giaBanGoc) > Number(p.giaBan)
+  return {
+    id: p.id,
+    code: p.maVay,
+    name: p.tenVay,
+    category: p.loaiVay || '',
+    price: hasDiscount ? Number(p.giaBanGoc) : Number(p.giaBan),
+    salePrice: hasDiscount ? Number(p.giaBan) : null,
+    badge: hasDiscount ? 'Sale' : null,
+    stock: p.tonKho || 0,
+    active: p.trangThai === 1 || p.trangThai === true,
+    letter: letters[i % letters.length],
+    bg: bgs[i % bgs.length],
+  }
+}
+
+export function fmtPrice(n) {
+  if (!n && n !== 0) return '0d'
+  return Number(n).toLocaleString('vi-VN') + 'd'
+}
+
+const _products = ref([])
+let _loading = false
+
+export async function loadProducts() {
+  if (_products.value.length || _loading) return
+  _loading = true
+  try {
+    const data = await api().getVay()
+    _products.value = data.map(mapProduct)
+  } catch (e) {
+    console.error('Failed to load products:', e)
+  } finally {
+    _loading = false
+  }
+}
+
+export const products = _products

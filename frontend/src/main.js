@@ -12,7 +12,7 @@ import '@/assets/main.css'
 // Root component
 import App from './App.vue'
 
-// Pages
+// Pages — Client
 import HomePage        from '@/pages/HomePage.vue'
 import ProductsPage    from '@/pages/ProductsPage.vue'
 import ProductDetail   from '@/pages/ProductDetail.vue'
@@ -20,13 +20,28 @@ import WishlistPage    from '@/pages/WishlistPage.vue'
 import ProfilePage     from '@/pages/ProfilePage.vue'
 import LoginPage       from '@/pages/LoginPage.vue'
 
+// Pages — Admin
+import AdminDashboard  from '@/pages/admin/AdminDashboard.vue'
+import AdminProducts   from '@/pages/admin/AdminProducts.vue'
+import AdminOrders     from '@/pages/admin/AdminOrders.vue'
+import AdminCustomers  from '@/pages/admin/AdminCustomers.vue'
+import AdminVouchers   from '@/pages/admin/AdminVouchers.vue'
+import AdminSettings   from '@/pages/admin/AdminSettings.vue'
+
 const routes = [
-  { path: '/',               component: HomePage,      name: 'home' },
-  { path: '/collections',    component: ProductsPage,  name: 'products' },
-  { path: '/product/:id',    component: ProductDetail, name: 'product-detail' },
-  { path: '/wishlist',       component: WishlistPage,  name: 'wishlist' },
-  { path: '/profile',        component: ProfilePage,   name: 'profile' },
-  { path: '/login',          component: LoginPage,     name: 'login' },
+  { path: '/',               component: HomePage,       name: 'home' },
+  { path: '/collections',    component: ProductsPage,   name: 'products' },
+  { path: '/product/:id',    component: ProductDetail,  name: 'product-detail' },
+  { path: '/wishlist',       component: WishlistPage,   name: 'wishlist' },
+  { path: '/profile',        component: ProfilePage,    name: 'profile' },
+  { path: '/login',          component: LoginPage,      name: 'login' },
+
+  { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
+  { path: '/admin/products',  component: AdminProducts,  name: 'admin-products' },
+  { path: '/admin/orders',    component: AdminOrders,    name: 'admin-orders' },
+  { path: '/admin/customers', component: AdminCustomers, name: 'admin-customers' },
+  { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
+  { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
 ]
 
 const router = createRouter({

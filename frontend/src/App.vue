@@ -1,22 +1,22 @@
 <template>
-  <!-- Custom Cursor -->
-  <div id="lm-cursor"></div>
-  <div id="lm-cursor-ring"></div>
+  <!-- Custom Cursor (client pages only) -->
+  <div v-if="!isAdminPage" id="lm-cursor"></div>
+  <div v-if="!isAdminPage" id="lm-cursor-ring"></div>
 
-  <!-- Page Transition -->
-  <div id="lm-page-transition" :class="transitionClass"></div>
+  <!-- Page Transition (client only) -->
+  <div v-if="!isAdminPage" id="lm-page-transition" :class="transitionClass"></div>
 
   <!-- Toast -->
   <ToastNotification />
 
-  <!-- Navbar (hidden on login page) -->
-  <AppNavbar v-if="!isLoginPage" />
+  <!-- Navbar (hidden on login & admin pages) -->
+  <AppNavbar v-if="!isLoginPage && !isAdminPage" />
 
   <!-- Cart Drawer -->
-  <CartDrawer v-if="!isLoginPage" />
+  <CartDrawer v-if="!isLoginPage && !isAdminPage" />
 
   <!-- Page content -->
-  <main :style="{ paddingTop: isLoginPage ? '0' : '72px' }">
+  <main :style="{ paddingTop: (isLoginPage || isAdminPage) ? '0' : '72px' }">
     <RouterView v-slot="{ Component }">
       <Transition name="page" @before-leave="onBeforeLeave" @after-enter="onAfterEnter">
         <component :is="Component" :key="$route.path" />
@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar        from '@/components/layout/AppNavbar.vue'
 import CartDrawer       from '@/components/layout/CartDrawer.vue'
@@ -34,7 +34,12 @@ import ToastNotification from '@/components/layout/ToastNotification.vue'
 
 const route = useRoute()
 const isLoginPage = computed(() => route.name === 'login')
+const isAdminPage = computed(() => route.path.startsWith('/admin'))
 const transitionClass = ref('')
+
+watch(isAdminPage, (val) => {
+  document.body.classList.toggle('z-admin-active', val)
+}, { immediate: true })
 
 function onBeforeLeave() {
   transitionClass.value = 'entering'

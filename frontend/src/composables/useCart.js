@@ -1,12 +1,10 @@
-// composables/useCart.js
-// Lightweight reactive cart state — no Pinia/Vuex needed for this scope
 import { reactive, computed } from 'vue'
 
 const state = reactive({
   items: [
-    { id: 1, name: 'Silk Wrap Dress',   variant: 'Màu Kem · Size S',     price: 4290000, qty: 1, letter: 'A', bg: 'linear-gradient(160deg,#EDE6D8,#C5B89A)' },
-    { id: 2, name: 'Cashmere Coat',     variant: 'Màu Be · Size M',      price: 9890000, qty: 1, letter: 'B', bg: 'linear-gradient(160deg,#E0D4C4,#B8A88A)' },
-    { id: 3, name: 'Linen Trousers',    variant: 'Màu Trắng · Size S',   price: 2190000, qty: 2, letter: 'C', bg: 'linear-gradient(160deg,#DEDCD8,#A8A49E)' },
+    { id: 1, name: 'Vay Lua To Tam Co Dien',     variant: 'Trang · Size S',   price: 2890000, qty: 1, letter: 'Z', bg: 'linear-gradient(160deg,#F3E8E6,#D4A99E)' },
+    { id: 3, name: 'Vay Da Hoi Gam Hoang Gia',    variant: 'Do · Size M',      price: 4290000, qty: 1, letter: 's', bg: 'linear-gradient(160deg,#E6E0DA,#A8A49E)' },
+    { id: 5, name: 'Vay Dui Cach Tan Mua He',      variant: 'Xanh La · Size M', price: 1390000, qty: 2, letter: 'i', bg: 'linear-gradient(160deg,#E4DDD2,#C0B49E)' },
   ],
   isOpen: false,
 })
@@ -35,7 +33,7 @@ function removeItem(id) {
 }
 
 function formatPrice(n) {
-  return n.toLocaleString('vi-VN') + '₫'
+  return n.toLocaleString('vi-VN') + 'd'
 }
 
 export function useCart() {

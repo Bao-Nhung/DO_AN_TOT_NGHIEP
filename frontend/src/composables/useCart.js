@@ -1,13 +1,22 @@
-import { reactive, computed } from 'vue'
+import { reactive, computed, watch } from 'vue'
+
+const STORAGE_KEY = 'zestia_cart'
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
 
 const state = reactive({
-  items: [
-    { id: 1, name: 'Vay Lua To Tam Co Dien',     variant: 'Trang · Size S',   price: 2890000, qty: 1, letter: 'Z', bg: 'linear-gradient(160deg,#F3E8E6,#D4A99E)' },
-    { id: 3, name: 'Vay Da Hoi Gam Hoang Gia',    variant: 'Do · Size M',      price: 4290000, qty: 1, letter: 's', bg: 'linear-gradient(160deg,#E6E0DA,#A8A49E)' },
-    { id: 5, name: 'Vay Dui Cach Tan Mua He',      variant: 'Xanh La · Size M', price: 1390000, qty: 2, letter: 'i', bg: 'linear-gradient(160deg,#E4DDD2,#C0B49E)' },
-  ],
+  items: loadSaved(),
   isOpen: false,
 })
+
+watch(() => state.items, (items) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+}, { deep: true })
 
 const totalCount = computed(() => state.items.reduce((s, i) => s + i.qty, 0))
 const subtotal   = computed(() => state.items.reduce((s, i) => s + i.price * i.qty, 0))
@@ -32,10 +41,15 @@ function removeItem(id) {
   if (idx !== -1) state.items.splice(idx, 1)
 }
 
+function clearCart() {
+  state.items.splice(0, state.items.length)
+  closeCart()
+}
+
 function formatPrice(n) {
-  return n.toLocaleString('vi-VN') + 'd'
+  return n.toLocaleString('vi-VN') + 'đ'
 }
 
 export function useCart() {
-  return { state, totalCount, subtotal, openCart, closeCart, addItem, changeQty, removeItem, formatPrice }
+  return { state, totalCount, subtotal, openCart, closeCart, addItem, changeQty, removeItem, clearCart, formatPrice }
 }

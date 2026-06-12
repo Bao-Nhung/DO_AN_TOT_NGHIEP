@@ -2,9 +2,9 @@
   <div>
     <div class="lm-page-hero" data-title="COLLECTION">
       <div class="container">
-        <p class="lm-eyebrow mb-3">Bo Suu Tap</p>
-        <h1 class="mb-3">Tat ca <em>san pham</em></h1>
-        <p style="max-width:480px">Kham pha bo suu tap vay doc quyen tu Zestia — noi moi thiet ke deu mang mot cau chuyen rieng.</p>
+        <p class="lm-eyebrow mb-3">Bộ Sưu Tập</p>
+        <h1 class="mb-3">Tất cả <em>sản phẩm</em></h1>
+        <p style="max-width:480px">Khám phá bộ sưu tập váy độc quyền từ Zestia — nơi mỗi thiết kế đều mang một câu chuyện riêng.</p>
       </div>
     </div>
 
@@ -12,7 +12,7 @@
     <div class="lm-filter-bar">
       <div class="container">
         <div class="d-flex align-items-center gap-3 flex-wrap">
-          <span style="font-size:13px;font-weight:600;color:var(--z-dark);flex-shrink:0">Loc:</span>
+          <span style="font-size:13px;font-weight:600;color:var(--z-dark);flex-shrink:0">Lọc:</span>
           <div class="d-flex gap-2 flex-wrap">
             <button v-for="f in filters" :key="f"
                     class="lm-filter-tag" :class="{ active: activeFilter === f }"
@@ -20,42 +20,42 @@
           </div>
           <div class="ms-auto d-flex align-items-center gap-3">
             <div class="d-flex align-items-center gap-2">
-              <span style="font-size:13px;color:var(--z-gray);white-space:nowrap">Gia:</span>
+              <span style="font-size:13px;color:var(--z-gray);white-space:nowrap">Giá:</span>
               <select v-model="priceRange" class="lm-input" style="width:auto;padding:8px 12px;font-size:13px">
-                <option value="all">Tat ca</option>
-                <option value="under2m">Duoi 2 trieu</option>
-                <option value="2m-5m">2 - 5 trieu</option>
-                <option value="over5m">Tren 5 trieu</option>
+                <option value="all">Tất cả</option>
+                <option value="under2m">Dưới 2 triệu</option>
+                <option value="2m-5m">2 - 5 triệu</option>
+                <option value="over5m">Trên 5 triệu</option>
               </select>
             </div>
             <div class="d-flex align-items-center gap-2">
-              <span style="font-size:13px;color:var(--z-gray);white-space:nowrap">Sap xep:</span>
+              <span style="font-size:13px;color:var(--z-gray);white-space:nowrap">Sắp xếp:</span>
               <select v-model="sortBy" class="lm-input" style="width:auto;padding:8px 12px;font-size:13px">
-                <option value="newest">Moi nhat</option>
-                <option value="price-asc">Gia tang dan</option>
-                <option value="price-desc">Gia giam dan</option>
-                <option value="name">Ten A-Z</option>
+                <option value="newest">Mới nhất</option>
+                <option value="price-asc">Giá tăng dần</option>
+                <option value="price-desc">Giá giảm dần</option>
+                <option value="name">Tên A-Z</option>
               </select>
             </div>
           </div>
         </div>
 
         <!-- Active filters -->
-        <div v-if="activeFilter !== 'Tat ca' || priceRange !== 'all'" class="d-flex align-items-center gap-2 mt-3">
-          <span style="font-size:12px;color:var(--z-gray)">Dang loc:</span>
-          <span v-if="activeFilter !== 'Tat ca'"
+        <div v-if="activeFilter !== 'Tất cả' || priceRange !== 'all'" class="d-flex align-items-center gap-2 mt-3">
+          <span style="font-size:12px;color:var(--z-gray)">Đang lọc:</span>
+          <span v-if="activeFilter !== 'Tất cả'"
                 style="font-size:12px;padding:4px 12px;background:var(--z-accent-soft);color:var(--z-accent);border-radius:20px;display:inline-flex;align-items:center;gap:4px">
             {{ activeFilter }}
-            <i class="bi bi-x" style="cursor:pointer" @click="activeFilter = 'Tat ca'"></i>
+            <i class="bi bi-x" style="cursor:pointer" @click="activeFilter = 'Tất cả'"></i>
           </span>
           <span v-if="priceRange !== 'all'"
                 style="font-size:12px;padding:4px 12px;background:var(--z-accent-soft);color:var(--z-accent);border-radius:20px;display:inline-flex;align-items:center;gap:4px">
             {{ priceLabels[priceRange] }}
             <i class="bi bi-x" style="cursor:pointer" @click="priceRange = 'all'"></i>
           </span>
-          <button @click="activeFilter = 'Tat ca'; priceRange = 'all'"
+          <button @click="activeFilter = 'Tất cả'; priceRange = 'all'"
                   style="font-size:12px;color:var(--z-gray);border:none;background:none;cursor:pointer;text-decoration:underline">
-            Xoa tat ca
+            Xoá tất cả
           </button>
         </div>
       </div>
@@ -64,7 +64,7 @@
     <!-- Results count -->
     <div class="container pt-4 pb-2">
       <p style="font-size:13px;color:var(--z-gray)">
-        Hien thi <strong style="color:var(--z-dark)">{{ sortedProducts.length }}</strong> san pham
+        Hiển thị <strong style="color:var(--z-dark)">{{ sortedProducts.length }}</strong> sản phẩm
       </p>
     </div>
 
@@ -72,17 +72,17 @@
     <div class="container pb-5">
       <div class="row g-4">
         <div v-for="(p, i) in sortedProducts" :key="p.id"
-             class="col-6 col-lg-4 lm-reveal" :style="{ transitionDelay: i * 0.05 + 's' }">
+             class="col-6 col-lg-4 z-fade-item" :style="{ animationDelay: i * 0.04 + 's' }">
           <ProductCard :product="p" />
         </div>
       </div>
 
       <div v-if="sortedProducts.length === 0" class="text-center py-5">
         <i class="bi bi-search mb-3" style="font-size:48px;color:var(--z-gray-border)"></i>
-        <h3 class="z-display" style="font-weight:400;color:var(--z-gray)">Khong tim thay san pham</h3>
-        <p style="color:var(--z-gray);font-size:14px">Thu thay doi bo loc de tim san pham phu hop.</p>
-        <button class="lm-btn-primary mt-3" @click="activeFilter = 'Tat ca'; priceRange = 'all'">
-          <span>Xoa bo loc</span>
+        <h3 class="z-display" style="font-weight:400;color:var(--z-gray)">Không tìm thấy sản phẩm</h3>
+        <p style="color:var(--z-gray);font-size:14px">Thử thay đổi bộ lọc để tìm sản phẩm phù hợp.</p>
+        <button class="lm-btn-primary mt-3" @click="activeFilter = 'Tất cả'; priceRange = 'all'">
+          <span>Xoá bộ lọc</span>
         </button>
       </div>
     </div>
@@ -95,33 +95,30 @@
 import { ref, computed, onMounted } from 'vue'
 import ProductCard from '@/components/ui/ProductCard.vue'
 import AppFooter   from '@/components/layout/AppFooter.vue'
-import { useReveal }  from '@/composables/useReveal'
 import { products, loadProducts } from '@/composables/useProducts'
 
-useReveal()
 onMounted(() => loadProducts())
 
-const filters = ['Tat ca', 'Vay truyen thong', 'Vay cach tan', 'Vay da hoi', 'Vay cong so', 'Sale']
-const activeFilter = ref('Tat ca')
+const filters = ['Tất cả', 'Váy truyền thống', 'Váy cách tân', 'Váy dạ hội', 'Váy công sở', 'Váy cưới', 'Sale']
+const activeFilter = ref('Tất cả')
 const priceRange = ref('all')
 const sortBy = ref('newest')
 
 const priceLabels = {
-  'under2m': 'Duoi 2 trieu',
-  '2m-5m': '2 - 5 trieu',
-  'over5m': 'Tren 5 trieu'
+  'under2m': 'Dưới 2 triệu',
+  '2m-5m': '2 - 5 triệu',
+  'over5m': 'Trên 5 triệu'
 }
 
 const filteredProducts = computed(() => {
   let result = [...products.value]
 
-  if (activeFilter.value !== 'Tat ca') {
+  if (activeFilter.value !== 'Tất cả') {
     if (activeFilter.value === 'Sale') {
       result = result.filter(p => p.salePrice)
     } else {
       result = result.filter(p => {
-        const cat = activeFilter.value.toLowerCase()
-        return p.category.toLowerCase().includes(cat.split(' ')[0].toLowerCase())
+        return p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
       })
     }
   }
@@ -147,3 +144,13 @@ const sortedProducts = computed(() => {
   return arr
 })
 </script>
+
+<style scoped>
+.z-fade-item {
+  animation: z-item-in 0.5s ease both;
+}
+@keyframes z-item-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>

@@ -12,6 +12,8 @@ public class LoginResponse {
     private String username;
     private String hoVaTen;
     private String email;
+    private String soDienThoai;
     private String role;
     private Integer userId;
+    private Byte gioiTinh;
 }

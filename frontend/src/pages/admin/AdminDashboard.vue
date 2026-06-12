@@ -1,7 +1,7 @@
 <template>
   <AdminLayout>
-    <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Tong quan</h1>
-    <p style="font-size:14px;color:var(--z-gray);margin-bottom:24px">Chao mung tro lai, Admin. Day la tinh hinh cua hang hom nay.</p>
+    <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Tổng quan</h1>
+    <p style="font-size:14px;color:var(--z-gray);margin-bottom:24px">Chào mừng trở lại, Admin. Đây là tình hình cửa hàng hôm nay.</p>
 
     <!-- Stats -->
     <div class="row g-3 mb-4">
@@ -14,7 +14,7 @@
           <div class="z-stat-value">{{ stat.value }}</div>
           <div class="z-stat-change" :style="{ color: stat.up ? '#16a34a' : 'var(--z-accent)' }">
             <i class="bi" :class="stat.up ? 'bi-arrow-up-right' : 'bi-arrow-down-right'"></i>
-            {{ stat.change }} so voi thang truoc
+            {{ stat.change }} so với tháng trước
           </div>
         </div>
       </div>
@@ -25,19 +25,19 @@
       <div class="col-lg-8">
         <div class="z-admin-card">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="z-admin-card-title">Don hang gan day</h3>
+            <h3 class="z-admin-card-title">Đơn hàng gần đây</h3>
             <RouterLink to="/admin/orders" style="font-size:13px;color:var(--z-accent);font-weight:500;text-decoration:none">
-              Xem tat ca <i class="bi bi-arrow-right"></i>
+              Xem tất cả <i class="bi bi-arrow-right"></i>
             </RouterLink>
           </div>
           <table class="z-table">
             <thead>
               <tr>
-                <th>Ma don</th>
-                <th>Khach hang</th>
-                <th>Tong tien</th>
-                <th>Trang thai</th>
-                <th>Ngay tao</th>
+                <th>Mã đơn</th>
+                <th>Khách hàng</th>
+                <th>Tổng tiền</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
               </tr>
             </thead>
             <tbody>
@@ -56,7 +56,7 @@
       <!-- Top products -->
       <div class="col-lg-4">
         <div class="z-admin-card">
-          <h3 class="z-admin-card-title mb-3">San pham ban chay</h3>
+          <h3 class="z-admin-card-title mb-3">Sản phẩm bán chạy</h3>
           <div class="d-flex flex-column gap-3">
             <div v-for="(p, i) in topProducts" :key="p.name"
                  class="d-flex align-items-center gap-3">
@@ -69,7 +69,7 @@
               </div>
               <div class="flex-grow-1">
                 <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ p.name }}</div>
-                <div style="font-size:12px;color:var(--z-gray)">{{ p.sold }} da ban</div>
+                <div style="font-size:12px;color:var(--z-gray)">{{ p.sold }} đã bán</div>
               </div>
               <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ p.revenue }}</div>
             </div>
@@ -86,13 +86,13 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice, mapProduct } from '@/composables/useProducts'
 
-const statusMap = { 0: { text: 'Cho xu ly', cls: 'pending' }, 1: { text: 'Xac nhan', cls: 'warning' }, 2: { text: 'Dang giao', cls: 'info' }, 3: { text: 'Hoan thanh', cls: 'success' }, 4: { text: 'Da huy', cls: 'danger' } }
+const statusMap = { 0: { text: 'Chờ xử lý', cls: 'pending' }, 1: { text: 'Xác nhận', cls: 'warning' }, 2: { text: 'Đang giao', cls: 'info' }, 3: { text: 'Hoàn thành', cls: 'success' }, 4: { text: 'Đã huỷ', cls: 'danger' } }
 
 const stats = ref([
   { label: 'Doanh thu', value: '...', change: '', up: true, icon: 'bi-graph-up', color: '#16a34a' },
-  { label: 'Don hang', value: '...', change: '', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
-  { label: 'Khach hang', value: '...', change: '', up: true, icon: 'bi-people', color: '#6366f1' },
-  { label: 'San pham', value: '...', change: '', up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
+  { label: 'Đơn hàng', value: '...', change: '', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
+  { label: 'Khách hàng', value: '...', change: '', up: true, icon: 'bi-people', color: '#6366f1' },
+  { label: 'Sản phẩm', value: '...', change: '', up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
 ])
 const recentOrders = ref([])
 const topProducts = ref([])
@@ -105,10 +105,10 @@ onMounted(async () => {
       api().getVay()
     ])
     stats.value = [
-      { label: 'Doanh thu', value: fmtPrice(s.doanhThu), change: s.tongLoaiVay + ' loai vay', up: true, icon: 'bi-graph-up', color: '#16a34a' },
-      { label: 'Don hang', value: String(s.tongDonHang), change: '', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
-      { label: 'Khach hang', value: String(s.tongKhachHang), change: '', up: true, icon: 'bi-people', color: '#6366f1' },
-      { label: 'San pham', value: String(s.tongSanPham), change: s.tongLoaiVay + ' loai', up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
+      { label: 'Doanh thu', value: fmtPrice(s.doanhThu), change: s.tongLoaiVay + ' loại váy', up: true, icon: 'bi-graph-up', color: '#16a34a' },
+      { label: 'Đơn hàng', value: String(s.tongDonHang), change: '', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
+      { label: 'Khách hàng', value: String(s.tongKhachHang), change: '', up: true, icon: 'bi-people', color: '#6366f1' },
+      { label: 'Sản phẩm', value: String(s.tongSanPham), change: s.tongLoaiVay + ' loại', up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
     ]
     recentOrders.value = orders.slice(0, 5).map(o => {
       const st = statusMap[o.trangThai] || statusMap[0]

@@ -19,6 +19,10 @@ import ProductDetail   from '@/pages/ProductDetail.vue'
 import WishlistPage    from '@/pages/WishlistPage.vue'
 import ProfilePage     from '@/pages/ProfilePage.vue'
 import LoginPage       from '@/pages/LoginPage.vue'
+import AboutPage       from '@/pages/AboutPage.vue'
+import CheckoutPage    from '@/pages/CheckoutPage.vue'
+import PaymentResultPage from '@/pages/PaymentResultPage.vue'
+import QRPaymentPage from '@/pages/QRPaymentPage.vue'
 
 // Pages — Admin
 import AdminDashboard  from '@/pages/admin/AdminDashboard.vue'
@@ -35,6 +39,10 @@ const routes = [
   { path: '/wishlist',       component: WishlistPage,   name: 'wishlist' },
   { path: '/profile',        component: ProfilePage,    name: 'profile' },
   { path: '/login',          component: LoginPage,      name: 'login' },
+  { path: '/about',          component: AboutPage,      name: 'about' },
+  { path: '/checkout',       component: CheckoutPage,   name: 'checkout' },
+  { path: '/payment-result', component: PaymentResultPage, name: 'payment-result' },
+  { path: '/qr-payment',    component: QRPaymentPage,     name: 'qr-payment' },
 
   { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
   { path: '/admin/products',  component: AdminProducts,  name: 'admin-products' },

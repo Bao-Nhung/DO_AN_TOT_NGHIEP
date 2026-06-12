@@ -27,7 +27,7 @@
         </div>
         <button class="z-admin-nav-item w-100 text-start" style="border:none;background:none;padding:10px 12px" @click="$router.push('/login')">
           <i class="bi bi-box-arrow-right"></i>
-          <span>Dang xuat</span>
+          <span>Đăng xuất</span>
         </button>
       </div>
     </aside>
@@ -41,12 +41,12 @@
 
 <script setup>
 const navItems = [
-  { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tong quan' },
-  { path: '/admin/products',  icon: 'bi-bag',          label: 'San pham' },
-  { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Don hang', badge: '3' },
-  { path: '/admin/customers', icon: 'bi-people',       label: 'Khach hang' },
-  { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Khuyen mai' },
-  { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cai dat' },
+  { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan' },
+  { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
+  { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badge: '3' },
+  { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng' },
+  { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Khuyến mãi' },
+  { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt' },
 ]
 </script>
 

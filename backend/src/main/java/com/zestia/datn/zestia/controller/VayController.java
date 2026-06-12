@@ -1,14 +1,14 @@
 package com.zestia.datn.zestia.controller;
 
-import com.zestia.datn.zestia.entity.Vay;
-import com.zestia.datn.zestia.entity.VayChiTiet;
-import com.zestia.datn.zestia.repository.VayChiTietRepository;
-import com.zestia.datn.zestia.repository.VayRepository;
+import com.zestia.datn.zestia.entity.*;
+import com.zestia.datn.zestia.entity.Anh;
+import com.zestia.datn.zestia.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -18,6 +18,12 @@ public class VayController {
 
     private final VayRepository vayRepo;
     private final VayChiTietRepository vayCtRepo;
+    private final LoaiVayRepository loaiVayRepo;
+    private final ChatLieuRepository chatLieuRepo;
+    private final NhaCungCapRepository nhaCungCapRepo;
+    private final MauSacRepository mauSacRepo;
+    private final KichThuocRepository kichThuocRepo;
+    private final AnhRepository anhRepo;
 
     @GetMapping
     public List<Map<String, Object>> getAll() {
@@ -42,6 +48,168 @@ public class VayController {
                 .map(this::toMap).toList();
     }
 
+    @PostMapping
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        Vay v = new Vay();
+        v.setTenVay((String) body.get("tenVay"));
+        v.setMaVay((String) body.get("maVay"));
+        v.setMoTa((String) body.get("moTa"));
+        v.setTrangThai(body.get("trangThai") != null ? ((Number) body.get("trangThai")).byteValue() : (byte) 1);
+        v.setNgayTao(LocalDateTime.now());
+
+        if (body.get("idLoaiVay") != null) {
+            loaiVayRepo.findById(((Number) body.get("idLoaiVay")).intValue()).ifPresent(v::setLoaiVay);
+        }
+        if (body.get("idChatLieu") != null) {
+            chatLieuRepo.findById(((Number) body.get("idChatLieu")).intValue()).ifPresent(v::setChatLieu);
+        }
+        if (body.get("idNhaCungCap") != null) {
+            nhaCungCapRepo.findById(((Number) body.get("idNhaCungCap")).intValue()).ifPresent(v::setNhaCungCap);
+        }
+
+        Vay saved = vayRepo.save(v);
+
+        if (body.get("giaBan") != null) {
+            VayChiTiet ct = new VayChiTiet();
+            ct.setVay(saved);
+            ct.setMaVayChiTiet(saved.getMaVay() + "-001");
+            ct.setGiaBan(new BigDecimal(body.get("giaBan").toString()));
+            if (body.get("giaBanGoc") != null) {
+                ct.setGiaBanGoc(new BigDecimal(body.get("giaBanGoc").toString()));
+            }
+            ct.setSoLuong(body.get("soLuong") != null ? ((Number) body.get("soLuong")).intValue() : 0);
+            ct.setTrangThai((byte) 1);
+            ct.setNgayTao(LocalDateTime.now());
+            vayCtRepo.save(ct);
+        }
+
+        return ResponseEntity.ok(toMap(saved));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        return vayRepo.findById(id).map(v -> {
+            if (body.get("tenVay") != null) v.setTenVay((String) body.get("tenVay"));
+            if (body.get("maVay") != null) v.setMaVay((String) body.get("maVay"));
+            if (body.get("moTa") != null) v.setMoTa((String) body.get("moTa"));
+            if (body.get("trangThai") != null) v.setTrangThai(((Number) body.get("trangThai")).byteValue());
+            if (body.get("idLoaiVay") != null) {
+                loaiVayRepo.findById(((Number) body.get("idLoaiVay")).intValue()).ifPresent(v::setLoaiVay);
+            }
+            if (body.get("idChatLieu") != null) {
+                chatLieuRepo.findById(((Number) body.get("idChatLieu")).intValue()).ifPresent(v::setChatLieu);
+            }
+            if (body.get("idNhaCungCap") != null) {
+                nhaCungCapRepo.findById(((Number) body.get("idNhaCungCap")).intValue()).ifPresent(v::setNhaCungCap);
+            }
+            return ResponseEntity.ok(toMap(vayRepo.save(v)));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/seed")
+    public ResponseEntity<?> seed() {
+        if (vayRepo.count() > 28) {
+            return ResponseEntity.ok(Map.of("message", "Đã có đủ sản phẩm", "count", vayRepo.count()));
+        }
+
+        List<LoaiVay> loaiVays = loaiVayRepo.findAll();
+        List<ChatLieu> chatLieus = chatLieuRepo.findAll();
+        List<NhaCungCap> nhaCungCaps = nhaCungCapRepo.findAll();
+        List<MauSac> mauSacs = mauSacRepo.findAll();
+        List<KichThuoc> kichThuocs = kichThuocRepo.findAll();
+
+        String[][] products = {
+            {"Váy Lụa Tơ Tằm Hoàng Gia", "VTT001", "1", "1", "Váy lụa tơ tằm cao cấp với hoa văn truyền thống, phù hợp cho các dịp lễ hội.", "3890000", null},
+            {"Váy Truyền Thống Áo Dài Cách Điệu", "VTT002", "1", "2", "Áo dài cách điệu với chất liệu voan mềm mại, tạo nên vẻ đẹp duyên dáng.", "2690000", null},
+            {"Váy Truyền Thống Gấm Đỏ", "VTT003", "1", "3", "Váy gấm đỏ truyền thống với đường may tinh tế, toát lên nét đẹp phương Đông.", "4290000", "3590000"},
+            {"Váy Truyền Thống Hoa Văn Cổ", "VTT004", "1", "4", "Họa tiết hoa văn cổ điển trên nền vải nhung, mang đậm nét Việt Nam.", "3190000", null},
+
+            {"Váy Cách Tân Hiện Đại", "VCT001", "2", "1", "Sự kết hợp hoàn hảo giữa phong cách truyền thống và xu hướng hiện đại.", "2490000", null},
+            {"Váy Cách Tân Phối Ren", "VCT002", "2", "2", "Điểm nhấn ren Pháp tinh tế trên nền vải lụa, tôn dáng người mặc.", "2890000", "2290000"},
+            {"Váy Cách Tân Hoa Nhí", "VCT003", "2", "5", "Họa tiết hoa nhí tươi trẻ, phù hợp cho các buổi dạo phố và hẹn hò.", "1890000", null},
+            {"Váy Cách Tân Minimalist", "VCT004", "2", "6", "Thiết kế tối giản với đường cắt sắc nét, dành cho phụ nữ hiện đại.", "2190000", null},
+
+            {"Váy Dạ Hội Sequin Vàng", "VDH001", "3", "3", "Lấp lánh với sequin vàng cao cấp, nổi bật trong mọi bữa tiệc.", "6490000", null},
+            {"Váy Dạ Hội Đen Huyền Bí", "VDH002", "3", "1", "Sự quyến rũ của sắc đen trên nền lụa satin, tạo nên vẻ đẹp bí ẩn.", "5890000", "4890000"},
+            {"Váy Dạ Hội Xẻ Đùi Sang Trọng", "VDH003", "3", "2", "Thiết kế xẻ đùi gợi cảm nhưng vẫn giữ được sự thanh lịch.", "7290000", null},
+            {"Váy Dạ Hội Ren Trắng Ngà", "VDH004", "3", "4", "Ren trắng ngà tinh khiết, lý tưởng cho các sự kiện trang trọng.", "5490000", "4590000"},
+
+            {"Váy Công Sở Thanh Lịch", "VCS001", "4", "6", "Thiết kế chuyên nghiệp, thoải mái suốt ngày làm việc.", "1690000", null},
+            {"Váy Công Sở Body Fit", "VCS002", "4", "5", "Ôm body nhẹ nhàng, tôn dáng người mặc trong mọi cuộc họp.", "1890000", "1490000"},
+            {"Váy Công Sở Kẻ Sọc", "VCS003", "4", "1", "Họa tiết kẻ sọc cổ điển, phong cách Âu sang trọng.", "1790000", null},
+            {"Váy Công Sở Chữ A", "VCS004", "4", "2", "Dáng chữ A thanh thoát, phù hợp cho nhiều vóc dáng.", "1990000", null},
+
+            {"Váy Cưới Lụa Trắng Tinh Khôi", "VCU001", "5", "1", "Lụa trắng tinh khôi cho ngày trọng đại của bạn.", "8990000", null},
+            {"Váy Cưới Ren Pháp Hoàng Gia", "VCU002", "5", "4", "Ren Pháp nhập khẩu, thiết kế phong cách hoàng gia.", "12990000", "9990000"},
+            {"Váy Cưới Đuôi Cá Quyến Rũ", "VCU003", "5", "2", "Dáng đuôi cá tôn vóc dáng, tạo nên vẻ đẹp quyến rũ.", "7990000", null},
+            {"Váy Cưới Bohemian Tự Do", "VCU004", "5", "3", "Phong cách bohemian lãng mạn cho cô dâu yêu tự do.", "6490000", "5490000"},
+
+            {"Váy Đi Tiệc Ngắn Trẻ Trung", "VDT001", "6", "5", "Thiết kế ngắn trẻ trung, hoàn hảo cho các buổi tiệc tối.", "2290000", null},
+            {"Váy Đi Tiệc Xòe Công Chúa", "VDT002", "6", "6", "Dáng xòe bồng bềnh như công chúa trong câu chuyện cổ tích.", "3290000", "2690000"},
+            {"Váy Đi Tiệc Nhung Xanh", "VDT003", "6", "3", "Chất nhung xanh cổ vịt sang trọng, nổi bật trong đêm tiệc.", "2890000", null},
+            {"Váy Đi Tiệc Metallic Bạc", "VDT004", "6", "1", "Ánh metallic bạc hiện đại, thu hút mọi ánh nhìn.", "3490000", "2890000"},
+        };
+
+        int created = 0;
+        Random rand = new Random(42);
+        for (String[] p : products) {
+            if (vayRepo.existsByMaVay(p[1])) continue;
+            Vay v = new Vay();
+            v.setTenVay(p[0]);
+            v.setMaVay(p[1]);
+            int loaiIdx = Integer.parseInt(p[2]) - 1;
+            int chatLieuIdx = Integer.parseInt(p[3]) - 1;
+            if (loaiIdx < loaiVays.size()) v.setLoaiVay(loaiVays.get(loaiIdx));
+            if (chatLieuIdx < chatLieus.size()) v.setChatLieu(chatLieus.get(chatLieuIdx));
+            if (!nhaCungCaps.isEmpty()) v.setNhaCungCap(nhaCungCaps.get(rand.nextInt(nhaCungCaps.size())));
+            v.setMoTa(p[4]);
+            v.setTrangThai((byte) 1);
+            v.setNgayTao(LocalDateTime.now().minusDays(rand.nextInt(90)));
+            Vay saved = vayRepo.save(v);
+
+            BigDecimal giaBanGoc = new BigDecimal(p[5]);
+            BigDecimal giaBanReal = p[6] != null ? new BigDecimal(p[6]) : giaBanGoc;
+
+            int numColors = Math.min(rand.nextInt(3) + 2, mauSacs.size());
+            int numSizes = Math.min(rand.nextInt(3) + 3, kichThuocs.size());
+            List<MauSac> selColors = new ArrayList<>(mauSacs);
+            Collections.shuffle(selColors, rand);
+            selColors = selColors.subList(0, numColors);
+
+            List<KichThuoc> selSizes = new ArrayList<>(kichThuocs);
+            Collections.shuffle(selSizes, rand);
+            selSizes = selSizes.subList(0, numSizes);
+
+            int varIdx = 1;
+            for (MauSac ms : selColors) {
+                for (KichThuoc kt : selSizes) {
+                    VayChiTiet ct = new VayChiTiet();
+                    ct.setVay(saved);
+                    ct.setMauSac(ms);
+                    ct.setKichThuoc(kt);
+                    ct.setMaVayChiTiet(saved.getMaVay() + "-" + String.format("%03d", varIdx++));
+                    ct.setGiaBan(giaBanReal);
+                    ct.setGiaBanGoc(giaBanGoc);
+                    ct.setSoLuong(rand.nextInt(20) + 5);
+                    ct.setTrangThai((byte) 1);
+                    ct.setNgayTao(LocalDateTime.now());
+                    vayCtRepo.save(ct);
+                }
+            }
+            created++;
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Đã tạo " + created + " sản phẩm mẫu", "count", created));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Integer id) {
+        List<VayChiTiet> variants = vayCtRepo.findByVayId(id);
+        vayCtRepo.deleteAll(variants);
+        vayRepo.deleteById(id);
+        return ResponseEntity.ok().build();
+    }
+
     private Map<String, Object> toMap(Vay v) {
         List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId());
         BigDecimal minPrice = bienThe.stream()
@@ -63,14 +231,23 @@ public class VayController {
         map.put("id", v.getId());
         map.put("maVay", v.getMaVay());
         map.put("tenVay", v.getTenVay());
+        map.put("idLoaiVay", v.getLoaiVay() != null ? v.getLoaiVay().getId() : null);
         map.put("loaiVay", v.getLoaiVay() != null ? v.getLoaiVay().getTenLoaiVay() : null);
+        map.put("idChatLieu", v.getChatLieu() != null ? v.getChatLieu().getId() : null);
         map.put("chatLieu", v.getChatLieu() != null ? v.getChatLieu().getTenChatLieu() : null);
+        map.put("idNhaCungCap", v.getNhaCungCap() != null ? v.getNhaCungCap().getId() : null);
         map.put("giaBan", minPrice);
         map.put("giaBanGoc", originalPrice);
         map.put("tonKho", stock);
         map.put("trangThai", v.getTrangThai());
         map.put("moTa", v.getMoTa());
         map.put("ngayTao", v.getNgayTao());
+
+        List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(v.getId(), (byte) 1);
+        if (!anhs.isEmpty()) {
+            map.put("anhUrl", anhs.get(0).getAnhUrl());
+            map.put("danhSachAnh", anhs.stream().map(Anh::getAnhUrl).toList());
+        }
         return map;
     }
 

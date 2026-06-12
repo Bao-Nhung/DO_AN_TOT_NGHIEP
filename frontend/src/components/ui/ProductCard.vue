@@ -1,24 +1,23 @@
 <template>
   <div class="lm-product-card" @click="$router.push('/product/' + product.id)">
     <div class="lm-product-image">
-      <!-- Product image placeholder -->
-      <div class="lm-product-img-inner" :style="{ background: product.bg }">
+      <div v-if="product.image" class="lm-product-img-inner">
+        <img :src="product.image" :alt="product.name" loading="lazy" />
+      </div>
+      <div v-else class="lm-product-img-inner" :style="{ background: product.bg }">
         {{ product.letter }}
       </div>
 
-      <!-- Badge -->
       <div v-if="product.badge" class="lm-product-badge" :class="{ sale: product.badge === 'Sale' }">
         {{ product.badge }}
       </div>
 
-      <!-- Wishlist button -->
       <button class="lm-product-wish" :class="{ liked: isLiked }"
               @click.stop="toggleWish">
         <i class="bi" :class="isLiked ? 'bi-heart-fill' : 'bi-heart'"
-           :style="{ color: isLiked ? 'var(--lm-gold)' : 'var(--lm-black)', fontSize:'14px' }"></i>
+           :style="{ color: isLiked ? 'var(--z-accent)' : 'var(--z-dark)', fontSize:'14px' }"></i>
       </button>
 
-      <!-- Quick add -->
       <div class="lm-product-quick" @click.stop="addCart">Thêm vào giỏ</div>
     </div>
 
@@ -34,9 +33,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
+import { useWishlist } from '@/composables/useWishlist'
 
 const props = defineProps({
   product: { type: Object, required: true }
@@ -44,15 +44,24 @@ const props = defineProps({
 
 const { addItem, formatPrice } = useCart()
 const { showToast } = useToast()
-const isLiked = ref(false)
+const { isInWishlist, toggleWishlist } = useWishlist()
+
+const isLiked = computed(() => isInWishlist(props.product.id))
 
 function toggleWish() {
-  isLiked.value = !isLiked.value
-  showToast(isLiked.value ? 'Đã thêm vào yêu thích ♥' : 'Đã xóa khỏi yêu thích')
+  const added = toggleWishlist(props.product.id)
+  showToast(added ? 'Đã thêm vào yêu thích' : 'Đã xoá khỏi yêu thích')
 }
 
 function addCart() {
-  addItem(props.product)
+  const p = props.product
+  addItem({
+    id: p.id, name: p.name,
+    variant: p.category || 'Mặc định',
+    price: p.salePrice || p.price,
+    image: p.image || null,
+    letter: p.letter, bg: p.bg
+  })
   showToast('Đã thêm vào giỏ hàng')
 }
 </script>

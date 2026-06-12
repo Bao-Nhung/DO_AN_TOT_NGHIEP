@@ -20,7 +20,8 @@ async function request(path, options = {}) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw { status: res.status, ...err }
   }
-  return res.json()
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
 
 export function api() {
@@ -32,11 +33,18 @@ export function api() {
         body: JSON.stringify({ username, password })
       }),
     me: () => request('/auth/me'),
+    register: (data) =>
+      request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+    forgotPassword: (identifier) =>
+      request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ identifier }) }),
 
     // Products
     getVay: () => request('/vay'),
     getVayById: (id) => request(`/vay/${id}`),
     searchVay: (q) => request(`/vay/search?q=${encodeURIComponent(q)}`),
+    createVay: (data) => request('/vay', { method: 'POST', body: JSON.stringify(data) }),
+    updateVay: (id, data) => request(`/vay/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteVay: (id) => request(`/vay/${id}`, { method: 'DELETE' }),
 
     // Orders
     getHoaDon: () => request('/hoa-don'),
@@ -61,10 +69,51 @@ export function api() {
     getLoaiVay: () => request('/thuoc-tinh/loai-vay'),
     getNhaCungCap: () => request('/thuoc-tinh/nha-cung-cap'),
 
+    // Attributes CRUD
+    addMauSac: (data) => request('/thuoc-tinh/mau-sac', { method: 'POST', body: JSON.stringify(data) }),
+    updateMauSac: (id, data) => request(`/thuoc-tinh/mau-sac/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteMauSac: (id) => request(`/thuoc-tinh/mau-sac/${id}`, { method: 'DELETE' }),
+
+    addKichThuoc: (data) => request('/thuoc-tinh/kich-thuoc', { method: 'POST', body: JSON.stringify(data) }),
+    updateKichThuoc: (id, data) => request(`/thuoc-tinh/kich-thuoc/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteKichThuoc: (id) => request(`/thuoc-tinh/kich-thuoc/${id}`, { method: 'DELETE' }),
+
+    addChatLieu: (data) => request('/thuoc-tinh/chat-lieu', { method: 'POST', body: JSON.stringify(data) }),
+    updateChatLieu: (id, data) => request(`/thuoc-tinh/chat-lieu/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteChatLieu: (id) => request(`/thuoc-tinh/chat-lieu/${id}`, { method: 'DELETE' }),
+
+    addLoaiVay: (data) => request('/thuoc-tinh/loai-vay', { method: 'POST', body: JSON.stringify(data) }),
+    updateLoaiVay: (id, data) => request(`/thuoc-tinh/loai-vay/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteLoaiVay: (id) => request(`/thuoc-tinh/loai-vay/${id}`, { method: 'DELETE' }),
+
+    addNhaCungCap: (data) => request('/thuoc-tinh/nha-cung-cap', { method: 'POST', body: JSON.stringify(data) }),
+    updateNhaCungCap: (id, data) => request(`/thuoc-tinh/nha-cung-cap/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteNhaCungCap: (id) => request(`/thuoc-tinh/nha-cung-cap/${id}`, { method: 'DELETE' }),
+
+    // Payment
+    createOrder: (data) =>
+      request('/payment/create-order', { method: 'POST', body: JSON.stringify(data) }),
+    createVNPayUrl: (orderId) =>
+      request('/payment/vnpay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
+    getOrder: (id) => request(`/payment/order/${id}`),
+    getMyOrders: () => request('/payment/my-orders'),
+    updateProfile: (data) =>
+      request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
+
     // Promotions
     getKhuyenMai: () => request('/khuyen-mai'),
     getGiamGia: () => request('/khuyen-mai/giam-gia'),
     getAllKhuyenMai: () => request('/khuyen-mai/all'),
+
+    // Voucher CRUD
+    addGiamGia: (data) => request('/khuyen-mai/giam-gia', { method: 'POST', body: JSON.stringify(data) }),
+    updateGiamGia: (id, data) => request(`/khuyen-mai/giam-gia/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteGiamGia: (id) => request(`/khuyen-mai/giam-gia/${id}`, { method: 'DELETE' }),
+
+    // Promotion CRUD
+    addKhuyenMai: (data) => request('/khuyen-mai', { method: 'POST', body: JSON.stringify(data) }),
+    updateKhuyenMai: (id, data) => request(`/khuyen-mai/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteKhuyenMai: (id) => request(`/khuyen-mai/${id}`, { method: 'DELETE' }),
   }
 }
 

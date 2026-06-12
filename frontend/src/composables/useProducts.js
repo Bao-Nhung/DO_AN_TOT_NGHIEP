@@ -23,21 +23,23 @@ export function mapProduct(p, i) {
     badge: hasDiscount ? 'Sale' : null,
     stock: p.tonKho || 0,
     active: p.trangThai === 1 || p.trangThai === true,
+    image: p.anhUrl || null,
+    images: p.danhSachAnh || [],
     letter: letters[i % letters.length],
     bg: bgs[i % bgs.length],
   }
 }
 
 export function fmtPrice(n) {
-  if (!n && n !== 0) return '0d'
-  return Number(n).toLocaleString('vi-VN') + 'd'
+  if (!n && n !== 0) return '0đ'
+  return Number(n).toLocaleString('vi-VN') + 'đ'
 }
 
 const _products = ref([])
 let _loading = false
 
-export async function loadProducts() {
-  if (_products.value.length || _loading) return
+export async function loadProducts(force = false) {
+  if ((!force && _products.value.length) || _loading) return
   _loading = true
   try {
     const data = await api().getVay()

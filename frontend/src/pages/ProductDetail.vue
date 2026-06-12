@@ -7,17 +7,20 @@
         <div class="col-lg-6">
           <div class="d-grid gap-3" style="grid-template-columns:72px 1fr">
             <div class="d-flex flex-column gap-2">
-              <div v-for="(t, i) in 4" :key="i"
+              <div v-for="(img, i) in galleryImages" :key="i"
                    @click="activeThumb = i" style="cursor:pointer;aspect-ratio:3/4;overflow:hidden;border-radius:var(--z-radius);transition:all 0.3s"
                    :style="activeThumb === i ? 'box-shadow:0 0 0 2px var(--z-accent)' : ''">
-                <div class="w-100 h-100 d-flex align-items-center justify-content-center"
+                <img v-if="img" :src="img" :alt="'Ảnh ' + (i+1)" style="width:100%;height:100%;object-fit:cover" />
+                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                      style="background:linear-gradient(160deg,#F3E8E6,#D4A99E);font-family:var(--z-font-display);font-size:16px;color:rgba(255,255,255,0.3);font-style:italic">
                   {{ i + 1 }}
                 </div>
               </div>
             </div>
             <div style="aspect-ratio:3/4;position:relative;overflow:hidden;border-radius:var(--z-radius-lg)">
-              <div class="w-100 h-100 d-flex align-items-center justify-content-center"
+              <img v-if="galleryImages[activeThumb]" :src="galleryImages[activeThumb]" :alt="product.tenVay"
+                   style="width:100%;height:100%;object-fit:cover" />
+              <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                    style="background:linear-gradient(160deg,#F3E8E6,#D4A99E 60%,#C08B7E);font-family:var(--z-font-display);font-size:80px;color:rgba(255,255,255,0.15);font-style:italic;font-weight:300">
                 Zestia
               </div>
@@ -27,7 +30,7 @@
 
         <!-- Info -->
         <div class="col-lg-6 pt-lg-2">
-          <p class="lm-eyebrow mb-3">Zestia — {{ product.loaiVay || 'Bo Suu Tap' }}</p>
+          <p class="lm-eyebrow mb-3">Zestia — {{ product.loaiVay || 'Bộ Sưu Tập' }}</p>
           <h1 class="z-display mb-3" style="font-size:36px;font-weight:400;line-height:1.15;color:var(--z-dark)">
             {{ productName.main }}<br><em style="font-style:italic;color:var(--z-gray)">{{ productName.sub }}</em>
           </h1>
@@ -37,7 +40,7 @@
               <i v-for="s in 5" :key="s" class="bi bi-star-fill"
                  :style="{ color: s <= 4 ? 'var(--z-accent)' : 'var(--z-gray-border)', fontSize:'14px' }"></i>
             </div>
-            <span style="font-size:13px;color:var(--z-gray)">4.2 · {{ product.tonKho || 0 }} ton kho</span>
+            <span style="font-size:13px;color:var(--z-gray)">4.2 · {{ product.tonKho || 0 }} tồn kho</span>
           </div>
 
           <div class="d-flex align-items-baseline gap-3 mb-4 pb-4" style="border-bottom:1px solid var(--z-gray-border)">
@@ -49,12 +52,12 @@
           </div>
 
           <p style="font-size:14px;font-weight:400;line-height:1.8;color:var(--z-gray);margin-bottom:32px">
-            {{ product.moTa || 'Thiet ke sang trong, chat lieu cao cap tu Zestia. Phu hop cho ca ngay thuong va dip dac biet.' }}
+            {{ product.moTa || 'Thiết kế sang trọng, chất liệu cao cấp từ Zestia. Phù hợp cho cả ngày thường và dịp đặc biệt.' }}
           </p>
 
           <!-- Colors -->
           <div class="mb-3">
-            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Mau sac</span>
+            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Màu sắc</span>
           </div>
           <div class="d-flex gap-2 mb-4">
             <div v-for="(c, i) in colors" :key="i"
@@ -66,7 +69,7 @@
 
           <!-- Sizes -->
           <div class="mb-3">
-            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Kich thuoc</span>
+            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Kích thước</span>
           </div>
           <div class="d-flex gap-2 mb-4">
             <button v-for="s in sizes" :key="s.label"
@@ -82,7 +85,7 @@
           <!-- Actions -->
           <div class="d-grid gap-2 mb-4" style="grid-template-columns:1fr 52px">
             <button class="lm-btn-primary justify-content-center" @click="addToCart()">
-              <span>Them vao gio hang</span>
+              <span>Thêm vào giỏ hàng</span>
             </button>
             <button @click="toggleWish"
                     style="border:1px solid var(--z-gray-border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;border-radius:var(--z-radius)"
@@ -95,15 +98,15 @@
           <div class="d-flex flex-column gap-3" style="font-size:13px;color:var(--z-gray);padding:20px;background:var(--z-bg-alt);border-radius:var(--z-radius-lg)">
             <div class="d-flex align-items-center gap-3">
               <i class="bi bi-truck" style="color:var(--z-accent);font-size:16px"></i>
-              Giao hang mien phi cho don tu 1.000.000d
+              Giao hàng miễn phí cho đơn từ 1.000.000đ
             </div>
             <div class="d-flex align-items-center gap-3">
               <i class="bi bi-arrow-repeat" style="color:var(--z-accent);font-size:16px"></i>
-              Doi tra trong 30 ngay
+              Đổi trả trong 30 ngày
             </div>
             <div class="d-flex align-items-center gap-3">
               <i class="bi bi-shield-check" style="color:var(--z-accent);font-size:16px"></i>
-              Chat lieu lua tu nhien 100% duoc chung nhan
+              Chất liệu lụa tự nhiên 100% được chứng nhận
             </div>
           </div>
         </div>
@@ -122,16 +125,18 @@ import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
+import { useWishlist } from '@/composables/useWishlist'
 
 const route = useRoute()
 const { addItem } = useCart()
 const { showToast } = useToast()
+const { isInWishlist, toggleWishlist } = useWishlist()
 
 const product = ref({})
 const activeThumb = ref(0)
 const activeColor = ref(0)
 const activeSize  = ref('')
-const isLiked = ref(false)
+const isLiked = computed(() => isInWishlist(product.value.id))
 
 const letters = ['Z', 'e', 's', 't', 'i', 'a']
 const bgs = [
@@ -139,6 +144,18 @@ const bgs = [
   'linear-gradient(160deg,#E8DDD6,#C4A98E)',
   'linear-gradient(160deg,#E6E0DA,#A8A49E)',
 ]
+
+const galleryImages = computed(() => {
+  const imgs = product.value.danhSachAnh || []
+  if (imgs.length >= 4) return imgs.slice(0, 4)
+  const main = product.value.anhUrl
+  if (main) {
+    const arr = [main, ...imgs.filter(u => u !== main)]
+    while (arr.length < 4) arr.push(null)
+    return arr.slice(0, 4)
+  }
+  return [null, null, null, null]
+})
 
 const productName = computed(() => {
   const name = product.value.tenVay || ''
@@ -169,7 +186,7 @@ const colors = computed(() => {
       })
     }
   }
-  return unique.length ? unique : [{ name: 'Mac dinh', bg: '#D4A99E', border: '2px solid transparent' }]
+  return unique.length ? unique : [{ name: 'Mặc định', bg: '#D4A99E', border: '2px solid transparent' }]
 })
 
 const sizes = computed(() => {
@@ -196,17 +213,20 @@ onMounted(async () => {
 function addToCart() {
   const p = product.value
   const idx = (p.id || 0) % letters.length
+  const colorName = colors.value[activeColor.value]?.name || ''
+  const variantText = [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · ')
   addItem({
-    id: p.id, name: p.tenVay || 'San pham',
-    variant: `Size ${activeSize.value}`,
+    id: p.id, name: p.tenVay || 'Sản phẩm',
+    variant: variantText,
     price: Number(p.giaBan) || 0,
+    image: p.anhUrl || null,
     letter: letters[idx], bg: bgs[idx % bgs.length]
   })
-  showToast('Da them vao gio hang')
+  showToast('Đã thêm vào giỏ hàng')
 }
 function toggleWish() {
-  isLiked.value = !isLiked.value
-  showToast(isLiked.value ? 'Da them vao yeu thich' : 'Da xoa khoi yeu thich')
+  const added = toggleWishlist(product.value.id)
+  showToast(added ? 'Đã thêm vào yêu thích' : 'Đã xoá khỏi yêu thích')
 }
 </script>
 

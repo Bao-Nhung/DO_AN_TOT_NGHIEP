@@ -2,8 +2,8 @@
   <AdminLayout>
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Quan ly khach hang</h1>
-        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ customers.length }} khach hang</p>
+        <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Quản lý khách hàng</h1>
+        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ customers.length }} khách hàng</p>
       </div>
     </div>
 
@@ -11,7 +11,7 @@
     <div class="z-admin-card mb-3" style="padding:14px 20px">
       <div class="d-flex align-items-center gap-2" style="max-width:400px">
         <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
-        <input v-model="search" class="lm-input" placeholder="Tim theo ten, email, sdt..." style="border:none;padding:8px 0;box-shadow:none">
+        <input v-model="search" class="lm-input" placeholder="Tìm theo tên, email, SĐT..." style="border:none;padding:8px 0;box-shadow:none">
       </div>
     </div>
 
@@ -20,12 +20,12 @@
       <table class="z-table">
         <thead>
           <tr>
-            <th>Khach hang</th>
-            <th>So dien thoai</th>
+            <th>Khách hàng</th>
+            <th>Số điện thoại</th>
             <th>Email</th>
-            <th>Tong don</th>
-            <th>Tong chi tieu</th>
-            <th>Ngay tham gia</th>
+            <th>Tổng đơn</th>
+            <th>Tổng chi tiêu</th>
+            <th>Ngày tham gia</th>
           </tr>
         </thead>
         <tbody>
@@ -72,7 +72,7 @@ onMounted(async () => {
       date: c.ngayTao ? new Date(c.ngayTao).toLocaleDateString('vi-VN') : '',
       color: avatarColors[i % avatarColors.length]
     }))
-  } catch (e) { console.error('Failed to load customers:', e) }
+  } catch (e) { console.error('Không thể tải khách hàng:', e) }
 })
 
 const filteredCustomers = computed(() => {

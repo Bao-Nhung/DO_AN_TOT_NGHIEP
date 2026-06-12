@@ -12,7 +12,7 @@
 
 <script setup>
 const items = [
-  'Bo Suu Tap Moi', 'Chat Lieu Cao Cap', 'Thiet Ke Viet Nam',
-  'Giao Hang Toan Quoc', 'Mien Phi Doi Tra 30 Ngay', 'Zestia Fashion'
+  'Bộ Sưu Tập Mới', 'Chất Liệu Cao Cấp', 'Thiết Kế Việt Nam',
+  'Giao Hàng Toàn Quốc', 'Miễn Phí Đổi Trả 30 Ngày', 'Zestia Fashion'
 ]
 </script>

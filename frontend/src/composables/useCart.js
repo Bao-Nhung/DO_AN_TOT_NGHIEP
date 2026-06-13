@@ -1,15 +1,22 @@
-// composables/useCart.js
-// Lightweight reactive cart state — no Pinia/Vuex needed for this scope
-import { reactive, computed } from 'vue'
+import { reactive, computed, watch } from 'vue'
+
+const STORAGE_KEY = 'zestia_cart'
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
 
 const state = reactive({
-  items: [
-    { id: 1, name: 'Silk Wrap Dress',   variant: 'Màu Kem · Size S',     price: 4290000, qty: 1, letter: 'A', bg: 'linear-gradient(160deg,#EDE6D8,#C5B89A)' },
-    { id: 2, name: 'Cashmere Coat',     variant: 'Màu Be · Size M',      price: 9890000, qty: 1, letter: 'B', bg: 'linear-gradient(160deg,#E0D4C4,#B8A88A)' },
-    { id: 3, name: 'Linen Trousers',    variant: 'Màu Trắng · Size S',   price: 2190000, qty: 2, letter: 'C', bg: 'linear-gradient(160deg,#DEDCD8,#A8A49E)' },
-  ],
+  items: loadSaved(),
   isOpen: false,
 })
+
+watch(() => state.items, (items) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+}, { deep: true })
 
 const totalCount = computed(() => state.items.reduce((s, i) => s + i.qty, 0))
 const subtotal   = computed(() => state.items.reduce((s, i) => s + i.price * i.qty, 0))
@@ -34,10 +41,15 @@ function removeItem(id) {
   if (idx !== -1) state.items.splice(idx, 1)
 }
 
+function clearCart() {
+  state.items.splice(0, state.items.length)
+  closeCart()
+}
+
 function formatPrice(n) {
-  return n.toLocaleString('vi-VN') + '₫'
+  return n.toLocaleString('vi-VN') + 'đ'
 }
 
 export function useCart() {
-  return { state, totalCount, subtotal, openCart, closeCart, addItem, changeQty, removeItem, formatPrice }
+  return { state, totalCount, subtotal, openCart, closeCart, addItem, changeQty, removeItem, clearCart, formatPrice }
 }

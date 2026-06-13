@@ -1,0 +1,21 @@
+# Dependencies
+frontend/node_modules/
+backend/target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.claude/
+
+# Logs
+*.log
+backend/*.log
+frontend/*.log
+
+# Build
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db

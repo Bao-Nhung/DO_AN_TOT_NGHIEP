@@ -1,7 +1,9 @@
 package com.zestia.datn.zestia.controller;
 
+import com.zestia.datn.zestia.entity.Anh;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.HoaDonChiTiet;
+import com.zestia.datn.zestia.repository.AnhRepository;
 import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,7 @@ public class HoaDonController {
 
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
+    private final AnhRepository anhRepo;
 
     @GetMapping
     public List<Map<String, Object>> getAll() {
@@ -31,9 +34,12 @@ public class HoaDonController {
     }
 
     @PutMapping("/{id}/trang-thai")
-    public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Byte> body) {
+    public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         return hoaDonRepo.findById(id).map(hd -> {
-            hd.setTrangThai(body.get("trangThai"));
+            hd.setTrangThai(((Number) body.get("trangThai")).byteValue());
+            if (body.get("ghiChu") != null) {
+                hd.setGhiChu((String) body.get("ghiChu"));
+            }
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(toMap(hd));
         }).orElse(ResponseEntity.notFound().build());
@@ -58,6 +64,7 @@ public class HoaDonController {
 
     private Map<String, Object> toDetailMap(HoaDon hd) {
         Map<String, Object> map = toMap(hd);
+        map.put("emailKhachHang", hd.getKhachHang() != null ? hd.getKhachHang().getEmail() : null);
         List<HoaDonChiTiet> chiTiets = hoaDonCtRepo.findByHoaDonId(hd.getId());
         List<Map<String, Object>> items = new ArrayList<>();
         for (HoaDonChiTiet ct : chiTiets) {
@@ -68,8 +75,15 @@ public class HoaDonController {
                         ? ct.getVayChiTiet().getVay().getTenVay() : null);
                 item.put("mauSac", ct.getVayChiTiet().getMauSac() != null
                         ? ct.getVayChiTiet().getMauSac().getTenMauSac() : null);
+                item.put("maHex", ct.getVayChiTiet().getMauSac() != null
+                        ? ct.getVayChiTiet().getMauSac().getMaHex() : null);
                 item.put("kichThuoc", ct.getVayChiTiet().getKichThuoc() != null
                         ? ct.getVayChiTiet().getKichThuoc().getTenKichThuoc() : null);
+                if (ct.getVayChiTiet().getVay() != null) {
+                    List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(
+                            ct.getVayChiTiet().getVay().getId(), (byte) 1);
+                    item.put("anhUrl", !anhs.isEmpty() ? anhs.get(0).getAnhUrl() : null);
+                }
             }
             item.put("soLuong", ct.getSoLuong());
             item.put("donGia", ct.getDonGia());

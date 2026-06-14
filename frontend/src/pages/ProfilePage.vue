@@ -46,15 +46,16 @@
                 </div>
               </div>
             </div>
-            <div v-if="orders.length === 0" class="text-center py-5">
+            <div v-if="sortedOrders.length === 0" class="text-center py-5">
               <i class="bi bi-bag mb-3" style="font-size:48px;color:var(--z-gray-border)"></i>
               <h3 class="z-display" style="font-weight:400;color:var(--z-gray)">Chưa có đơn hàng</h3>
               <p style="color:var(--z-gray);font-size:14px">Hãy khám phá bộ sưu tập và đặt đơn hàng đầu tiên.</p>
               <RouterLink to="/collections" class="lm-btn-primary mt-3"><span>Mua sắm ngay</span></RouterLink>
             </div>
             <div v-else class="d-flex flex-column gap-3">
-              <div v-for="order in orders" :key="order.id"
-                   style="border:1px solid var(--z-gray-border);padding:20px;background:var(--z-white);border-radius:var(--z-radius-lg)">
+              <div v-for="order in sortedOrders" :key="order.id"
+                   class="z-order-card"
+                   @click="openOrderDetail(order)">
                 <div class="d-flex justify-content-between align-items-start mb-3 pb-3" style="border-bottom:1px solid var(--z-gray-border)">
                   <div>
                     <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ order.maHoaDon }}</div>
@@ -65,8 +66,11 @@
                   </span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
-                  <div class="z-display" style="font-size:20px;font-weight:500;color:var(--z-dark)">{{ fmtMoney(order.tongTien) }}</div>
-                  <RouterLink to="/collections" class="lm-btn-primary" style="padding:10px 20px;font-size:12px"><span>Mua lại</span></RouterLink>
+                  <div>
+                    <div class="z-display" style="font-size:20px;font-weight:500;color:var(--z-dark)">{{ fmtMoney(order.tongTien) }}</div>
+                    <div style="font-size:12px;color:var(--z-gray-light);margin-top:2px">{{ order.soSanPham || 0 }} sản phẩm · Nhấn xem chi tiết</div>
+                  </div>
+                  <i class="bi bi-chevron-right" style="color:var(--z-gray-light);font-size:18px"></i>
                 </div>
               </div>
             </div>
@@ -102,6 +106,72 @@
         </div>
       </div>
     </div>
+
+    <!-- Order Detail Modal -->
+    <div v-if="showDetail" class="z-modal-overlay" @click.self="showDetail = false">
+      <div class="z-modal" style="max-width:700px">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết đơn hàng</h3>
+            <div style="font-size:13px;color:var(--z-gray)">{{ detailOrder?.maHoaDon }}</div>
+          </div>
+          <button class="z-icon-btn" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div v-if="loadingDetail" class="text-center py-4">
+          <div class="spinner-border spinner-border-sm text-secondary"></div>
+          <p style="font-size:13px;color:var(--z-gray);margin-top:8px">Đang tải...</p>
+        </div>
+
+        <div v-else-if="detailOrder">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-3" style="border-bottom:1px solid var(--z-gray-border)">
+            <div>
+              <div style="font-size:13px;color:var(--z-gray)">Ngày đặt: {{ fmtDate(detailOrder.ngayTao) }}</div>
+              <div style="font-size:13px;color:var(--z-gray)">Thanh toán: {{ detailOrder.hinhThucThanhToan }}</div>
+              <div v-if="detailOrder.diaChiGiaoHang" style="font-size:13px;color:var(--z-gray)">Địa chỉ: {{ detailOrder.diaChiGiaoHang }}</div>
+            </div>
+            <span :class="'lm-status-' + (statusMap[detailOrder.trangThai]?.key || 'pending')">
+              {{ statusMap[detailOrder.trangThai]?.label || 'Chờ xử lý' }}
+            </span>
+          </div>
+
+          <div class="d-flex flex-column gap-0 mb-4">
+            <div v-for="item in detailOrder.chiTiets" :key="item.id"
+                 class="d-flex align-items-center gap-3" style="padding:12px 0;border-bottom:1px solid var(--z-gray-border)">
+              <div style="width:56px;height:64px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
+                <img v-if="item.anhUrl" :src="item.anhUrl" style="width:100%;height:100%;object-fit:cover">
+                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" style="font-size:18px;color:var(--z-gray-light)">
+                  <i class="bi bi-image"></i>
+                </div>
+              </div>
+              <div class="flex-grow-1">
+                <div style="font-size:14px;font-weight:500;color:var(--z-dark)">{{ item.tenVay || 'Sản phẩm' }}</div>
+                <div style="font-size:12px;color:var(--z-gray)">
+                  <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
+                    <span v-if="item.maHex" :style="{ width:'10px', height:'10px', borderRadius:'50%', background: item.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
+                    {{ item.mauSac }}
+                  </span>
+                  <span v-if="item.mauSac && item.kichThuoc"> · </span>
+                  <span v-if="item.kichThuoc">Size {{ item.kichThuoc }}</span>
+                  <span> · SL: {{ item.soLuong }}</span>
+                </div>
+              </div>
+              <div style="font-size:14px;font-weight:600;color:var(--z-dark);white-space:nowrap">{{ fmtMoney(item.donGia) }}</div>
+            </div>
+          </div>
+
+          <div v-if="detailOrder.ghiChu" class="mb-3 p-3" style="background:var(--z-bg-alt);border-radius:var(--z-radius);font-size:13px;color:var(--z-gray)">
+            <strong>Ghi chú:</strong> {{ detailOrder.ghiChu }}
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center pt-3" style="border-top:2px solid var(--z-dark)">
+            <div style="font-size:16px;font-weight:600;color:var(--z-dark)">Tổng cộng</div>
+            <div class="z-display" style="font-size:22px;font-weight:600;color:var(--z-accent)">{{ fmtMoney(detailOrder.tongTien) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <AppFooter />
   </div>
 </template>
@@ -138,15 +208,26 @@ const profile = ref({
 const address = ref({ street: '', district: '', city: 'Hà Nội' })
 
 const orders = ref([])
+const showDetail = ref(false)
+const detailOrder = ref(null)
+const loadingDetail = ref(false)
 
 const statusMap = {
   0: { key: 'pending', label: 'Chờ xử lý' },
-  1: { key: 'paid', label: 'Đã thanh toán' },
+  1: { key: 'paid', label: 'Đã xác nhận' },
   2: { key: 'shipping', label: 'Đang giao' },
   3: { key: 'delivered', label: 'Đã giao' },
   4: { key: 'cancelled', label: 'Đã huỷ' },
   5: { key: 'failed', label: 'Thất bại' },
 }
+
+const sortedOrders = computed(() => {
+  return [...orders.value].sort((a, b) => {
+    const da = a.ngayTao ? new Date(a.ngayTao).getTime() : 0
+    const db = b.ngayTao ? new Date(b.ngayTao).getTime() : 0
+    return db - da
+  })
+})
 
 function fmtMoney(n) {
   return Number(n || 0).toLocaleString('vi-VN') + 'đ'
@@ -170,6 +251,18 @@ const stats = computed(() => {
     { num: total >= 10 ? 'Vàng' : total >= 5 ? 'Bạc' : 'Mới', label: 'Hạng thành viên' },
   ]
 })
+
+async function openOrderDetail(order) {
+  showDetail.value = true
+  loadingDetail.value = true
+  try {
+    detailOrder.value = await api().getHoaDonById(order.id)
+  } catch (e) {
+    detailOrder.value = order
+  } finally {
+    loadingDetail.value = false
+  }
+}
 
 onMounted(async () => {
   if (!isLoggedIn()) {
@@ -224,3 +317,33 @@ const navItems = [
   { tab: 'address',  icon: 'bi-geo-alt',      label: 'Địa chỉ giao hàng' },
 ]
 </script>
+
+<style scoped>
+.z-order-card {
+  border: 1px solid var(--z-gray-border);
+  padding: 20px;
+  background: var(--z-white);
+  border-radius: var(--z-radius-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.z-order-card:hover {
+  border-color: var(--z-accent);
+  box-shadow: 0 4px 16px rgba(212,86,78,0.08);
+}
+.z-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.z-modal {
+  background: var(--z-white); border-radius: var(--z-radius-lg);
+  padding: 28px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.z-icon-btn {
+  width: 32px; height: 32px; border: none; background: transparent;
+  border-radius: var(--z-radius); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--z-gray); transition: all 0.2s; font-size: 14px;
+}
+.z-icon-btn:hover { background: var(--z-bg-alt); color: var(--z-dark); }
+</style>

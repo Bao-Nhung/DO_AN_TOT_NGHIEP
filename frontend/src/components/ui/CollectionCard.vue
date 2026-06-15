@@ -4,7 +4,10 @@
        @click="$router.push('/collections')">
     <div class="lm-card-image w-100 position-relative overflow-hidden"
          :style="{ aspectRatio: tall ? 'unset' : '3/4', height: tall ? '100%' : 'auto' }">
-      <div class="lm-card-image-inner w-100 h-100 d-flex align-items-center justify-content-center"
+      <div v-if="image" class="lm-card-image-inner w-100 h-100">
+        <img :src="image" :alt="name" style="width:100%;height:100%;object-fit:cover" />
+      </div>
+      <div v-else class="lm-card-image-inner w-100 h-100 d-flex align-items-center justify-content-center"
            :style="{ background: bg, fontFamily: 'var(--lm-font-display)', fontSize: '60px', color: 'rgba(255,255,255,0.15)', fontWeight: '300', fontStyle: 'italic' }">
         {{ letter }}
       </div>
@@ -23,6 +26,7 @@ defineProps({
   name:   String,
   letter: String,
   bg:     String,
+  image:  String,
   tall:   Boolean,
 })
 </script>

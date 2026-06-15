@@ -1,7 +1,7 @@
 {
-  "name": "lumiere-fashion",
+  "name": "zestia-fashion",
   "version": "1.0.0",
-  "description": "LUMIÈRE Fashion & Lifestyle — Vue 3 + Bootstrap 5",
+  "description": "Zestia Fashion — Vue 3 + Bootstrap 5 — Do an tot nghiep",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -1,0 +1,215 @@
+# Hướng Dẫn Chạy Dự Án Zestia
+
+## 1. Yêu cầu cài đặt
+
+Máy tính cần cài sẵn các phần mềm sau:
+
+| Phần mềm | Phiên bản | Link tải |
+|-----------|-----------|----------|
+| **Java JDK** | 21 trở lên | https://adoptium.net/ (chọn Temurin JDK 21) |
+| **Node.js** | 18 trở lên | https://nodejs.org/ (chọn bản LTS) |
+| **SQL Server** | 2019 trở lên | https://www.microsoft.com/en-us/sql-server/sql-server-downloads (chọn Express miễn phí) |
+| **SQL Server Management Studio (SSMS)** | Bản mới nhất | https://learn.microsoft.com/en-us/ssms/download-sql-server-management-studio-ssms |
+| **Git** | Bản mới nhất | https://git-scm.com/downloads |
+
+### Kiểm tra đã cài chưa
+
+Mở **PowerShell** hoặc **Command Prompt** và chạy:
+
+```
+java -version
+node -v
+npm -v
+git --version
+```
+
+Nếu mỗi lệnh đều hiện ra phiên bản thì OK.
+
+---
+
+## 2. Clone dự án
+
+```
+git clone https://github.com/<tên-tài-khoản>/DO_AN_TOT_NGHIEP.git
+cd DO_AN_TOT_NGHIEP
+```
+
+Thư mục dự án gồm:
+```
+DO_AN_TOT_NGHIEP/
+├── backend/        ← Spring Boot (Java)
+├── frontend/       ← Vue 3 + Vite
+├── database/       ← File SQL tạo dữ liệu
+```
+
+---
+
+## 3. Cấu hình SQL Server
+
+### Bước 1: Bật xác thực SQL Server (sa account)
+
+1. Mở **SSMS** → kết nối vào SQL Server
+2. Chuột phải vào tên server → **Properties** → **Security**
+3. Chọn **SQL Server and Windows Authentication mode**
+4. Nhấn OK, khởi động lại SQL Server
+
+### Bước 2: Đặt mật khẩu cho tài khoản `sa`
+
+1. Trong SSMS, mở **Security** → **Logins** → chuột phải **sa** → **Properties**
+2. Đặt mật khẩu: `123456`
+3. Bỏ tích **Enforce password policy**
+4. Tab **Status** → Login: **Enabled**
+5. Nhấn OK
+
+### Bước 3: Bật TCP/IP
+
+1. Mở **SQL Server Configuration Manager**
+2. Chọn **SQL Server Network Configuration** → **Protocols for MSSQLSERVER**
+3. Chuột phải **TCP/IP** → **Enable**
+4. Chuột phải **TCP/IP** → **Properties** → tab **IP Addresses**
+5. Kéo xuống **IPAll** → đặt **TCP Port** = `1433`
+6. Khởi động lại SQL Server service
+
+### Bước 4: Tạo database
+
+Mở SSMS, chạy lệnh SQL:
+
+```sql
+CREATE DATABASE fashion_shop;
+```
+
+> **Lưu ý:** Không cần tạo bảng thủ công. Spring Boot sẽ tự tạo bảng khi khởi động lần đầu (nhờ `ddl-auto=update`).
+
+---
+
+## 4. Chạy Backend (Spring Boot)
+
+### Bước 1: Mở terminal, di chuyển vào thư mục backend
+
+```
+cd backend
+```
+
+### Bước 2: Kiểm tra cấu hình database
+
+Mở file `backend/src/main/resources/application.properties` và kiểm tra:
+
+```properties
+spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=fashion_shop;encrypt=true;trustServerCertificate=true;
+spring.datasource.username=sa
+spring.datasource.password=123456
+```
+
+Nếu mật khẩu sa khác `123456` thì sửa lại cho đúng.
+
+### Bước 3: Chạy backend
+
+**Windows:**
+```
+mvnw.cmd spring-boot:run
+```
+
+**Mac/Linux:**
+```
+./mvnw spring-boot:run
+```
+
+Lần đầu chạy sẽ tải dependencies (mất 3-5 phút tùy mạng). Chờ đến khi thấy:
+
+```
+Started BackendApplication in X.XX seconds
+```
+
+Backend chạy tại: **http://localhost:8080**
+
+> **Mẹo:** Để tắt backend, nhấn `Ctrl + C` trong terminal.
+
+---
+
+## 5. Chạy Frontend (Vue 3 + Vite)
+
+### Bước 1: Mở terminal MỚI (giữ terminal backend đang chạy), di chuyển vào thư mục frontend
+
+```
+cd frontend
+```
+
+### Bước 2: Cài dependencies (chỉ cần lần đầu)
+
+```
+npm install
+```
+
+### Bước 3: Chạy frontend
+
+```
+npm run dev
+```
+
+Khi thấy:
+
+```
+  VITE vX.X.X  ready in XXX ms
+
+  ➜  Local:   http://localhost:5173/
+```
+
+Frontend chạy tại: **http://localhost:5173**
+
+Mở trình duyệt và truy cập địa chỉ trên.
+
+---
+
+## 6. Tóm tắt nhanh
+
+Mỗi lần muốn chạy dự án, cần **2 terminal chạy song song**:
+
+| Terminal | Thư mục | Lệnh |
+|----------|---------|-------|
+| Terminal 1 (Backend) | `backend/` | `mvnw.cmd spring-boot:run` |
+| Terminal 2 (Frontend) | `frontend/` | `npm run dev` |
+
+Sau đó mở trình duyệt tại **http://localhost:5173**
+
+---
+
+## 7. Tài khoản mặc định
+
+| Vai trò | Tên đăng nhập | Mật khẩu |
+|---------|---------------|----------|
+| Admin | admin | admin123 |
+
+> Nếu chưa có tài khoản, đăng ký mới trên trang web.
+
+---
+
+## 8. Lỗi thường gặp
+
+### Backend không khởi động được
+
+- **Nguyên nhân:** SQL Server chưa chạy hoặc chưa bật TCP/IP port 1433
+- **Cách sửa:** Mở **Services** (gõ `services.msc`) → tìm **SQL Server** → Start. Kiểm tra lại TCP/IP ở bước 3.
+
+### Không kết nối được database
+
+- **Nguyên nhân:** Sai mật khẩu sa hoặc chưa tạo database `fashion_shop`
+- **Cách sửa:** Kiểm tra lại bước 2 và bước 4 ở phần SQL Server.
+
+### Frontend báo lỗi khi `npm install`
+
+- **Nguyên nhân:** Node.js chưa cài hoặc phiên bản quá cũ
+- **Cách sửa:** Cài Node.js phiên bản 18 trở lên.
+
+### Trang web trắng, không hiện sản phẩm
+
+- **Nguyên nhân:** Backend chưa chạy
+- **Cách sửa:** Đảm bảo terminal backend đang hiển thị `Started BackendApplication`. Thử reload trang (F5).
+
+### Port 8080 bị chiếm
+
+- **Cách kiểm tra:** Chạy `netstat -ano | findstr :8080`
+- **Cách sửa:** Tắt process đang chiếm port, hoặc đổi port trong `application.properties`:
+  ```properties
+  server.port=8081
+  ```
+  (Nhớ cập nhật lại URL API trong frontend nếu đổi port)

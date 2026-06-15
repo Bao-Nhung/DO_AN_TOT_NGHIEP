@@ -31,6 +31,7 @@ import AdminOrders     from '@/pages/admin/AdminOrders.vue'
 import AdminCustomers  from '@/pages/admin/AdminCustomers.vue'
 import AdminVouchers   from '@/pages/admin/AdminVouchers.vue'
 import AdminSettings   from '@/pages/admin/AdminSettings.vue'
+import AdminPOS        from '@/pages/admin/AdminPOS.vue'
 
 const routes = [
   { path: '/',               component: HomePage,       name: 'home' },
@@ -50,6 +51,7 @@ const routes = [
   { path: '/admin/customers', component: AdminCustomers, name: 'admin-customers' },
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
+  { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },
 ]
 
 const router = createRouter({

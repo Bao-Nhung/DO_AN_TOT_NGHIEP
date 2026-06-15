@@ -13,7 +13,7 @@
                     :class="{ active: $route.path === item.path }">
           <i class="bi" :class="item.icon"></i>
           <span>{{ item.label }}</span>
-          <span v-if="item.badge" class="z-admin-nav-badge">{{ item.badge }}</span>
+          <span v-if="item.badgeRef === 'pending' && pendingCount > 0" class="z-admin-nav-badge">{{ pendingCount }}</span>
         </RouterLink>
       </nav>
 
@@ -40,14 +40,27 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
+import { api } from '@/composables/useApi'
+
+const pendingCount = ref(0)
+
 const navItems = [
   { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan' },
+  { path: '/admin/pos',       icon: 'bi-shop',         label: 'Bán tại quầy' },
   { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
-  { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badge: '3' },
+  { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },
   { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng' },
   { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Khuyến mãi' },
   { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt' },
 ]
+
+onMounted(async () => {
+  try {
+    const orders = await api().getHoaDon()
+    pendingCount.value = orders.filter(o => o.trangThai === 0).length
+  } catch (e) { /* ignore */ }
+})
 </script>
 
 <style scoped>

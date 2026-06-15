@@ -49,10 +49,10 @@ export function api() {
     // Orders
     getHoaDon: () => request('/hoa-don'),
     getHoaDonById: (id) => request(`/hoa-don/${id}`),
-    updateOrderStatus: (id, trangThai) =>
+    updateOrderStatus: (id, trangThai, ghiChu) =>
       request(`/hoa-don/${id}/trang-thai`, {
         method: 'PUT',
-        body: JSON.stringify({ trangThai })
+        body: JSON.stringify({ trangThai, ghiChu: ghiChu || null })
       }),
 
     // Customers

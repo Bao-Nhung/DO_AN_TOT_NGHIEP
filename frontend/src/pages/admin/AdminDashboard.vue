@@ -61,8 +61,9 @@
             <div v-for="(p, i) in topProducts" :key="p.name"
                  class="d-flex align-items-center gap-3">
               <div style="width:20px;font-size:14px;font-weight:700;color:var(--z-gray-light)">#{{ i + 1 }}</div>
-              <div style="width:44px;height:52px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0">
-                <div class="w-100 h-100 d-flex align-items-center justify-content-center"
+              <div style="width:44px;height:52px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
+                <img v-if="p.image" :src="p.image" style="width:100%;height:100%;object-fit:cover">
+                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                      :style="{ background: p.bg, fontFamily:'var(--z-font-display)', fontSize:'14px', color:'rgba(255,255,255,0.3)' }">
                   {{ p.letter }}
                 </div>
@@ -110,7 +111,13 @@ onMounted(async () => {
       { label: 'Khách hàng', value: String(s.tongKhachHang), change: '', up: true, icon: 'bi-people', color: '#6366f1' },
       { label: 'Sản phẩm', value: String(s.tongSanPham), change: s.tongLoaiVay + ' loại', up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
     ]
-    recentOrders.value = orders.slice(0, 5).map(o => {
+
+    const sortedOrders = [...orders].sort((a, b) => {
+      const da = a.ngayTao ? new Date(a.ngayTao).getTime() : 0
+      const db = b.ngayTao ? new Date(b.ngayTao).getTime() : 0
+      return db - da
+    })
+    recentOrders.value = sortedOrders.slice(0, 6).map(o => {
       const st = statusMap[o.trangThai] || statusMap[0]
       return {
         id: o.maHoaDon, customer: o.khachHang || 'N/A',
@@ -118,10 +125,11 @@ onMounted(async () => {
         date: o.ngayTao ? new Date(o.ngayTao).toLocaleDateString('vi-VN') : ''
       }
     })
+
     const mapped = prods.map(mapProduct).sort((a, b) => b.stock - a.stock)
-    topProducts.value = mapped.slice(0, 4).map(p => ({
+    topProducts.value = mapped.slice(0, 5).map(p => ({
       name: p.name, sold: String(p.stock), revenue: fmtPrice(p.price * p.stock),
-      letter: p.letter, bg: p.bg
+      letter: p.letter, bg: p.bg, image: p.image || null
     }))
   } catch (e) { console.error('Dashboard load failed:', e) }
 })
@@ -135,7 +143,7 @@ onMounted(async () => {
   padding: 20px;
 }
 .z-stat-label { font-size: 13px; color: var(--z-gray); font-weight: 500; }
-.z-stat-value { font-size: 28px; font-weight: 700; color: var(--z-dark); font-family: var(--z-font-display); margin-bottom: 4px; }
+.z-stat-value { font-size: 28px; font-weight: 700; color: var(--z-dark); font-family: var(--z-font-body); margin-bottom: 4px; }
 .z-stat-change { font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
 .z-admin-card {
   background: var(--z-white);

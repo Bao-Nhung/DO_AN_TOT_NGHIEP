@@ -12,6 +12,7 @@ backend/target/
 *.log
 backend/*.log
 frontend/*.log
+backend-log.txt
 
 # Build
 frontend/dist/

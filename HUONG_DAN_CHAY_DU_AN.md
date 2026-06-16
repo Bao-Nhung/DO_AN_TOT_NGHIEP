@@ -70,15 +70,28 @@ DO_AN_TOT_NGHIEP/
 5. Kéo xuống **IPAll** → đặt **TCP Port** = `1433`
 6. Khởi động lại SQL Server service
 
-### Bước 4: Tạo database
+### Bước 4: Tạo database và nạp dữ liệu (QUAN TRỌNG)
 
-Mở SSMS, chạy lệnh SQL:
+Toàn bộ dữ liệu mẫu (sản phẩm, **giá tiền**, **hình ảnh**, biến thể màu/size, đơn hàng, tài khoản...) nằm trong **một file SQL duy nhất**: `database/fashion_shop.sql`.
 
-```sql
-CREATE DATABASE fashion_shop;
+> ⚠️ **Đây là bước quan trọng nhất để dự án chạy giống nhau trên mọi máy.** Nếu bỏ qua, sản phẩm sẽ hiện giá `0đ` và không có ảnh, vì giá lấy từ bảng `Vay_chi_tiet` còn ảnh lấy từ bảng `Anh` — cả hai đều nằm trong file SQL này.
+
+**Cách 1 — Dùng SSMS (khuyên dùng):**
+
+1. Mở **SSMS** → kết nối vào SQL Server
+2. Vào menu **File → Open → File...** → chọn `database/fashion_shop.sql`
+3. Nhấn **Execute** (hoặc phím `F5`)
+4. Chờ chạy xong. File tự tạo database `fashion_shop`, tạo tất cả bảng và nạp đầy đủ dữ liệu.
+
+**Cách 2 — Dùng dòng lệnh (sqlcmd):**
+
+```
+sqlcmd -S localhost,1433 -U sa -P 123456 -C -i database/fashion_shop.sql
 ```
 
-> **Lưu ý:** Không cần tạo bảng thủ công. Spring Boot sẽ tự tạo bảng khi khởi động lần đầu (nhờ `ddl-auto=update`).
+> 💡 File này **an toàn khi chạy lại nhiều lần** — mỗi bảng chỉ nạp dữ liệu khi đang trống (idempotent), nên không bị trùng hay lỗi.
+>
+> 💡 Sau khi nạp xong, Spring Boot khi khởi động sẽ tự nhận diện các bảng đã có (`ddl-auto=update`) và không xóa dữ liệu.
 
 ---
 
@@ -175,11 +188,15 @@ Sau đó mở trình duyệt tại **http://localhost:5173**
 
 ## 7. Tài khoản mặc định
 
+Các tài khoản này có sẵn sau khi nạp file `database/fashion_shop.sql`:
+
 | Vai trò | Tên đăng nhập | Mật khẩu |
 |---------|---------------|----------|
-| Admin | admin | admin123 |
+| Admin | `admin` | `123456` |
+| Nhân viên | `tuannv` | `123456` |
 
-> Nếu chưa có tài khoản, đăng ký mới trên trang web.
+> Có thể đăng nhập bằng **tên đăng nhập** hoặc **email** (`admin@zestia.vn`).
+> Khách hàng có thể đăng ký tài khoản mới trực tiếp trên trang web.
 
 ---
 
@@ -189,6 +206,18 @@ Sau đó mở trình duyệt tại **http://localhost:5173**
 
 - **Nguyên nhân:** SQL Server chưa chạy hoặc chưa bật TCP/IP port 1433
 - **Cách sửa:** Mở **Services** (gõ `services.msc`) → tìm **SQL Server** → Start. Kiểm tra lại TCP/IP ở bước 3.
+
+### Lỗi `JAVA_HOME environment variable is not defined correctly`
+
+- **Nguyên nhân:** Biến `JAVA_HOME` trỏ tới thư mục JDK không tồn tại (ví dụ máy đã gỡ JDK cũ).
+- **Cách sửa (tạm thời, cho 1 phiên terminal):**
+
+  **Windows (PowerShell):**
+  ```
+  $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot"
+  ```
+  Sửa lại đường dẫn cho đúng thư mục JDK thực tế trên máy bạn (xem trong `C:\Program Files\Eclipse Adoptium\`).
+- **Cách sửa (vĩnh viễn):** Vào **Settings → System → About → Advanced system settings → Environment Variables**, sửa `JAVA_HOME` trỏ đúng thư mục JDK đã cài.
 
 ### Không kết nối được database
 

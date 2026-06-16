@@ -64,8 +64,9 @@
       <div v-if="searchResults.length" class="z-search-results">
         <div v-for="r in searchResults" :key="r.id" class="z-search-item"
              @click="goProduct(r.id)">
-          <div style="width:48px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0">
-            <div class="w-100 h-100 d-flex align-items-center justify-content-center"
+          <div style="width:48px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
+            <img v-if="r.image" :src="r.image" :alt="r.name" style="width:100%;height:100%;object-fit:cover">
+            <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                  :style="{ background: r.bg, fontFamily:'var(--z-font-display)', fontSize:'14px', color:'rgba(255,255,255,0.3)' }">
               {{ r.letter }}
             </div>

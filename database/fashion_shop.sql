@@ -327,9 +327,9 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Giam_gia])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Giam_gia] ON;
 INSERT INTO [dbo].[Giam_gia] ([id], [ma_giam_gia], [ten_giam_gia], [gia_tri_don_toi_thieu], [gio_tri_giam], [phan_tram_giam], [giam_toi_da], [so_luong], [ngay_bat_dau], [ngay_ket_thuc], [trang_thai], [ngay_tao]) VALUES
-(1, N'ZESTIA10', N'Giảm 10% đơn đầu tiên', 500000.00, NULL, 10.00, 200000.00, 100, '2025-01-01', '2025-12-31', 1, '2026-06-10T23:44:29.303'),
-(2, N'FREESHIP', N'Miễn phí vận chuyển', 300000.00, NULL, NULL, NULL, 200, '2025-01-01', '2025-06-30', 1, '2026-06-10T23:44:29.303'),
-(3, N'SUMMER20', N'Giảm 20% hè rực rỡ', 1000000.00, NULL, 20.00, 500000.00, 50, '2025-06-01', '2025-08-31', 1, '2026-06-10T23:44:29.303');
+(1, N'ZESTIA10', N'Giảm 10% đơn đầu tiên', 500000.00, NULL, 10.00, 200000.00, 100, '2025-01-01', '2026-12-31', 1, '2026-06-10T23:44:29.303'),
+(2, N'FREESHIP', N'Miễn phí vận chuyển', 300000.00, NULL, NULL, NULL, 200, '2025-01-01', '2026-12-31', 1, '2026-06-10T23:44:29.303'),
+(3, N'SUMMER20', N'Giảm 20% hè rực rỡ', 1000000.00, NULL, 20.00, 500000.00, 50, '2025-01-01', '2026-12-31', 1, '2026-06-10T23:44:29.303');
 SET IDENTITY_INSERT [dbo].[Giam_gia] OFF;
 END
 GO
@@ -1330,6 +1330,7 @@ CREATE TABLE [dbo].[Hoa_don] (
   [phuong_thuc_thanh_toan_online] nvarchar(50) NULL,
   [ghi_chu] nvarchar(max) NULL,
   [ngay_tao] datetime2(7) NULL,
+  [da_thanh_toan] bit NULL,
   CONSTRAINT [PK_Hoa_don] PRIMARY KEY ([id])
 );
 END
@@ -1337,27 +1338,27 @@ GO
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Hoa_don])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Hoa_don] ON;
-INSERT INTO [dbo].[Hoa_don] ([id], [id_khach_hang], [id_khuyen_mai], [id_giam_gia], [id_nhan_vien], [ma_hoa_don], [tong_tien], [phi_van_chuyen], [giam_gia_khuyen_mai], [hinh_thuc_nhan_hang], [dia_chi_giao_hang], [trang_thai], [hinh_thuc_thanh_toan], [phuong_thuc_thanh_toan_online], [ghi_chu], [ngay_tao]) VALUES
-(1, 1, NULL, NULL, 2, N'HD-2025-0001', 6070000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 0, N'VNPay', NULL, NULL, '2026-06-10T23:44:29.256'),
-(2, 1, NULL, NULL, 2, N'HD-2025-0002', 8580000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 1, N'COD', NULL, NULL, '2026-06-10T23:44:29.256'),
-(3, 2, NULL, NULL, 2, N'HD-2025-0003', 4290000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 2, N'Momo', NULL, NULL, '2026-06-10T23:44:29.256'),
-(4, 3, NULL, NULL, 2, N'HD-2025-0004', 1290000.00, 0.00, 0.00, 2, NULL, 4, N'Ti?n m?t', NULL, NULL, '2026-06-10T23:44:29.256'),
-(5, 2, NULL, NULL, 2, N'HD-2025-0005', 2780000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 3, N'VNPay', NULL, NULL, '2026-06-10T23:44:29.256'),
-(6, NULL, NULL, NULL, NULL, N'HD2606111347176783', 2890000.00, 0.00, 0.00, 1, N'Ha Noi', 0, N'VNPAY', NULL, NULL, '2026-06-11T13:47:17.973'),
-(7, 1, NULL, NULL, NULL, N'HD2606111353090522', 9960000.00, 0.00, 0.00, 1, N'123 Nguyen Hue, Quan 1, TP.HCM', 0, N'COD', NULL, N'', '2026-06-11T13:53:09.543'),
-(8, NULL, NULL, NULL, NULL, N'HD2606111354569125', 1590000.00, 0.00, 0.00, 1, N'456 Le Loi, Q1, HCM', 1, N'VNPAY', N'VNPAY', NULL, '2026-06-11T13:54:56.363'),
-(9, 2, NULL, NULL, NULL, N'HD2606111532350499', 8960000.00, 0.00, 0.00, 1, N'nguyen thi due', 0, N'MOMO', NULL, N'', '2026-06-11T15:32:35.619'),
-(10, 2, NULL, NULL, NULL, N'HD2606112024161968', 2890000.00, 0.00, 0.00, 1, N'Nguyen Thi Due', 0, N'MOMO', NULL, N'', '2026-06-11T20:24:16.605'),
-(11, 2, NULL, NULL, NULL, N'HD2606112025033498', 1590000.00, 0.00, 0.00, 1, N'dsgdsagsdfa', 0, N'COD', NULL, N'', '2026-06-11T20:25:03.378'),
-(12, 2, NULL, NULL, NULL, N'HD2606112025367305', 2290000.00, 0.00, 0.00, 1, N'sdfh', 0, N'VNPAY', NULL, N'', '2026-06-11T20:25:36.473'),
-(13, 2, NULL, NULL, NULL, N'HD2606112042420187', 1590000.00, 0.00, 0.00, 1, N'rutyj', 0, N'MOMO', NULL, N'', '2026-06-11T20:42:42.031'),
-(14, 2, NULL, NULL, NULL, N'HD2606112100518437', 450000.00, 0.00, 0.00, 1, N'dfgbvv', 0, N'COD', NULL, N'', '2026-06-11T21:00:51.411'),
-(15, 2, NULL, NULL, NULL, N'HD2606132334116643', 2890000.00, 0.00, 0.00, 1, N'áduiygthjkns', 0, N'VNPAY', NULL, N'', '2026-06-13T23:34:11.591'),
-(16, 2, NULL, NULL, NULL, N'HD2606132335439207', 2890000.00, 0.00, 0.00, 1, N'trygjhk', 0, N'MOMO', NULL, N'', '2026-06-13T23:35:44.008'),
-(17, NULL, NULL, NULL, NULL, N'HD2606132337193159', 4290000.00, 0.00, 0.00, 1, N'fdg', 0, N'VNPAY', NULL, N'', '2026-06-13T23:37:19.247'),
-(18, NULL, NULL, NULL, NULL, N'HD2606132339031838', 4480000.00, 0.00, 0.00, 1, N'fsdhsdfhsdfh', 0, N'VNPAY', NULL, N'', '2026-06-13T23:39:03.522'),
-(19, 2, NULL, NULL, NULL, N'HD2606141048179586', 2890000.00, 0.00, 0.00, 1, N'nịuodasfkugyhtadsfokjhig', 3, N'VNPAY', NULL, N'', '2026-06-14T10:48:17.814'),
-(20, 2, NULL, NULL, NULL, N'HD2606160939088988', 2890000.00, 0.00, 0.00, 1, N'she', 0, N'VNPAY', NULL, N'', '2026-06-16T09:39:08.022');
+INSERT INTO [dbo].[Hoa_don] ([id], [id_khach_hang], [id_khuyen_mai], [id_giam_gia], [id_nhan_vien], [ma_hoa_don], [tong_tien], [phi_van_chuyen], [giam_gia_khuyen_mai], [hinh_thuc_nhan_hang], [dia_chi_giao_hang], [trang_thai], [hinh_thuc_thanh_toan], [phuong_thuc_thanh_toan_online], [ghi_chu], [ngay_tao], [da_thanh_toan]) VALUES
+(1, 1, NULL, NULL, 2, N'HD-2025-0001', 6070000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 0, N'VNPay', NULL, NULL, '2026-06-10T23:44:29.256', 0),
+(2, 1, NULL, NULL, 2, N'HD-2025-0002', 8580000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 1, N'COD', NULL, NULL, '2026-06-10T23:44:29.256', 0),
+(3, 2, NULL, NULL, 2, N'HD-2025-0003', 4290000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 2, N'Momo', NULL, NULL, '2026-06-10T23:44:29.256', 0),
+(4, 3, NULL, NULL, 2, N'HD-2025-0004', 1290000.00, 0.00, 0.00, 2, NULL, 4, N'Ti?n m?t', NULL, NULL, '2026-06-10T23:44:29.256', 0),
+(5, 2, NULL, NULL, 2, N'HD-2025-0005', 2780000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 3, N'VNPay', NULL, NULL, '2026-06-10T23:44:29.256', 1),
+(6, NULL, NULL, NULL, NULL, N'HD2606111347176783', 2890000.00, 0.00, 0.00, 1, N'Ha Noi', 0, N'VNPAY', NULL, NULL, '2026-06-11T13:47:17.973', 0),
+(7, 1, NULL, NULL, NULL, N'HD2606111353090522', 9960000.00, 0.00, 0.00, 1, N'123 Nguyen Hue, Quan 1, TP.HCM', 0, N'COD', NULL, N'', '2026-06-11T13:53:09.543', 0),
+(8, NULL, NULL, NULL, NULL, N'HD2606111354569125', 1590000.00, 0.00, 0.00, 1, N'456 Le Loi, Q1, HCM', 1, N'VNPAY', N'VNPAY', NULL, '2026-06-11T13:54:56.363', 1),
+(9, 2, NULL, NULL, NULL, N'HD2606111532350499', 8960000.00, 0.00, 0.00, 1, N'nguyen thi due', 0, N'MOMO', NULL, N'', '2026-06-11T15:32:35.619', 0),
+(10, 2, NULL, NULL, NULL, N'HD2606112024161968', 2890000.00, 0.00, 0.00, 1, N'Nguyen Thi Due', 0, N'MOMO', NULL, N'', '2026-06-11T20:24:16.605', 0),
+(11, 2, NULL, NULL, NULL, N'HD2606112025033498', 1590000.00, 0.00, 0.00, 1, N'dsgdsagsdfa', 0, N'COD', NULL, N'', '2026-06-11T20:25:03.378', 0),
+(12, 2, NULL, NULL, NULL, N'HD2606112025367305', 2290000.00, 0.00, 0.00, 1, N'sdfh', 0, N'VNPAY', NULL, N'', '2026-06-11T20:25:36.473', 0),
+(13, 2, NULL, NULL, NULL, N'HD2606112042420187', 1590000.00, 0.00, 0.00, 1, N'rutyj', 0, N'MOMO', NULL, N'', '2026-06-11T20:42:42.031', 0),
+(14, 2, NULL, NULL, NULL, N'HD2606112100518437', 450000.00, 0.00, 0.00, 1, N'dfgbvv', 0, N'COD', NULL, N'', '2026-06-11T21:00:51.411', 0),
+(15, 2, NULL, NULL, NULL, N'HD2606132334116643', 2890000.00, 0.00, 0.00, 1, N'áduiygthjkns', 0, N'VNPAY', NULL, N'', '2026-06-13T23:34:11.591', 0),
+(16, 2, NULL, NULL, NULL, N'HD2606132335439207', 2890000.00, 0.00, 0.00, 1, N'trygjhk', 0, N'MOMO', NULL, N'', '2026-06-13T23:35:44.008', 0),
+(17, NULL, NULL, NULL, NULL, N'HD2606132337193159', 4290000.00, 0.00, 0.00, 1, N'fdg', 0, N'VNPAY', NULL, N'', '2026-06-13T23:37:19.247', 0),
+(18, NULL, NULL, NULL, NULL, N'HD2606132339031838', 4480000.00, 0.00, 0.00, 1, N'fsdhsdfhsdfh', 0, N'VNPAY', NULL, N'', '2026-06-13T23:39:03.522', 0),
+(19, 2, NULL, NULL, NULL, N'HD2606141048179586', 2890000.00, 0.00, 0.00, 1, N'nịuodasfkugyhtadsfokjhig', 3, N'VNPAY', NULL, N'', '2026-06-14T10:48:17.814', 1),
+(20, 2, NULL, NULL, NULL, N'HD2606160939088988', 2890000.00, 0.00, 0.00, 1, N'she', 0, N'VNPAY', NULL, N'', '2026-06-16T09:39:08.022', 0);
 SET IDENTITY_INSERT [dbo].[Hoa_don] OFF;
 END
 GO

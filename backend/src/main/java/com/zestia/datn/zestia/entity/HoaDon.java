@@ -64,6 +64,9 @@ public class HoaDon {
     @Column(name = "phuong_thuc_thanh_toan_online")
     private String phuongThucThanhToanOnline;
 
+    @Column(name = "da_thanh_toan")
+    private Boolean daThanhToan;
+
     private String ghiChu;
 
     @Column(name = "ngay_tao")

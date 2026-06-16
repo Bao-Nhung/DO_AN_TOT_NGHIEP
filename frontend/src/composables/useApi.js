@@ -49,10 +49,14 @@ export function api() {
     // Orders
     getHoaDon: () => request('/hoa-don'),
     getHoaDonById: (id) => request(`/hoa-don/${id}`),
-    updateOrderStatus: (id, trangThai, ghiChu) =>
+    updateOrderStatus: (id, trangThai, ghiChu, daThanhToan) =>
       request(`/hoa-don/${id}/trang-thai`, {
         method: 'PUT',
-        body: JSON.stringify({ trangThai, ghiChu: ghiChu || null })
+        body: JSON.stringify({
+          trangThai,
+          ghiChu: ghiChu || null,
+          ...(daThanhToan !== undefined ? { daThanhToan } : {})
+        })
       }),
 
     // Customers
@@ -95,6 +99,10 @@ export function api() {
       request('/payment/create-order', { method: 'POST', body: JSON.stringify(data) }),
     createVNPayUrl: (orderId) =>
       request('/payment/vnpay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
+    confirmPayment: (orderId, method, maHoaDon) =>
+      request('/payment/confirm', { method: 'POST', body: JSON.stringify({ orderId, method, maHoaDon }) }),
+    applyVoucher: (maGiamGia, tongTien) =>
+      request('/payment/apply-voucher', { method: 'POST', body: JSON.stringify({ maGiamGia, tongTien }) }),
     getOrder: (id) => request(`/payment/order/${id}`),
     getMyOrders: () => request('/payment/my-orders'),
     updateProfile: (data) =>

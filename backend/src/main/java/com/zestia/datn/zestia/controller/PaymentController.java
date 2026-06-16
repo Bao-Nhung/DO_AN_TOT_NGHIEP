@@ -26,6 +26,8 @@ public class PaymentController {
     private final VayChiTietRepository vayCtRepo;
     private final KhachHangRepository khachHangRepo;
     private final LichSuThanhToanRepository lichSuRepo;
+    private final GiamGiaRepository giamGiaRepo;
+    private final NhanVienRepository nhanVienRepo;
     private final VNPayConfig vnPayConfig;
     private final JwtUtil jwtUtil;
 
@@ -59,12 +61,14 @@ public class PaymentController {
         String maHoaDon = "HD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"))
                           + String.format("%04d", new Random().nextInt(10000));
 
-        BigDecimal tongTien = BigDecimal.ZERO;
+        BigDecimal tamTinh = BigDecimal.ZERO;
         List<HoaDonChiTiet> chiTietList = new ArrayList<>();
 
         for (Map<String, Object> item : items) {
             Integer productId = toInt(item.get("productId"));
+            // Hỗ trợ cả "qty" (client) và "quantity" (POS)
             Integer qty = toInt(item.get("qty"));
+            if (qty == null) qty = toInt(item.get("quantity"));
             if (productId == null || qty == null || qty <= 0) continue;
 
             var variants = vayCtRepo.findByVayId(productId);
@@ -73,7 +77,7 @@ public class PaymentController {
             VayChiTiet variant = variants.get(0);
             BigDecimal price = variant.getGiaBan();
             BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(qty));
-            tongTien = tongTien.add(lineTotal);
+            tamTinh = tamTinh.add(lineTotal);
 
             BigDecimal phanTramGiam = BigDecimal.ZERO;
             if (variant.getGiaBanGoc() != null && variant.getGiaBanGoc().compareTo(variant.getGiaBan()) > 0) {
@@ -94,16 +98,51 @@ public class PaymentController {
             return ResponseEntity.badRequest().body(Map.of("error", "Không có sản phẩm hợp lệ"));
         }
 
+        // Áp dụng voucher (mã giảm giá) nếu có
+        GiamGia voucher = null;
+        BigDecimal giamGia = BigDecimal.ZERO;
+        String maGiamGia = (String) body.get("maGiamGia");
+        if (maGiamGia != null && !maGiamGia.isBlank()) {
+            var vr = validateVoucher(maGiamGia.trim(), tamTinh);
+            if (vr.valid) {
+                voucher = vr.giamGia;
+                giamGia = vr.discount;
+            }
+        }
+
+        BigDecimal tongTien = tamTinh.subtract(giamGia);
+        if (tongTien.compareTo(BigDecimal.ZERO) < 0) tongTien = BigDecimal.ZERO;
+
+        // Trạng thái: mặc định 0 (Chờ xử lý). POS gửi trangThai=3 (Hoàn thành).
+        byte trangThai = (byte) 0;
+        if (body.get("trangThai") != null) trangThai = ((Number) body.get("trangThai")).byteValue();
+
+        // Nhân viên (đơn bán tại quầy)
+        NhanVien nv = null;
+        Integer nhanVienId = toInt(body.get("nhanVienId"));
+        if (nhanVienId != null) {
+            nv = nhanVienRepo.findById(nhanVienId).orElse(null);
+        }
+
+        // Đã thanh toán: POS = true; nếu body chỉ định thì theo body
+        boolean daThanhToan = trangThai >= 3;
+        if (body.get("daThanhToan") != null) {
+            daThanhToan = Boolean.parseBoolean(String.valueOf(body.get("daThanhToan")));
+        }
+
         HoaDon hoaDon = HoaDon.builder()
                 .maHoaDon(maHoaDon)
                 .khachHang(kh)
+                .nhanVien(nv)
+                .giamGia(voucher)
                 .tongTien(tongTien)
                 .phiVanChuyen(BigDecimal.ZERO)
-                .giamGiaKhuyenMai(BigDecimal.ZERO)
+                .giamGiaKhuyenMai(giamGia)
                 .hinhThucNhanHang((byte) 1)
                 .diaChiGiaoHang(diaChi != null ? diaChi : "")
                 .hinhThucThanhToan(hinhThuc != null ? hinhThuc : "COD")
-                .trangThai((byte) 0)
+                .trangThai(trangThai)
+                .daThanhToan(daThanhToan)
                 .ghiChu(ghiChu)
                 .ngayTao(LocalDateTime.now())
                 .build();
@@ -115,13 +154,149 @@ public class PaymentController {
         }
         hoaDonCtRepo.saveAll(chiTietList);
 
+        // Trừ số lượng voucher đã dùng
+        if (voucher != null && voucher.getSoLuong() != null && voucher.getSoLuong() > 0) {
+            voucher.setSoLuong(voucher.getSoLuong() - 1);
+            giamGiaRepo.save(voucher);
+        }
+
+        // Ghi lịch sử thanh toán nếu đơn đã thanh toán ngay (POS)
+        if (daThanhToan) {
+            lichSuRepo.save(LichSuThanhToan.builder()
+                    .hoaDon(hoaDon)
+                    .soTien(tongTien)
+                    .phuongThuc(hoaDon.getHinhThucThanhToan())
+                    .maGiaoDich("POS" + System.currentTimeMillis())
+                    .trangThai("SUCCESS")
+                    .noiDung("Thanh toán tại quầy - " + maHoaDon)
+                    .ngayTao(LocalDateTime.now())
+                    .build());
+        }
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("orderId", hoaDon.getId());
         result.put("maHoaDon", maHoaDon);
+        result.put("tamTinh", tamTinh);
+        result.put("giamGia", giamGia);
         result.put("tongTien", tongTien);
         result.put("hinhThucThanhToan", hoaDon.getHinhThucThanhToan());
 
         return ResponseEntity.ok(result);
+    }
+
+    /** Áp dụng / kiểm tra mã giảm giá (dùng cho cả client và POS). */
+    @PostMapping("/apply-voucher")
+    public ResponseEntity<?> applyVoucher(@RequestBody Map<String, Object> body) {
+        String ma = (String) body.get("maGiamGia");
+        BigDecimal tamTinh = body.get("tongTien") != null
+                ? new BigDecimal(body.get("tongTien").toString()) : BigDecimal.ZERO;
+        if (ma == null || ma.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Vui lòng nhập mã giảm giá"));
+        }
+        var vr = validateVoucher(ma.trim(), tamTinh);
+        if (!vr.valid) {
+            return ResponseEntity.ok(Map.of("valid", false, "message", vr.message));
+        }
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("valid", true);
+        res.put("maGiamGia", vr.giamGia.getMaGiamGia());
+        res.put("tenGiamGia", vr.giamGia.getTenGiamGia());
+        res.put("giamGia", vr.discount);
+        res.put("message", "Áp dụng mã thành công");
+        return ResponseEntity.ok(res);
+    }
+
+    /** Xác nhận thanh toán online (MoMo / ZaloPay / VNPay) — đơn được xác nhận ngay. */
+    @PostMapping("/confirm")
+    public ResponseEntity<?> confirmPayment(@RequestBody Map<String, Object> body) {
+        Integer orderId = toInt(body.get("orderId"));
+        String maHoaDon = (String) body.get("maHoaDon");
+        String method = (String) body.get("method");
+
+        Optional<HoaDon> opt = orderId != null
+                ? hoaDonRepo.findById(orderId)
+                : (maHoaDon != null ? hoaDonRepo.findByMaHoaDon(maHoaDon) : Optional.empty());
+        if (opt.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy đơn hàng"));
+        }
+
+        HoaDon hd = opt.get();
+        hd.setTrangThai((byte) 1); // Đã xác nhận
+        hd.setDaThanhToan(true);
+        hd.setPhuongThucThanhToanOnline(method != null ? method : hd.getHinhThucThanhToan());
+        hoaDonRepo.save(hd);
+
+        lichSuRepo.save(LichSuThanhToan.builder()
+                .hoaDon(hd)
+                .soTien(hd.getTongTien())
+                .phuongThuc(method != null ? method : hd.getHinhThucThanhToan())
+                .maGiaoDich((method != null ? method : "PAY") + System.currentTimeMillis())
+                .trangThai("SUCCESS")
+                .noiDung("Thanh toán online thành công - " + hd.getMaHoaDon())
+                .ngayTao(LocalDateTime.now())
+                .build());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderId", hd.getId());
+        result.put("maHoaDon", hd.getMaHoaDon());
+        result.put("trangThai", hd.getTrangThai());
+        return ResponseEntity.ok(result);
+    }
+
+    /** Kết quả kiểm tra voucher. */
+    private static class VoucherResult {
+        boolean valid;
+        String message;
+        GiamGia giamGia;
+        BigDecimal discount = BigDecimal.ZERO;
+    }
+
+    private VoucherResult validateVoucher(String ma, BigDecimal tamTinh) {
+        VoucherResult r = new VoucherResult();
+        var opt = giamGiaRepo.findByMaGiamGiaIgnoreCase(ma);
+        if (opt.isEmpty()) {
+            r.message = "Mã giảm giá không tồn tại";
+            return r;
+        }
+        GiamGia gg = opt.get();
+        if (gg.getTrangThai() != null && gg.getTrangThai() == 0) {
+            r.message = "Mã giảm giá đã ngừng hoạt động";
+            return r;
+        }
+        if (gg.getSoLuong() != null && gg.getSoLuong() <= 0) {
+            r.message = "Mã giảm giá đã hết lượt sử dụng";
+            return r;
+        }
+        var today = java.time.LocalDate.now();
+        if (gg.getNgayBatDau() != null && today.isBefore(gg.getNgayBatDau())) {
+            r.message = "Mã giảm giá chưa đến ngày áp dụng";
+            return r;
+        }
+        if (gg.getNgayKetThuc() != null && today.isAfter(gg.getNgayKetThuc())) {
+            r.message = "Mã giảm giá đã hết hạn";
+            return r;
+        }
+        if (gg.getGiaTriDonToiThieu() != null && tamTinh.compareTo(gg.getGiaTriDonToiThieu()) < 0) {
+            r.message = "Đơn hàng tối thiểu " + gg.getGiaTriDonToiThieu().longValue() + "đ để dùng mã này";
+            return r;
+        }
+
+        BigDecimal discount = BigDecimal.ZERO;
+        if (gg.getPhanTramGiam() != null && gg.getPhanTramGiam().compareTo(BigDecimal.ZERO) > 0) {
+            discount = tamTinh.multiply(gg.getPhanTramGiam()).divide(BigDecimal.valueOf(100), 0, java.math.RoundingMode.HALF_UP);
+            if (gg.getGiamToiDa() != null && discount.compareTo(gg.getGiamToiDa()) > 0) {
+                discount = gg.getGiamToiDa();
+            }
+        } else if (gg.getGioTriGiam() != null && gg.getGioTriGiam().compareTo(BigDecimal.ZERO) > 0) {
+            discount = gg.getGioTriGiam();
+        }
+        if (discount.compareTo(tamTinh) > 0) discount = tamTinh;
+
+        r.valid = true;
+        r.giamGia = gg;
+        r.discount = discount;
+        r.message = "Áp dụng mã thành công";
+        return r;
     }
 
     @PostMapping("/vnpay/create")

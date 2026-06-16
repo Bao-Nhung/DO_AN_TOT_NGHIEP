@@ -128,20 +128,15 @@
                         @click="transferMethod = t.value">{{ t.label }}</button>
               </div>
               <div class="text-center">
-                <img :src="qrUrl" alt="QR thanh toán" style="width:180px;height:180px;border:1px solid var(--z-gray-border);border-radius:8px">
-                <div style="font-size:12px;color:var(--z-gray);margin-top:6px">Khách quét mã để chuyển khoản {{ fmtPrice(finalTotal) }}</div>
-              </div>
-            </div>
-
-            <!-- Card: VNPay test -->
-            <div v-else-if="paymentMethod === 'card'" class="z-pay-panel mb-3">
-              <div style="font-size:13px;font-weight:600;margin-bottom:8px"><i class="bi bi-credit-card-2-front me-1" style="color:#0066CC"></i>Thẻ qua VNPay (sandbox)</div>
-              <div class="z-test-card">
-                <div class="z-test-card-row"><span>Ngân hàng</span><strong>NCB</strong></div>
-                <div class="z-test-card-row"><span>Số thẻ</span><strong>9704198526191432198</strong></div>
-                <div class="z-test-card-row"><span>Tên chủ thẻ</span><strong>NGUYEN VAN A</strong></div>
-                <div class="z-test-card-row"><span>Ngày phát hành</span><strong>07/15</strong></div>
-                <div class="z-test-card-row"><span>OTP</span><strong>123456</strong></div>
+                <div v-if="loadingQr" class="d-flex align-items-center justify-content-center" style="width:200px;height:200px;margin:0 auto;border:1px solid var(--z-gray-border);border-radius:8px;background:var(--z-white)">
+                  <div class="spinner-border spinner-border-sm text-secondary"></div>
+                </div>
+                <img v-else-if="transferQrSrc" :src="transferQrSrc" alt="QR thanh toán"
+                     style="width:200px;height:200px;border:1px solid var(--z-gray-border);border-radius:8px;background:#fff">
+                <div v-else style="font-size:12px;color:#C62828;padding:20px">Không tạo được mã QR, thử lại</div>
+                <div style="font-size:12px;color:var(--z-gray);margin-top:6px">
+                  Khách quét mã {{ transferHint }} — {{ fmtPrice(finalTotal) }}
+                </div>
               </div>
             </div>
 
@@ -181,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
 import { mapProduct, fmtPrice } from '@/composables/useProducts'
@@ -206,10 +201,13 @@ const appliedVoucher = ref('')
 const discount = ref(0)
 const voucherMsg = ref('')
 
+// QR chuyển khoản
+const transferQrSrc = ref('')
+const loadingQr = ref(false)
+
 const paymentMethods = [
   { value: 'cash', label: 'Tiền mặt', icon: 'bi-cash-stack' },
   { value: 'transfer', label: 'Chuyển khoản', icon: 'bi-bank' },
-  { value: 'card', label: 'Thẻ', icon: 'bi-credit-card' },
 ]
 const transferMethods = [
   { value: 'vietqr', label: 'VietQR' },
@@ -240,10 +238,44 @@ const cartTotal = computed(() => cart.value.reduce((s, item) => s + item.price *
 const finalTotal = computed(() => Math.max(0, cartTotal.value - discount.value))
 const change = computed(() => (Number(tienKhachDua.value) || 0) - finalTotal.value)
 
-const qrUrl = computed(() => {
+const vietqrUrl = computed(() => {
   const desc = encodeURIComponent('ZESTIA POS')
   return `https://img.vietqr.io/image/VCB-9869167207-compact2.png?amount=${finalTotal.value}&addInfo=${desc}&accountName=NGUYEN%20TIEN%20THANH`
 })
+
+const transferHint = computed(() => {
+  if (transferMethod.value === 'momo') return 'bằng app MoMo'
+  if (transferMethod.value === 'zalopay') return 'bằng app ZaloPay'
+  return 'qua app ngân hàng'
+})
+
+function qrImage(content) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(content)}`
+}
+
+let qrReqId = 0
+async function refreshTransferQr() {
+  if (paymentMethod.value !== 'transfer' || finalTotal.value < 1000) { transferQrSrc.value = ''; return }
+  if (transferMethod.value === 'vietqr') { transferQrSrc.value = vietqrUrl.value; return }
+  // MoMo / ZaloPay: gọi cổng thật lấy nội dung QR
+  const myReq = ++qrReqId
+  loadingQr.value = true
+  transferQrSrc.value = ''
+  try {
+    const res = transferMethod.value === 'momo'
+      ? await api().momoQr(finalTotal.value)
+      : await api().zaloQr(finalTotal.value)
+    if (myReq !== qrReqId) return // đã có yêu cầu mới hơn
+    if (res && res.qrContent) transferQrSrc.value = qrImage(res.qrContent)
+    else { transferQrSrc.value = ''; showToast(res?.error || 'Không tạo được mã QR') }
+  } catch (e) {
+    if (myReq === qrReqId) { transferQrSrc.value = ''; showToast('Lỗi tạo mã QR') }
+  } finally {
+    if (myReq === qrReqId) loadingQr.value = false
+  }
+}
+
+watch([paymentMethod, transferMethod, finalTotal], refreshTransferQr)
 
 const canPay = computed(() => {
   if (cart.value.length === 0) return false
@@ -293,7 +325,6 @@ function removeVoucher() {
 
 function paymentLabel() {
   if (paymentMethod.value === 'cash') return 'Tiền mặt'
-  if (paymentMethod.value === 'card') return 'Thẻ (VNPay)'
   const t = { vietqr: 'Chuyển khoản (VietQR)', momo: 'Chuyển khoản (MoMo)', zalopay: 'Chuyển khoản (ZaloPay)' }
   return t[transferMethod.value] || 'Chuyển khoản'
 }
@@ -380,13 +411,4 @@ async function createOrder() {
   transition: all 0.15s;
 }
 .z-quick-cash:hover { border-color: var(--z-accent); color: var(--z-accent); }
-.z-test-card {
-  background: var(--z-white); border: 1px dashed var(--z-gray-border);
-  border-radius: var(--z-radius); padding: 12px 14px;
-}
-.z-test-card-row {
-  display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0;
-}
-.z-test-card-row span { color: var(--z-gray); }
-.z-test-card-row strong { color: var(--z-dark); font-family: monospace; }
 </style>

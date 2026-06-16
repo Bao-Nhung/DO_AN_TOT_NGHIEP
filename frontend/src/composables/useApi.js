@@ -105,6 +105,10 @@ export function api() {
       request('/payment/momo/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
     createZaloPayment: (orderId) =>
       request('/payment/zalopay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
+    momoQr: (amount) =>
+      request('/payment/momo/qr', { method: 'POST', body: JSON.stringify({ amount }) }),
+    zaloQr: (amount) =>
+      request('/payment/zalopay/qr', { method: 'POST', body: JSON.stringify({ amount }) }),
     applyVoucher: (maGiamGia, tongTien) =>
       request('/payment/apply-voucher', { method: 'POST', body: JSON.stringify({ maGiamGia, tongTien }) }),
     getOrder: (id) => request(`/payment/order/${id}`),

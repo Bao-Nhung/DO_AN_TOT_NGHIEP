@@ -68,55 +68,82 @@ public class GatewayPaymentController {
         HoaDon hd = opt.get();
 
         try {
-            String amount = String.valueOf(hd.getTongTien().longValue());
+            long amount = hd.getTongTien().longValue();
             String momoOrderId = hd.getMaHoaDon() + "T" + (System.currentTimeMillis() % 1000000);
-            String requestId = momoOrderId;
             String orderInfo = "Thanh toan don hang " + hd.getMaHoaDon();
             String extraData = Base64.getEncoder().encodeToString(hd.getMaHoaDon().getBytes(StandardCharsets.UTF_8));
-            String redirectUrl = BACKEND + "/api/payment/momo/return";
-            String ipnUrl = BACKEND + "/api/payment/momo/ipn";
-            String requestType = "captureWallet";
 
-            String raw = "accessKey=" + MOMO_ACCESS +
-                    "&amount=" + amount +
-                    "&extraData=" + extraData +
-                    "&ipnUrl=" + ipnUrl +
-                    "&orderId=" + momoOrderId +
-                    "&orderInfo=" + orderInfo +
-                    "&partnerCode=" + MOMO_PARTNER +
-                    "&redirectUrl=" + redirectUrl +
-                    "&requestId=" + requestId +
-                    "&requestType=" + requestType;
-            String signature = hmacHex("HmacSHA256", MOMO_SECRET, raw);
-
-            Map<String, Object> req = new LinkedHashMap<>();
-            req.put("partnerCode", MOMO_PARTNER);
-            req.put("accessKey", MOMO_ACCESS);
-            req.put("requestId", requestId);
-            req.put("amount", amount);
-            req.put("orderId", momoOrderId);
-            req.put("orderInfo", orderInfo);
-            req.put("redirectUrl", redirectUrl);
-            req.put("ipnUrl", ipnUrl);
-            req.put("extraData", extraData);
-            req.put("requestType", requestType);
-            req.put("signature", signature);
-            req.put("lang", "vi");
-
-            JsonNode node = postJson(MOMO_ENDPOINT, mapper.writeValueAsString(req));
+            JsonNode node = momoCreate(amount, momoOrderId, orderInfo, extraData);
             String payUrl = node.path("payUrl").asText(null);
             if (payUrl == null || payUrl.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "error", "MoMo từ chối: " + node.path("message").asText("không rõ"),
                         "resultCode", node.path("resultCode").asInt(-1)));
             }
-            // Lưu phương thức để biết đơn đang chờ thanh toán online
             hd.setHinhThucThanhToan("MOMO");
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", payUrl));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi gọi MoMo: " + e.getMessage()));
         }
+    }
+
+    /** POS: tạo QR cổng MoMo theo số tiền (không gắn đơn — nhân viên xác nhận tại quầy). */
+    @PostMapping("/momo/qr")
+    public ResponseEntity<?> momoQr(@RequestBody Map<String, Object> body) {
+        long amount = toLong(body.get("amount"));
+        if (amount < 1000) return ResponseEntity.badRequest().body(Map.of("error", "Số tiền không hợp lệ"));
+        try {
+            String orderId = "POS" + System.currentTimeMillis();
+            JsonNode node = momoCreate(amount, orderId, "Thanh toan tai quay", "");
+            String qr = node.path("qrCodeUrl").asText(null);
+            String payUrl = node.path("payUrl").asText(null);
+            String content = (qr != null && !qr.isBlank()) ? qr : payUrl;
+            if (content == null || content.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "MoMo từ chối: " + node.path("message").asText("không rõ")));
+            }
+            return ResponseEntity.ok(Map.of("qrContent", content, "payUrl", payUrl == null ? "" : payUrl));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi gọi MoMo: " + e.getMessage()));
+        }
+    }
+
+    /** Gọi API tạo đơn MoMo, trả nguyên response. */
+    private JsonNode momoCreate(long amount, String orderId, String orderInfo, String extraData) throws Exception {
+        String amt = String.valueOf(amount);
+        String requestId = orderId;
+        String redirectUrl = BACKEND + "/api/payment/momo/return";
+        String ipnUrl = BACKEND + "/api/payment/momo/ipn";
+        String requestType = "captureWallet";
+
+        String raw = "accessKey=" + MOMO_ACCESS +
+                "&amount=" + amt +
+                "&extraData=" + extraData +
+                "&ipnUrl=" + ipnUrl +
+                "&orderId=" + orderId +
+                "&orderInfo=" + orderInfo +
+                "&partnerCode=" + MOMO_PARTNER +
+                "&redirectUrl=" + redirectUrl +
+                "&requestId=" + requestId +
+                "&requestType=" + requestType;
+        String signature = hmacHex("HmacSHA256", MOMO_SECRET, raw);
+
+        Map<String, Object> req = new LinkedHashMap<>();
+        req.put("partnerCode", MOMO_PARTNER);
+        req.put("accessKey", MOMO_ACCESS);
+        req.put("requestId", requestId);
+        req.put("amount", amt);
+        req.put("orderId", orderId);
+        req.put("orderInfo", orderInfo);
+        req.put("redirectUrl", redirectUrl);
+        req.put("ipnUrl", ipnUrl);
+        req.put("extraData", extraData);
+        req.put("requestType", requestType);
+        req.put("signature", signature);
+        req.put("lang", "vi");
+
+        return postJson(MOMO_ENDPOINT, mapper.writeValueAsString(req));
     }
 
     @GetMapping("/momo/return")
@@ -171,37 +198,10 @@ public class GatewayPaymentController {
         HoaDon hd = opt.get();
 
         try {
-            String yymmdd = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
-                    .format(DateTimeFormatter.ofPattern("yyMMdd"));
             long appTime = System.currentTimeMillis();
-            String appTransId = yymmdd + "_" + hd.getId() + "_" + appTime; // chứa id hoá đơn để tra lại
+            String appTransId = zaloTransId(hd.getId());
             long amount = hd.getTongTien().longValue();
-            String item = "[]";
-            String redirectUrl = BACKEND + "/api/payment/zalopay/return";
-            String embedData = mapper.writeValueAsString(Map.of("redirecturl", redirectUrl));
-            String description = "Thanh toan don hang " + hd.getMaHoaDon();
-            String callbackUrl = BACKEND + "/api/payment/zalopay/callback";
-
-            // mac = HMAC256(key1, app_id|app_trans_id|app_user|amount|app_time|embed_data|item)
-            String appUser = "zestia_user";
-            String macData = ZALO_APPID + "|" + appTransId + "|" + appUser + "|" + amount + "|"
-                    + appTime + "|" + embedData + "|" + item;
-            String mac = hmacHex("HmacSHA256", ZALO_KEY1, macData);
-
-            Map<String, String> form = new LinkedHashMap<>();
-            form.put("app_id", String.valueOf(ZALO_APPID));
-            form.put("app_trans_id", appTransId);
-            form.put("app_user", appUser);
-            form.put("app_time", String.valueOf(appTime));
-            form.put("amount", String.valueOf(amount));
-            form.put("item", item);
-            form.put("embed_data", embedData);
-            form.put("description", description);
-            form.put("bank_code", "");
-            form.put("callback_url", callbackUrl);
-            form.put("mac", mac);
-
-            JsonNode node = postForm(ZALO_ENDPOINT, form);
+            JsonNode node = zaloCreate(amount, appTransId, appTime, "Thanh toan don hang " + hd.getMaHoaDon());
             String orderUrl = node.path("order_url").asText(null);
             if (orderUrl == null || orderUrl.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -215,6 +215,63 @@ public class GatewayPaymentController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi gọi ZaloPay: " + e.getMessage()));
         }
+    }
+
+    /** POS: tạo QR cổng ZaloPay theo số tiền. */
+    @PostMapping("/zalopay/qr")
+    public ResponseEntity<?> zaloQr(@RequestBody Map<String, Object> body) {
+        long amount = toLong(body.get("amount"));
+        if (amount < 1000) return ResponseEntity.badRequest().body(Map.of("error", "Số tiền không hợp lệ"));
+        try {
+            long appTime = System.currentTimeMillis();
+            String appTransId = zaloTransId(0); // 0 = đơn POS, không gắn hoá đơn
+            JsonNode node = zaloCreate(amount, appTransId, appTime, "Thanh toan tai quay");
+            String qr = node.path("qr_code").asText(null);
+            String orderUrl = node.path("order_url").asText(null);
+            String content = (qr != null && !qr.isBlank()) ? qr : orderUrl;
+            if (content == null || content.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "ZaloPay từ chối: " + node.path("return_message").asText("không rõ")));
+            }
+            return ResponseEntity.ok(Map.of("qrContent", content, "payUrl", orderUrl == null ? "" : orderUrl));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi gọi ZaloPay: " + e.getMessage()));
+        }
+    }
+
+    private String zaloTransId(int hoaDonId) {
+        String yymmdd = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .format(DateTimeFormatter.ofPattern("yyMMdd"));
+        return yymmdd + "_" + hoaDonId + "_" + System.currentTimeMillis(); // chứa id hoá đơn để tra lại
+    }
+
+    /** Gọi API tạo đơn ZaloPay, trả nguyên response. */
+    private JsonNode zaloCreate(long amount, String appTransId, long appTime, String description) throws Exception {
+        String item = "[]";
+        String redirectUrl = BACKEND + "/api/payment/zalopay/return";
+        String embedData = mapper.writeValueAsString(Map.of("redirecturl", redirectUrl));
+        String callbackUrl = BACKEND + "/api/payment/zalopay/callback";
+        String appUser = "zestia_user";
+
+        // mac = HMAC256(key1, app_id|app_trans_id|app_user|amount|app_time|embed_data|item)
+        String macData = ZALO_APPID + "|" + appTransId + "|" + appUser + "|" + amount + "|"
+                + appTime + "|" + embedData + "|" + item;
+        String mac = hmacHex("HmacSHA256", ZALO_KEY1, macData);
+
+        Map<String, String> form = new LinkedHashMap<>();
+        form.put("app_id", String.valueOf(ZALO_APPID));
+        form.put("app_trans_id", appTransId);
+        form.put("app_user", appUser);
+        form.put("app_time", String.valueOf(appTime));
+        form.put("amount", String.valueOf(amount));
+        form.put("item", item);
+        form.put("embed_data", embedData);
+        form.put("description", description);
+        form.put("bank_code", "");
+        form.put("callback_url", callbackUrl);
+        form.put("mac", mac);
+
+        return postForm(ZALO_ENDPOINT, form);
     }
 
     @GetMapping("/zalopay/return")
@@ -333,5 +390,11 @@ public class GatewayPaymentController {
         if (obj == null) return null;
         if (obj instanceof Number num) return num.intValue();
         try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
+    }
+
+    private static long toLong(Object obj) {
+        if (obj == null) return 0;
+        if (obj instanceof Number num) return num.longValue();
+        try { return (long) Double.parseDouble(obj.toString()); } catch (Exception e) { return 0; }
     }
 }

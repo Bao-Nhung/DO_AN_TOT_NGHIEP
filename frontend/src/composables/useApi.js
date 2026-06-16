@@ -101,6 +101,10 @@ export function api() {
       request('/payment/vnpay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
     confirmPayment: (orderId, method, maHoaDon) =>
       request('/payment/confirm', { method: 'POST', body: JSON.stringify({ orderId, method, maHoaDon }) }),
+    createMomoPayment: (orderId) =>
+      request('/payment/momo/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
+    createZaloPayment: (orderId) =>
+      request('/payment/zalopay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
     applyVoucher: (maGiamGia, tongTien) =>
       request('/payment/apply-voucher', { method: 'POST', body: JSON.stringify({ maGiamGia, tongTien }) }),
     getOrder: (id) => request(`/payment/order/${id}`),

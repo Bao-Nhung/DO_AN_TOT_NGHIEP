@@ -297,12 +297,17 @@ async function placeOrder() {
       return
     }
 
+    // MoMo / ZaloPay: gọi cổng sandbox thật -> chuyển sang trang thanh toán của cổng
     if (form.value.hinhThuc === 'MOMO' || form.value.hinhThuc === 'ZALOPAY') {
-      clearCart()
-      router.push({
-        path: '/qr-payment',
-        query: { method: form.value.hinhThuc, orderId: order.orderId, maHoaDon: order.maHoaDon, amount: order.tongTien }
-      })
+      const res = form.value.hinhThuc === 'MOMO'
+        ? await api().createMomoPayment(order.orderId)
+        : await api().createZaloPayment(order.orderId)
+      if (res && res.payUrl) {
+        clearCart()
+        window.location.href = res.payUrl
+        return
+      }
+      showToast(res?.error || 'Không tạo được thanh toán, vui lòng thử lại')
       return
     }
   } catch (err) {

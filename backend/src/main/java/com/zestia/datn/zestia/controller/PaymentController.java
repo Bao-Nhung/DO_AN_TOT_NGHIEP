@@ -440,6 +440,7 @@ public class PaymentController {
                 map.put("id", hd.getId());
                 map.put("maHoaDon", hd.getMaHoaDon());
                 map.put("tongTien", hd.getTongTien());
+                map.put("soSanPham", hoaDonCtRepo.countByHoaDonId(hd.getId()));
                 map.put("trangThai", hd.getTrangThai());
                 map.put("hinhThucThanhToan", hd.getHinhThucThanhToan());
                 map.put("ngayTao", hd.getNgayTao());

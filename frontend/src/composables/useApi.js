@@ -45,6 +45,17 @@ export function api() {
     createVay: (data) => request('/vay', { method: 'POST', body: JSON.stringify(data) }),
     updateVay: (id, data) => request(`/vay/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteVay: (id) => request(`/vay/${id}`, { method: 'DELETE' }),
+    uploadVayAnh: async (id, file) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      const headers = {}
+      const token = getToken()
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${BASE}/vay/${id}/anh`, { method: 'POST', headers, body: fd })
+      if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload thất bại' }))
+      return res.json()
+    },
+    deleteVayAnh: (anhId) => request(`/vay/anh/${anhId}`, { method: 'DELETE' }),
 
     // Orders
     getHoaDon: () => request('/hoa-don'),

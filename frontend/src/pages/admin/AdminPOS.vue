@@ -138,6 +138,45 @@
                   Khách quét mã {{ transferHint }} — {{ fmtPrice(finalTotal) }}
                 </div>
               </div>
+              <!-- Xác nhận đã nhận tiền -->
+              <div class="mt-3 pt-3" style="border-top:1px dashed var(--z-gray-border)">
+                <button v-if="!paymentConfirmed" class="z-confirm-btn" @click="paymentConfirmed = true">
+                  <i class="bi bi-check2-circle me-1"></i>Đã nhận được tiền chuyển khoản
+                </button>
+                <div v-else class="z-confirmed">
+                  <span><i class="bi bi-check-circle-fill me-1"></i>Đã xác nhận nhận tiền</span>
+                  <button class="z-undo" @click="paymentConfirmed = false">Huỷ</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card: liên kết trang ZaloPay (thanh toán bằng thẻ) -->
+            <div v-else-if="paymentMethod === 'card'" class="z-pay-panel mb-3">
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">
+                <i class="bi bi-credit-card-2-front me-1" style="color:#0068FF"></i>Thanh toán thẻ qua ZaloPay (sandbox)
+              </div>
+              <div style="font-size:12px;color:var(--z-gray);margin-bottom:12px">
+                Mở trang ZaloPay để khách chọn thanh toán bằng <strong>thẻ ATM / thẻ quốc tế</strong>.
+              </div>
+              <button class="z-confirm-btn" style="border-color:#0068FF;color:#0068FF" @click="openZaloCard" :disabled="openingCard">
+                <i class="bi bi-box-arrow-up-right me-1"></i>{{ openingCard ? 'Đang mở...' : 'Mở trang thanh toán thẻ ZaloPay' }}
+              </button>
+              <div class="z-test-card mt-3">
+                <div class="z-test-card-row"><span>Thẻ test (ATM nội địa)</span><strong>9704 0540 0000 0000</strong></div>
+                <div class="z-test-card-row"><span>Tên chủ thẻ</span><strong>NGUYEN VAN A</strong></div>
+                <div class="z-test-card-row"><span>Ngày phát hành</span><strong>03/22</strong></div>
+                <div class="z-test-card-row"><span>OTP</span><strong>otp</strong></div>
+              </div>
+              <!-- Xác nhận đã nhận tiền -->
+              <div class="mt-3 pt-3" style="border-top:1px dashed var(--z-gray-border)">
+                <button v-if="!paymentConfirmed" class="z-confirm-btn" @click="paymentConfirmed = true">
+                  <i class="bi bi-check2-circle me-1"></i>Đã nhận được thanh toán
+                </button>
+                <div v-else class="z-confirmed">
+                  <span><i class="bi bi-check-circle-fill me-1"></i>Đã xác nhận nhận tiền</span>
+                  <button class="z-undo" @click="paymentConfirmed = false">Huỷ</button>
+                </div>
+              </div>
             </div>
 
             <!-- Note -->
@@ -204,10 +243,13 @@ const voucherMsg = ref('')
 // QR chuyển khoản
 const transferQrSrc = ref('')
 const loadingQr = ref(false)
+const paymentConfirmed = ref(false)   // nhân viên đã báo "đã nhận tiền"
+const openingCard = ref(false)
 
 const paymentMethods = [
   { value: 'cash', label: 'Tiền mặt', icon: 'bi-cash-stack' },
   { value: 'transfer', label: 'Chuyển khoản', icon: 'bi-bank' },
+  { value: 'card', label: 'Thẻ', icon: 'bi-credit-card' },
 ]
 const transferMethods = [
   { value: 'vietqr', label: 'VietQR' },
@@ -275,13 +317,39 @@ async function refreshTransferQr() {
   }
 }
 
-watch([paymentMethod, transferMethod, finalTotal], refreshTransferQr)
+watch([paymentMethod, transferMethod, finalTotal], () => {
+  paymentConfirmed.value = false   // đổi phương thức/số tiền -> phải xác nhận lại
+  refreshTransferQr()
+})
 
 const canPay = computed(() => {
   if (cart.value.length === 0) return false
   if (paymentMethod.value === 'cash') return change.value >= 0
-  return true
+  // Chuyển khoản / thẻ: nhân viên phải báo đã nhận tiền
+  return paymentConfirmed.value
 })
+
+async function openZaloCard() {
+  if (finalTotal.value < 1000) return showToast('Giỏ hàng trống')
+  // Mở tab đồng bộ ngay trong sự kiện click để tránh bị chặn popup
+  const win = window.open('', '_blank')
+  openingCard.value = true
+  try {
+    const res = await api().zaloQr(finalTotal.value)
+    if (res && res.payUrl) {
+      if (win) win.location = res.payUrl
+      else window.location.href = res.payUrl  // popup bị chặn -> mở ngay tab hiện tại
+    } else {
+      if (win) win.close()
+      showToast(res?.error || 'Không mở được trang ZaloPay')
+    }
+  } catch (e) {
+    if (win) win.close()
+    showToast('Lỗi mở trang ZaloPay')
+  } finally {
+    openingCard.value = false
+  }
+}
 
 function addToCart(p) {
   const existing = cart.value.find(c => c.id === p.id)
@@ -325,6 +393,7 @@ function removeVoucher() {
 
 function paymentLabel() {
   if (paymentMethod.value === 'cash') return 'Tiền mặt'
+  if (paymentMethod.value === 'card') return 'Thẻ (ZaloPay)'
   const t = { vietqr: 'Chuyển khoản (VietQR)', momo: 'Chuyển khoản (MoMo)', zalopay: 'Chuyển khoản (ZaloPay)' }
   return t[transferMethod.value] || 'Chuyển khoản'
 }
@@ -357,6 +426,7 @@ async function createOrder() {
     customerName.value = ''
     note.value = ''
     tienKhachDua.value = null
+    paymentConfirmed.value = false
     removeVoucher()
   } catch (e) {
     showToast('Lỗi: ' + (e.message || 'Không thể tạo đơn'))
@@ -411,4 +481,29 @@ async function createOrder() {
   transition: all 0.15s;
 }
 .z-quick-cash:hover { border-color: var(--z-accent); color: var(--z-accent); }
+.z-confirm-btn {
+  width: 100%; padding: 9px 12px; border: 1.5px solid #16a34a; background: var(--z-white);
+  border-radius: var(--z-radius); font-size: 13px; font-weight: 600; color: #16a34a;
+  cursor: pointer; transition: all 0.15s; font-family: var(--z-font-body);
+}
+.z-confirm-btn:hover { background: #dcfce7; }
+.z-confirm-btn:disabled { opacity: 0.6; cursor: default; }
+.z-confirmed {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #dcfce7; color: #16a34a; border-radius: var(--z-radius);
+  padding: 9px 12px; font-size: 13px; font-weight: 600;
+}
+.z-undo {
+  border: none; background: transparent; color: var(--z-gray); font-size: 12px;
+  cursor: pointer; text-decoration: underline; font-family: var(--z-font-body);
+}
+.z-test-card {
+  background: var(--z-white); border: 1px dashed var(--z-gray-border);
+  border-radius: var(--z-radius); padding: 10px 12px;
+}
+.z-test-card-row {
+  display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0;
+}
+.z-test-card-row span { color: var(--z-gray); }
+.z-test-card-row strong { color: var(--z-dark); font-family: monospace; }
 </style>

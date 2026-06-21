@@ -45,29 +45,14 @@ export function api() {
     createVay: (data) => request('/vay', { method: 'POST', body: JSON.stringify(data) }),
     updateVay: (id, data) => request(`/vay/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteVay: (id) => request(`/vay/${id}`, { method: 'DELETE' }),
-    uploadVayAnh: async (id, file) => {
-      const fd = new FormData()
-      fd.append('file', file)
-      const headers = {}
-      const token = getToken()
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      const res = await fetch(`${BASE}/vay/${id}/anh`, { method: 'POST', headers, body: fd })
-      if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload thất bại' }))
-      return res.json()
-    },
-    deleteVayAnh: (anhId) => request(`/vay/anh/${anhId}`, { method: 'DELETE' }),
 
     // Orders
     getHoaDon: () => request('/hoa-don'),
     getHoaDonById: (id) => request(`/hoa-don/${id}`),
-    updateOrderStatus: (id, trangThai, ghiChu, daThanhToan) =>
+    updateOrderStatus: (id, trangThai, ghiChu) =>
       request(`/hoa-don/${id}/trang-thai`, {
         method: 'PUT',
-        body: JSON.stringify({
-          trangThai,
-          ghiChu: ghiChu || null,
-          ...(daThanhToan !== undefined ? { daThanhToan } : {})
-        })
+        body: JSON.stringify({ trangThai, ghiChu: ghiChu || null })
       }),
 
     // Customers
@@ -75,15 +60,6 @@ export function api() {
 
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
-
-    // Thống kê (báo cáo admin)
-    getThongKeTongHop: ({ startDate, endDate, timeType = 'ngay' }) => {
-      const params = new URLSearchParams()
-      if (startDate) params.append('startDate', startDate)
-      if (endDate) params.append('endDate', endDate)
-      if (timeType) params.append('timeType', timeType)
-      return request(`/admin/thong-ke/tong-hop?${params.toString()}`)
-    },
 
     // Attributes
     getThuocTinh: () => request('/thuoc-tinh'),
@@ -119,18 +95,6 @@ export function api() {
       request('/payment/create-order', { method: 'POST', body: JSON.stringify(data) }),
     createVNPayUrl: (orderId) =>
       request('/payment/vnpay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
-    confirmPayment: (orderId, method, maHoaDon) =>
-      request('/payment/confirm', { method: 'POST', body: JSON.stringify({ orderId, method, maHoaDon }) }),
-    createMomoPayment: (orderId) =>
-      request('/payment/momo/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
-    createZaloPayment: (orderId) =>
-      request('/payment/zalopay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
-    momoQr: (amount) =>
-      request('/payment/momo/qr', { method: 'POST', body: JSON.stringify({ amount }) }),
-    zaloQr: (amount) =>
-      request('/payment/zalopay/qr', { method: 'POST', body: JSON.stringify({ amount }) }),
-    applyVoucher: (maGiamGia, tongTien) =>
-      request('/payment/apply-voucher', { method: 'POST', body: JSON.stringify({ maGiamGia, tongTien }) }),
     getOrder: (id) => request(`/payment/order/${id}`),
     getMyOrders: () => request('/payment/my-orders'),
     updateProfile: (data) =>

@@ -369,28 +369,6 @@
           <i class="bi bi-plus-circle me-1"></i> Thêm biến thể
         </button>
 
-        <!-- Images -->
-        <h4 style="font-size:13px;font-weight:600;color:var(--z-accent);margin-bottom:12px">HÌNH ẢNH SẢN PHẨM</h4>
-        <div class="d-flex flex-wrap gap-2 mb-2">
-          <div v-for="img in existingImages" :key="'e' + img.id" class="z-img-thumb">
-            <img :src="img.url" alt="">
-            <button class="z-img-del" title="Xoá ảnh" @click="removeExistingImage(img)"><i class="bi bi-x"></i></button>
-          </div>
-          <div v-for="(p, i) in newImagePreviews" :key="'n' + i" class="z-img-thumb">
-            <img :src="p" alt="">
-            <span class="z-img-new">Mới</span>
-            <button class="z-img-del" title="Bỏ ảnh" @click="removeNewImage(i)"><i class="bi bi-x"></i></button>
-          </div>
-          <label class="z-img-add">
-            <i class="bi bi-plus-lg" style="font-size:18px"></i>
-            <span style="font-size:11px">Thêm ảnh</span>
-            <input type="file" accept="image/*" multiple style="display:none" @change="onPickImages">
-          </label>
-        </div>
-        <div style="font-size:12px;color:var(--z-gray);margin-bottom:16px">
-          Ảnh đầu tiên là ảnh đại diện. Hỗ trợ JPG/PNG/WebP, tối đa 10MB mỗi ảnh.
-        </div>
-
         <div class="d-flex justify-content-end gap-2">
           <button class="lm-btn-secondary" @click="showModal = false">Huỷ</button>
           <button class="lm-btn-primary" @click="doSave" :disabled="saving">
@@ -444,41 +422,6 @@ const newSupplier = ref({ tenNhaCungCap: '', diaChi: '', soDienThoai: '', email:
 const defaultForm = { tenVay: '', maVay: '', moTa: '', trangThai: 1, idLoaiVay: null, idChatLieu: null, idNhaCungCap: null, variants: [] }
 const form = ref({ ...defaultForm, variants: [] })
 
-// Ảnh sản phẩm
-const existingImages = ref([])   // ảnh đã có (khi sửa): { id, url }
-const newImageFiles = ref([])    // File[] mới chọn
-const newImagePreviews = ref([]) // data URL xem trước
-const deletedImageIds = ref([])  // id ảnh cũ bị xoá
-
-function resetImages() {
-  existingImages.value = []
-  newImageFiles.value = []
-  newImagePreviews.value = []
-  deletedImageIds.value = []
-}
-
-function onPickImages(e) {
-  const files = Array.from(e.target.files || [])
-  for (const f of files) {
-    if (!f.type.startsWith('image/')) continue
-    newImageFiles.value.push(f)
-    const reader = new FileReader()
-    reader.onload = ev => newImagePreviews.value.push(ev.target.result)
-    reader.readAsDataURL(f)
-  }
-  e.target.value = '' // cho phép chọn lại cùng file
-}
-
-function removeNewImage(i) {
-  newImageFiles.value.splice(i, 1)
-  newImagePreviews.value.splice(i, 1)
-}
-
-function removeExistingImage(img) {
-  deletedImageIds.value.push(img.id)
-  existingImages.value = existingImages.value.filter(x => x.id !== img.id)
-}
-
 onMounted(async () => {
   await loadProducts()
   await loadAttrs()
@@ -530,13 +473,11 @@ function addVariant() {
 function openAdd() {
   editingId.value = null
   form.value = { ...defaultForm, variants: [{ idMauSac: null, idKichThuoc: null, giaBan: null, giaBanGoc: null, soLuong: 0 }] }
-  resetImages()
   showModal.value = true
 }
 
 async function openEdit(p) {
   editingId.value = p.rawId || p.id
-  resetImages()
   form.value = {
     tenVay: p.name || '',
     maVay: p.code || '',
@@ -549,7 +490,6 @@ async function openEdit(p) {
   }
   try {
     const detail = await api().getVayById(p.rawId || p.id)
-    existingImages.value = detail.anhList || []
     if (detail.bienThe && detail.bienThe.length > 0) {
       form.value.variants = detail.bienThe.map(bt => ({
         idMauSac: mauSacList.value.find(m => m.tenMauSac === bt.mauSac)?.id || null,
@@ -596,26 +536,13 @@ async function doSave() {
       giaBanGoc: firstVariant.giaBanGoc,
       soLuong: firstVariant.soLuong || 0,
     }
-    let result
     if (editingId.value) {
-      result = await api().updateVay(editingId.value, payload)
+      await api().updateVay(editingId.value, payload)
       showToast('Cập nhật sản phẩm thành công!')
     } else {
-      result = await api().createVay(payload)
+      await api().createVay(payload)
       showToast('Thêm sản phẩm thành công!')
     }
-
-    // Xử lý ảnh: xoá ảnh đã bỏ + upload ảnh mới
-    const pid = (result && result.id) || editingId.value
-    for (const aid of deletedImageIds.value) {
-      try { await api().deleteVayAnh(aid) } catch (e) { /* bỏ qua */ }
-    }
-    if (pid) {
-      for (const f of newImageFiles.value) {
-        try { await api().uploadVayAnh(pid, f) } catch (e) { showToast('Lỗi upload ảnh: ' + (e.error || e.message || '')) }
-      }
-    }
-
     showModal.value = false
     await loadProducts()
   } catch (e) { showToast('Lỗi: ' + (e.message || 'Không thể lưu')) }
@@ -695,27 +622,6 @@ async function doDelete(p) {
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 }
 .z-label { display: block; font-size: 13px; font-weight: 500; color: var(--z-dark); margin-bottom: 6px; }
-.z-img-thumb {
-  position: relative; width: 84px; height: 100px; border-radius: var(--z-radius);
-  overflow: hidden; border: 1px solid var(--z-gray-border); background: var(--z-bg-alt); flex-shrink: 0;
-}
-.z-img-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.z-img-del {
-  position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border: none;
-  background: rgba(0,0,0,0.55); color: #fff; border-radius: 50%; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0;
-}
-.z-img-del:hover { background: var(--z-accent); }
-.z-img-new {
-  position: absolute; bottom: 0; left: 0; right: 0; background: var(--z-accent); color: #fff;
-  font-size: 10px; text-align: center; padding: 1px 0;
-}
-.z-img-add {
-  width: 84px; height: 100px; border: 1.5px dashed var(--z-gray-border); border-radius: var(--z-radius);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  cursor: pointer; color: var(--z-gray); transition: all 0.2s; flex-shrink: 0;
-}
-.z-img-add:hover { border-color: var(--z-accent); color: var(--z-accent); }
 .z-attr-section {
   padding: 16px; background: var(--z-bg-alt); border-radius: var(--z-radius-lg);
 }

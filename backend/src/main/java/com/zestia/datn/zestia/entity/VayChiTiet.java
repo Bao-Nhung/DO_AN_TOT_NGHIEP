@@ -44,9 +44,6 @@ public class VayChiTiet {
     @Column(name = "gia_ban")
     private BigDecimal giaBan;
 
-    @Column(name = "gia_nhap")
-    private BigDecimal giaNhap;
-
     @Column(name = "phan_tram_giam")
     private BigDecimal phanTramGiam;
 

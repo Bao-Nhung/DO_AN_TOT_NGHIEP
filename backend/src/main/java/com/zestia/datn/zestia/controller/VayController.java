@@ -6,14 +6,8 @@ import com.zestia.datn.zestia.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -216,58 +210,6 @@ public class VayController {
         return ResponseEntity.ok().build();
     }
 
-    // ===== Quản lý ảnh sản phẩm =====
-
-    /** Upload 1 ảnh cho sản phẩm. Lưu vào frontend/public/images/products và tạo bản ghi Anh. */
-    @PostMapping("/{id}/anh")
-    public ResponseEntity<?> uploadAnh(@PathVariable Integer id, @RequestParam("file") MultipartFile file) {
-        var vayOpt = vayRepo.findById(id);
-        if (vayOpt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Sản phẩm không tồn tại"));
-        if (file == null || file.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Chưa chọn ảnh"));
-        try {
-            Path dir = resolveUploadDir();
-            Files.createDirectories(dir);
-            String original = file.getOriginalFilename() == null ? "img.jpg" : file.getOriginalFilename();
-            String ext = "";
-            int dot = original.lastIndexOf('.');
-            if (dot >= 0) ext = original.substring(dot).toLowerCase();
-            if (!ext.matches("\\.(jpg|jpeg|png|webp|gif|avif)")) ext = ".jpg";
-            String filename = "vay" + id + "_" + System.currentTimeMillis() + ext;
-            Files.copy(file.getInputStream(), dir.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
-
-            Anh anh = new Anh();
-            anh.setVay(vayOpt.get());
-            anh.setAnhUrl("/images/products/" + filename);
-            anh.setTrangThai((byte) 1);
-            anh.setNgayTao(LocalDateTime.now());
-            Anh saved = anhRepo.save(anh);
-            return ResponseEntity.ok(Map.of("id", saved.getId(), "url", saved.getAnhUrl()));
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi lưu ảnh: " + e.getMessage()));
-        }
-    }
-
-    /** Xoá 1 ảnh sản phẩm theo id ảnh. */
-    @DeleteMapping("/anh/{anhId}")
-    public ResponseEntity<?> deleteAnh(@PathVariable Integer anhId) {
-        anhRepo.deleteById(anhId);
-        return ResponseEntity.ok().build();
-    }
-
-    /** Tìm thư mục lưu ảnh: ưu tiên ../frontend (chạy từ backend/) rồi ./frontend (chạy từ gốc repo). */
-    private Path resolveUploadDir() {
-        Path[] candidates = {
-            Paths.get("..", "frontend", "public", "images", "products"),
-            Paths.get("frontend", "public", "images", "products"),
-        };
-        for (Path c : candidates) {
-            Path abs = c.toAbsolutePath().normalize();
-            Path frontendDir = abs.getParent().getParent().getParent(); // .../frontend
-            if (Files.exists(frontendDir)) return abs;
-        }
-        return candidates[0].toAbsolutePath().normalize();
-    }
-
     private Map<String, Object> toMap(Vay v) {
         List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId());
         BigDecimal minPrice = bienThe.stream()
@@ -306,13 +248,6 @@ public class VayController {
             map.put("anhUrl", anhs.get(0).getAnhUrl());
             map.put("danhSachAnh", anhs.stream().map(Anh::getAnhUrl).toList());
         }
-        // Danh sách ảnh kèm id (để admin sửa/xoá ảnh)
-        map.put("anhList", anhs.stream().map(a -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", a.getId());
-            m.put("url", a.getAnhUrl());
-            return m;
-        }).toList());
         return map;
     }
 

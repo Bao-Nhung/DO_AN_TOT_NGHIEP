@@ -36,14 +36,9 @@ public class HoaDonController {
     @PutMapping("/{id}/trang-thai")
     public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         return hoaDonRepo.findById(id).map(hd -> {
-            if (body.get("trangThai") != null) {
-                hd.setTrangThai(((Number) body.get("trangThai")).byteValue());
-            }
+            hd.setTrangThai(((Number) body.get("trangThai")).byteValue());
             if (body.get("ghiChu") != null) {
                 hd.setGhiChu((String) body.get("ghiChu"));
-            }
-            if (body.get("daThanhToan") != null) {
-                hd.setDaThanhToan(Boolean.parseBoolean(String.valueOf(body.get("daThanhToan"))));
             }
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(toMap(hd));
@@ -59,10 +54,7 @@ public class HoaDonController {
         map.put("soDienThoai", hd.getKhachHang() != null ? hd.getKhachHang().getSoDienThoai() : null);
         map.put("soSanPham", soSanPham);
         map.put("tongTien", hd.getTongTien());
-        map.put("giamGiaKhuyenMai", hd.getGiamGiaKhuyenMai());
         map.put("hinhThucThanhToan", hd.getHinhThucThanhToan());
-        map.put("phuongThucThanhToanOnline", hd.getPhuongThucThanhToanOnline());
-        map.put("daThanhToan", Boolean.TRUE.equals(hd.getDaThanhToan()));
         map.put("trangThai", hd.getTrangThai());
         map.put("diaChiGiaoHang", hd.getDiaChiGiaoHang());
         map.put("ghiChu", hd.getGhiChu());

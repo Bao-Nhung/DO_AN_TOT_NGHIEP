@@ -32,9 +32,6 @@ public class HoaDonChiTiet {
     @Column(name = "don_gia")
     private BigDecimal donGia;
 
-    @Column(name = "gia_nhap")
-    private BigDecimal giaNhap;
-
     @Column(name = "phan_tram_giam")
     private BigDecimal phanTramGiam;
 }

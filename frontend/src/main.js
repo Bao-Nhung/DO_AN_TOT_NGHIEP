@@ -32,7 +32,6 @@ import AdminCustomers  from '@/pages/admin/AdminCustomers.vue'
 import AdminVouchers   from '@/pages/admin/AdminVouchers.vue'
 import AdminSettings   from '@/pages/admin/AdminSettings.vue'
 import AdminPOS        from '@/pages/admin/AdminPOS.vue'
-import AdminStatisticalDashboard from '@/pages/admin/AdminStatisticalDashboard.vue'
 
 const routes = [
   { path: '/',               component: HomePage,       name: 'home' },
@@ -47,7 +46,6 @@ const routes = [
   { path: '/qr-payment',    component: QRPaymentPage,     name: 'qr-payment' },
 
   { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
-  { path: '/admin/thong-ke',  component: AdminStatisticalDashboard, name: 'admin-thong-ke' },
   { path: '/admin/products',  component: AdminProducts,  name: 'admin-products' },
   { path: '/admin/orders',    component: AdminOrders,    name: 'admin-orders' },
   { path: '/admin/customers', component: AdminCustomers, name: 'admin-customers' },

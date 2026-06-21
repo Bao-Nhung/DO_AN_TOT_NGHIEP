@@ -10,47 +10,92 @@
     <div class="container py-5">
       <div class="z-qr-card">
         <!-- Header -->
-        <div class="z-qr-header" :style="{ background: cfg.gradient }">
+        <div class="z-qr-header" :style="{ background: methodColor }">
           <div class="z-qr-method-icon">
-            <svg viewBox="0 0 40 40" width="36" height="36">
-              <rect width="40" height="40" rx="8" fill="#fff"/>
-              <text x="20" y="26" text-anchor="middle" :fill="cfg.color" font-size="10" font-weight="700">{{ cfg.short }}</text>
-            </svg>
+            <template v-if="method === 'VNPAY'">
+              <svg viewBox="0 0 40 40" width="36" height="36">
+                <rect width="40" height="40" rx="8" fill="#fff"/>
+                <text x="20" y="25" text-anchor="middle" fill="#0066CC" font-size="11" font-weight="700">VCB</text>
+              </svg>
+            </template>
+            <template v-else>
+              <svg viewBox="0 0 40 40" width="36" height="36">
+                <rect width="40" height="40" rx="8" fill="#fff"/>
+                <text x="20" y="26" text-anchor="middle" fill="#AE2070" font-size="9" font-weight="700">MoMo</text>
+              </svg>
+            </template>
           </div>
           <div>
-            <div class="z-qr-method-label">{{ cfg.label }}</div>
+            <div class="z-qr-method-label">{{ method === 'VNPAY' ? 'Chuyển khoản Ngân hàng' : 'Chuyển khoản MoMo' }}</div>
             <div class="z-qr-amount">{{ formatPrice(amount) }}</div>
           </div>
         </div>
 
         <!-- Payment Body -->
         <div class="z-qr-body">
-          <div class="z-qr-image-wrap">
-            <img :src="qrUrl" alt="QR Code thanh toán" class="z-qr-image" @error="qrError = true" />
-            <div v-if="qrError" class="z-qr-fallback">
-              <i class="bi bi-qr-code" style="font-size:80px;color:var(--z-gray-border)"></i>
-              <p style="color:var(--z-gray);font-size:13px;margin-top:8px">Không tải được mã QR</p>
-            </div>
-          </div>
-          <p class="z-qr-instruction">
-            Mở ứng dụng <strong>{{ cfg.appName }}</strong> → Quét mã QR → Xác nhận thanh toán
-          </p>
-
-          <!-- Transfer Info -->
-          <div class="z-qr-info">
-            <div class="z-qr-info-row">
-              <span>{{ method === 'MOMO' ? 'Số điện thoại' : 'Tài khoản' }}</span>
-              <div class="z-qr-copy-group">
-                <strong>{{ cfg.account }}</strong>
-                <button class="z-copy-btn" @click="copyText(cfg.account)" :title="'Sao chép'">
-                  <i class="bi" :class="copied === cfg.account ? 'bi-check-lg' : 'bi-clipboard'"></i>
-                </button>
+          <!-- VNPay: show QR -->
+          <template v-if="method === 'VNPAY'">
+            <div class="z-qr-image-wrap">
+              <img :src="qrUrl" alt="QR Code thanh toán" class="z-qr-image" @error="qrError = true" />
+              <div v-if="qrError" class="z-qr-fallback">
+                <i class="bi bi-qr-code" style="font-size:80px;color:var(--z-gray-border)"></i>
+                <p style="color:var(--z-gray);font-size:13px;margin-top:8px">Không tải được mã QR</p>
               </div>
             </div>
-            <div class="z-qr-info-row">
-              <span>Người nhận</span>
-              <strong>{{ cfg.holder }}</strong>
+            <p class="z-qr-instruction">
+              Mở ứng dụng <strong>Ngân hàng</strong> → Quét mã QR → Xác nhận thanh toán
+            </p>
+          </template>
+
+          <!-- MoMo: show transfer info only -->
+          <template v-else>
+            <div class="z-momo-icon-wrap">
+              <svg viewBox="0 0 80 80" width="80" height="80">
+                <rect width="80" height="80" rx="20" fill="#AE2070"/>
+                <text x="40" y="48" text-anchor="middle" fill="white" font-size="18" font-weight="700">MoMo</text>
+              </svg>
             </div>
+            <p class="z-qr-instruction">
+              Mở ứng dụng <strong>MoMo</strong> → Chuyển tiền → Nhập thông tin bên dưới
+            </p>
+          </template>
+
+          <!-- Account Info -->
+          <div class="z-qr-info">
+            <template v-if="method === 'VNPAY'">
+              <div class="z-qr-info-row">
+                <span>Ngân hàng</span>
+                <strong>Vietcombank (VCB)</strong>
+              </div>
+              <div class="z-qr-info-row">
+                <span>Số tài khoản</span>
+                <div class="z-qr-copy-group">
+                  <strong>9869167207</strong>
+                  <button class="z-copy-btn" @click="copyText('9869167207')" title="Sao chép">
+                    <i class="bi" :class="copied === '9869167207' ? 'bi-check-lg' : 'bi-clipboard'"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="z-qr-info-row">
+                <span>Chủ tài khoản</span>
+                <strong>NGUYEN TIEN THANH</strong>
+              </div>
+            </template>
+            <template v-else>
+              <div class="z-qr-info-row">
+                <span>Số điện thoại</span>
+                <div class="z-qr-copy-group">
+                  <strong>0869167207</strong>
+                  <button class="z-copy-btn" @click="copyText('0869167207')" title="Sao chép">
+                    <i class="bi" :class="copied === '0869167207' ? 'bi-check-lg' : 'bi-clipboard'"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="z-qr-info-row">
+                <span>Tên người nhận</span>
+                <strong>Nguyễn Tiến Thành</strong>
+              </div>
+            </template>
             <div class="z-qr-info-row">
               <span>Số tiền</span>
               <div class="z-qr-copy-group">
@@ -71,12 +116,6 @@
             </div>
           </div>
 
-          <!-- Sandbox note -->
-          <div class="z-qr-sandbox">
-            <i class="bi bi-info-circle"></i>
-            Đây là thanh toán <strong>test/sandbox</strong>. Nhấn "Tôi đã thanh toán" để mô phỏng giao dịch thành công.
-          </div>
-
           <!-- Timer -->
           <div class="z-qr-timer">
             <i class="bi bi-clock"></i>
@@ -85,8 +124,8 @@
 
           <!-- Actions -->
           <div class="z-qr-actions">
-            <button class="lm-btn-primary w-100" @click="confirmDone" :disabled="confirming">
-              <span><i class="bi bi-check2-circle me-2"></i>{{ confirming ? 'Đang xác nhận...' : 'Tôi đã thanh toán' }}</span>
+            <button class="lm-btn-primary w-100" @click="confirmDone">
+              <span><i class="bi bi-check2-circle me-2"></i>Tôi đã thanh toán</span>
             </button>
             <button class="z-qr-cancel" @click="cancelOrder">
               Huỷ đơn hàng
@@ -103,36 +142,19 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api } from '@/composables/useApi'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-const method = computed(() => route.query.method || 'MOMO')
-const orderId = computed(() => route.query.orderId || '')       // id số của hoá đơn
-const maHoaDon = computed(() => route.query.maHoaDon || route.query.orderId || '')
+const method = computed(() => route.query.method || 'VNPAY')
+const orderId = computed(() => route.query.orderId || '')
 const amount = computed(() => Number(route.query.amount) || 0)
 
 const qrError = ref(false)
 const copied = ref('')
-const confirming = ref(false)
 const remainSeconds = ref(15 * 60)
 let timer = null
-
-const methodConfig = {
-  MOMO: {
-    label: 'Ví MoMo (test)', appName: 'MoMo', short: 'MoMo', color: '#AE2070',
-    gradient: 'linear-gradient(135deg, #AE2070, #8C1A5A)',
-    account: '0869167207', holder: 'NGUYEN TIEN THANH',
-  },
-  ZALOPAY: {
-    label: 'Ví ZaloPay (sandbox)', appName: 'ZaloPay', short: 'Zalo', color: '#0068FF',
-    gradient: 'linear-gradient(135deg, #0068FF, #0049B7)',
-    account: '0869167207', holder: 'NGUYEN TIEN THANH',
-  },
-}
-const cfg = computed(() => methodConfig[method.value] || methodConfig.MOMO)
 
 function copyText(text) {
   navigator.clipboard.writeText(text).catch(() => {})
@@ -140,7 +162,13 @@ function copyText(text) {
   setTimeout(() => { copied.value = '' }, 2000)
 }
 
-const transferContent = computed(() => 'ZESTIA ' + maHoaDon.value)
+const transferContent = computed(() => {
+  return 'ZESTIA ' + orderId.value
+})
+
+const methodColor = computed(() =>
+  method.value === 'VNPAY' ? 'linear-gradient(135deg, #0066CC, #004999)' : 'linear-gradient(135deg, #AE2070, #8C1A5A)'
+)
 
 const qrUrl = computed(() => {
   const desc = encodeURIComponent(transferContent.value)
@@ -157,25 +185,26 @@ function formatPrice(n) {
   return Number(n || 0).toLocaleString('vi-VN') + 'đ'
 }
 
-async function confirmDone() {
-  confirming.value = true
-  try {
-    await api().confirmPayment(Number(orderId.value) || null, method.value, maHoaDon.value)
-  } catch (e) {
-    // vẫn cho qua trang kết quả ở chế độ demo
-  } finally {
-    confirming.value = false
-  }
+function confirmDone() {
   router.push({
     path: '/payment-result',
-    query: { status: 'success', orderId: maHoaDon.value, amount: amount.value, method: method.value }
+    query: {
+      status: 'success',
+      orderId: orderId.value,
+      amount: amount.value,
+      method: method.value
+    }
   })
 }
 
 function cancelOrder() {
   router.push({
     path: '/payment-result',
-    query: { status: 'failed', orderId: maHoaDon.value, method: method.value }
+    query: {
+      status: 'failed',
+      orderId: orderId.value,
+      method: method.value
+    }
   })
 }
 
@@ -256,7 +285,7 @@ onUnmounted(() => {
   background: var(--z-bg);
   border-radius: 10px;
   padding: 16px 20px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .z-qr-info-row {
   display: flex;
@@ -268,16 +297,6 @@ onUnmounted(() => {
 .z-qr-info-row:last-child { border-bottom: none; }
 .z-qr-info-row span { color: var(--z-gray); }
 .z-qr-info-row strong { color: var(--z-dark); font-size: 13px; }
-.z-qr-sandbox {
-  font-size: 12px;
-  color: #1565C0;
-  background: #E3F2FD;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-.z-qr-sandbox i { margin-right: 4px; }
 .z-qr-timer {
   text-align: center;
   font-size: 13px;
@@ -305,6 +324,10 @@ onUnmounted(() => {
   font-family: var(--z-font-body);
 }
 .z-qr-cancel:hover { color: var(--z-accent); }
+.z-momo-icon-wrap {
+  text-align: center;
+  margin-bottom: 20px;
+}
 .z-qr-copy-group {
   display: flex;
   align-items: center;

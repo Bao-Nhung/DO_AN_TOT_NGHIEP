@@ -1,4 +1,5 @@
 # Hướng Dẫn Chạy Dự Án Zestia
+.\mvnw.cmd spring-boot:run
 
 ## 1. Yêu cầu cài đặt
 

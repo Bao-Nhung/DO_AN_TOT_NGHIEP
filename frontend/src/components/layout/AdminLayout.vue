@@ -34,7 +34,7 @@
 
     <!-- Main content -->
     <main class="z-admin-main">
-      <slot />
+      <slot/>
     </main>
   </div>
 </template>
@@ -51,6 +51,7 @@ const navItems = [
   { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
   { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },
   { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng' },
+  { path: '/admin/staff',     icon: 'bi-person-workspace', label: 'Nhân viên' },
   { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Khuyến mãi' },
   { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt' },
 ]

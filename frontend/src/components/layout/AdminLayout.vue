@@ -1,5 +1,6 @@
 <template>
   <div class="d-flex" style="min-height:100vh">
+    <!-- Sidebar -->
     <aside class="z-admin-sidebar">
       <div class="z-admin-logo" @click="$router.push('/admin')">
         <span class="z-admin-logo-text">Zest<span style="color:var(--z-accent)">ia</span></span>
@@ -31,6 +32,7 @@
       </div>
     </aside>
 
+    <!-- Main content -->
     <main class="z-admin-main">
       <slot />
     </main>
@@ -44,14 +46,14 @@ import { api } from '@/composables/useApi'
 const pendingCount = ref(0)
 
 const navItems = [
-  { path: '/admin',           icon: 'bi-grid-1x2',  label: 'Tổng quan' },
-  { path: '/admin/thong-ke',  icon: 'bi-bar-chart', label: 'Thống kê' },
-  { path: '/admin/pos',       icon: 'bi-shop',      label: 'Bán tại quầy' },
-  { path: '/admin/products',  icon: 'bi-bag',       label: 'Sản phẩm' },
-  { path: '/admin/orders',    icon: 'bi-receipt',   label: 'Đơn hàng', badgeRef: 'pending' },
-  { path: '/admin/customers', icon: 'bi-people',    label: 'Khách hàng' },
-  { path: '/admin/vouchers',  icon: 'bi-tag',       label: 'Khuyến mãi' },
-  { path: '/admin/settings',  icon: 'bi-gear',      label: 'Cài đặt' },
+  { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan' },
+  { path: '/admin/thong-ke',  icon: 'bi-bar-chart',    label: 'Thống kê' },
+  { path: '/admin/pos',       icon: 'bi-shop',         label: 'Bán tại quầy' },
+  { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
+  { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },
+  { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng' },
+  { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Khuyến mãi' },
+  { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt' },
 ]
 
 onMounted(async () => {

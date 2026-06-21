@@ -49,7 +49,13 @@
             </td>
             <td>{{ o.items }} sản phẩm</td>
             <td style="font-weight:600">{{ o.total }}</td>
-            <td>{{ o.payment }}</td>
+            <td>
+              <div>{{ o.payment }}</div>
+              <span class="z-pay-badge" :class="o.paid ? 'paid' : 'unpaid'">
+                <i class="bi" :class="o.paid ? 'bi-check-circle-fill' : 'bi-clock'"></i>
+                {{ o.paid ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+              </span>
+            </td>
             <td><span class="z-status" :class="o.statusClass">{{ o.status }}</span></td>
             <td style="color:var(--z-gray)">{{ o.date }}</td>
             <td @click.stop>
@@ -113,7 +119,13 @@
             </div>
             <div class="col-6">
               <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Thanh toán</div>
-              <div style="font-size:14px;font-weight:500">{{ detailData.hinhThucThanhToan || 'N/A' }}</div>
+              <div style="font-size:14px;font-weight:500">
+                {{ detailData.hinhThucThanhToan || 'N/A' }}
+                <span class="z-pay-badge" :class="detailData.daThanhToan ? 'paid' : 'unpaid'" style="margin-left:4px">
+                  <i class="bi" :class="detailData.daThanhToan ? 'bi-check-circle-fill' : 'bi-clock'"></i>
+                  {{ detailData.daThanhToan ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+                </span>
+              </div>
             </div>
             <div class="col-6">
               <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Ngày tạo</div>
@@ -182,10 +194,22 @@
           <label class="z-label">Ghi chú (tuỳ chọn)</label>
           <input v-model="actionNote" class="lm-input" placeholder="Ghi chú thêm...">
         </div>
+
+        <!-- COD: yêu cầu xác nhận đã thu tiền trước khi hoàn thành -->
+        <div v-if="needPaidConfirm" class="z-cod-paid mb-3">
+          <label class="d-flex align-items-start gap-2" style="cursor:pointer">
+            <input type="checkbox" v-model="confirmPaid" style="margin-top:3px">
+            <span style="font-size:13px;color:var(--z-dark)">
+              <strong>Khách đã thanh toán tiền (COD)</strong><br>
+              <span style="font-size:12px;color:var(--z-gray)">Đơn COD phải xác nhận đã thu tiền trước khi hoàn thành.</span>
+            </span>
+          </label>
+        </div>
+
         <div class="d-flex justify-content-end gap-2">
           <button class="lm-btn-secondary" @click="showConfirm = false">Huỷ bỏ</button>
           <button class="lm-btn-primary" @click="executeAction"
-                  :disabled="confirmType === 'cancel' && !cancelNote.trim()"
+                  :disabled="(confirmType === 'cancel' && !cancelNote.trim()) || (needPaidConfirm && !confirmPaid)"
                   :style="confirmType === 'cancel' ? 'background:var(--z-accent);border-color:var(--z-accent)' : ''">
             <span>{{ confirmType === 'cancel' ? 'Xác nhận huỷ' : 'Xác nhận' }}</span>
           </button>
@@ -224,6 +248,14 @@ const confirmOrder = ref(null)
 const confirmNewStatus = ref(0)
 const cancelNote = ref('')
 const actionNote = ref('')
+const confirmPaid = ref(false)
+
+// Đơn COD/tiền mặt khi hoàn thành (status 3) mà chưa thanh toán -> bắt buộc tick đã thu tiền
+const needPaidConfirm = computed(() =>
+  confirmType.value === 'advance' &&
+  confirmNewStatus.value === 3 &&
+  confirmOrder.value && confirmOrder.value.isCod && !confirmOrder.value.paid
+)
 
 onMounted(async () => {
   await loadOrders()
@@ -240,9 +272,12 @@ async function loadOrders() {
     })
     allOrders.value = sorted.map(o => {
       const st = statusMap[o.trangThai] || statusMap[0]
+      const method = o.hinhThucThanhToan || 'N/A'
       return {
         id: o.maHoaDon, dbId: o.id, customer: o.khachHang || 'N/A', phone: o.soDienThoai || '',
-        items: o.soSanPham || 0, total: fmtPrice(o.tongTien), payment: o.hinhThucThanhToan || 'N/A',
+        items: o.soSanPham || 0, total: fmtPrice(o.tongTien), payment: method,
+        paid: o.daThanhToan === true,
+        isCod: method.toUpperCase().includes('COD') || method.toUpperCase().includes('TIỀN MẶT') || method.toLowerCase().includes('nhận hàng'),
         status: st.text, statusClass: st.cls, statusValue: String(o.trangThai ?? 0),
         date: o.ngayTao ? new Date(o.ngayTao).toLocaleDateString('vi-VN') : '',
         raw: o
@@ -296,6 +331,7 @@ function confirmAdvance(o) {
   confirmOrder.value = o
   confirmNewStatus.value = nextVal
   actionNote.value = ''
+  confirmPaid.value = false
   showConfirm.value = true
 }
 
@@ -315,8 +351,10 @@ async function executeAction() {
     showToast('Vui lòng nhập lý do huỷ đơn')
     return
   }
+  // Nếu hoàn thành đơn COD và đã tick thu tiền -> đánh dấu đã thanh toán
+  const daThanhToan = needPaidConfirm.value && confirmPaid.value ? true : undefined
   try {
-    await api().updateOrderStatus(confirmOrder.value.dbId, confirmNewStatus.value, note || null)
+    await api().updateOrderStatus(confirmOrder.value.dbId, confirmNewStatus.value, note || null, daThanhToan)
     showToast('Cập nhật trạng thái thành công!')
     showConfirm.value = false
     await loadOrders()
@@ -391,4 +429,14 @@ async function openDetail(o) {
 .z-step.active .z-step-label { color: var(--z-dark); }
 .z-step-line { width: 32px; height: 2px; background: var(--z-gray-border); margin: 0 4px; }
 .z-step-line.filled { background: var(--z-accent); }
+.z-pay-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 20px;
+  margin-top: 3px;
+}
+.z-pay-badge.paid { background: #dcfce7; color: #16a34a; }
+.z-pay-badge.unpaid { background: #fef3cd; color: #b45309; }
+.z-cod-paid {
+  background: #fff8e1; border: 1px solid #fde68a; border-radius: var(--z-radius); padding: 12px 14px;
+}
 </style>

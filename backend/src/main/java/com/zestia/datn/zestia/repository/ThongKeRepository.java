@@ -90,14 +90,14 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
     /* 6. TRẠNG THÁI ĐƠN HÀNG */
     @Query(value = """
             SELECT 
-                CASE 
-                    WHEN hd.trang_thai = 1 THEN N'Chờ xử lý'
+                CASE
+                    WHEN hd.trang_thai = 0 THEN N'Chờ xử lý'
+                    WHEN hd.trang_thai = 1 THEN N'Đã xác nhận'
                     WHEN hd.trang_thai = 2 THEN N'Đang giao'
-                    WHEN hd.trang_thai = 3 THEN N'Thành công'
-                    WHEN hd.trang_thai = 4 THEN N'Hủy'
-                    WHEN hd.trang_thai = 5 THEN N'Hoàn hàng'
+                    WHEN hd.trang_thai = 3 THEN N'Hoàn thành'
+                    WHEN hd.trang_thai = 4 THEN N'Đã huỷ'
                     ELSE N'Không xác định'
-                END AS tenTrangThai, 
+                END AS tenTrangThai,
                 COUNT(hd.id) AS soLuong
             FROM Hoa_don hd
             WHERE hd.ngay_tao BETWEEN :startDate AND :endDate

@@ -58,22 +58,6 @@
             </h3>
 
             <div class="z-payment-options">
-              <label class="z-payment-option" :class="{ active: form.hinhThuc === 'VNPAY' }">
-                <input type="radio" v-model="form.hinhThuc" value="VNPAY" />
-                <div class="z-payment-option-content">
-                  <div class="z-payment-option-icon">
-                    <svg viewBox="0 0 40 40" width="32" height="32">
-                      <rect width="40" height="40" rx="8" fill="#0066CC"/>
-                      <text x="20" y="25" text-anchor="middle" fill="white" font-size="11" font-weight="700">VN</text>
-                    </svg>
-                  </div>
-                  <div>
-                    <strong>Chuyển khoản ngân hàng</strong>
-                    <p>Quét mã QR qua app ngân hàng (Vietcombank)</p>
-                  </div>
-                </div>
-              </label>
-
               <label class="z-payment-option" :class="{ active: form.hinhThuc === 'MOMO' }">
                 <input type="radio" v-model="form.hinhThuc" value="MOMO" />
                 <div class="z-payment-option-content">
@@ -85,7 +69,23 @@
                   </div>
                   <div>
                     <strong>Ví MoMo</strong>
-                    <p>Quét mã QR qua ứng dụng MoMo</p>
+                    <p>Quét mã QR qua ứng dụng MoMo (thanh toán test)</p>
+                  </div>
+                </div>
+              </label>
+
+              <label class="z-payment-option" :class="{ active: form.hinhThuc === 'ZALOPAY' }">
+                <input type="radio" v-model="form.hinhThuc" value="ZALOPAY" />
+                <div class="z-payment-option-content">
+                  <div class="z-payment-option-icon">
+                    <svg viewBox="0 0 40 40" width="32" height="32">
+                      <rect width="40" height="40" rx="8" fill="#0068FF"/>
+                      <text x="20" y="26" text-anchor="middle" fill="white" font-size="13" font-weight="700">Z</text>
+                    </svg>
+                  </div>
+                  <div>
+                    <strong>Ví ZaloPay</strong>
+                    <p>Quét mã QR qua ứng dụng ZaloPay (sandbox)</p>
                   </div>
                 </div>
               </label>
@@ -132,6 +132,24 @@
               </div>
             </div>
 
+            <!-- Voucher -->
+            <div class="z-voucher-box">
+              <div class="z-voucher-input-row">
+                <i class="bi bi-ticket-perforated" style="color:var(--z-accent)"></i>
+                <input v-model="voucherCode" class="z-voucher-input" placeholder="Nhập mã giảm giá"
+                       :disabled="!!appliedVoucher" @keyup.enter="applyVoucher" />
+                <button v-if="!appliedVoucher" class="z-voucher-btn" @click="applyVoucher" :disabled="applyingVoucher">
+                  {{ applyingVoucher ? '...' : 'Áp dụng' }}
+                </button>
+                <button v-else class="z-voucher-btn z-voucher-remove" @click="removeVoucher">Bỏ</button>
+              </div>
+              <div v-if="voucherMsg" class="z-voucher-msg" :class="appliedVoucher ? 'ok' : 'err'">
+                <i class="bi" :class="appliedVoucher ? 'bi-check-circle' : 'bi-exclamation-circle'"></i>
+                {{ voucherMsg }}
+              </div>
+              <div class="z-voucher-hint">Mã thử: <strong>ZESTIA10</strong>, <strong>SUMMER20</strong></div>
+            </div>
+
             <div class="z-order-totals">
               <div class="z-order-row">
                 <span>Tạm tính</span>
@@ -141,9 +159,13 @@
                 <span>Phí vận chuyển</span>
                 <span style="color:var(--z-accent)">Miễn phí</span>
               </div>
+              <div v-if="discount > 0" class="z-order-row">
+                <span>Giảm giá ({{ appliedVoucher }})</span>
+                <span style="color:var(--z-accent)">-{{ formatPrice(discount) }}</span>
+              </div>
               <div class="z-order-row z-order-total">
                 <span>Tổng cộng</span>
-                <span>{{ formatPrice(subtotal) }}</span>
+                <span>{{ formatPrice(finalTotal) }}</span>
               </div>
             </div>
 
@@ -153,7 +175,7 @@
               </span>
               <span v-else>
                 <i class="bi bi-lock"></i>
-                {{ form.hinhThuc === 'COD' ? 'Đặt hàng' : 'Thanh toán ' + formatPrice(subtotal) }}
+                {{ form.hinhThuc === 'COD' ? 'Đặt hàng' : 'Thanh toán ' + formatPrice(finalTotal) }}
               </span>
             </button>
 
@@ -171,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
@@ -191,8 +213,46 @@ const form = ref({
   email: '',
   diaChi: '',
   ghiChu: '',
-  hinhThuc: 'VNPAY'
+  hinhThuc: 'MOMO'
 })
+
+// Voucher
+const voucherCode = ref('')
+const appliedVoucher = ref('')
+const discount = ref(0)
+const voucherMsg = ref('')
+const applyingVoucher = ref(false)
+
+const finalTotal = computed(() => Math.max(0, subtotal.value - discount.value))
+
+async function applyVoucher() {
+  if (!voucherCode.value.trim()) return showToast('Vui lòng nhập mã giảm giá')
+  applyingVoucher.value = true
+  voucherMsg.value = ''
+  try {
+    const res = await api().applyVoucher(voucherCode.value.trim(), subtotal.value)
+    if (res.valid) {
+      appliedVoucher.value = res.maGiamGia
+      discount.value = Number(res.giamGia) || 0
+      voucherMsg.value = `${res.tenGiamGia} — giảm ${formatPrice(discount.value)}`
+    } else {
+      appliedVoucher.value = ''
+      discount.value = 0
+      voucherMsg.value = res.message || 'Mã không hợp lệ'
+    }
+  } catch (e) {
+    voucherMsg.value = e.message || 'Không áp dụng được mã'
+  } finally {
+    applyingVoucher.value = false
+  }
+}
+
+function removeVoucher() {
+  appliedVoucher.value = ''
+  discount.value = 0
+  voucherCode.value = ''
+  voucherMsg.value = ''
+}
 
 onMounted(() => {
   const { isLoggedIn } = useAuth()
@@ -222,6 +282,7 @@ async function placeOrder() {
       diaChi: form.value.diaChi,
       ghiChu: form.value.ghiChu,
       hinhThucThanhToan: form.value.hinhThuc,
+      maGiamGia: appliedVoucher.value || null,
       items: state.items.map(i => ({ productId: i.id, qty: i.qty }))
     }
 
@@ -236,12 +297,17 @@ async function placeOrder() {
       return
     }
 
-    if (form.value.hinhThuc === 'VNPAY' || form.value.hinhThuc === 'MOMO') {
-      clearCart()
-      router.push({
-        path: '/qr-payment',
-        query: { method: form.value.hinhThuc, orderId: order.maHoaDon, amount: order.tongTien }
-      })
+    // MoMo / ZaloPay: gọi cổng sandbox thật -> chuyển sang trang thanh toán của cổng
+    if (form.value.hinhThuc === 'MOMO' || form.value.hinhThuc === 'ZALOPAY') {
+      const res = form.value.hinhThuc === 'MOMO'
+        ? await api().createMomoPayment(order.orderId)
+        : await api().createZaloPayment(order.orderId)
+      if (res && res.payUrl) {
+        clearCart()
+        window.location.href = res.payUrl
+        return
+      }
+      showToast(res?.error || 'Không tạo được thanh toán, vui lòng thử lại')
       return
     }
   } catch (err) {
@@ -348,7 +414,55 @@ async function placeOrder() {
 .z-order-item-qty { font-size: 12px; color: var(--z-gray); }
 .z-order-item-price { font-size: 13px; font-weight: 600; white-space: nowrap; }
 
-.z-order-totals { border-top: 1px solid var(--z-gray-border); padding-top: 16px; }
+.z-voucher-box {
+  border-top: 1px solid var(--z-gray-border);
+  padding-top: 16px;
+  margin-bottom: 4px;
+}
+.z-voucher-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--z-gray-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.z-voucher-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  background: transparent;
+  font-family: var(--z-font-body);
+  text-transform: uppercase;
+}
+.z-voucher-btn {
+  border: none;
+  background: var(--z-dark);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--z-font-body);
+  white-space: nowrap;
+}
+.z-voucher-btn:hover { background: var(--z-accent); }
+.z-voucher-remove { background: var(--z-gray); }
+.z-voucher-msg {
+  font-size: 12px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.z-voucher-msg.ok { color: #2E7D32; }
+.z-voucher-msg.err { color: #C62828; }
+.z-voucher-hint { font-size: 11px; color: var(--z-gray); margin-top: 6px; }
+.z-voucher-hint strong { color: var(--z-accent); }
+
+.z-order-totals { border-top: 1px solid var(--z-gray-border); padding-top: 16px; margin-top: 16px; }
 .z-order-row {
   display: flex;
   justify-content: space-between;

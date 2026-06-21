@@ -47,6 +47,7 @@ const pendingCount = ref(0)
 
 const navItems = [
   { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan' },
+  { path: '/admin/thong-ke',  icon: 'bi-bar-chart',    label: 'Thống kê' },
   { path: '/admin/pos',       icon: 'bi-shop',         label: 'Bán tại quầy' },
   { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
   { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },

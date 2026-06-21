@@ -86,10 +86,15 @@ public class PaymentController {
                 ).multiply(BigDecimal.valueOf(100));
             }
 
+            BigDecimal giaNhap = variant.getGiaNhap() != null
+                    ? variant.getGiaNhap()
+                    : price.multiply(BigDecimal.valueOf(0.65)).setScale(0, java.math.RoundingMode.HALF_UP);
+
             chiTietList.add(HoaDonChiTiet.builder()
                     .vayChiTiet(variant)
                     .soLuong(qty)
                     .donGia(price)
+                    .giaNhap(giaNhap)
                     .phanTramGiam(phanTramGiam)
                     .build());
         }

@@ -58,6 +58,12 @@ export function api() {
     // Customers
     getKhachHang: () => request('/khach-hang'),
 
+    // Staff
+    getNhanVien: () => request('/nhan-vien'),
+    addNhanVien: (data) => request('/nhan-vien', { method: 'POST', body: JSON.stringify(data) }),
+    updateNhanVien: (id, data) => request(`/nhan-vien/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    updateNhanVienStatus: (id, status) => request(`/nhan-vien/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
 

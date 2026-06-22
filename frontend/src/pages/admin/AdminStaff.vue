@@ -16,6 +16,7 @@
           <tr>
             <th>STT</th>
             <th>Họ và tên</th>
+            <th>Tên đăng nhập</th>
             <th>Email</th>
             <th>Số điện thoại</th>
             <th>Trạng thái</th>
@@ -25,7 +26,8 @@
         <tbody>
           <tr v-for="(staff, index) in staffList" :key="staff.id">
             <td>{{ index + 1 }}</td>
-            <td>{{ staff.fullName }}</td>
+            <td>{{ staff.hoVaTen }}</td>
+            <td>{{ staff.username }}</td>
             <td>{{ staff.email }}</td>
             <td>{{ staff.phone }}</td>
             <td>
@@ -55,11 +57,20 @@
 
         <div class="mb-3">
           <label class="form-label">Họ và tên</label>
-          <input type="text" class="form-control" v-model="currentStaff.fullName" />
+          <input type="text" class="form-control" v-model="currentStaff.hoVaTen" />
         </div>
         <div class="mb-3">
           <label class="form-label">Email</label>
           <input type="email" class="form-control" v-model="currentStaff.email" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Tên đăng nhập</label>
+          <input type="text" class="form-control" v-model="currentStaff.username" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Mật khẩu</label>
+          <input type="password" class="form-control" v-model="currentStaff.password"
+                 :placeholder="modalType === 'add' ? 'Tạo mật khẩu cho nhân viên' : 'Để trống nếu giữ nguyên mật khẩu'" />
         </div>
         <div class="mb-3">
           <label class="form-label">Số điện thoại</label>
@@ -75,53 +86,94 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import { api } from '@/composables/useApi'
+import { useToast } from '@/composables/useToast'
 
-const staffList = ref([
-  { id: 1, fullName: 'Nguyễn Văn A', email: 'vana@gmail.com', phone: '0912345678', status: 1 },
-  { id: 2, fullName: 'Trần Thị B', email: 'thib@gmail.com', phone: '0987654321', status: 1 },
-  { id: 3, fullName: 'Lê Văn C', email: 'vanc@gmail.com', phone: '0933445566', status: 0 }
-])
-
+const { showToast } = useToast()
+const staffList = ref([])
+const loading = ref(false)
 const showModal = ref(false)
 const modalType = ref('add')
-const currentStaff = ref({ id: null, fullName: '', email: '', phone: '', status: 1 })
+const currentStaff = ref({ id: null, hoVaTen: '', email: '', username: '', password: '', phone: '', status: 1 })
+
+const fetchStaff = async () => {
+  loading.value = true
+  try {
+    const data = await api().getNhanVien()
+    staffList.value = data.map(item => ({
+      ...item,
+      hoVaTen: item.hoVaTen || item.fullName || '',
+      username: item.username || '',
+      phone: item.phone || item.soDienThoai || '',
+      status: item.status != null ? item.status : 1
+    }))
+  } catch (e) {
+    console.error('Fetch staff failed', e)
+    showToast('Không tải được danh sách nhân viên')
+  } finally {
+    loading.value = false
+  }
+}
 
 const openModal = (type, staff = null) => {
   modalType.value = type
   if (type === 'edit' && staff) {
-    currentStaff.value = { ...staff }
+    currentStaff.value = {
+      id: staff.id,
+      hoVaTen: staff.hoVaTen,
+      email: staff.email,
+      username: staff.username,
+      password: '',
+      phone: staff.phone,
+      status: staff.status
+    }
   } else {
-    currentStaff.value = { id: null, fullName: '', email: '', phone: '', status: 1 }
+    currentStaff.value = { id: null, hoVaTen: '', email: '', username: '', password: '', phone: '', status: 1 }
   }
   showModal.value = true
 }
 
-const saveStaff = () => {
-  if (!currentStaff.value.fullName || !currentStaff.value.email) {
-    alert('Vui lòng nhập đầy đủ họ tên và email')
-    return
-  }
-
-  if (modalType.value === 'add') {
-    const newId = staffList.value.length + 1
-    staffList.value.push({ ...currentStaff.value, id: newId })
-  } else {
-    const index = staffList.value.findIndex(item => item.id === currentStaff.value.id)
-    if (index !== -1) {
-      staffList.value[index] = { ...currentStaff.value }
+        password: currentStaff.value.password,
+        phone: currentStaff.value.phone,
+        status: currentStaff.value.status
+      })
+      showToast('Thêm nhân viên thành công')
+    } else {
+      await api().updateNhanVien(currentStaff.value.id, {
+        hoVaTen: currentStaff.value.hoVaTen,
+        email: currentStaff.value.email,
+        username: currentStaff.value.username,
+        password: currentStaff.value.password || undefined,
+        phone: currentStaff.value.phone,
+        status: currentStaff.value.status
+      })
+      showToast('Cập nhật nhân viên thành công')
     }
+    await fetchStaff()
+    showModal.value = false
+  } catch (e) {
+    alert(e.error || e.message || 'Lỗi khi lưu nhân viên')
   }
-  showModal.value = false
 }
 
-const toggleStatus = (staff) => {
-  if (!confirm(`Bạn có chắc chắn muốn ${staff.status === 1 ? 'khóa' : 'mở khóa'} nhân viên ${staff.fullName}?`)) {
+const toggleStatus = async (staff) => {
+  const nextStatus = staff.status === 1 ? 0 : 1
+  if (!confirm(`Bạn có chắc chắn muốn ${staff.status === 1 ? 'khóa' : 'mở khóa'} nhân viên ${staff.hoVaTen}?`)) {
     return
   }
-  staff.status = staff.status === 1 ? 0 : 1
+
+  try {
+    await api().updateNhanVienStatus(staff.id, nextStatus)
+    staff.status = nextStatus
+    showToast('Thay đổi trạng thái thành công')
+  } catch (e) {
+    alert(e.error || e.message || 'Lỗi khi thay đổi trạng thái')
+  }
 }
+
+onMounted(fetchStaff)
 </script>
 
 <style scoped>

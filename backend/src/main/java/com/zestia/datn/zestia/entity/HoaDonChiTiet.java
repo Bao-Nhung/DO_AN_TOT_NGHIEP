@@ -34,4 +34,7 @@ public class HoaDonChiTiet {
 
     @Column(name = "phan_tram_giam")
     private BigDecimal phanTramGiam;
+
+    @Column(name = "gia_nhap")
+    private BigDecimal giaNhap;
 }

@@ -58,4 +58,7 @@ public class VayChiTiet {
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
+
+    @Column(name = "gia_nhap")
+    private BigDecimal giaNhap;
 }

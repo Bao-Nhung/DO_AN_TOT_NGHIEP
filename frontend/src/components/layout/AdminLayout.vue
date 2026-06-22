@@ -52,6 +52,7 @@ const navItems = [
   { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
   { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },
   { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng' },
+  { path: '/admin/schedule',  icon: 'bi-calendar-week', label: 'Lịch làm việc' },
   { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Khuyến mãi' },
   { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt' },
 ]

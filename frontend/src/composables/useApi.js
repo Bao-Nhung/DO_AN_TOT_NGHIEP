@@ -58,6 +58,16 @@ export function api() {
     // Customers
     getKhachHang: () => request('/khach-hang'),
 
+    // Work schedule
+    getLichLamViec: (from, to) => {
+      const q = from && to ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : ''
+      return request(`/lich-lam-viec${q}`)
+    },
+    getNhanVienLich: () => request('/lich-lam-viec/nhan-vien'),
+    addLichLamViec: (data) => request('/lich-lam-viec', { method: 'POST', body: JSON.stringify(data) }),
+    updateLichLamViec: (id, data) => request(`/lich-lam-viec/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteLichLamViec: (id) => request(`/lich-lam-viec/${id}`, { method: 'DELETE' }),
+
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
 

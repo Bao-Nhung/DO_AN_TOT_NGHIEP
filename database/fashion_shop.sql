@@ -74,6 +74,8 @@ CREATE TABLE [dbo].[Lich_lam_viec] (
   [ghi_chu] nvarchar(500) NULL,
   [trang_thai] tinyint NULL,
   [ngay_tao] datetime2(7) NULL,
+  [ngay_cap_nhat] datetime2(7) NULL,
+  [trang_thai_xoa] bit DEFAULT 0 NOT NULL,
   CONSTRAINT [PK_Lich_lam_viec] PRIMARY KEY ([id])
 );
 END
@@ -81,11 +83,11 @@ GO
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Lich_lam_viec])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Lich_lam_viec] ON;
-INSERT INTO [dbo].[Lich_lam_viec] ([id], [id_nhan_vien], [ngay_lam_viec], [ca_lam_viec], [gio_bat_dau], [gio_ket_thuc], [vi_tri], [ghi_chu], [trang_thai], [ngay_tao]) VALUES
-(1, 1, '2026-06-22', N'Ca sáng', '08:00:00', '12:00:00', N'Cửa hàng', N'Kiểm tra vận hành đầu ngày', 1, '2026-06-22T08:00:00.000'),
-(2, 2, '2026-06-22', N'Ca chiều', '13:00:00', '17:00:00', N'Quầy bán hàng', N'Tư vấn khách và xử lý đơn tại quầy', 1, '2026-06-22T08:00:00.000'),
-(3, 2, '2026-06-24', N'Ca sáng', '08:00:00', '12:00:00', N'Kho', N'Sắp xếp tồn kho theo size/màu', 0, '2026-06-22T08:00:00.000'),
-(4, 1, '2026-06-26', N'Ca cả ngày', '08:00:00', '17:00:00', N'Cửa hàng', N'Tổng kết doanh thu tuần', 1, '2026-06-22T08:00:00.000');
+INSERT INTO [dbo].[Lich_lam_viec] ([id], [id_nhan_vien], [ngay_lam_viec], [ca_lam_viec], [gio_bat_dau], [gio_ket_thuc], [vi_tri], [ghi_chu], [trang_thai], [ngay_tao], [ngay_cap_nhat], [trang_thai_xoa]) VALUES
+(1, 1, '2026-06-22', N'Ca sáng', '08:00:00', '12:00:00', N'Cửa hàng', N'Kiểm tra vận hành đầu ngày', 1, '2026-06-22T08:00:00.000', '2026-06-22T08:00:00.000', 0),
+(2, 2, '2026-06-22', N'Ca chiều', '13:00:00', '17:00:00', N'Quầy bán hàng', N'Tư vấn khách và xử lý đơn tại quầy', 1, '2026-06-22T08:00:00.000', '2026-06-22T08:00:00.000', 0),
+(3, 2, '2026-06-24', N'Ca sáng', '08:00:00', '12:00:00', N'Kho', N'Sắp xếp tồn kho theo size/màu', 0, '2026-06-22T08:00:00.000', '2026-06-22T08:00:00.000', 0),
+(4, 1, '2026-06-26', N'Ca cả ngày', '08:00:00', '17:00:00', N'Cửa hàng', N'Tổng kết doanh thu tuần', 1, '2026-06-22T08:00:00.000', '2026-06-22T08:00:00.000', 0);
 SET IDENTITY_INSERT [dbo].[Lich_lam_viec] OFF;
 END
 GO

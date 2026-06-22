@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface LichLamViecRepository extends JpaRepository<LichLamViec, Integer> {
 
-    List<LichLamViec> findAllByOrderByNgayLamViecAscGioBatDauAsc();
+    List<LichLamViec> findByTrangThaiXoaFalseOrderByNgayLamViecAscGioBatDauAsc();
 
-    List<LichLamViec> findByNgayLamViecBetweenOrderByNgayLamViecAscGioBatDauAsc(LocalDate from, LocalDate to);
+    List<LichLamViec> findByNgayLamViecBetweenAndTrangThaiXoaFalseOrderByNgayLamViecAscGioBatDauAsc(LocalDate from, LocalDate to);
 }

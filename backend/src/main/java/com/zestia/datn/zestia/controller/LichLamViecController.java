@@ -6,11 +6,13 @@ import com.zestia.datn.zestia.repository.LichLamViecRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,19 +26,42 @@ public class LichLamViecController {
     private final NhanVienRepository nhanVienRepo;
 
     @GetMapping
-    public List<Map<String, Object>> getAll(@RequestParam(required = false) String from,
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getAll(@RequestParam(required = false) String from,
                                             @RequestParam(required = false) String to) {
-        List<LichLamViec> items;
-        if (from != null && to != null) {
-            items = lichLamViecRepo.findByNgayLamViecBetweenOrderByNgayLamViecAscGioBatDauAsc(
-                    LocalDate.parse(from), LocalDate.parse(to));
-        } else {
-            items = lichLamViecRepo.findAllByOrderByNgayLamViecAscGioBatDauAsc();
+        try {
+            List<LichLamViec> items;
+            if (from != null && to != null) {
+                items = lichLamViecRepo.findByNgayLamViecBetweenAndTrangThaiXoaFalseOrderByNgayLamViecAscGioBatDauAsc(
+                        LocalDate.parse(from), LocalDate.parse(to));
+            } else {
+                items = lichLamViecRepo.findByTrangThaiXoaFalseOrderByNgayLamViecAscGioBatDauAsc();
+            }
+            return ResponseEntity.ok(items.stream().map(this::toMap).toList());
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Định dạng ngày không hợp lệ (YYYY-MM-DD)"));
         }
-        return items.stream().map(this::toMap).toList();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMySchedule(@RequestParam(required = false) String from,
+                                           @RequestParam(required = false) String to) {
+        try {
+            List<LichLamViec> items;
+            if (from != null && to != null) {
+                items = lichLamViecRepo.findByNgayLamViecBetweenAndTrangThaiXoaFalseOrderByNgayLamViecAscGioBatDauAsc(
+                        LocalDate.parse(from), LocalDate.parse(to));
+            } else {
+                items = lichLamViecRepo.findByTrangThaiXoaFalseOrderByNgayLamViecAscGioBatDauAsc();
+            }
+            return ResponseEntity.ok(items.stream().map(this::toMap).toList());
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Định dạng ngày không hợp lệ (YYYY-MM-DD)"));
+        }
     }
 
     @GetMapping("/nhan-vien")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<Map<String, Object>> getNhanVien() {
         return nhanVienRepo.findAll().stream().map(nv -> {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -52,32 +77,53 @@ public class LichLamViecController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         ResponseEntity<?> invalid = validate(body);
         if (invalid != null) return invalid;
 
-        LichLamViec lich = new LichLamViec();
-        applyBody(lich, body);
-        lich.setNgayTao(LocalDateTime.now());
-        if (lich.getTrangThai() == null) lich.setTrangThai((byte) 1);
-        return ResponseEntity.ok(toMap(lichLamViecRepo.save(lich)));
+        try {
+            LichLamViec lich = new LichLamViec();
+            applyBody(lich, body);
+            lich.setNgayTao(LocalDateTime.now());
+            lich.setNgayCapNhat(LocalDateTime.now());
+            if (lich.getTrangThai() == null) lich.setTrangThai((byte) 1);
+            lich.setTrangThaiXoa(false);
+            return ResponseEntity.ok(toMap(lichLamViecRepo.save(lich)));
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Định dạng dữ liệu không hợp lệ"));
+        }
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         ResponseEntity<?> invalid = validate(body);
         if (invalid != null) return invalid;
 
         return lichLamViecRepo.findById(id).map(existing -> {
-            applyBody(existing, body);
-            return ResponseEntity.ok(toMap(lichLamViecRepo.save(existing)));
+            try {
+                if (existing.getTrangThaiXoa()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Lịch này đã bị xóa"));
+                }
+                applyBody(existing, body);
+                existing.setNgayCapNhat(LocalDateTime.now());
+                return ResponseEntity.ok(toMap(lichLamViecRepo.save(existing)));
+            } catch (DateTimeParseException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Định dạng dữ liệu không hợp lệ"));
+            }
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> delete(@PathVariable Integer id) {
-        lichLamViecRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return lichLamViecRepo.findById(id).map(lich -> {
+            lich.setTrangThaiXoa(true);
+            lich.setNgayCapNhat(LocalDateTime.now());
+            lichLamViecRepo.save(lich);
+            return ResponseEntity.ok(Map.of("message", "Xóa lịch làm việc thành công"));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     private ResponseEntity<?> validate(Map<String, Object> body) {
@@ -91,12 +137,23 @@ public class LichLamViecController {
         if (!nhanVienRepo.existsById(nhanVienId)) {
             return ResponseEntity.badRequest().body(Map.of("error", "Nhân viên không tồn tại"));
         }
+        
+        try {
+            LocalDate ngay = LocalDate.parse(String.valueOf(body.get("ngayLamViec")));
+            if (ngay.isBefore(LocalDate.now())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Không được phép tạo lịch quá khứ"));
+            }
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Định dạng ngày không hợp lệ (YYYY-MM-DD)"));
+        }
+        
         return null;
     }
 
     private void applyBody(LichLamViec lich, Map<String, Object> body) {
         Integer nhanVienId = toInteger(body.get("nhanVienId"));
-        NhanVien nv = nhanVienRepo.findById(nhanVienId).orElseThrow();
+        NhanVien nv = nhanVienRepo.findById(nhanVienId)
+            .orElseThrow(() -> new RuntimeException("Nhân viên không tồn tại"));
         lich.setNhanVien(nv);
         lich.setNgayLamViec(LocalDate.parse(String.valueOf(body.get("ngayLamViec"))));
         lich.setCaLamViec(toString(body.get("caLamViec")));

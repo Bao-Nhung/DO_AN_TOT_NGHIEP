@@ -47,4 +47,10 @@ public class LichLamViec {
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
+
+    @Column(name = "ngay_cap_nhat")
+    private LocalDateTime ngayCapNhat;
+
+    @Column(name = "trang_thai_xoa")
+    private Boolean trangThaiXoa = false;
 }

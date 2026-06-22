@@ -34,6 +34,9 @@ import AdminVouchers   from '@/pages/admin/AdminVouchers.vue'
 import AdminSettings   from '@/pages/admin/AdminSettings.vue'
 import AdminPOS        from '@/pages/admin/AdminPOS.vue'
 
+// Pages — Employee
+import EmployeeSchedule from '@/pages/employee/EmployeeSchedule.vue'
+
 const routes = [
   { path: '/',               component: HomePage,       name: 'home' },
   { path: '/collections',    component: ProductsPage,   name: 'products' },
@@ -54,6 +57,8 @@ const routes = [
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },
+
+  { path: '/employee/schedule', component: EmployeeSchedule, name: 'employee-schedule' },
 ]
 
 const router = createRouter({

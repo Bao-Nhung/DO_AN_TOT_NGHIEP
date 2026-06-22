@@ -50,7 +50,7 @@ const routes = [
   { path: '/admin/products',  component: AdminProducts,  name: 'admin-products' },
   { path: '/admin/orders',    component: AdminOrders,    name: 'admin-orders' },
   { path: '/admin/customers', component: AdminCustomers, name: 'admin-customers' },
-  { path: '/admin/schedule',  component: AdminSchedule,  name: 'admin-schedule' },
+  // { path: '/admin/schedule',  component: AdminSchedule,  name: 'admin-schedule' },
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },

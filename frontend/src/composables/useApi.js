@@ -71,6 +71,15 @@ export function api() {
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
 
+    // Thống kê (báo cáo admin)
+    getThongKeTongHop: ({ startDate, endDate, timeType = 'ngay' }) => {
+      const params = new URLSearchParams()
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+      if (timeType) params.append('timeType', timeType)
+      return request(`/admin/thong-ke/tong-hop?${params.toString()}`)
+    },
+
     // Attributes
     getThuocTinh: () => request('/thuoc-tinh'),
     getMauSac: () => request('/thuoc-tinh/mau-sac'),

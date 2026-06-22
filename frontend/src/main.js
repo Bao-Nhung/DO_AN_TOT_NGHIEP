@@ -33,6 +33,7 @@ import AdminSchedule   from '@/pages/admin/AdminSchedule.vue'
 import AdminVouchers   from '@/pages/admin/AdminVouchers.vue'
 import AdminSettings   from '@/pages/admin/AdminSettings.vue'
 import AdminPOS        from '@/pages/admin/AdminPOS.vue'
+import AdminStatisticalDashboard from '@/pages/admin/AdminStatisticalDashboard.vue'
 
 // Pages — Employee
 import EmployeeSchedule from '@/pages/employee/EmployeeSchedule.vue'
@@ -50,10 +51,11 @@ const routes = [
   { path: '/qr-payment',    component: QRPaymentPage,     name: 'qr-payment' },
 
   { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
+  { path: '/admin/thong-ke',  component: AdminStatisticalDashboard, name: 'admin-thong-ke' },
+  { path: '/admin/schedule',  component: AdminSchedule,  name: 'admin-schedule' },
   { path: '/admin/products',  component: AdminProducts,  name: 'admin-products' },
   { path: '/admin/orders',    component: AdminOrders,    name: 'admin-orders' },
   { path: '/admin/customers', component: AdminCustomers, name: 'admin-customers' },
-  { path: '/admin/schedule',  component: AdminSchedule,  name: 'admin-schedule' },
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },

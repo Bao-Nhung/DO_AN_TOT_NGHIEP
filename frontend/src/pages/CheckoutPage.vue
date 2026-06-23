@@ -8,7 +8,6 @@
     </div>
 
     <div class="container py-5">
-      <!-- Empty cart -->
       <div v-if="!state.items.length" class="text-center py-5">
         <i class="bi bi-cart-x mb-3" style="font-size:48px;color:var(--z-gray-border)"></i>
         <h3 class="z-display" style="font-weight:400;color:var(--z-gray)">Giỏ hàng trống</h3>
@@ -16,10 +15,8 @@
         <RouterLink to="/collections" class="lm-btn-primary mt-3"><span>Mua sắm ngay</span></RouterLink>
       </div>
 
-      <!-- Checkout form -->
       <div v-else class="row g-5">
 
-        <!-- Left: Shipping info -->
         <div class="col-lg-7">
           <div class="z-checkout-section">
             <h3 class="z-checkout-title">
@@ -39,10 +36,36 @@
                 <label class="z-label">Email</label>
                 <input v-model="form.email" type="email" class="lm-input" placeholder="email@example.com" />
               </div>
-              <div class="col-12">
-                <label class="z-label">Địa chỉ giao hàng *</label>
-                <input v-model="form.diaChi" class="lm-input" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" />
+              
+              <div class="col-md-4">
+                <label class="z-label">Tỉnh / Thành phố *</label>
+                <select v-model="selectedCity" class="lm-input" @change="onCityChange">
+                  <option value="">Chọn Tỉnh/Thành</option>
+                  <option v-for="c in addressData" :key="c.code" :value="c.code">{{ c.name }}</option>
+                </select>
               </div>
+
+              <div class="col-md-4">
+                <label class="z-label">Quận / Huyện *</label>
+                <select v-model="selectedDistrict" class="lm-input" :disabled="!selectedCity" @change="onDistrictChange">
+                  <option value="">Chọn Quận/Huyện</option>
+                  <option v-for="d in availableDistricts" :key="d.code" :value="d.code">{{ d.name }}</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="z-label">Phường / Xã *</label>
+                <select v-model="selectedWard" class="lm-input" :disabled="!selectedDistrict">
+                  <option value="">Chọn Phường/Xã</option>
+                  <option v-for="w in availableWards" :key="w.code" :value="w.code">{{ w.name }}</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="z-label">Địa chỉ cụ thể *</label>
+                <input v-model="specificAddress" class="lm-input" placeholder="Số nhà, tên đường, ngõ ngách..." />
+              </div>
+
               <div class="col-12">
                 <label class="z-label">Ghi chú</label>
                 <textarea v-model="form.ghiChu" class="lm-input" rows="3"
@@ -51,7 +74,6 @@
             </div>
           </div>
 
-          <!-- Payment method -->
           <div class="z-checkout-section mt-4">
             <h3 class="z-checkout-title">
               <i class="bi bi-credit-card"></i> Phương thức thanh toán
@@ -109,7 +131,6 @@
           </div>
         </div>
 
-        <!-- Right: Order summary -->
         <div class="col-lg-5">
           <div class="z-order-summary">
             <h3 class="z-checkout-title">
@@ -132,7 +153,6 @@
               </div>
             </div>
 
-            <!-- Voucher -->
             <div class="z-voucher-box">
               <div class="z-voucher-input-row">
                 <i class="bi bi-ticket-perforated" style="color:var(--z-accent)"></i>
@@ -155,14 +175,18 @@
                 <span>Tạm tính</span>
                 <span>{{ formatPrice(subtotal) }}</span>
               </div>
+              
               <div class="z-order-row">
                 <span>Phí vận chuyển</span>
-                <span style="color:var(--z-accent)">Miễn phí</span>
+                <span v-if="shippingFee === 0" style="color:var(--z-accent)">Miễn phí</span>
+                <span v-else>+{{ formatPrice(shippingFee) }}</span>
               </div>
+
               <div v-if="discount > 0" class="z-order-row">
                 <span>Giảm giá ({{ appliedVoucher }})</span>
                 <span style="color:var(--z-accent)">-{{ formatPrice(discount) }}</span>
               </div>
+              
               <div class="z-order-row z-order-total">
                 <span>Tổng cộng</span>
                 <span>{{ formatPrice(finalTotal) }}</span>
@@ -211,9 +235,51 @@ const form = ref({
   hoTen: '',
   soDienThoai: '',
   email: '',
-  diaChi: '',
   ghiChu: '',
   hinhThuc: 'MOMO'
+})
+
+// Variables cho Form Địa Chỉ (Sử dụng API provinces.open-api.vn)
+const addressData = ref([])
+const selectedCity = ref('')
+const selectedDistrict = ref('')
+const selectedWard = ref('')
+const specificAddress = ref('')
+
+const availableDistricts = computed(() => {
+  const city = addressData.value.find(c => c.code === selectedCity.value)
+  return city ? city.districts : []
+})
+
+const availableWards = computed(() => {
+  const district = availableDistricts.value.find(d => d.code === selectedDistrict.value)
+  return district ? district.wards : []
+})
+
+function onCityChange() {
+  selectedDistrict.value = ''
+  selectedWard.value = ''
+}
+
+function onDistrictChange() {
+  selectedWard.value = ''
+}
+
+// CẬP NHẬT LOGIC TÍNH PHÍ VẬN CHUYỂN DỰA THEO ĐỊA CHỈ
+const shippingFee = computed(() => {
+  // Nếu chưa chọn đủ Tỉnh/Quận thì mặc định là 0 để người dùng không bị rối
+  if (!selectedCity.value || !selectedDistrict.value) return 0;
+
+  // Mã 01 là Hà Nội, Mã 005 là Cầu Giấy (theo chuẩn API open-api.vn)
+  if (selectedCity.value === 1 || selectedCity.value === '01' || selectedCity.value === '1') {
+    if (selectedDistrict.value === 5 || selectedDistrict.value === '005' || selectedDistrict.value === '5') {
+      return 0; // Trung tâm Cầu Giấy -> Miễn phí
+    }
+    return 30000; // Các quận huyện khác thuộc Hà Nội -> 30k
+  }
+  
+  // Nếu không phải Hà Nội -> Các tỉnh khác -> 50k
+  return 50000; 
 })
 
 // Voucher
@@ -223,7 +289,8 @@ const discount = ref(0)
 const voucherMsg = ref('')
 const applyingVoucher = ref(false)
 
-const finalTotal = computed(() => Math.max(0, subtotal.value - discount.value))
+// Cập nhật finalTotal cộng thêm phí vận chuyển
+const finalTotal = computed(() => Math.max(0, subtotal.value + shippingFee.value - discount.value))
 
 async function applyVoucher() {
   if (!voucherCode.value.trim()) return showToast('Vui lòng nhập mã giảm giá')
@@ -254,7 +321,7 @@ function removeVoucher() {
   voucherMsg.value = ''
 }
 
-onMounted(() => {
+onMounted(async () => {
   const { isLoggedIn } = useAuth()
   if (!isLoggedIn()) {
     showToast('Vui lòng đăng nhập để thanh toán')
@@ -267,22 +334,43 @@ onMounted(() => {
     form.value.soDienThoai = user.soDienThoai || ''
     form.value.email = user.email || ''
   }
+
+  // Tự động load dữ liệu Tỉnh thành VN khi mở trang
+  try {
+    const res = await fetch('https://provinces.open-api.vn/api/?depth=3')
+    addressData.value = await res.json()
+  } catch(e) {
+    console.error("Lỗi khi tải danh sách tỉnh thành", e)
+  }
 })
 
 async function placeOrder() {
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
   if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
-  if (!form.value.diaChi.trim()) return showToast('Vui lòng nhập địa chỉ giao hàng')
+  
+  // Validate địa chỉ mới
+  if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
+    return showToast('Vui lòng chọn và nhập đầy đủ địa chỉ giao hàng')
+  }
 
   loading.value = true
   try {
+    // Trích xuất tên Tỉnh, Huyện, Xã từ code đang chọn và ghép thành chuỗi hoàn chỉnh
+    const cityName = addressData.value.find(c => c.code === selectedCity.value)?.name || ''
+    const districtName = availableDistricts.value.find(d => d.code === selectedDistrict.value)?.name || ''
+    const wardName = availableWards.value.find(w => w.code === selectedWard.value)?.name || ''
+    
+    // Nối thành chuỗi địa chỉ để Backend nhận y như cũ
+    const fullAddress = `${specificAddress.value.trim()}, ${wardName}, ${districtName}, ${cityName}`
+
     const orderData = {
       hoTen: form.value.hoTen,
       soDienThoai: form.value.soDienThoai,
-      diaChi: form.value.diaChi,
+      diaChi: fullAddress, // Gửi chuỗi địa chỉ đã ghép
       ghiChu: form.value.ghiChu,
       hinhThucThanhToan: form.value.hinhThuc,
       maGiamGia: appliedVoucher.value || null,
+      phiVanChuyen: shippingFee.value, // CẬP NHẬT GỬI PHÍ SHIP LÊN BACKEND
       items: state.items.map(i => ({ productId: i.id, qty: i.qty }))
     }
 
@@ -319,6 +407,7 @@ async function placeOrder() {
 </script>
 
 <style scoped>
+/* Toàn bộ CSS giữ nguyên để không làm vỡ layout của bạn */
 .z-checkout-section {
   background: white;
   border: 1px solid var(--z-gray-border);

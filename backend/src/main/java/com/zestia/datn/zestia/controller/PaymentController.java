@@ -103,6 +103,12 @@ public class PaymentController {
             return ResponseEntity.badRequest().body(Map.of("error", "Không có sản phẩm hợp lệ"));
         }
 
+        // Lấy phí vận chuyển từ Frontend gửi lên (Mặc định là 0 nếu không có)
+        BigDecimal phiVanChuyen = BigDecimal.ZERO;
+        if (body.get("phiVanChuyen") != null) {
+            phiVanChuyen = new BigDecimal(body.get("phiVanChuyen").toString());
+        }
+
         // Áp dụng voucher (mã giảm giá) nếu có
         GiamGia voucher = null;
         BigDecimal giamGia = BigDecimal.ZERO;
@@ -115,7 +121,8 @@ public class PaymentController {
             }
         }
 
-        BigDecimal tongTien = tamTinh.subtract(giamGia);
+        // CẬP NHẬT TÍNH TỔNG TIỀN: Tiền hàng + Phí Ship - Giảm giá
+        BigDecimal tongTien = tamTinh.add(phiVanChuyen).subtract(giamGia);
         if (tongTien.compareTo(BigDecimal.ZERO) < 0) tongTien = BigDecimal.ZERO;
 
         // Trạng thái: mặc định 0 (Chờ xử lý). POS gửi trangThai=3 (Hoàn thành).
@@ -141,7 +148,7 @@ public class PaymentController {
                 .nhanVien(nv)
                 .giamGia(voucher)
                 .tongTien(tongTien)
-                .phiVanChuyen(BigDecimal.ZERO)
+                .phiVanChuyen(phiVanChuyen) // ĐÃ LƯU VÀO DB
                 .giamGiaKhuyenMai(giamGia)
                 .hinhThucNhanHang((byte) 1)
                 .diaChiGiaoHang(diaChi != null ? diaChi : "")
@@ -183,6 +190,7 @@ public class PaymentController {
         result.put("maHoaDon", maHoaDon);
         result.put("tamTinh", tamTinh);
         result.put("giamGia", giamGia);
+        result.put("phiVanChuyen", phiVanChuyen);
         result.put("tongTien", tongTien);
         result.put("hinhThucThanhToan", hoaDon.getHinhThucThanhToan());
 
@@ -464,3 +472,4 @@ public class PaymentController {
         try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
     }
 }
+

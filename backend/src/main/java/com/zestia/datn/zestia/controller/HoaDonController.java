@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 @RestController
@@ -55,16 +56,27 @@ public class HoaDonController {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", hd.getId());
         map.put("maHoaDon", hd.getMaHoaDon());
-        map.put("khachHang", hd.getKhachHang() != null ? hd.getKhachHang().getHoVaTen() : null);
+        
+        // GIỮ NGUYÊN KEY GỐC: khachHang
+        map.put("khachHang", hd.getKhachHang() != null ? hd.getKhachHang().getHoVaTen() : "Khách lẻ");
         map.put("soDienThoai", hd.getKhachHang() != null ? hd.getKhachHang().getSoDienThoai() : null);
+        
         map.put("soSanPham", soSanPham);
-        map.put("tongTien", hd.getTongTien());
-        map.put("giamGiaKhuyenMai", hd.getGiamGiaKhuyenMai());
+        
+        // Bọc chống null an toàn
+        map.put("tongTien", hd.getTongTien() != null ? hd.getTongTien() : BigDecimal.ZERO);
+        map.put("phiVanChuyen", hd.getPhiVanChuyen() != null ? hd.getPhiVanChuyen() : BigDecimal.ZERO);
+        map.put("giamGiaKhuyenMai", hd.getGiamGiaKhuyenMai() != null ? hd.getGiamGiaKhuyenMai() : BigDecimal.ZERO);
+        
+        map.put("nhanVien", hd.getNhanVien() != null ? hd.getNhanVien().getHoVaTen() : null);
+        map.put("khuyenMai", hd.getKhuyenMai() != null ? hd.getKhuyenMai().getTenKhuyenMai() : null);
+        map.put("giamGia", hd.getGiamGia() != null ? hd.getGiamGia().getTenGiamGia() : null);
         map.put("hinhThucThanhToan", hd.getHinhThucThanhToan());
         map.put("phuongThucThanhToanOnline", hd.getPhuongThucThanhToanOnline());
         map.put("daThanhToan", Boolean.TRUE.equals(hd.getDaThanhToan()));
-        map.put("trangThai", hd.getTrangThai());
+        map.put("trangThai", hd.getTrangThai()); 
         map.put("diaChiGiaoHang", hd.getDiaChiGiaoHang());
+        map.put("hinhThucNhanHang", hd.getHinhThucNhanHang()); 
         map.put("ghiChu", hd.getGhiChu());
         map.put("ngayTao", hd.getNgayTao());
         return map;
@@ -73,20 +85,23 @@ public class HoaDonController {
     private Map<String, Object> toDetailMap(HoaDon hd) {
         Map<String, Object> map = toMap(hd);
         map.put("emailKhachHang", hd.getKhachHang() != null ? hd.getKhachHang().getEmail() : null);
+        
         List<HoaDonChiTiet> chiTiets = hoaDonCtRepo.findByHoaDonId(hd.getId());
         List<Map<String, Object>> items = new ArrayList<>();
         for (HoaDonChiTiet ct : chiTiets) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", ct.getId());
             if (ct.getVayChiTiet() != null) {
-                item.put("tenVay", ct.getVayChiTiet().getVay() != null
+                // GIỮ NGUYÊN KEY GỐC: tenVay
+                item.put("tenVay", ct.getVayChiTiet().getVay() != null 
                         ? ct.getVayChiTiet().getVay().getTenVay() : null);
-                item.put("mauSac", ct.getVayChiTiet().getMauSac() != null
+                item.put("mauSac", ct.getVayChiTiet().getMauSac() != null 
                         ? ct.getVayChiTiet().getMauSac().getTenMauSac() : null);
-                item.put("maHex", ct.getVayChiTiet().getMauSac() != null
+                item.put("maHex", ct.getVayChiTiet().getMauSac() != null 
                         ? ct.getVayChiTiet().getMauSac().getMaHex() : null);
-                item.put("kichThuoc", ct.getVayChiTiet().getKichThuoc() != null
+                item.put("kichThuoc", ct.getVayChiTiet().getKichThuoc() != null 
                         ? ct.getVayChiTiet().getKichThuoc().getTenKichThuoc() : null);
+                
                 if (ct.getVayChiTiet().getVay() != null) {
                     List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(
                             ct.getVayChiTiet().getVay().getId(), (byte) 1);
@@ -94,10 +109,11 @@ public class HoaDonController {
                 }
             }
             item.put("soLuong", ct.getSoLuong());
-            item.put("donGia", ct.getDonGia());
+            item.put("donGia", ct.getDonGia() != null ? ct.getDonGia() : BigDecimal.ZERO);
             items.add(item);
         }
         map.put("chiTiets", items);
         return map;
     }
 }
+

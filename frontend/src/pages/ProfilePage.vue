@@ -3,7 +3,6 @@
     <div class="container" style="padding-top:100px;padding-bottom:80px">
       <div class="row g-5">
 
-        <!-- Sidebar -->
         <div class="col-lg-3">
           <div style="position:sticky;top:100px">
             <div class="position-relative mb-3" style="width:80px;height:80px">
@@ -32,10 +31,8 @@
           </div>
         </div>
 
-        <!-- Content -->
         <div class="col-lg-9 pt-2">
 
-          <!-- Orders Tab -->
           <div v-if="activeTab === 'orders'">
             <h2 class="z-display mb-4" style="font-size:28px;font-weight:400">Đơn hàng <em style="font-style:italic;color:var(--z-gray)">của tôi</em></h2>
             <div class="row g-3 mb-5">
@@ -76,7 +73,6 @@
             </div>
           </div>
 
-          <!-- Settings Tab -->
           <div v-if="activeTab === 'settings'">
             <h2 class="z-display mb-4" style="font-size:28px;font-weight:400">Thông tin <em style="font-style:italic;color:var(--z-gray)">cá nhân</em></h2>
             <div class="row g-4 mb-4" style="background:var(--z-white);padding:24px;border-radius:var(--z-radius-lg);border:1px solid var(--z-gray-border)">
@@ -90,7 +86,6 @@
             <button class="lm-btn-primary" @click="saveProfile" :disabled="saving"><span>{{ saving ? 'Đang lưu...' : 'Lưu thay đổi' }}</span></button>
           </div>
 
-          <!-- Address Tab -->
           <div v-if="activeTab === 'address'">
             <h2 class="z-display mb-4" style="font-size:28px;font-weight:400">Địa chỉ <em style="font-style:italic;color:var(--z-gray)">giao hàng</em></h2>
             <div class="row g-4 mb-4" style="background:var(--z-white);padding:24px;border-radius:var(--z-radius-lg);border:1px solid var(--z-gray-border)">
@@ -107,9 +102,8 @@
       </div>
     </div>
 
-    <!-- Order Detail Modal -->
-    <div v-if="showDetail" class="z-modal-overlay" @click.self="showDetail = false">
-      <div class="z-modal" style="max-width:700px">
+    <div v-if="showDetail" class="z-modal-overlay" @click.self="showDetail = false" style="z-index: 1050; backdrop-filter: blur(2px);">
+      <div class="z-modal" style="max-width:800px">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết đơn hàng</h3>
@@ -124,31 +118,60 @@
         </div>
 
         <div v-else-if="detailOrder">
-          <div class="d-flex justify-content-between align-items-center mb-3 pb-3" style="border-bottom:1px solid var(--z-gray-border)">
-            <div>
-              <div style="font-size:13px;color:var(--z-gray)">Ngày đặt: {{ fmtDate(detailOrder.ngayTao) }}</div>
-              <div style="font-size:13px;color:var(--z-gray)">Thanh toán: {{ detailOrder.hinhThucThanhToan }}</div>
-              <div v-if="detailOrder.diaChiGiaoHang" style="font-size:13px;color:var(--z-gray)">Địa chỉ: {{ detailOrder.diaChiGiaoHang }}</div>
-            </div>
-            <span :class="'lm-status-' + (statusMap[detailOrder.trangThai]?.key || 'pending')">
-              {{ statusMap[detailOrder.trangThai]?.label || 'Chờ xử lý' }}
-            </span>
+          <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
+            <template v-if="detailOrder.trangThai === 4">
+               <div class="z-step active">
+                  <div class="z-step-dot" style="background: var(--z-danger);"></div>
+                  <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
+               </div>
+            </template>
+            <template v-else>
+                <div v-for="(step, i) in statusSteps" :key="i"
+                     class="z-step" :class="{ active: detailOrder.trangThai >= i && detailOrder.trangThai !== 5, current: detailOrder.trangThai === i, failed: i === 3 && detailOrder.trangThai === 5 }">
+                  <div class="z-step-dot" :style="i === 3 && detailOrder.trangThai === 5 ? 'background: var(--z-danger)' : ''"></div>
+                  <div class="z-step-label" :style="i === 3 && detailOrder.trangThai === 5 ? 'color: var(--z-danger); font-weight: 600;' : ''">
+                      {{ i === 3 && detailOrder.trangThai === 5 ? 'Giao thất bại' : step }}
+                  </div>
+                  <div v-if="i < statusSteps.length - 1" class="z-step-line" :class="{ filled: detailOrder.trangThai > i && detailOrder.trangThai !== 5 }"></div>
+                </div>
+            </template>
           </div>
 
-          <div class="d-flex flex-column gap-0 mb-4">
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <h5 style="font-size:14px;font-weight:600;color:var(--z-dark);margin-bottom:12px;">Thông tin nhận hàng</h5>
+              <div style="font-size:13px;color:var(--z-gray); margin-bottom: 4px;"><strong>Người nhận:</strong> {{ detailOrder.khachHang || 'Khách hàng' }} <span v-if="detailOrder.soDienThoai">- {{ detailOrder.soDienThoai }}</span></div>
+              <div style="font-size:13px;color:var(--z-gray); margin-bottom: 4px;"><strong>Hình thức:</strong> {{ detailOrder.hinhThucNhanHang === 0 ? 'Nhận tại cửa hàng' : 'Giao hàng tận nơi' }}</div>
+              <div v-if="detailOrder.diaChiGiaoHang && detailOrder.hinhThucNhanHang !== 0" style="font-size:13px;color:var(--z-gray);"><strong>Địa chỉ:</strong> {{ detailOrder.diaChiGiaoHang }}</div>
+            </div>
+            <div class="col-md-6 mt-3 mt-md-0">
+               <h5 style="font-size:14px;font-weight:600;color:var(--z-dark);margin-bottom:12px;">Thông tin thanh toán</h5>
+               <div style="font-size:13px;color:var(--z-gray); margin-bottom: 4px;"><strong>Ngày đặt:</strong> {{ fmtDate(detailOrder.ngayTao) }}</div>
+               <div style="font-size:13px;color:var(--z-gray); margin-bottom: 4px;"><strong>Phương thức:</strong> {{ detailOrder.hinhThucThanhToan }}</div>
+               <div style="font-size:13px;color:var(--z-gray);">
+                 <strong>Trạng thái: </strong> 
+                 <span :class="detailOrder.daThanhToan ? 'text-success' : 'text-warning'" style="font-weight: 500;">
+                    {{ detailOrder.daThanhToan ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+                 </span>
+               </div>
+            </div>
+          </div>
+
+          <h5 style="font-size:14px;font-weight:600;color:var(--z-dark);margin-bottom:12px;">Danh sách sản phẩm ({{ detailOrder.chiTiets?.length || 0 }})</h5>
+          <div class="d-flex flex-column gap-0 mb-4" style="border:1px solid var(--z-gray-border);border-radius:var(--z-radius);overflow:hidden; max-height: 250px; overflow-y: auto;">
             <div v-for="item in detailOrder.chiTiets" :key="item.id"
-                 class="d-flex align-items-center gap-3" style="padding:12px 0;border-bottom:1px solid var(--z-gray-border)">
-              <div style="width:56px;height:64px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
+                 class="d-flex align-items-center gap-3" style="padding:12px 14px;border-bottom:1px solid var(--z-gray-border)">
+              <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
                 <img v-if="item.anhUrl" :src="item.anhUrl" style="width:100%;height:100%;object-fit:cover">
                 <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" style="font-size:18px;color:var(--z-gray-light)">
                   <i class="bi bi-image"></i>
                 </div>
               </div>
               <div class="flex-grow-1">
-                <div style="font-size:14px;font-weight:500;color:var(--z-dark)">{{ item.tenVay || 'Sản phẩm' }}</div>
+                <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ item.tenSanPham || item.tenVay || 'Sản phẩm' }}</div>
                 <div style="font-size:12px;color:var(--z-gray)">
                   <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
-                    <span v-if="item.maHex" :style="{ width:'10px', height:'10px', borderRadius:'50%', background: item.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
+                    <span v-if="item.maHex" :style="{ width:'8px', height:'8px', borderRadius:'50%', background: item.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
                     {{ item.mauSac }}
                   </span>
                   <span v-if="item.mauSac && item.kichThuoc"> · </span>
@@ -156,18 +179,33 @@
                   <span> · SL: {{ item.soLuong }}</span>
                 </div>
               </div>
-              <div style="font-size:14px;font-weight:600;color:var(--z-dark);white-space:nowrap">{{ fmtMoney(item.donGia) }}</div>
+              <div style="font-size:13px;font-weight:600;color:var(--z-dark);white-space:nowrap">{{ fmtMoney(item.donGia) }}</div>
             </div>
           </div>
 
           <div v-if="detailOrder.ghiChu" class="mb-3 p-3" style="background:var(--z-bg-alt);border-radius:var(--z-radius);font-size:13px;color:var(--z-gray)">
-            <strong>Ghi chú:</strong> {{ detailOrder.ghiChu }}
+            <strong>Ghi chú đơn hàng:</strong> {{ detailOrder.ghiChu }}
           </div>
 
-          <div class="d-flex justify-content-between align-items-center pt-3" style="border-top:2px solid var(--z-dark)">
-            <div style="font-size:16px;font-weight:600;color:var(--z-dark)">Tổng cộng</div>
-            <div class="z-display" style="font-size:22px;font-weight:600;color:var(--z-accent)">{{ fmtMoney(detailOrder.tongTien) }}</div>
+          <div class="mb-3 p-3 bg-light rounded" style="font-size:13px; color:var(--z-gray)">
+             <div class="d-flex justify-content-between mb-2">
+                <span>Tổng tiền hàng:</span>
+                <span style="font-weight: 500; color: var(--z-dark);">{{ fmtMoney(detailOrder.tongTien + (detailOrder.giamGiaKhuyenMai || 0) - (detailOrder.phiVanChuyen || 0)) }}</span>
+             </div>
+             <div class="d-flex justify-content-between mb-2" v-if="detailOrder.phiVanChuyen > 0">
+                <span>Phí vận chuyển:</span>
+                <span style="font-weight: 500; color: var(--z-dark);">+ {{ fmtMoney(detailOrder.phiVanChuyen) }}</span>
+             </div>
+             <div class="d-flex justify-content-between mb-2" v-if="detailOrder.giamGiaKhuyenMai > 0">
+                <span>Giảm giá / Khuyến mãi:</span>
+                <span class="text-danger font-weight-bold">- {{ fmtMoney(detailOrder.giamGiaKhuyenMai) }}</span>
+             </div>
+             <div class="d-flex justify-content-between align-items-center pt-2 mt-2" style="border-top:1px dashed var(--z-gray-border)">
+                <div style="font-size:14px;font-weight:600; color: var(--z-dark);">Tổng cộng</div>
+                <div class="z-display" style="font-size:22px;font-weight:700;color:var(--z-accent)">{{ fmtMoney(detailOrder.tongTien) }}</div>
+             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -177,7 +215,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import { useToast } from '@/composables/useToast'
@@ -212,14 +250,19 @@ const showDetail = ref(false)
 const detailOrder = ref(null)
 const loadingDetail = ref(false)
 
+// Real-time Sync (Polling) variable
+let pollingInterval = null
+
+// CẬP NHẬT: Đồng bộ từ điển trạng thái giống hệt Admin (Hoàn thành, Giao thất bại)
 const statusMap = {
   0: { key: 'pending', label: 'Chờ xử lý' },
-  1: { key: 'paid', label: 'Đã xác nhận' },
-  2: { key: 'shipping', label: 'Đang giao' },
-  3: { key: 'delivered', label: 'Đã giao' },
-  4: { key: 'cancelled', label: 'Đã huỷ' },
-  5: { key: 'failed', label: 'Thất bại' },
+  1: { key: 'warning', label: 'Đã xác nhận' },
+  2: { key: 'info', label: 'Đang giao' },
+  3: { key: 'success', label: 'Hoàn thành' },
+  4: { key: 'danger', label: 'Đã huỷ' },
+  5: { key: 'danger', label: 'Giao thất bại' },
 }
+const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Đang giao', 'Hoàn thành']
 
 const sortedOrders = computed(() => {
   return [...orders.value].sort((a, b) => {
@@ -264,17 +307,41 @@ async function openOrderDetail(order) {
   }
 }
 
-onMounted(async () => {
-  if (!isLoggedIn()) {
-    router.push('/login')
-    return
-  }
+// Hàm tải dữ liệu im lặng cho Polling
+async function loadOrdersSilent() {
+  try {
+    const data = await api().getMyOrders()
+    if (data) orders.value = data
+  } catch (e) { /* ignore error to prevent UI spam */ }
+}
+
+async function loadOrders() {
   try {
     const data = await api().getMyOrders()
     orders.value = data || []
   } catch (e) {
     console.error('Failed to load orders:', e)
   }
+}
+
+onMounted(async () => {
+  if (!isLoggedIn()) {
+    router.push('/login')
+    return
+  }
+  await loadOrders()
+  
+  // Bật Polling đồng bộ Real-time mỗi 10 giây
+  pollingInterval = setInterval(async () => {
+      // Chỉ poll khi không mở Modal chi tiết để tránh lag UI khách hàng
+      if (!showDetail.value) {
+          await loadOrdersSilent()
+      }
+  }, 10000)
+})
+
+onUnmounted(() => {
+  if (pollingInterval) clearInterval(pollingInterval)
 })
 
 const saving = ref(false)
@@ -332,12 +399,12 @@ const navItems = [
   box-shadow: 0 4px 16px rgba(212,86,78,0.08);
 }
 .z-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center; z-index: 1000;
 }
 .z-modal {
   background: var(--z-white); border-radius: var(--z-radius-lg);
-  padding: 28px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+  padding: 28px; width: 100%; max-height: 90vh; overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 }
 .z-icon-btn {
@@ -346,4 +413,25 @@ const navItems = [
   cursor: pointer; color: var(--z-gray); transition: all 0.2s; font-size: 14px;
 }
 .z-icon-btn:hover { background: var(--z-bg-alt); color: var(--z-dark); }
+.lm-status-pending { color: #b45309; background: #fef3cd; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.lm-status-warning { color: #d97706; background: #fef08a; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.lm-status-info { color: #0369a1; background: #e0f2fe; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.lm-status-success { color: #15803d; background: #dcfce7; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.lm-status-danger { color: #b91c1c; background: #fee2e2; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.lm-status-failed { color: #991b1b; background: #fca5a5; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+
+.z-step {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.z-step-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--z-gray-border); transition: all 0.2s;
+}
+.z-step.active .z-step-dot { background: var(--z-accent); }
+.z-step.current .z-step-dot { box-shadow: 0 0 0 3px var(--z-accent-soft); }
+.z-step-label { font-size: 12px; font-weight: 500; color: var(--z-gray-light); white-space: nowrap; }
+.z-step.active .z-step-label { color: var(--z-dark); }
+.z-step-line { width: 32px; height: 2px; background: var(--z-gray-border); margin: 0 4px; }
+.z-step-line.filled { background: var(--z-accent); }
 </style>
+

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
@@ -7,7 +7,6 @@
       </div>
     </div>
 
-    <!-- Status tabs -->
     <div class="d-flex gap-2 mb-3 flex-wrap">
       <button v-for="tab in statusTabs" :key="tab.value"
               class="z-tab" :class="{ active: activeStatus === tab.value }"
@@ -17,7 +16,6 @@
       </button>
     </div>
 
-    <!-- Search -->
     <div class="z-admin-card mb-3" style="padding:14px 20px">
       <div class="d-flex align-items-center gap-2" style="max-width:400px">
         <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
@@ -25,7 +23,6 @@
       </div>
     </div>
 
-    <!-- Table -->
     <div class="z-admin-card" style="padding:0;overflow:hidden">
       <table class="z-table">
         <thead>
@@ -37,7 +34,7 @@
             <th>Thanh toán</th>
             <th>Trạng thái</th>
             <th>Ngày tạo</th>
-            <th style="width:140px">Thao tác</th>
+            <th style="width:140px; text-align: right; padding-right: 20px;">Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -58,18 +55,10 @@
             </td>
             <td><span class="z-status" :class="o.statusClass">{{ o.status }}</span></td>
             <td style="color:var(--z-gray)">{{ o.date }}</td>
-            <td @click.stop>
-              <div class="d-flex gap-1">
-                <button v-if="canAdvance(o)" class="z-action-btn success" :title="nextStatusLabel(o)" @click="confirmAdvance(o)">
-                  <i class="bi bi-check-lg"></i>
-                </button>
-                <button v-if="canCancel(o)" class="z-action-btn danger" title="Huỷ đơn" @click="confirmCancel(o)">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-                <button class="z-action-btn" title="Chi tiết" @click="openDetail(o)">
-                  <i class="bi bi-eye"></i>
-                </button>
-              </div>
+            <td @click.stop style="text-align: right; padding-right: 20px;">
+              <button class="z-action-btn d-inline-block" title="Xem & Xử lý" @click="openDetail(o)">
+                <i class="bi bi-pencil-square"></i>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -81,13 +70,11 @@
       </div>
     </div>
 
-    <!-- Order Detail Modal -->
     <div v-if="showDetail" class="z-modal-overlay" @click.self="showDetail = false">
-      <div class="z-modal" style="max-width:750px">
+      <div class="z-modal" style="max-width:900px"> 
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết đơn hàng</h3>
-            <div style="font-size:13px;color:var(--z-gray)">{{ detailData?.maHoaDon }}</div>
+            <h3 style="font-size:18px;font-weight:600;margin:0">Xử lý đơn hàng: {{ detailData?.maHoaDon }}</h3>
           </div>
           <button class="z-icon-btn" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
@@ -97,105 +84,168 @@
         </div>
 
         <div v-else-if="detailData">
-          <!-- Status timeline -->
           <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <div v-for="(step, i) in statusSteps" :key="i"
-                 class="z-step" :class="{ active: detailData.trangThai >= i, current: detailData.trangThai === i }">
-              <div class="z-step-dot"></div>
-              <div class="z-step-label">{{ step }}</div>
-              <div v-if="i < statusSteps.length - 1" class="z-step-line" :class="{ filled: detailData.trangThai > i }"></div>
-            </div>
-          </div>
-
-          <!-- Info -->
-          <div class="row g-3 mb-4">
-            <div class="col-6">
-              <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Khách hàng</div>
-              <div style="font-size:14px;font-weight:500">{{ detailData.khachHang || 'N/A' }}</div>
-            </div>
-            <div class="col-6">
-              <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Số điện thoại</div>
-              <div style="font-size:14px;font-weight:500">{{ detailData.soDienThoai || 'N/A' }}</div>
-            </div>
-            <div class="col-6">
-              <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Thanh toán</div>
-              <div style="font-size:14px;font-weight:500">
-                {{ detailData.hinhThucThanhToan || 'N/A' }}
-                <span class="z-pay-badge" :class="detailData.daThanhToan ? 'paid' : 'unpaid'" style="margin-left:4px">
-                  <i class="bi" :class="detailData.daThanhToan ? 'bi-check-circle-fill' : 'bi-clock'"></i>
-                  {{ detailData.daThanhToan ? 'Đã thanh toán' : 'Chưa thanh toán' }}
-                </span>
-              </div>
-            </div>
-            <div class="col-6">
-              <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Ngày tạo</div>
-              <div style="font-size:14px;font-weight:500">{{ detailData.ngayTao ? new Date(detailData.ngayTao).toLocaleString('vi-VN') : '' }}</div>
-            </div>
-            <div v-if="detailData.diaChiGiaoHang" class="col-12">
-              <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Địa chỉ giao hàng</div>
-              <div style="font-size:14px;font-weight:500">{{ detailData.diaChiGiaoHang }}</div>
-            </div>
-          </div>
-
-          <!-- Items -->
-          <h4 style="font-size:14px;font-weight:600;margin-bottom:12px">Sản phẩm ({{ detailData.chiTiets?.length || 0 }})</h4>
-          <div class="d-flex flex-column gap-0 mb-4" style="border:1px solid var(--z-gray-border);border-radius:var(--z-radius);overflow:hidden">
-            <div v-for="item in detailData.chiTiets" :key="item.id"
-                 class="d-flex align-items-center gap-3" style="padding:12px 14px;border-bottom:1px solid var(--z-gray-border)">
-              <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
-                <img v-if="item.anhUrl" :src="item.anhUrl" style="width:100%;height:100%;object-fit:cover">
-                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" style="font-size:16px;color:var(--z-gray-light)">
-                  <i class="bi bi-image"></i>
+            <template v-if="detailData.trangThai === 4">
+               <div class="z-step active">
+                  <div class="z-step-dot" style="background: var(--z-danger);"></div>
+                  <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
+               </div>
+            </template>
+            <template v-else>
+                <div v-for="(step, i) in statusSteps" :key="i"
+                     class="z-step" :class="{ active: detailData.trangThai >= i && detailData.trangThai !== 5, current: detailData.trangThai === i, failed: i === 3 && detailData.trangThai === 5 }">
+                  <div class="z-step-dot" :style="i === 3 && detailData.trangThai === 5 ? 'background: var(--z-danger)' : ''"></div>
+                  <div class="z-step-label" :style="i === 3 && detailData.trangThai === 5 ? 'color: var(--z-danger); font-weight: 600;' : ''">
+                      {{ i === 3 && detailData.trangThai === 5 ? 'Giao thất bại' : step }}
+                  </div>
+                  <div v-if="i < statusSteps.length - 1" class="z-step-line" :class="{ filled: detailData.trangThai > i && detailData.trangThai !== 5 }"></div>
                 </div>
-              </div>
-              <div class="flex-grow-1">
-                <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ item.tenVay || 'Sản phẩm' }}</div>
-                <div style="font-size:12px;color:var(--z-gray)">
-                  <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
-                    <span v-if="item.maHex" :style="{ width:'8px', height:'8px', borderRadius:'50%', background: item.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
-                    {{ item.mauSac }}
-                  </span>
-                  <span v-if="item.mauSac && item.kichThuoc"> · </span>
-                  <span v-if="item.kichThuoc">Size {{ item.kichThuoc }}</span>
-                </div>
-              </div>
-              <div class="text-end">
-                <div style="font-size:13px;font-weight:600">{{ fmtPrice(item.donGia) }}</div>
-                <div style="font-size:11px;color:var(--z-gray)">x{{ item.soLuong }}</div>
-              </div>
-            </div>
+            </template>
           </div>
 
-          <div v-if="detailData.ghiChu" class="mb-3 p-3" style="background:#fef3cd;border-radius:var(--z-radius);font-size:13px">
-            <strong>Ghi chú:</strong> {{ detailData.ghiChu }}
+          <div class="row">
+              <div class="col-md-7 border-end pe-4">
+                  <h4 style="font-size:14px;font-weight:600;margin-bottom:12px; color: var(--z-dark);">Thông tin khách hàng & Giao nhận</h4>
+                  <div class="row g-3 mb-4 p-3 bg-light rounded">
+                    <div class="col-12">
+                      <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Khách hàng</div>
+                      <div style="font-size:14px;font-weight:500">
+                          {{ detailData.khachHang || 'Khách lẻ' }} 
+                          <span v-if="detailData.soDienThoai"> - {{ detailData.soDienThoai }}</span>
+                      </div>
+                      <div style="font-size:13px; color:var(--z-gray);" v-if="detailData.emailKhachHang">{{ detailData.emailKhachHang }}</div>
+                    </div>
+                    
+                    <div class="col-12 mt-2">
+                        <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Phương thức vận chuyển</div>
+                        <div style="font-size:14px;font-weight:500; display:flex; align-items: center; gap: 5px;">
+                            <i class="bi" :class="detailData.hinhThucNhanHang === 0 ? 'bi-shop' : 'bi-truck'"></i>
+                            {{ detailData.hinhThucNhanHang === 0 ? 'Nhận tại cửa hàng' : 'Giao hàng tận nơi' }}
+                        </div>
+                    </div>
+
+                    <div v-if="detailData.diaChiGiaoHang && detailData.hinhThucNhanHang !== 0" class="col-12 mt-2">
+                      <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Địa chỉ giao hàng</div>
+                      <div style="font-size:14px;font-weight:500"><i class="bi bi-geo-alt me-1"></i>{{ detailData.diaChiGiaoHang }}</div>
+                    </div>
+                  </div>
+
+                  <h4 style="font-size:14px;font-weight:600;margin-bottom:12px; color: var(--z-dark);">Thông tin bổ sung</h4>
+                  <div class="row g-3 mb-4">
+                    <div class="col-6">
+                      <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Thanh toán</div>
+                      <div style="font-size:14px;font-weight:500">
+                        {{ detailData.hinhThucThanhToan || 'N/A' }}
+                        <div class="mt-1">
+                            <span class="z-pay-badge" :class="detailData.daThanhToan ? 'paid' : 'unpaid'">
+                            <i class="bi" :class="detailData.daThanhToan ? 'bi-check-circle-fill' : 'bi-clock'"></i>
+                            {{ detailData.daThanhToan ? 'Đã thanh toán' : 'Chưa thanh toán' }}
+                            </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Ngày tạo</div>
+                      <div style="font-size:14px;font-weight:500">{{ detailData.ngayTao ? new Date(detailData.ngayTao).toLocaleString('vi-VN') : '' }}</div>
+                    </div>
+                    <div class="col-12">
+                      <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Người tạo đơn (Nhân viên)</div>
+                      <div style="font-size:14px;font-weight:500"><i class="bi bi-person-badge me-1"></i>{{ detailData.nhanVien || 'Khách hàng tự đặt' }}</div>
+                    </div>
+                  </div>
+
+                  <div v-if="detailData.ghiChu" class="mb-3 p-3" style="background:#fef3cd;border-radius:var(--z-radius);font-size:13px">
+                    <strong>Ghi chú:</strong> {{ detailData.ghiChu }}
+                  </div>
+              </div>
+
+              <div class="col-md-5 ps-4">
+                  <h4 style="font-size:14px;font-weight:600;margin-bottom:12px; color: var(--z-dark);">Sản phẩm ({{ detailData.chiTiets?.length || 0 }})</h4>
+                  <div class="d-flex flex-column gap-0 mb-4" style="border:1px solid var(--z-gray-border);border-radius:var(--z-radius);overflow:hidden; max-height: 300px; overflow-y: auto;">
+                    <div v-for="item in detailData.chiTiets" :key="item.id"
+                         class="d-flex align-items-center gap-3" style="padding:12px 14px;border-bottom:1px solid var(--z-gray-border)">
+                      <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
+                        <img v-if="item.anhUrl" :src="item.anhUrl" style="width:100%;height:100%;object-fit:cover">
+                        <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center" style="font-size:16px;color:var(--z-gray-light)">
+                          <i class="bi bi-image"></i>
+                        </div>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ item.tenSanPham || item.tenVay || 'Sản phẩm' }}</div>
+                        <div style="font-size:12px;color:var(--z-gray)">
+                          <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
+                            <span v-if="item.maHex" :style="{ width:'8px', height:'8px', borderRadius:'50%', background: item.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
+                            {{ item.mauSac }}
+                          </span>
+                          <span v-if="item.mauSac && item.kichThuoc"> • </span>
+                          <span v-if="item.kichThuoc">Size {{ item.kichThuoc }}</span>
+                        </div>
+                      </div>
+                      <div class="text-end">
+                        <div style="font-size:13px;font-weight:600">{{ fmtPrice(item.donGia) }}</div>
+                        <div style="font-size:11px;color:var(--z-gray)">x{{ item.soLuong }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mb-3 p-3 bg-light rounded" style="font-size:13px; color:var(--z-gray)">
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>Tổng tiền hàng:</span>
+                      <span style="font-weight: 500; color: var(--z-dark);">{{ fmtPrice(detailData.tongTien + (detailData.giamGiaKhuyenMai || 0) - (detailData.phiVanChuyen || 0)) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2" v-if="detailData.phiVanChuyen > 0">
+                      <span>Phí vận chuyển:</span>
+                      <span style="font-weight: 500; color: var(--z-dark);">+ {{ fmtPrice(detailData.phiVanChuyen) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2" v-if="detailData.giamGiaKhuyenMai > 0">
+                      <span>Giảm giá / Khuyến mãi <br><small v-if="detailData.khuyenMai || detailData.giamGia" class="text-muted">({{ detailData.khuyenMai || detailData.giamGia }})</small>:</span>
+                      <span class="text-danger font-weight-bold">- {{ fmtPrice(detailData.giamGiaKhuyenMai) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center pt-2 mt-2" style="border-top:1px dashed var(--z-gray-border)">
+                        <div style="font-size:14px;font-weight:600; color: var(--z-dark);">Khách cần trả</div>
+                        <div style="font-size:20px;font-weight:700;color:var(--z-accent)">{{ fmtPrice(detailData.tongTien) }}</div>
+                    </div>
+                  </div>
+              </div>
           </div>
 
-          <div class="d-flex justify-content-between align-items-center pt-3" style="border-top:2px solid var(--z-dark)">
-            <div style="font-size:16px;font-weight:600">Tổng cộng</div>
-            <div style="font-size:22px;font-weight:700;color:var(--z-accent)">{{ fmtPrice(detailData.tongTien) }}</div>
+          <div class="d-flex justify-content-end gap-2 mt-2 pt-3" style="border-top:1px solid var(--z-gray-border)">
+             <button v-if="detailData.trangThai === 2" class="lm-btn-secondary" style="color:var(--z-danger);border-color:var(--z-danger)" 
+                    @click="showDetail = false; confirmFail(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
+              <i class="bi bi-x-circle me-1"></i> Giao thất bại
+            </button>
+              
+            <button v-if="canCancel({ statusValue: detailData.trangThai })" class="lm-btn-secondary" style="color:var(--z-danger);border-color:var(--z-danger)" 
+                    @click="showDetail = false; confirmCancel(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
+              <i class="bi bi-trash me-1"></i> Huỷ đơn
+            </button>
+            
+            <button v-if="canAdvance({ statusValue: detailData.trangThai })" class="lm-btn-primary" 
+                    @click="showDetail = false; confirmAdvance(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai), isCod: (detailData.hinhThucThanhToan || '').toUpperCase().includes('COD'), paid: detailData.daThanhToan })">
+              <i class="bi bi-check-circle me-1"></i> {{ nextStatusLabel({ statusValue: detailData.trangThai }) }}
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Confirm Action Modal -->
-    <div v-if="showConfirm" class="z-modal-overlay" @click.self="showConfirm = false">
+    <div v-if="showConfirm" class="z-modal-overlay" @click.self="showConfirm = false" style="z-index: 1050;">
       <div class="z-modal" style="max-width:440px">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h3 style="font-size:16px;font-weight:600;margin:0">{{ confirmTitle }}</h3>
           <button class="z-icon-btn" @click="showConfirm = false"><i class="bi bi-x-lg"></i></button>
         </div>
         <p style="font-size:14px;color:var(--z-gray);margin-bottom:16px">{{ confirmMessage }}</p>
-        <div v-if="confirmType === 'cancel'" class="mb-3">
-          <label class="z-label">Lý do huỷ <span style="color:var(--z-accent)">*</span></label>
-          <textarea v-model="cancelNote" class="lm-input" rows="3" placeholder="Nhập lý do huỷ đơn hàng..."></textarea>
+        
+        <div v-if="confirmType === 'cancel' || confirmType === 'fail'" class="mb-3">
+          <label class="z-label">Lý do <span style="color:var(--z-accent)">*</span></label>
+          <textarea v-model="cancelNote" class="lm-input" rows="3" :placeholder="confirmType === 'cancel' ? 'Nhập lý do huỷ đơn hàng...' : 'Nhập lý do giao hàng thất bại...'"></textarea>
         </div>
         <div v-else class="mb-3">
           <label class="z-label">Ghi chú (tuỳ chọn)</label>
           <input v-model="actionNote" class="lm-input" placeholder="Ghi chú thêm...">
         </div>
 
-        <!-- COD: yêu cầu xác nhận đã thu tiền trước khi hoàn thành -->
         <div v-if="needPaidConfirm" class="z-cod-paid mb-3">
           <label class="d-flex align-items-start gap-2" style="cursor:pointer">
             <input type="checkbox" v-model="confirmPaid" style="margin-top:3px">
@@ -206,12 +256,14 @@
           </label>
         </div>
 
-        <div class="d-flex justify-content-end gap-2">
-          <button class="lm-btn-secondary" @click="showConfirm = false">Huỷ bỏ</button>
-          <button class="lm-btn-primary" @click="executeAction"
-                  :disabled="(confirmType === 'cancel' && !cancelNote.trim()) || (needPaidConfirm && !confirmPaid)"
-                  :style="confirmType === 'cancel' ? 'background:var(--z-accent);border-color:var(--z-accent)' : ''">
-            <span>{{ confirmType === 'cancel' ? 'Xác nhận huỷ' : 'Xác nhận' }}</span>
+        <div class="d-flex gap-3 w-100 mt-4">
+          <button class="lm-btn-secondary flex-fill d-flex justify-content-center align-items-center" style="height: 44px;" @click="showConfirm = false">
+            Huỷ bỏ
+          </button>
+          <button class="lm-btn-primary flex-fill d-flex justify-content-center align-items-center" style="height: 44px;" @click="executeAction"
+                  :class="{'is-danger-btn': confirmType === 'cancel' || confirmType === 'fail'}"
+                  :disabled="((confirmType === 'cancel' || confirmType === 'fail') && !cancelNote.trim()) || (needPaidConfirm && !confirmPaid)">
+            <span>{{ confirmType === 'cancel' ? 'Xác nhận huỷ' : (confirmType === 'fail' ? 'Xác nhận thất bại' : 'Xác nhận') }}</span>
           </button>
         </div>
       </div>
@@ -220,7 +272,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
@@ -228,7 +280,15 @@ import { useToast } from '@/composables/useToast'
 
 const { showToast } = useToast()
 
-const statusMap = { 0: { text: 'Chờ xử lý', cls: 'pending' }, 1: { text: 'Đã xác nhận', cls: 'warning' }, 2: { text: 'Đang giao', cls: 'info' }, 3: { text: 'Hoàn thành', cls: 'success' }, 4: { text: 'Đã huỷ', cls: 'danger' } }
+// CẬP NHẬT: Thêm trạng thái 5 (Giao thất bại)
+const statusMap = { 
+    0: { text: 'Chờ xử lý', cls: 'pending' }, 
+    1: { text: 'Đã xác nhận', cls: 'warning' }, 
+    2: { text: 'Đang giao', cls: 'info' }, 
+    3: { text: 'Hoàn thành', cls: 'success' }, 
+    4: { text: 'Đã huỷ', cls: 'danger' },
+    5: { text: 'Giao thất bại', cls: 'danger' } 
+}
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Đang giao', 'Hoàn thành']
 
 const search = ref('')
@@ -250,6 +310,9 @@ const cancelNote = ref('')
 const actionNote = ref('')
 const confirmPaid = ref(false)
 
+// Real-time Sync (Polling) variable
+let pollingInterval = null
+
 // Đơn COD/tiền mặt khi hoàn thành (status 3) mà chưa thanh toán -> bắt buộc tick đã thu tiền
 const needPaidConfirm = computed(() =>
   confirmType.value === 'advance' &&
@@ -259,11 +322,35 @@ const needPaidConfirm = computed(() =>
 
 onMounted(async () => {
   await loadOrders()
+  // Bắt đầu polling mỗi 10 giây để sync real-time
+  pollingInterval = setInterval(async () => {
+      // Chỉ poll ngầm nếu không có Modal nào đang mở để tránh gián đoạn thao tác
+      if (!showDetail.value && !showConfirm.value) {
+          await loadOrdersSilent()
+      }
+  }, 10000)
 })
+
+onUnmounted(() => {
+    if (pollingInterval) clearInterval(pollingInterval)
+})
+
+// Polling im lặng, không throw error làm phiền UI
+async function loadOrdersSilent() {
+    try {
+        const data = await api().getHoaDon()
+        processOrderData(data)
+    } catch(e) { /* ignore polling errors */ }
+}
 
 async function loadOrders() {
   try {
     const data = await api().getHoaDon()
+    processOrderData(data)
+  } catch (e) { console.error('Không thể tải đơn hàng:', e) }
+}
+
+function processOrderData(data) {
     rawOrders.value = data
     const sorted = [...data].sort((a, b) => {
       const da = a.ngayTao ? new Date(a.ngayTao).getTime() : 0
@@ -274,7 +361,7 @@ async function loadOrders() {
       const st = statusMap[o.trangThai] || statusMap[0]
       const method = o.hinhThucThanhToan || 'N/A'
       return {
-        id: o.maHoaDon, dbId: o.id, customer: o.khachHang || 'N/A', phone: o.soDienThoai || '',
+        id: o.maHoaDon, dbId: o.id, customer: o.khachHang || 'Khách lẻ', phone: o.soDienThoai || '',
         items: o.soSanPham || 0, total: fmtPrice(o.tongTien), payment: method,
         paid: o.daThanhToan === true,
         isCod: method.toUpperCase().includes('COD') || method.toUpperCase().includes('TIỀN MẶT') || method.toLowerCase().includes('nhận hàng'),
@@ -283,7 +370,6 @@ async function loadOrders() {
         raw: o
       }
     })
-  } catch (e) { console.error('Không thể tải đơn hàng:', e) }
 }
 
 const statusTabs = computed(() => [
@@ -292,6 +378,7 @@ const statusTabs = computed(() => [
   { label: 'Đã xác nhận',   value: '1',    count: allOrders.value.filter(o => o.statusValue === '1').length },
   { label: 'Đang giao',     value: '2',    count: allOrders.value.filter(o => o.statusValue === '2').length },
   { label: 'Hoàn thành',    value: '3',    count: allOrders.value.filter(o => o.statusValue === '3').length },
+  { label: 'Giao thất bại', value: '5',    count: allOrders.value.filter(o => o.statusValue === '5').length },
   { label: 'Đã huỷ',        value: '4',    count: allOrders.value.filter(o => o.statusValue === '4').length },
 ])
 
@@ -317,7 +404,7 @@ function nextStatusLabel(o) {
   const v = Number(o.statusValue)
   if (v === 0) return 'Xác nhận đơn'
   if (v === 1) return 'Chuyển giao hàng'
-  if (v === 2) return 'Hoàn thành'
+  if (v === 2) return 'Hoàn thành đơn'
   return ''
 }
 
@@ -335,6 +422,17 @@ function confirmAdvance(o) {
   showConfirm.value = true
 }
 
+// Hàm mới: Xác nhận giao hàng thất bại
+function confirmFail(o) {
+  confirmTitle.value = 'Giao hàng thất bại'
+  confirmMessage.value = `Ghi nhận giao thất bại cho đơn hàng ${o.id}?`
+  confirmType.value = 'fail'
+  confirmOrder.value = o
+  confirmNewStatus.value = 5
+  cancelNote.value = ''
+  showConfirm.value = true
+}
+
 function confirmCancel(o) {
   confirmTitle.value = 'Huỷ đơn hàng'
   confirmMessage.value = `Bạn có chắc muốn huỷ đơn hàng ${o.id}? Hành động này không thể hoàn tác.`
@@ -346,9 +444,9 @@ function confirmCancel(o) {
 }
 
 async function executeAction() {
-  const note = confirmType.value === 'cancel' ? cancelNote.value.trim() : actionNote.value.trim()
-  if (confirmType.value === 'cancel' && !note) {
-    showToast('Vui lòng nhập lý do huỷ đơn')
+  const note = (confirmType.value === 'cancel' || confirmType.value === 'fail') ? cancelNote.value.trim() : actionNote.value.trim()
+  if ((confirmType.value === 'cancel' || confirmType.value === 'fail') && !note) {
+    showToast(`Vui lòng nhập lý do ${confirmType.value === 'cancel' ? 'huỷ đơn' : 'thất bại'}`)
     return
   }
   // Nếu hoàn thành đơn COD và đã tick thu tiền -> đánh dấu đã thanh toán
@@ -357,7 +455,11 @@ async function executeAction() {
     await api().updateOrderStatus(confirmOrder.value.dbId, confirmNewStatus.value, note || null, daThanhToan)
     showToast('Cập nhật trạng thái thành công!')
     showConfirm.value = false
-    await loadOrders()
+    await loadOrders() // Refresh bảng
+    // Nếu đang mở Modal chi tiết, lấy lại dữ liệu mới nhất
+    if(showDetail.value && detailData.value) {
+       await openDetail(allOrders.value.find(o => o.dbId === detailData.value.id));
+    }
   } catch (e) {
     showToast('Lỗi: ' + (e.message || 'Không thể cập nhật'))
   }
@@ -391,18 +493,15 @@ async function openDetail(o) {
 .z-clickable-row { cursor: pointer; }
 .z-clickable-row:hover td { background: var(--z-accent-soft) !important; }
 .z-action-btn {
-  width: 30px; height: 30px; border: 1px solid var(--z-gray-border); background: var(--z-white);
+  width: 32px; height: 32px; border: 1px solid var(--z-gray-border); background: var(--z-white);
   border-radius: var(--z-radius); display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: var(--z-gray); transition: all 0.2s; font-size: 12px;
+  cursor: pointer; color: var(--z-gray); transition: all 0.2s; font-size: 14px;
 }
-.z-action-btn:hover { background: var(--z-bg-alt); }
-.z-action-btn.success { color: #16a34a; border-color: #bbf7d0; }
-.z-action-btn.success:hover { background: #dcfce7; }
-.z-action-btn.danger { color: #dc2626; border-color: #fecaca; }
-.z-action-btn.danger:hover { background: #fee2e2; }
+.z-action-btn:hover { background: var(--z-bg-alt); color: var(--z-dark); }
 .z-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
   display: flex; align-items: center; justify-content: center; z-index: 1000;
+  backdrop-filter: blur(2px);
 }
 .z-modal {
   background: var(--z-white); border-radius: var(--z-radius-lg);
@@ -439,4 +538,15 @@ async function openDetail(o) {
 .z-cod-paid {
   background: #fff8e1; border: 1px solid #fde68a; border-radius: var(--z-radius); padding: 12px 14px;
 }
+.is-danger-btn {
+  background-color: var(--z-danger, #dc2626) !important;
+  border-color: var(--z-danger, #dc2626) !important;
+  color: #ffffff !important;
+}
+.is-danger-btn:hover {
+  background-color: #b91c1c !important; /* Đỏ sậm hơn khi di chuột */
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
 </style>
+

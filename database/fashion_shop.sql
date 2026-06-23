@@ -46,7 +46,11 @@ CREATE TABLE [dbo].[Nhan_vien] (
   [mat_khau] nvarchar(255) NULL,
   [tinh_trang_lam_viec] tinyint NULL,
   [ngay_tao] datetime2(7) NULL,
-  CONSTRAINT [PK_Nhan_vien] PRIMARY KEY ([id])
+  CONSTRAINT [PK_Nhan_vien] PRIMARY KEY ([id]),
+  CONSTRAINT [UQ_Nhan_vien_ma] UNIQUE ([ma_nhan_vien]),
+  CONSTRAINT [UQ_Nhan_vien_email] UNIQUE ([email]),
+  CONSTRAINT [UQ_Nhan_vien_ten_nguoi_dung] UNIQUE ([ten_nguoi_dung]),
+  CONSTRAINT [FK_Nhan_vien_Vai_tro] FOREIGN KEY ([id_vai_tro]) REFERENCES [dbo].[Vai_tro]([id])
 );
 END
 GO
@@ -55,8 +59,38 @@ BEGIN
 SET IDENTITY_INSERT [dbo].[Nhan_vien] ON;
 INSERT INTO [dbo].[Nhan_vien] ([id], [id_vai_tro], [ma_nhan_vien], [ho_va_ten], [gioi_tinh], [ngay_sinh], [so_dien_thoai], [dia_chi], [email], [ten_nguoi_dung], [mat_khau], [tinh_trang_lam_viec], [ngay_tao]) VALUES
 (1, 1, N'NV001', N'Quản trị viên', NULL, NULL, NULL, NULL, N'admin@zestia.vn', N'admin', N'$2a$10$1319tfuwROs5099h0RHfbeEV.RarbCu15eZh09TwTuRsFznGC0Zze', 1, '2026-06-10T23:44:29.193'),
-(2, 2, N'NV002', N'Trần Minh Tuấn', NULL, NULL, N'0901234567', NULL, N'tuan@zestia.vn', N'tuannv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.200');
+(2, 2, N'NV002', N'Trần Minh Tuấn', NULL, NULL, N'0901234567', NULL, N'tuan@zestia.vn', N'tuannv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.200'),
+(3, 3, N'NV003', N'Lê Hoàng Phúc', 1, '1997-09-12', N'0907654321', N'Quận 1, TP.HCM', N'phuc@zestia.vn', N'phuckho', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-23T09:00:00.000');
 SET IDENTITY_INSERT [dbo].[Nhan_vien] OFF;
+END
+GO
+
+-- ===== Lich_lam_viec =====
+IF OBJECT_ID(N'dbo.Lich_lam_viec','U') IS NULL
+BEGIN
+CREATE TABLE [dbo].[Lich_lam_viec] (
+  [id] int IDENTITY(1,1) NOT NULL,
+  [id_nhan_vien] int NULL,
+  [ngay_lam] date NOT NULL,
+  [ca_lam] nvarchar(50) NULL,
+  [gio_bat_dau] time(0) NOT NULL,
+  [gio_ket_thuc] time(0) NOT NULL,
+  [ghi_chu] nvarchar(255) NULL,
+  [trang_thai] tinyint NULL,
+  [ngay_tao] datetime2(7) NULL,
+  CONSTRAINT [PK_Lich_lam_viec] PRIMARY KEY ([id]),
+  CONSTRAINT [FK_Lich_lam_viec_Nhan_vien] FOREIGN KEY ([id_nhan_vien]) REFERENCES [dbo].[Nhan_vien]([id])
+);
+END
+GO
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Lich_lam_viec])
+BEGIN
+SET IDENTITY_INSERT [dbo].[Lich_lam_viec] ON;
+INSERT INTO [dbo].[Lich_lam_viec] ([id], [id_nhan_vien], [ngay_lam], [ca_lam], [gio_bat_dau], [gio_ket_thuc], [ghi_chu], [trang_thai], [ngay_tao]) VALUES
+(1, 1, '2026-06-22', N'Ca sáng', '08:00:00', '12:00:00', N'Trực quản lý cửa hàng', 1, '2026-06-22T08:00:00'),
+(2, 2, '2026-06-22', N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn khách và kiểm hàng', 1, '2026-06-22T08:00:00'),
+(3, 2, '2026-06-23', N'Ca sáng', '08:00:00', '12:00:00', N'Hỗ trợ bán tại quầy', 0, '2026-06-22T08:00:00');
+SET IDENTITY_INSERT [dbo].[Lich_lam_viec] OFF;
 END
 GO
 

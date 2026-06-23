@@ -35,6 +35,9 @@ public class AuthController {
 
         if (nvOpt.isPresent()) {
             NhanVien nv = nvOpt.get();
+            if (nv.getTinhTrangLamViec() != null && nv.getTinhTrangLamViec() == 0) {
+                return ResponseEntity.status(403).body(Map.of("error", "Tài khoản nhân viên đang bị tạm khoá"));
+            }
             if (passwordEncoder.matches(req.getPassword(), nv.getMatKhau())) {
                 String role = nv.getVaiTro() != null ? nv.getVaiTro().getTenVaiTro() : "NhanVien";
                 String token = jwtUtil.generateToken(nv.getTenNguoiDung(), role, nv.getId());

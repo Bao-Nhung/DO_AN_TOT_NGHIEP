@@ -29,9 +29,11 @@ import AdminDashboard  from '@/pages/admin/AdminDashboard.vue'
 import AdminProducts   from '@/pages/admin/AdminProducts.vue'
 import AdminOrders     from '@/pages/admin/AdminOrders.vue'
 import AdminCustomers  from '@/pages/admin/AdminCustomers.vue'
+import AdminEmployees  from '@/pages/admin/AdminEmployees.vue'
 import AdminVouchers   from '@/pages/admin/AdminVouchers.vue'
 import AdminSettings   from '@/pages/admin/AdminSettings.vue'
 import AdminPOS        from '@/pages/admin/AdminPOS.vue'
+import AdminSchedule   from '@/pages/admin/AdminSchedule.vue'
 import AdminStatisticalDashboard from '@/pages/admin/AdminStatisticalDashboard.vue'
 
 const routes = [
@@ -51,6 +53,8 @@ const routes = [
   { path: '/admin/products',  component: AdminProducts,  name: 'admin-products' },
   { path: '/admin/orders',    component: AdminOrders,    name: 'admin-orders' },
   { path: '/admin/customers', component: AdminCustomers, name: 'admin-customers' },
+  { path: '/admin/employees', component: AdminEmployees, name: 'admin-employees' },
+  { path: '/admin/schedule',  component: AdminSchedule,  name: 'admin-schedule' },
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },

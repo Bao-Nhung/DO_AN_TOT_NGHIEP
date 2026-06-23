@@ -240,7 +240,7 @@ async function doLogin() {
     const data = await api().login(username.value, password.value)
     saveLogin(data)
     showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
-    if (loginRole.value === 'employee' || data.role === 'Admin' || data.role === 'Nhan vien' || data.role === 'Nhân viên') {
+    if (data.role && data.role !== 'KhachHang') {
       router.push('/admin')
     } else {
       router.push('/profile')

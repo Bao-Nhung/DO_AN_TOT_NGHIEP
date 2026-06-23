@@ -19,13 +19,13 @@
 
       <div class="mt-auto px-3 py-3" style="border-top:1px solid var(--z-gray-border)">
         <div class="d-flex align-items-center gap-3 mb-3">
-          <div style="width:36px;height:36px;border-radius:50%;background:var(--z-accent);display:flex;align-items:center;justify-content:center;color:var(--z-white);font-weight:600;font-size:14px">A</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--z-accent);display:flex;align-items:center;justify-content:center;color:var(--z-white);font-weight:600;font-size:14px">{{ adminInitial }}</div>
           <div>
-            <div style="font-size:13px;font-weight:600;color:var(--z-dark)">Admin</div>
-            <div style="font-size:11px;color:var(--z-gray)">admin@zestia.vn</div>
+            <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ adminName }}</div>
+            <div style="font-size:11px;color:var(--z-gray)">{{ adminEmail }}</div>
           </div>
         </div>
-        <button class="z-admin-nav-item w-100 text-start" style="border:none;background:none;padding:10px 12px" @click="$router.push('/login')">
+        <button class="z-admin-nav-item w-100 text-start" style="border:none;background:none;padding:10px 12px" @click="handleLogout">
           <i class="bi bi-box-arrow-right"></i>
           <span>Đăng xuất</span>
         </button>
@@ -40,10 +40,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '@/composables/useApi'
+import { useAuth } from '@/composables/useApi'
 
 const pendingCount = ref(0)
+const router = useRouter()
+const { getUser, logout } = useAuth()
+const currentUser = computed(() => getUser() || {})
+const adminName = computed(() => currentUser.value.hoVaTen || currentUser.value.username || 'Nhân viên')
+const adminEmail = computed(() => currentUser.value.email || currentUser.value.role || '')
+const adminInitial = computed(() => (adminName.value || 'N').charAt(0).toUpperCase())
 
 const navItems = [
   { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan' },
@@ -52,6 +60,8 @@ const navItems = [
   { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
   { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },
   { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng' },
+  { path: '/admin/employees', icon: 'bi-person-badge', label: 'Nhân viên' },
+  { path: '/admin/schedule',  icon: 'bi-calendar-week', label: 'Lịch làm việc' },
   { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Khuyến mãi' },
   { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt' },
 ]
@@ -62,6 +72,11 @@ onMounted(async () => {
     pendingCount.value = orders.filter(o => o.trangThai === 0).length
   } catch (e) { /* ignore */ }
 })
+
+function handleLogout() {
+  logout()
+  router.push('/login')
+}
 </script>
 
 <style scoped>

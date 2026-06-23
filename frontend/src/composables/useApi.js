@@ -73,6 +73,29 @@ export function api() {
     // Customers
     getKhachHang: () => request('/khach-hang'),
 
+    // Employees
+    getNhanVien: () => request('/nhan-vien'),
+    getVaiTroNhanVien: () => request('/nhan-vien/vai-tro'),
+    addNhanVien: (data) => request('/nhan-vien', { method: 'POST', body: JSON.stringify(data) }),
+    updateNhanVien: (id, data) => request(`/nhan-vien/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    updateNhanVienStatus: (id, tinhTrangLamViec) =>
+      request(`/nhan-vien/${id}/trang-thai`, { method: 'PUT', body: JSON.stringify({ tinhTrangLamViec }) }),
+    deleteNhanVien: (id) => request(`/nhan-vien/${id}`, { method: 'DELETE' }),
+
+    // Work schedule
+    getLichLamViec: ({ startDate, endDate, nhanVienId } = {}) => {
+      const params = new URLSearchParams()
+      if (startDate) params.append('startDate', startDate)
+      if (endDate) params.append('endDate', endDate)
+      if (nhanVienId) params.append('nhanVienId', nhanVienId)
+      const query = params.toString()
+      return request(`/lich-lam-viec${query ? '?' + query : ''}`)
+    },
+    getNhanVienLamViec: () => request('/lich-lam-viec/nhan-vien'),
+    addLichLamViec: (data) => request('/lich-lam-viec', { method: 'POST', body: JSON.stringify(data) }),
+    updateLichLamViec: (id, data) => request(`/lich-lam-viec/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteLichLamViec: (id) => request(`/lich-lam-viec/${id}`, { method: 'DELETE' }),
+
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
 

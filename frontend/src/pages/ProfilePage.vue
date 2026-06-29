@@ -118,26 +118,12 @@
         </div>
 
         <div v-else-if="detailOrder">
-          <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <template v-if="detailOrder.trangThai === 4">
-               <div class="z-step active">
-                  <div class="z-step-dot" style="background: var(--z-danger);"></div>
-                  <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
-               </div>
-            </template>
-            <template v-else>
-                <div v-for="(step, i) in statusSteps" :key="i"
-                     class="z-step" :class="{ active: detailOrder.trangThai >= i && detailOrder.trangThai !== 5, current: detailOrder.trangThai === i, failed: i === 3 && detailOrder.trangThai === 5 }">
-                  <div class="z-step-dot" :style="i === 3 && detailOrder.trangThai === 5 ? 'background: var(--z-danger)' : ''"></div>
-                  <div class="z-step-label" :style="i === 3 && detailOrder.trangThai === 5 ? 'color: var(--z-danger); font-weight: 600;' : ''">
-                      {{ i === 3 && detailOrder.trangThai === 5 ? 'Giao thất bại' : step }}
-                  </div>
-                  <div v-if="i < statusSteps.length - 1" class="z-step-line" :class="{ filled: detailOrder.trangThai > i && detailOrder.trangThai !== 5 }"></div>
-                </div>
-            </template>
+          
+          <div class="mb-4">
+            <OrderTrackingCard :order="detailOrder" />
           </div>
 
-          <div class="row mb-4">
+          <div class="row mb-4 mt-2">
             <div class="col-md-6">
               <h5 style="font-size:14px;font-weight:600;color:var(--z-dark);margin-bottom:12px;">Thông tin nhận hàng</h5>
               <div style="font-size:13px;color:var(--z-gray); margin-bottom: 4px;"><strong>Người nhận:</strong> {{ detailOrder.khachHang || 'Khách hàng' }} <span v-if="detailOrder.soDienThoai">- {{ detailOrder.soDienThoai }}</span></div>
@@ -218,6 +204,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import OrderTrackingCard from '@/components/OrderTrackingCard.vue'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
 
@@ -250,10 +237,8 @@ const showDetail = ref(false)
 const detailOrder = ref(null)
 const loadingDetail = ref(false)
 
-// Real-time Sync (Polling) variable
 let pollingInterval = null
 
-// CẬP NHẬT: Đồng bộ từ điển trạng thái giống hệt Admin (Hoàn thành, Giao thất bại)
 const statusMap = {
   0: { key: 'pending', label: 'Chờ xử lý' },
   1: { key: 'warning', label: 'Đã xác nhận' },
@@ -262,7 +247,6 @@ const statusMap = {
   4: { key: 'danger', label: 'Đã huỷ' },
   5: { key: 'danger', label: 'Giao thất bại' },
 }
-const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Đang giao', 'Hoàn thành']
 
 const sortedOrders = computed(() => {
   return [...orders.value].sort((a, b) => {
@@ -295,11 +279,23 @@ const stats = computed(() => {
   ]
 })
 
+// MỞ MODAL VÀ TẢI ĐỒNG THỜI DỮ LIỆU ĐƠN HÀNG + LỊCH SỬ TRACKING
 async function openOrderDetail(order) {
   showDetail.value = true
   loadingDetail.value = true
   try {
-    detailOrder.value = await api().getHoaDonById(order.id)
+    const [orderRes, trackingRes] = await Promise.all([
+      api().getHoaDonById(order.id).catch(() => null),
+      api().getOrderTracking(order.id).catch(() => null)
+    ])
+    // Bóc tách data an toàn đề phòng Backend bọc trong { success: true, data: ... }
+    const orderData = orderRes?.data || orderRes || order
+    const trackingData = trackingRes?.data || trackingRes
+    
+    detailOrder.value = { 
+      ...orderData, 
+      trackingHistory: trackingData?.trackingHistory || [] 
+    }
   } catch (e) {
     detailOrder.value = order
   } finally {
@@ -307,20 +303,23 @@ async function openOrderDetail(order) {
   }
 }
 
-// Hàm tải dữ liệu im lặng cho Polling
 async function loadOrdersSilent() {
   try {
-    const data = await api().getMyOrders()
-    if (data) orders.value = data
-  } catch (e) { /* ignore error to prevent UI spam */ }
+    const res = await api().getMyOrders()
+    const data = res?.data || res
+    if (Array.isArray(data)) orders.value = data
+  } catch (e) { /* ignore error */ }
 }
 
 async function loadOrders() {
   try {
-    const data = await api().getMyOrders()
-    orders.value = data || []
+    const res = await api().getMyOrders()
+    const data = res?.data || res
+    // Ép kiểu chắc chắn là mảng để không bị sập UI
+    orders.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.error('Failed to load orders:', e)
+    orders.value = []
   }
 }
 
@@ -331,9 +330,7 @@ onMounted(async () => {
   }
   await loadOrders()
   
-  // Bật Polling đồng bộ Real-time mỗi 10 giây
   pollingInterval = setInterval(async () => {
-      // Chỉ poll khi không mở Modal chi tiết để tránh lag UI khách hàng
       if (!showDetail.value) {
           await loadOrdersSilent()
       }
@@ -413,6 +410,8 @@ const navItems = [
   cursor: pointer; color: var(--z-gray); transition: all 0.2s; font-size: 14px;
 }
 .z-icon-btn:hover { background: var(--z-bg-alt); color: var(--z-dark); }
+
+/* Bảng màu Trạng thái */
 .lm-status-pending { color: #b45309; background: #fef3cd; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 .lm-status-warning { color: #d97706; background: #fef08a; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 .lm-status-info { color: #0369a1; background: #e0f2fe; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
@@ -420,18 +419,5 @@ const navItems = [
 .lm-status-danger { color: #b91c1c; background: #fee2e2; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 .lm-status-failed { color: #991b1b; background: #fca5a5; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 
-.z-step {
-  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
-}
-.z-step-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--z-gray-border); transition: all 0.2s;
-}
-.z-step.active .z-step-dot { background: var(--z-accent); }
-.z-step.current .z-step-dot { box-shadow: 0 0 0 3px var(--z-accent-soft); }
-.z-step-label { font-size: 12px; font-weight: 500; color: var(--z-gray-light); white-space: nowrap; }
-.z-step.active .z-step-label { color: var(--z-dark); }
-.z-step-line { width: 32px; height: 2px; background: var(--z-gray-border); margin: 0 4px; }
-.z-step-line.filled { background: var(--z-accent); }
+.lm-form-label { font-size: 13px; font-weight: 500; color: var(--z-dark); }
 </style>
-

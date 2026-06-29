@@ -58,6 +58,19 @@ public class HoaDon {
     @Column(name = "trang_thai")
     private Byte trangThai;
 
+    // ==========================================
+    // ===== TRACKING FIELDS (ĐỒNG ĐỘI THÊM) =====
+    // ==========================================
+    @Column(name = "trang_thai_tracking")
+    private String trangThaiTracking; // pending, processing, shipped, delivered, cancelled
+
+    @Column(name = "ngay_giao_hang_du_kien")
+    private LocalDateTime ngayGiaoHangDuKien;
+
+    @Column(name = "ngay_giao_hang_thuc_te")
+    private LocalDateTime ngayGiaoHangThucTe;
+    // ==========================================
+
     @Column(name = "hinh_thuc_thanh_toan")
     private String hinhThucThanhToan;
 
@@ -75,4 +88,11 @@ public class HoaDon {
     @JsonIgnore
     @OneToMany(mappedBy = "hoaDon")
     private List<HoaDonChiTiet> chiTiets;
+
+    // ==========================================
+    // ===== RELATIONSHIP MỚI (ĐỒNG ĐỘI THÊM) ===
+    // ==========================================
+    @JsonIgnore
+    @OneToMany(mappedBy = "hoaDon", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LichSuTracking> lichSuTracking;
 }

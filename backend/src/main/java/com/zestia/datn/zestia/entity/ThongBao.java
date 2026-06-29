@@ -18,25 +18,36 @@ public class ThongBao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
+    @JoinColumn(name = "id_hoa_don")
+    private HoaDon hoaDon;
+
+    @ManyToOne
     @JoinColumn(name = "id_khach_hang")
     private KhachHang khachHang;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_nhan_vien")
-    private NhanVien nhanVien;
+    @Column(name = "loai_thong_bao")
+    private String loaiThongBao; // order_created, order_cancelled, order_shipped, order_delivered, add_to_cart
 
     @Column(name = "tieu_de")
     private String tieuDe;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "noi_dung")
     private String noiDung;
 
-    private String loai;
-
     @Column(name = "da_doc")
-    private Byte daDoc;
+    private Byte daDoc; // 0 = chưa đọc, 1 = đã đọc
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.daDoc == null) {
+            this.daDoc = (byte) 0;
+        }
+        if (this.ngayTao == null) {
+            this.ngayTao = LocalDateTime.now();
+        }
+    }
 }

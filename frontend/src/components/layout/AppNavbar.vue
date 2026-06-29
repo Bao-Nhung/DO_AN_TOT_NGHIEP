@@ -9,6 +9,7 @@
       <ul class="d-none d-lg-flex list-unstyled mb-0 gap-4 align-items-center">
         <li><RouterLink class="lm-nav-link" to="/">Trang Chủ</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/collections">Sản Phẩm</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/tracking">Tra Cứu Đơn</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/wishlist">Yêu Thích</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/about">Thông Tin</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/profile">Tài Khoản</RouterLink></li>
@@ -35,12 +36,12 @@
     </div>
   </nav>
 
-  <!-- Mobile Menu -->
   <Transition name="z-mobile-menu">
     <div v-if="mobileOpen" class="z-mobile-menu" @click="mobileOpen = false">
       <nav class="z-mobile-menu-inner" @click.stop>
         <RouterLink class="z-mobile-link" to="/" @click="mobileOpen = false">Trang Chủ</RouterLink>
         <RouterLink class="z-mobile-link" to="/collections" @click="mobileOpen = false">Sản Phẩm</RouterLink>
+        <RouterLink class="z-mobile-link" to="/tracking" @click="mobileOpen = false">Tra Cứu Đơn</RouterLink>
         <RouterLink class="z-mobile-link" to="/wishlist" @click="mobileOpen = false">Yêu Thích</RouterLink>
         <RouterLink class="z-mobile-link" to="/about" @click="mobileOpen = false">Thông Tin</RouterLink>
         <RouterLink class="z-mobile-link" to="/profile" @click="mobileOpen = false">Tài Khoản</RouterLink>
@@ -48,7 +49,6 @@
     </div>
   </Transition>
 
-  <!-- Search Overlay -->
   <div class="z-search-overlay" :class="{ open: searchOpen }" @click="searchOpen = false">
     <div class="z-search-box" @click.stop>
       <div class="d-flex align-items-center gap-3 px-2">

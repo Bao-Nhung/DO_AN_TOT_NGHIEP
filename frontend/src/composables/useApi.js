@@ -57,7 +57,7 @@ export function api() {
     },
     deleteVayAnh: (anhId) => request(`/vay/anh/${anhId}`, { method: 'DELETE' }),
 
-    // Orders
+    // Orders & Tracking
     getHoaDon: () => request('/hoa-don'),
     getHoaDonById: (id) => request(`/hoa-don/${id}`),
     updateOrderStatus: (id, trangThai, ghiChu, daThanhToan) =>
@@ -69,6 +69,18 @@ export function api() {
           ...(daThanhToan !== undefined ? { daThanhToan } : {})
         })
       }),
+      
+    // ====== API MỚI CHO TRACKING ======
+    searchOrder: (params) => {
+      const query = new URLSearchParams()
+      if (params.maHoaDon) query.append('maHoaDon', params.maHoaDon)
+      if (params.soDienThoai) query.append('soDienThoai', params.soDienThoai)
+      return request(`/hoa-don/search?${query.toString()}`)
+    },
+    searchOrderByPhone: (soDienThoai) => request(`/hoa-don/search-by-phone?soDienThoai=${soDienThoai}`),
+    getMyOrders: () => request('/hoa-don/my-orders'),
+    getOrderTracking: (orderId) => request(`/hoa-don/${orderId}/tracking`),
+    // ==================================
 
     // Customers
     getKhachHang: () => request('/khach-hang'),
@@ -155,7 +167,7 @@ export function api() {
     applyVoucher: (maGiamGia, tongTien) =>
       request('/payment/apply-voucher', { method: 'POST', body: JSON.stringify({ maGiamGia, tongTien }) }),
     getOrder: (id) => request(`/payment/order/${id}`),
-    getMyOrders: () => request('/payment/my-orders'),
+    
     updateProfile: (data) =>
       request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
 
@@ -172,7 +184,7 @@ export function api() {
     // Promotion CRUD
     addKhuyenMai: (data) => request('/khuyen-mai', { method: 'POST', body: JSON.stringify(data) }),
     updateKhuyenMai: (id, data) => request(`/khuyen-mai/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    deleteKhuyenMai: (id) => request(`/khuyen-mai/${id}`, { method: 'DELETE' }),
+    deleteKhuyenMai: (id) => request(`/khuyen-mai/${id}`, { method: 'DELETE' })
   }
 }
 

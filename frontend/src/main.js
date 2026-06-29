@@ -58,6 +58,7 @@ const routes = [
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },
+  { path: '/tracking', name: 'Tracking', component: () => import('@/pages/OrderTrackingPage.vue') },
 ]
 
 const router = createRouter({

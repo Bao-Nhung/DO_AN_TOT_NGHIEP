@@ -210,18 +210,18 @@
           </div>
 
           <div class="d-flex justify-content-end gap-2 mt-2 pt-3" style="border-top:1px solid var(--z-gray-border)">
-             <button v-if="detailData.trangThai === 2" class="lm-btn-secondary" style="color:var(--z-danger);border-color:var(--z-danger)" 
-                    @click="showDetail = false; confirmFail(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
+             <button v-if="detailData.trangThai === 2" class="z-btn-action z-btn-danger" 
+                     @click="confirmFail(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
               <i class="bi bi-x-circle me-1"></i> Giao thất bại
             </button>
               
-            <button v-if="canCancel({ statusValue: detailData.trangThai })" class="lm-btn-secondary" style="color:var(--z-danger);border-color:var(--z-danger)" 
-                    @click="showDetail = false; confirmCancel(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
+            <button v-if="canCancel({ statusValue: detailData.trangThai })" class="z-btn-action z-btn-danger" 
+                    @click="confirmCancel(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
               <i class="bi bi-trash me-1"></i> Huỷ đơn
             </button>
             
-            <button v-if="canAdvance({ statusValue: detailData.trangThai })" class="lm-btn-primary" 
-                    @click="showDetail = false; confirmAdvance(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai), isCod: (detailData.hinhThucThanhToan || '').toUpperCase().includes('COD'), paid: detailData.daThanhToan })">
+            <button v-if="canAdvance({ statusValue: detailData.trangThai })" class="z-btn-action z-btn-primary" 
+                    @click="confirmAdvance(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai), isCod: (detailData.hinhThucThanhToan || '').toUpperCase().includes('COD'), paid: detailData.daThanhToan })">
               <i class="bi bi-check-circle me-1"></i> {{ nextStatusLabel({ statusValue: detailData.trangThai }) }}
             </button>
           </div>
@@ -229,7 +229,7 @@
       </div>
     </div>
 
-    <div v-if="showConfirm" class="z-modal-overlay" @click.self="showConfirm = false" style="z-index: 1050;">
+    <div v-if="showConfirm" class="z-modal-overlay" @click.self="showConfirm = false" style="z-index: 1060; background: rgba(0,0,0,0.6);">
       <div class="z-modal" style="max-width:440px">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h3 style="font-size:16px;font-weight:600;margin:0">{{ confirmTitle }}</h3>
@@ -257,13 +257,13 @@
         </div>
 
         <div class="d-flex gap-3 w-100 mt-4">
-          <button class="lm-btn-secondary flex-fill d-flex justify-content-center align-items-center" style="height: 44px;" @click="showConfirm = false">
+          <button class="z-btn-action z-btn-secondary flex-fill" style="height: 44px;" @click="showConfirm = false">
             Huỷ bỏ
           </button>
-          <button class="lm-btn-primary flex-fill d-flex justify-content-center align-items-center" style="height: 44px;" @click="executeAction"
-                  :class="{'is-danger-btn': confirmType === 'cancel' || confirmType === 'fail'}"
+          <button class="z-btn-action flex-fill" style="height: 44px;" @click="executeAction"
+                  :class="confirmType === 'cancel' || confirmType === 'fail' ? 'z-btn-danger' : 'z-btn-primary'"
                   :disabled="((confirmType === 'cancel' || confirmType === 'fail') && !cancelNote.trim()) || (needPaidConfirm && !confirmPaid)">
-            <span>{{ confirmType === 'cancel' ? 'Xác nhận huỷ' : (confirmType === 'fail' ? 'Xác nhận thất bại' : 'Xác nhận') }}</span>
+            {{ confirmType === 'cancel' ? 'Xác nhận huỷ' : (confirmType === 'fail' ? 'Xác nhận thất bại' : 'Xác nhận') }}
           </button>
         </div>
       </div>
@@ -280,7 +280,6 @@ import { useToast } from '@/composables/useToast'
 
 const { showToast } = useToast()
 
-// CẬP NHẬT: Thêm trạng thái 5 (Giao thất bại)
 const statusMap = { 
     0: { text: 'Chờ xử lý', cls: 'pending' }, 
     1: { text: 'Đã xác nhận', cls: 'warning' }, 
@@ -310,10 +309,8 @@ const cancelNote = ref('')
 const actionNote = ref('')
 const confirmPaid = ref(false)
 
-// Real-time Sync (Polling) variable
 let pollingInterval = null
 
-// Đơn COD/tiền mặt khi hoàn thành (status 3) mà chưa thanh toán -> bắt buộc tick đã thu tiền
 const needPaidConfirm = computed(() =>
   confirmType.value === 'advance' &&
   confirmNewStatus.value === 3 &&
@@ -322,9 +319,7 @@ const needPaidConfirm = computed(() =>
 
 onMounted(async () => {
   await loadOrders()
-  // Bắt đầu polling mỗi 10 giây để sync real-time
   pollingInterval = setInterval(async () => {
-      // Chỉ poll ngầm nếu không có Modal nào đang mở để tránh gián đoạn thao tác
       if (!showDetail.value && !showConfirm.value) {
           await loadOrdersSilent()
       }
@@ -335,12 +330,11 @@ onUnmounted(() => {
     if (pollingInterval) clearInterval(pollingInterval)
 })
 
-// Polling im lặng, không throw error làm phiền UI
 async function loadOrdersSilent() {
     try {
         const data = await api().getHoaDon()
         processOrderData(data)
-    } catch(e) { /* ignore polling errors */ }
+    } catch(e) { }
 }
 
 async function loadOrders() {
@@ -408,6 +402,7 @@ function nextStatusLabel(o) {
   return ''
 }
 
+// BỎ LỆNH ĐÓNG MODAL Ở 3 HÀM DƯỚI ĐÂY
 function confirmAdvance(o) {
   const v = Number(o.statusValue)
   const nextVal = v + 1
@@ -422,7 +417,6 @@ function confirmAdvance(o) {
   showConfirm.value = true
 }
 
-// Hàm mới: Xác nhận giao hàng thất bại
 function confirmFail(o) {
   confirmTitle.value = 'Giao hàng thất bại'
   confirmMessage.value = `Ghi nhận giao thất bại cho đơn hàng ${o.id}?`
@@ -449,14 +443,15 @@ async function executeAction() {
     showToast(`Vui lòng nhập lý do ${confirmType.value === 'cancel' ? 'huỷ đơn' : 'thất bại'}`)
     return
   }
-  // Nếu hoàn thành đơn COD và đã tick thu tiền -> đánh dấu đã thanh toán
+  
   const daThanhToan = needPaidConfirm.value && confirmPaid.value ? true : undefined
   try {
     await api().updateOrderStatus(confirmOrder.value.dbId, confirmNewStatus.value, note || null, daThanhToan)
     showToast('Cập nhật trạng thái thành công!')
     showConfirm.value = false
-    await loadOrders() // Refresh bảng
-    // Nếu đang mở Modal chi tiết, lấy lại dữ liệu mới nhất
+    await loadOrders()
+    
+    // NẾU BẢNG CHI TIẾT VẪN ĐANG MỞ -> RELOAD LẠI DỮ LIỆU ĐỂ HIỆN TRẠNG THÁI MỚI NHẤT
     if(showDetail.value && detailData.value) {
        await openDetail(allOrders.value.find(o => o.dbId === detailData.value.id));
     }
@@ -538,15 +533,62 @@ async function openDetail(o) {
 .z-cod-paid {
   background: #fff8e1; border: 1px solid #fde68a; border-radius: var(--z-radius); padding: 12px 14px;
 }
-.is-danger-btn {
-  background-color: var(--z-danger, #dc2626) !important;
-  border-color: var(--z-danger, #dc2626) !important;
+
+/* ============================================================== */
+/* BỘ NÚT CHUẨN XÁC DÀNH RIÊNG CHO MODAL (CHỐNG LỖI HIỆU ỨNG CHE CHỮ) */
+/* ============================================================== */
+.z-btn-action {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Đảm bảo chữ luôn nằm trên cùng */
+  position: relative;
+  z-index: 1;
+}
+
+.z-btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Nút XÁC NHẬN (Màu cam) */
+.z-btn-primary {
+  background-color: var(--z-accent, #e85d04);
+  color: #ffffff !important; /* Ép cứng màu chữ trắng */
+  border-color: var(--z-accent, #e85d04);
+}
+.z-btn-primary:hover:not(:disabled) {
+  background-color: #d04c02; /* Cam đậm hơn một xíu khi hover */
+  border-color: #d04c02;
   color: #ffffff !important;
 }
-.is-danger-btn:hover {
-  background-color: #b91c1c !important; /* Đỏ sậm hơn khi di chuột */
-  border-color: #b91c1c !important;
+
+/* Nút HỦY BỎ / GIAO THẤT BẠI (Màu xám nhạt / Đỏ viền) */
+.z-btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151 !important;
+  border-color: #e5e7eb;
+}
+.z-btn-secondary:hover:not(:disabled) {
+  background-color: #e5e7eb;
+  color: #374151 !important;
+}
+
+/* Nút NGUY HIỂM / HỦY ĐƠN (Màu đỏ) */
+.z-btn-danger {
+  background-color: #ffffff;
+  color: #dc2626 !important;
+  border-color: #dc2626;
+}
+.z-btn-danger:hover:not(:disabled) {
+  background-color: #dc2626;
   color: #ffffff !important;
 }
 </style>
-

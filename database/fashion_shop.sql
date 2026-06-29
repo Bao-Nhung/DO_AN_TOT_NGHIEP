@@ -1591,3 +1591,19 @@ SET IDENTITY_INSERT [dbo].[Nhat_ky] OFF;
 END
 GO
 
+-- Thêm cột vào bảng Hoa_don
+ALTER TABLE [dbo].[Hoa_don] ADD [trang_thai_tracking] nvarchar(50) DEFAULT 'pending';
+ALTER TABLE [dbo].[Hoa_don] ADD [ngay_giao_hang_du_kien] datetime2(7) NULL;
+ALTER TABLE [dbo].[Hoa_don] ADD [ngay_giao_hang_thuc_te] datetime2(7) NULL;
+
+-- Tạo bảng mới Lich_su_tracking
+CREATE TABLE [dbo].[Lich_su_tracking] (
+  [id] int IDENTITY(1,1) NOT NULL,
+  [id_hoa_don] int NOT NULL,
+  [trang_thai] nvarchar(50) NOT NULL,
+  [mo_ta] nvarchar(max) NULL,
+  [ngay_cap_nhat] datetime2(7) NOT NULL DEFAULT GETUTCDATE(),
+  CONSTRAINT [PK_Lich_su_tracking] PRIMARY KEY ([id]),
+  CONSTRAINT [FK_Lich_su_tracking_Hoa_don] FOREIGN KEY ([id_hoa_don]) REFERENCES [dbo].[Hoa_don]([id])
+);
+

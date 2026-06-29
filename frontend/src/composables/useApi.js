@@ -70,6 +70,12 @@ export function api() {
         })
       }),
       
+    // --- BỔ SUNG HÀM NÀY CHO KHÁCH HÀNG TỰ HỦY ĐƠN ---
+    cancelMyOrder: (id, ghiChu) => request(`/hoa-don/${id}/cancel`, {
+      method: 'PUT',
+      body: JSON.stringify({ ghiChu: ghiChu || null })
+    }),
+      
     // ====== API MỚI CHO TRACKING ======
     searchOrder: (params) => {
       const query = new URLSearchParams()

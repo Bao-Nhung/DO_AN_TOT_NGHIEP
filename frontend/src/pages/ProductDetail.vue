@@ -3,7 +3,6 @@
     <div class="container" style="padding-top:100px;padding-bottom:80px">
       <div class="row g-5">
 
-        <!-- Images -->
         <div class="col-lg-6">
           <div class="d-grid gap-3" style="grid-template-columns:72px 1fr">
             <div class="d-flex flex-column gap-2">
@@ -28,7 +27,6 @@
           </div>
         </div>
 
-        <!-- Info -->
         <div class="col-lg-6 pt-lg-2">
           <p class="lm-eyebrow mb-3">Zestia — {{ product.loaiVay || 'Bộ Sưu Tập' }}</p>
           <h1 class="z-display mb-3" style="font-size:36px;font-weight:400;line-height:1.15;color:var(--z-dark)">
@@ -55,9 +53,8 @@
             {{ product.moTa || 'Thiết kế sang trọng, chất liệu cao cấp từ Zestia. Phù hợp cho cả ngày thường và dịp đặc biệt.' }}
           </p>
 
-          <!-- Colors -->
           <div class="mb-3">
-            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Màu sắc</span>
+            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Màu sắc <span class="text-danger">*</span></span>
           </div>
           <div class="d-flex gap-2 mb-4">
             <div v-for="(c, i) in colors" :key="i"
@@ -67,9 +64,8 @@
             </div>
           </div>
 
-          <!-- Sizes -->
           <div class="mb-3">
-            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Kích thước</span>
+            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Kích thước <span class="text-danger">*</span></span>
           </div>
           <div class="d-flex gap-2 mb-4">
             <button v-for="s in sizes" :key="s.label"
@@ -82,7 +78,6 @@
             </button>
           </div>
 
-          <!-- Actions -->
           <div class="d-grid gap-2 mb-4" style="grid-template-columns:1fr 52px">
             <button class="lm-btn-primary justify-content-center" @click="addToCart()">
               <span>Thêm vào giỏ hàng</span>
@@ -134,8 +129,9 @@ const { isInWishlist, toggleWishlist } = useWishlist()
 
 const product = ref({})
 const activeThumb = ref(0)
-const activeColor = ref(0)
-const activeSize  = ref('')
+// Thay đổi: Để mặc định là null để bắt buộc người dùng click chọn
+const activeColor = ref(null) 
+const activeSize  = ref(null) 
 const isLiked = computed(() => isInWishlist(product.value.id))
 
 const letters = ['Z', 'e', 's', 't', 'i', 'a']
@@ -206,24 +202,40 @@ onMounted(async () => {
   try {
     const id = route.params.id
     product.value = await api().getVayById(id)
-    if (sizes.value.length) activeSize.value = sizes.value.find(s => !s.soldOut)?.label || sizes.value[0].label
+    // Đã xóa phần auto-select size để ép người dùng phải chọn
   } catch (e) { console.error('Failed to load product:', e) }
 })
 
 function addToCart() {
+  // --- LOGIC CHẶN NGƯỜI DÙNG KHI CHƯA CHỌN MÀU/SIZE ---
+  if (activeColor.value === null) {
+    showToast('Vui lòng chọn Màu sắc trước khi mua!', 'warning')
+    return
+  }
+  if (!activeSize.value) {
+    showToast('Vui lòng chọn Kích thước trước khi mua!', 'warning')
+    return
+  }
+
   const p = product.value
   const idx = (p.id || 0) % letters.length
   const colorName = colors.value[activeColor.value]?.name || ''
-  const variantText = [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · ')
+  
   addItem({
-    id: p.id, name: p.tenVay || 'Sản phẩm',
-    variant: variantText,
+    id: p.id, 
+    name: p.tenVay || 'Sản phẩm',
+    // Gửi tách biệt size và color để hiển thị chuẩn bên CheckoutPage
+    size: activeSize.value,
+    color: colorName,
+    variant: [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · '),
     price: Number(p.giaBan) || 0,
     image: p.anhUrl || null,
-    letter: letters[idx], bg: bgs[idx % bgs.length]
+    letter: letters[idx], 
+    bg: bgs[idx % bgs.length]
   })
-  showToast('Đã thêm vào giỏ hàng')
+  showToast('Đã thêm vào giỏ hàng', 'success')
 }
+
 function toggleWish() {
   const added = toggleWishlist(product.value.id)
   showToast(added ? 'Đã thêm vào yêu thích' : 'Đã xoá khỏi yêu thích')

@@ -85,7 +85,7 @@
 
         <div v-else-if="detailData">
           <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <template v-if="detailData.trangThai === 4">
+            <template v-if="detailData.trangThai === 5">
                <div class="z-step active">
                   <div class="z-step-dot" style="background: var(--z-danger);"></div>
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
@@ -93,12 +93,12 @@
             </template>
             <template v-else>
                 <div v-for="(step, i) in statusSteps" :key="i"
-                     class="z-step" :class="{ active: detailData.trangThai >= i && detailData.trangThai !== 5, current: detailData.trangThai === i, failed: i === 3 && detailData.trangThai === 5 }">
-                  <div class="z-step-dot" :style="i === 3 && detailData.trangThai === 5 ? 'background: var(--z-danger)' : ''"></div>
-                  <div class="z-step-label" :style="i === 3 && detailData.trangThai === 5 ? 'color: var(--z-danger); font-weight: 600;' : ''">
-                      {{ i === 3 && detailData.trangThai === 5 ? 'Giao thất bại' : step }}
+                     class="z-step" :class="{ active: detailData.trangThai >= i && detailData.trangThai !== 6, current: detailData.trangThai === i, failed: i === 4 && detailData.trangThai === 6 }">
+                  <div class="z-step-dot" :style="i === 4 && detailData.trangThai === 6 ? 'background: var(--z-danger)' : ''"></div>
+                  <div class="z-step-label" :style="i === 4 && detailData.trangThai === 6 ? 'color: var(--z-danger); font-weight: 600;' : ''">
+                      {{ i === 4 && detailData.trangThai === 6 ? 'Giao thất bại' : step }}
                   </div>
-                  <div v-if="i < statusSteps.length - 1" class="z-step-line" :class="{ filled: detailData.trangThai > i && detailData.trangThai !== 5 }"></div>
+                  <div v-if="i < statusSteps.length - 1" class="z-step-line" :class="{ filled: detailData.trangThai > i && detailData.trangThai !== 6 }"></div>
                 </div>
             </template>
           </div>
@@ -173,12 +173,14 @@
                       <div class="flex-grow-1">
                         <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ item.tenSanPham || item.tenVay || 'Sản phẩm' }}</div>
                         <div style="font-size:12px;color:var(--z-gray)">
+                          <span v-if="item.maSanPham">Mã SP: {{ item.maSanPham }}<br></span>
                           <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
                             <span v-if="item.maHex" :style="{ width:'8px', height:'8px', borderRadius:'50%', background: item.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
                             {{ item.mauSac }}
                           </span>
-                          <span v-if="item.mauSac && item.kichThuoc"> • </span>
-                          <span v-if="item.kichThuoc">Size {{ item.kichThuoc }}</span>
+                          <span v-if="item.mauSac && item.kichThuoc"> · </span>
+                          <span v-if="item.kichThuoc"> Size: {{ item.kichThuoc }}</span>
+                          <span v-if="item.phanTramGiam > 0" style="color:var(--z-danger); font-weight: 500;"> | Giảm: {{ item.phanTramGiam }}%</span>
                         </div>
                       </div>
                       <div class="text-end">
@@ -198,9 +200,18 @@
                       <span style="font-weight: 500; color: var(--z-dark);">+ {{ fmtPrice(detailData.phiVanChuyen) }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2" v-if="detailData.giamGiaKhuyenMai > 0">
-                      <span>Giảm giá / Khuyến mãi <br><small v-if="detailData.khuyenMai || detailData.giamGia" class="text-muted">({{ detailData.khuyenMai || detailData.giamGia }})</small>:</span>
+                      <span>Giảm giá / Khuyến mãi:</span>
                       <span class="text-danger font-weight-bold">- {{ fmtPrice(detailData.giamGiaKhuyenMai) }}</span>
                     </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailData.khuyenMai">
+                      <div style="font-size:13px;color:var(--z-gray)">Chương trình KM</div>
+                      <div style="font-size:13px;font-weight:500;color:var(--z-success)">{{ detailData.khuyenMai }}</div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailData.giamGia">
+                      <div style="font-size:13px;color:var(--z-gray)">Voucher</div>
+                      <div style="font-size:13px;font-weight:500;color:var(--z-success)">{{ detailData.giamGia }}</div>
+                    </div>
+                    
                     <div class="d-flex justify-content-between align-items-center pt-2 mt-2" style="border-top:1px dashed var(--z-gray-border)">
                         <div style="font-size:14px;font-weight:600; color: var(--z-dark);">Khách cần trả</div>
                         <div style="font-size:20px;font-weight:700;color:var(--z-accent)">{{ fmtPrice(detailData.tongTien) }}</div>
@@ -210,7 +221,7 @@
           </div>
 
           <div class="d-flex justify-content-end gap-2 mt-2 pt-3" style="border-top:1px solid var(--z-gray-border)">
-             <button v-if="detailData.trangThai === 2" class="z-btn-action z-btn-danger" 
+             <button v-if="detailData.trangThai === 3" class="z-btn-action z-btn-danger" 
                      @click="confirmFail(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
               <i class="bi bi-x-circle me-1"></i> Giao thất bại
             </button>
@@ -283,12 +294,13 @@ const { showToast } = useToast()
 const statusMap = { 
     0: { text: 'Chờ xử lý', cls: 'pending' }, 
     1: { text: 'Đã xác nhận', cls: 'warning' }, 
-    2: { text: 'Đang giao', cls: 'info' }, 
-    3: { text: 'Hoàn thành', cls: 'success' }, 
-    4: { text: 'Đã huỷ', cls: 'danger' },
-    5: { text: 'Giao thất bại', cls: 'danger' } 
+    2: { text: 'Đang chuẩn bị', cls: 'info' }, 
+    3: { text: 'Đang giao', cls: 'primary' }, 
+    4: { text: 'Hoàn thành', cls: 'success' }, 
+    5: { text: 'Đã huỷ', cls: 'danger' },
+    6: { text: 'Giao thất bại', cls: 'danger' } 
 }
-const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Đang giao', 'Hoàn thành']
+const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
 const search = ref('')
 const activeStatus = ref('all')
@@ -313,7 +325,7 @@ let pollingInterval = null
 
 const needPaidConfirm = computed(() =>
   confirmType.value === 'advance' &&
-  confirmNewStatus.value === 3 &&
+  confirmNewStatus.value === 4 && // 4 là Hoàn thành mới
   confirmOrder.value && confirmOrder.value.isCod && !confirmOrder.value.paid
 )
 
@@ -370,10 +382,11 @@ const statusTabs = computed(() => [
   { label: 'Tất cả',        value: 'all',  count: allOrders.value.length },
   { label: 'Chờ xử lý',     value: '0',    count: allOrders.value.filter(o => o.statusValue === '0').length },
   { label: 'Đã xác nhận',   value: '1',    count: allOrders.value.filter(o => o.statusValue === '1').length },
-  { label: 'Đang giao',     value: '2',    count: allOrders.value.filter(o => o.statusValue === '2').length },
-  { label: 'Hoàn thành',    value: '3',    count: allOrders.value.filter(o => o.statusValue === '3').length },
-  { label: 'Giao thất bại', value: '5',    count: allOrders.value.filter(o => o.statusValue === '5').length },
-  { label: 'Đã huỷ',        value: '4',    count: allOrders.value.filter(o => o.statusValue === '4').length },
+  { label: 'Đang chuẩn bị', value: '2',    count: allOrders.value.filter(o => o.statusValue === '2').length },
+  { label: 'Đang giao',     value: '3',    count: allOrders.value.filter(o => o.statusValue === '3').length },
+  { label: 'Hoàn thành',    value: '4',    count: allOrders.value.filter(o => o.statusValue === '4').length },
+  { label: 'Đã huỷ',        value: '5',    count: allOrders.value.filter(o => o.statusValue === '5').length },
+  { label: 'Giao thất bại', value: '6',    count: allOrders.value.filter(o => o.statusValue === '6').length },
 ])
 
 const filteredOrders = computed(() => {
@@ -386,7 +399,7 @@ const filteredOrders = computed(() => {
 
 function canAdvance(o) {
   const v = Number(o.statusValue)
-  return v >= 0 && v < 3
+  return v >= 0 && v < 4 // Có 4 bước chuyển trạng thái (0->1->2->3->4)
 }
 
 function canCancel(o) {
@@ -397,16 +410,16 @@ function canCancel(o) {
 function nextStatusLabel(o) {
   const v = Number(o.statusValue)
   if (v === 0) return 'Xác nhận đơn'
-  if (v === 1) return 'Chuyển giao hàng'
-  if (v === 2) return 'Hoàn thành đơn'
+  if (v === 1) return 'Chuyển chuẩn bị'
+  if (v === 2) return 'Chuyển giao hàng'
+  if (v === 3) return 'Hoàn thành đơn'
   return ''
 }
 
-// BỎ LỆNH ĐÓNG MODAL Ở 3 HÀM DƯỚI ĐÂY
 function confirmAdvance(o) {
   const v = Number(o.statusValue)
   const nextVal = v + 1
-  const labels = { 1: 'xác nhận', 2: 'chuyển sang đang giao', 3: 'đánh dấu hoàn thành' }
+  const labels = { 1: 'xác nhận', 2: 'chuyển sang chuẩn bị', 3: 'chuyển sang đang giao', 4: 'đánh dấu hoàn thành' }
   confirmTitle.value = nextStatusLabel(o)
   confirmMessage.value = `Bạn có chắc muốn ${labels[nextVal]} đơn hàng ${o.id}?`
   confirmType.value = 'advance'
@@ -422,7 +435,7 @@ function confirmFail(o) {
   confirmMessage.value = `Ghi nhận giao thất bại cho đơn hàng ${o.id}?`
   confirmType.value = 'fail'
   confirmOrder.value = o
-  confirmNewStatus.value = 5
+  confirmNewStatus.value = 6 // Giao thất bại là 6
   cancelNote.value = ''
   showConfirm.value = true
 }
@@ -432,7 +445,7 @@ function confirmCancel(o) {
   confirmMessage.value = `Bạn có chắc muốn huỷ đơn hàng ${o.id}? Hành động này không thể hoàn tác.`
   confirmType.value = 'cancel'
   confirmOrder.value = o
-  confirmNewStatus.value = 4
+  confirmNewStatus.value = 5 // Đã hủy là 5
   cancelNote.value = ''
   showConfirm.value = true
 }
@@ -451,7 +464,6 @@ async function executeAction() {
     showConfirm.value = false
     await loadOrders()
     
-    // NẾU BẢNG CHI TIẾT VẪN ĐANG MỞ -> RELOAD LẠI DỮ LIỆU ĐỂ HIỆN TRẠNG THÁI MỚI NHẤT
     if(showDetail.value && detailData.value) {
        await openDetail(allOrders.value.find(o => o.dbId === detailData.value.id));
     }
@@ -535,22 +547,20 @@ async function openDetail(o) {
 }
 
 /* ============================================================== */
-/* BỘ NÚT CHUẨN XÁC DÀNH RIÊNG CHO MODAL (CHỐNG LỖI HIỆU ỨNG CHE CHỮ) */
+/* BỘ NÚT CHUẨN XÁC DÀNH RIÊNG CHO MODAL (KHÔNG CHE CHỮ) */
 /* ============================================================== */
 .z-btn-action {
-  padding: 8px 18px;
+  padding: 10px 20px;
   border-radius: 8px;
   font-weight: 600;
   font-size: 14px;
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Đảm bảo chữ luôn nằm trên cùng */
   position: relative;
-  z-index: 1;
 }
 
 .z-btn-action:disabled {
@@ -558,19 +568,18 @@ async function openDetail(o) {
   cursor: not-allowed;
 }
 
-/* Nút XÁC NHẬN (Màu cam) */
+/* Nút Primary (Giống nút Tra cứu) - Màu cam */
 .z-btn-primary {
   background-color: var(--z-accent, #e85d04);
-  color: #ffffff !important; /* Ép cứng màu chữ trắng */
+  color: #ffffff !important;
   border-color: var(--z-accent, #e85d04);
 }
 .z-btn-primary:hover:not(:disabled) {
-  background-color: #d04c02; /* Cam đậm hơn một xíu khi hover */
-  border-color: #d04c02;
+  background-color: #d04c02; 
   color: #ffffff !important;
 }
 
-/* Nút HỦY BỎ / GIAO THẤT BẠI (Màu xám nhạt / Đỏ viền) */
+/* Nút Secondary (Xám nhạt) */
 .z-btn-secondary {
   background-color: #f3f4f6;
   color: #374151 !important;
@@ -581,14 +590,15 @@ async function openDetail(o) {
   color: #374151 !important;
 }
 
-/* Nút NGUY HIỂM / HỦY ĐƠN (Màu đỏ) */
+/* Nút Danger (Đỏ) */
 .z-btn-danger {
-  background-color: #ffffff;
+  background-color: #fef2f2;
   color: #dc2626 !important;
-  border-color: #dc2626;
+  border-color: #fecaca;
 }
 .z-btn-danger:hover:not(:disabled) {
   background-color: #dc2626;
   color: #ffffff !important;
+  border-color: #dc2626;
 }
 </style>

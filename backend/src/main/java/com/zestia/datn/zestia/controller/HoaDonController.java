@@ -52,14 +52,30 @@ public class HoaDonController {
                 byte newTrangThai = ((Number) body.get("trangThai")).byteValue();
                 hd.setTrangThai(newTrangThai);
                 
-                // ===== TỰ ĐỘNG LƯU LỊCH SỬ TRACKING THỜI GIAN THỰC KHI ADMIN UPDATE =====
+                // ===== ĐỒNG BỘ CHUẨN 7 TRẠNG THÁI (0 đến 6) VỚI FRONTEND =====
                 String trackingStatus = "pending";
                 String trackingDesc = "Đơn hàng đang chờ xử lý.";
-                if (newTrangThai == 1) { trackingStatus = "processing"; trackingDesc = "Đơn hàng đã được xác nhận và đang đóng gói."; }
-                else if (newTrangThai == 2) { trackingStatus = "shipped"; trackingDesc = "Đơn hàng đã được bàn giao cho đơn vị vận chuyển."; }
-                else if (newTrangThai == 3) { trackingStatus = "delivered"; trackingDesc = "Giao hàng thành công đến tay người nhận."; hd.setNgayGiaoHangThucTe(LocalDateTime.now()); }
-                else if (newTrangThai == 4) { trackingStatus = "cancelled"; trackingDesc = "Đơn hàng đã bị hủy."; }
-                else if (newTrangThai == 5) { trackingStatus = "failed"; trackingDesc = "Giao hàng thất bại."; }
+                
+                if (newTrangThai == 1) { 
+                    trackingStatus = "confirmed"; 
+                    trackingDesc = "Đơn hàng đã được xác nhận."; 
+                } else if (newTrangThai == 2) { 
+                    trackingStatus = "processing"; 
+                    trackingDesc = "Đơn hàng đang được chuẩn bị và đóng gói."; 
+                } else if (newTrangThai == 3) { 
+                    trackingStatus = "shipped"; 
+                    trackingDesc = "Đơn hàng đã được bàn giao cho đơn vị vận chuyển."; 
+                } else if (newTrangThai == 4) { 
+                    trackingStatus = "delivered"; 
+                    trackingDesc = "Giao hàng thành công đến tay người nhận."; 
+                    hd.setNgayGiaoHangThucTe(LocalDateTime.now()); 
+                } else if (newTrangThai == 5) { 
+                    trackingStatus = "cancelled"; 
+                    trackingDesc = "Đơn hàng đã bị hủy."; 
+                } else if (newTrangThai == 6) { 
+                    trackingStatus = "failed"; 
+                    trackingDesc = "Giao hàng thất bại."; 
+                }
                 
                 hd.setTrangThaiTracking(trackingStatus);
                 
@@ -70,7 +86,7 @@ public class HoaDonController {
                         .ngayCapNhat(LocalDateTime.now()) // Lưu đúng thời gian bấm nút
                         .build();
                 lichSuTrackingRepo.save(tracking);
-                // =========================================================================
+                // =============================================================
             }
             if (body.get("ghiChu") != null) {
                 hd.setGhiChu((String) body.get("ghiChu"));
@@ -80,6 +96,31 @@ public class HoaDonController {
             }
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(toMap(hd));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        return hoaDonRepo.findById(id).map(hd -> {
+            if (hd.getTrangThai() == 0) {
+                hd.setTrangThai((byte) 5); // Trạng thái 5 = Đã Hủy
+                
+                String ghiChu = body.get("ghiChu") != null ? (String) body.get("ghiChu") : "Khách hàng yêu cầu hủy";
+                hd.setGhiChu(ghiChu);
+                hd.setTrangThaiTracking("cancelled");
+                
+                LichSuTracking tracking = LichSuTracking.builder()
+                        .hoaDon(hd)
+                        .trangThai("cancelled")
+                        .moTa(ghiChu)
+                        .ngayCapNhat(LocalDateTime.now())
+                        .build();
+                lichSuTrackingRepo.save(tracking);
+                
+                hoaDonRepo.save(hd);
+                return ResponseEntity.ok(toMap(hd));
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", "Chỉ được huỷ khi đơn hàng đang chờ xử lý"));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -309,6 +350,8 @@ public class HoaDonController {
             if (ct.getVayChiTiet() != null) {
                 item.put("tenVay", ct.getVayChiTiet().getVay() != null 
                         ? ct.getVayChiTiet().getVay().getTenVay() : null);
+                item.put("maSanPham", ct.getVayChiTiet().getVay() != null 
+                        ? ct.getVayChiTiet().getVay().getMaVay() : null);
                 item.put("mauSac", ct.getVayChiTiet().getMauSac() != null 
                         ? ct.getVayChiTiet().getMauSac().getTenMauSac() : null);
                 item.put("maHex", ct.getVayChiTiet().getMauSac() != null 
@@ -324,6 +367,7 @@ public class HoaDonController {
             }
             item.put("soLuong", ct.getSoLuong());
             item.put("donGia", ct.getDonGia() != null ? ct.getDonGia() : BigDecimal.ZERO);
+            item.put("phanTramGiam", ct.getPhanTramGiam());
             items.add(item);
         }
         map.put("chiTiets", items);

@@ -14,16 +14,14 @@
     </div>
 
     <div class="z-timeline mt-4">
-      <div v-if="!order.trackingHistory || order.trackingHistory.length === 0" class="text-center text-muted py-3">
-        Chưa có lịch sử cập nhật cho đơn hàng này.
-      </div>
-      
-      <div v-for="(track, index) in order.trackingHistory" :key="index" class="z-timeline-item">
+      <div v-for="(track, index) in displayHistory" :key="index" class="z-timeline-item">
         <div :class="['z-timeline-dot', `z-timeline-dot-${track.trangThai}`]"></div>
         <div class="z-timeline-content">
-          <strong class="d-block">{{ getTrackingStatusName(track.trangThai) }}</strong>
-          <span class="text-muted d-block" style="font-size: 12px;">{{ formatDateTime(track.ngayCapNhat) }}</span>
-          <p class="mt-1 mb-0" style="font-size: 14px;" v-if="track.moTa">{{ track.moTa }}</p>
+          <strong class="d-block" style="color: var(--z-dark);">{{ getTrackingStatusName(track.trangThai) }}</strong>
+          <span class="text-muted d-block" style="font-size: 12px; margin-top: 2px;">
+            <i class="bi bi-clock-history"></i> {{ formatDateTime(track.ngayCapNhat) }}
+          </span>
+          <p class="mt-2 mb-0" style="font-size: 13px; color: #4b5563;" v-if="track.moTa">{{ track.moTa }}</p>
         </div>
       </div>
     </div>
@@ -37,28 +35,72 @@ const props = defineProps({
   order: { type: Object, required: true }
 })
 
+// Map trạng thái số sang tracking key chuẩn 7 bước
+const mapTrangThai = {
+  0: 'pending',
+  1: 'confirmed',
+  2: 'processing',
+  3: 'shipped',
+  4: 'delivered',
+  5: 'cancelled',
+  6: 'failed'
+}
+
+const computedTrackingStatus = computed(() => {
+  if (props.order.trangThaiTracking && props.order.trangThaiTracking !== 'pending') {
+    return props.order.trangThaiTracking;
+  }
+  return mapTrangThai[props.order.trangThai] || 'pending';
+})
+
 const statusClass = computed(() => {
   const map = {
     'pending': 'bg-secondary',
+    'confirmed': 'bg-warning text-dark',
     'processing': 'bg-info text-dark',
     'shipped': 'bg-primary',
     'delivered': 'bg-success',
-    'cancelled': 'bg-danger'
+    'cancelled': 'bg-danger',
+    'failed': 'bg-danger'
   }
-  return map[props.order.trangThaiTracking] || 'bg-secondary'
+  return map[computedTrackingStatus.value] || 'bg-secondary'
 })
 
 const statusText = computed(() => {
-  return getTrackingStatusName(props.order.trangThaiTracking)
+  return getTrackingStatusName(computedTrackingStatus.value)
+})
+
+const displayHistory = computed(() => {
+  let history = props.order.trackingHistory || []
+  history = [...history].sort((a, b) => new Date(b.ngayCapNhat) - new Date(a.ngayCapNhat))
+
+  if (history.length === 0) {
+    const fakeHistory = [{
+      trangThai: 'pending',
+      moTa: 'Đơn hàng đã được tạo và chờ xác nhận.',
+      ngayCapNhat: props.order.ngayTao
+    }]
+    if (computedTrackingStatus.value !== 'pending') {
+      fakeHistory.unshift({
+        trangThai: computedTrackingStatus.value,
+        moTa: 'Hệ thống cập nhật trạng thái đơn hàng.',
+        ngayCapNhat: new Date()
+      })
+    }
+    return fakeHistory
+  }
+  return history
 })
 
 function getTrackingStatusName(status) {
   const map = {
     'pending': 'Chờ xác nhận',
+    'confirmed': 'Đã xác nhận',
     'processing': 'Đang chuẩn bị hàng',
     'shipped': 'Đang giao hàng',
     'delivered': 'Giao thành công',
-    'cancelled': 'Đã hủy'
+    'cancelled': 'Đã hủy',
+    'failed': 'Giao thất bại'
   }
   return map[status] || 'Không xác định'
 }
@@ -82,7 +124,6 @@ function formatDateTime(dateStr) {
   padding: 24px;
 }
 
-/* Tracking Timeline CSS (Từ bản commit của đồng đội) */
 .z-timeline {
   position: relative;
   padding-left: 24px;
@@ -92,7 +133,7 @@ function formatDateTime(dateStr) {
 
 .z-timeline-item {
   position: relative;
-  padding-bottom: 24px;
+  padding-bottom: 28px;
 }
 
 .z-timeline-item:last-child {
@@ -101,7 +142,7 @@ function formatDateTime(dateStr) {
 
 .z-timeline-dot {
   position: absolute;
-  left: -33px; /* Bù trừ border */
+  left: -33px;
   top: 0;
   width: 16px;
   height: 16px;
@@ -112,10 +153,10 @@ function formatDateTime(dateStr) {
 }
 
 .z-timeline-dot-pending { border-color: #6c757d; background: #e9ecef; }
+.z-timeline-dot-confirmed { border-color: #f59e0b; background: #fef3c7; }
 .z-timeline-dot-processing { border-color: #0dcaf0; background: #cff4fc; }
 .z-timeline-dot-shipped { border-color: #0d6efd; background: #cfe2ff; }
 .z-timeline-dot-delivered { border-color: #198754; background: #d1e7dd; }
 .z-timeline-dot-cancelled { border-color: #dc3545; background: #f8d7da; }
-
-.z-timeline-content strong { color: var(--z-dark); }
+.z-timeline-dot-failed { border-color: #dc3545; background: #f8d7da; }
 </style>

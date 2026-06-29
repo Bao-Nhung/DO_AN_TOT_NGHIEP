@@ -65,8 +65,10 @@ public class PaymentController {
         List<HoaDonChiTiet> chiTietList = new ArrayList<>();
 
         for (Map<String, Object> item : items) {
+            // === THÊM 1 DÒNG ĐỂ ĐỌC ĐƯỢC CẢ "productId" HOẶC "id" TỪ FRONTEND GỬI LÊN ===
             Integer productId = toInt(item.get("productId"));
-            // Hỗ trợ cả "qty" (client) và "quantity" (POS)
+            if (productId == null) productId = toInt(item.get("id")); // Dòng này là "cứu tinh"
+            
             Integer qty = toInt(item.get("qty"));
             if (qty == null) qty = toInt(item.get("quantity"));
             if (productId == null || qty == null || qty <= 0) continue;
@@ -74,7 +76,41 @@ public class PaymentController {
             var variants = vayCtRepo.findByVayId(productId);
             if (variants.isEmpty()) continue;
 
-            VayChiTiet variant = variants.get(0);
+            // ==========================================
+            // TÌM CHÍNH XÁC BIẾN THỂ (KÍCH THƯỚC & MÀU SẮC)
+            // ==========================================
+            VayChiTiet variant = variants.get(0); // Lấy mặc định nếu không khớp
+            String size = (String) item.get("size");
+            String color = (String) item.get("color");
+
+            if (size != null || color != null) {
+                for (VayChiTiet v : variants) {
+                    boolean matchSize = size == null || (v.getKichThuoc() != null && size.equalsIgnoreCase(v.getKichThuoc().getTenKichThuoc()));
+                    boolean matchColor = color == null || (v.getMauSac() != null && color.equalsIgnoreCase(v.getMauSac().getTenMauSac()));
+                    
+                    if (matchSize && matchColor) {
+                        variant = v;
+                        break;
+                    }
+                }
+            }
+
+            // ==========================================
+            // KIỂM TRA VÀ TRỪ TỒN KHO THỰC TẾ
+            // ==========================================
+            int soLuongKho = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
+            if (soLuongKho < qty) {
+                String tenSp = variant.getVay() != null ? variant.getVay().getTenVay() : "Sản phẩm";
+                String thongTinBT = (color != null ? " - Màu " + color : "") + (size != null ? " - Size " + size : "");
+                return ResponseEntity.badRequest().body(Map.of("error", 
+                    tenSp + thongTinBT + " không đủ số lượng. Chỉ còn " + soLuongKho + " sản phẩm."));
+            }
+            
+            // Tiến hành trừ kho ngay khi đặt hàng
+            variant.setSoLuong(soLuongKho - qty);
+            vayCtRepo.save(variant);
+            // ==========================================
+
             BigDecimal price = variant.getGiaBan();
             BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(qty));
             tamTinh = tamTinh.add(lineTotal);
@@ -125,7 +161,7 @@ public class PaymentController {
         BigDecimal tongTien = tamTinh.add(phiVanChuyen).subtract(giamGia);
         if (tongTien.compareTo(BigDecimal.ZERO) < 0) tongTien = BigDecimal.ZERO;
 
-        // Trạng thái: mặc định 0 (Chờ xử lý). POS gửi trangThai=3 (Hoàn thành).
+        // Trạng thái: mặc định 0 (Chờ xử lý). POS gửi trangThai=4 (Hoàn thành - cập nhật theo luồng mới).
         byte trangThai = (byte) 0;
         if (body.get("trangThai") != null) trangThai = ((Number) body.get("trangThai")).byteValue();
 
@@ -148,9 +184,9 @@ public class PaymentController {
                 .nhanVien(nv)
                 .giamGia(voucher)
                 .tongTien(tongTien)
-                .phiVanChuyen(phiVanChuyen) // ĐÃ LƯU VÀO DB
+                .phiVanChuyen(phiVanChuyen)
                 .giamGiaKhuyenMai(giamGia)
-                .hinhThucNhanHang((byte) 1)
+                .hinhThucNhanHang(body.get("nhanVienId") != null ? (byte) 0 : (byte) 1)
                 .diaChiGiaoHang(diaChi != null ? diaChi : "")
                 .hinhThucThanhToan(hinhThuc != null ? hinhThuc : "COD")
                 .trangThai(trangThai)
@@ -394,7 +430,8 @@ public class PaymentController {
                     .build();
             lichSuRepo.save(ls);
         } else {
-            hd.setTrangThai((byte) 5);
+            // Thanh toán VNPay thất bại, không lưu là Đã Hủy (5) nữa mà đổi về Giao Thất Bại (6) hoặc giữ Chờ Xử Lý (0)
+            hd.setTrangThai((byte) 6);
             hoaDonRepo.save(hd);
 
             LichSuThanhToan ls = LichSuThanhToan.builder()
@@ -472,4 +509,3 @@ public class PaymentController {
         try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
     }
 }
-

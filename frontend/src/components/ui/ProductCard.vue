@@ -18,7 +18,7 @@
            :style="{ color: isLiked ? 'var(--z-accent)' : 'var(--z-dark)', fontSize:'14px' }"></i>
       </button>
 
-      <div class="lm-product-quick" @click.stop="addCart">Thêm vào giỏ</div>
+      <div class="lm-product-quick" @click.stop="$router.push('/product/' + product.id)">Tùy chọn</div>
     </div>
 
     <div class="lm-product-cat">{{ product.category }}</div>
@@ -42,7 +42,8 @@ const props = defineProps({
   product: { type: Object, required: true }
 })
 
-const { addItem, formatPrice } = useCart()
+// Bỏ hàm addItem, chỉ giữ lại formatPrice
+const { formatPrice } = useCart()
 const { showToast } = useToast()
 const { isInWishlist, toggleWishlist } = useWishlist()
 
@@ -51,17 +52,5 @@ const isLiked = computed(() => isInWishlist(props.product.id))
 function toggleWish() {
   const added = toggleWishlist(props.product.id)
   showToast(added ? 'Đã thêm vào yêu thích' : 'Đã xoá khỏi yêu thích')
-}
-
-function addCart() {
-  const p = props.product
-  addItem({
-    id: p.id, name: p.name,
-    variant: p.category || 'Mặc định',
-    price: p.salePrice || p.price,
-    image: p.image || null,
-    letter: p.letter, bg: p.bg
-  })
-  showToast('Đã thêm vào giỏ hàng')
 }
 </script>

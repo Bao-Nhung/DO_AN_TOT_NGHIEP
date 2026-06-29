@@ -3,7 +3,6 @@
     <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Tổng quan</h1>
     <p style="font-size:14px;color:var(--z-gray);margin-bottom:24px">Chào mừng trở lại, Admin. Đây là tình hình cửa hàng hôm nay.</p>
 
-    <!-- Stats -->
     <div class="row g-3 mb-4">
       <div v-for="stat in stats" :key="stat.label" class="col-6 col-xl-3">
         <div class="z-stat-card">
@@ -21,7 +20,6 @@
     </div>
 
     <div class="row g-3">
-      <!-- Recent orders -->
       <div class="col-lg-8">
         <div class="z-admin-card">
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -53,7 +51,6 @@
         </div>
       </div>
 
-      <!-- Top products -->
       <div class="col-lg-4">
         <div class="z-admin-card">
           <h3 class="z-admin-card-title mb-3">Sản phẩm bán chạy</h3>
@@ -87,7 +84,15 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice, mapProduct } from '@/composables/useProducts'
 
-const statusMap = { 0: { text: 'Chờ xử lý', cls: 'pending' }, 1: { text: 'Xác nhận', cls: 'warning' }, 2: { text: 'Đang giao', cls: 'info' }, 3: { text: 'Hoàn thành', cls: 'success' }, 4: { text: 'Đã huỷ', cls: 'danger' } }
+const statusMap = {
+  0: { text: 'Chờ xử lý', cls: 'pending' },
+  1: { text: 'Đã xác nhận', cls: 'warning' },
+  2: { text: 'Đang chuẩn bị', cls: 'info' },
+  3: { text: 'Đang giao', cls: 'primary' },
+  4: { text: 'Hoàn thành', cls: 'success' },
+  5: { text: 'Đã huỷ', cls: 'danger' },
+  6: { text: 'Giao thất bại', cls: 'danger' }
+}
 
 const stats = ref([
   { label: 'Doanh thu', value: '...', change: '', up: true, icon: 'bi-graph-up', color: '#16a34a' },
@@ -169,9 +174,14 @@ onMounted(async () => {
   padding: 4px 10px; border-radius: 20px;
   display: inline-block;
 }
+
+/* Các trạng thái màu sắc */
 .z-status.success { background: #dcfce7; color: #16a34a; }
 .z-status.info    { background: #dbeafe; color: #2563eb; }
 .z-status.warning { background: var(--z-warm-light); color: #92400e; }
 .z-status.pending { background: var(--z-bg-alt); color: var(--z-gray); }
 .z-status.danger  { background: #fee2e2; color: #dc2626; }
+
+/* BỔ SUNG MÀU CHO TRẠNG THÁI "ĐANG GIAO" */
+.z-status.primary { background: #e0e7ff; color: #4338ca; } 
 </style>

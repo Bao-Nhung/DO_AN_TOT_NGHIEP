@@ -119,7 +119,7 @@
 
         <div v-else-if="detailOrder">
           <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <template v-if="detailOrder.trangThai === 4">
+            <template v-if="detailOrder.trangThai === 5">
                <div class="z-step active">
                   <div class="z-step-dot" style="background: var(--z-danger);"></div>
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
@@ -127,11 +127,9 @@
             </template>
             <template v-else>
                 <div v-for="(step, i) in statusSteps" :key="i"
-                     class="z-step" :class="{ active: detailOrder.trangThai >= i && detailOrder.trangThai !== 5, current: detailOrder.trangThai === i, failed: i === 3 && detailOrder.trangThai === 5 }">
-                  <div class="z-step-dot" :style="i === 3 && detailOrder.trangThai === 5 ? 'background: var(--z-danger)' : ''"></div>
-                  <div class="z-step-label" :style="i === 3 && detailOrder.trangThai === 5 ? 'color: var(--z-danger); font-weight: 600;' : ''">
-                      {{ i === 3 && detailOrder.trangThai === 5 ? 'Giao thất bại' : step }}
-                  </div>
+                     class="z-step" :class="{ active: detailOrder.trangThai >= i && detailOrder.trangThai !== 5, current: detailOrder.trangThai === i }">
+                  <div class="z-step-dot"></div>
+                  <div class="z-step-label">{{ step }}</div>
                   <div v-if="i < statusSteps.length - 1" class="z-step-line" :class="{ filled: detailOrder.trangThai > i && detailOrder.trangThai !== 5 }"></div>
                 </div>
             </template>
@@ -170,14 +168,16 @@
               <div class="flex-grow-1">
                 <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ item.tenSanPham || item.tenVay || 'Sản phẩm' }}</div>
                 <div style="font-size:12px;color:var(--z-gray)">
+                  <span v-if="item.maSanPham">Mã SP: {{ item.maSanPham }}<br></span>
                   <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
                     <span v-if="item.maHex" :style="{ width:'8px', height:'8px', borderRadius:'50%', background: item.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
                     {{ item.mauSac }}
                   </span>
                   <span v-if="item.mauSac && item.kichThuoc"> · </span>
-                  <span v-if="item.kichThuoc">Size {{ item.kichThuoc }}</span>
-                  <span> · SL: {{ item.soLuong }}</span>
+                  <span v-if="item.kichThuoc"> | Size: {{ item.kichThuoc }}</span>
+                  <span v-if="item.phanTramGiam > 0" style="color:var(--z-danger); font-weight: 500;"> | Giảm: {{ item.phanTramGiam }}%</span>
                 </div>
+                <span> · SL: {{ item.soLuong }}</span>
               </div>
               <div style="font-size:13px;font-weight:600;color:var(--z-dark);white-space:nowrap">{{ fmtMoney(item.donGia) }}</div>
             </div>
@@ -200,11 +200,26 @@
                 <span>Giảm giá / Khuyến mãi:</span>
                 <span class="text-danger font-weight-bold">- {{ fmtMoney(detailOrder.giamGiaKhuyenMai) }}</span>
              </div>
+             <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailOrder.khuyenMai">
+                <div style="font-size:13px;color:var(--z-gray)">Chương trình Khuyến mãi</div>
+                <div style="font-size:13px;font-weight:500;color:var(--z-success)">{{ detailOrder.khuyenMai }}</div>
+             </div>
+             <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailOrder.giamGia">
+                <div style="font-size:13px;color:var(--z-gray)">Voucher</div>
+                <div style="font-size:13px;font-weight:500;color:var(--z-success)">{{ detailOrder.giamGia }}</div>
+             </div>
              <div class="d-flex justify-content-between align-items-center pt-2 mt-2" style="border-top:1px dashed var(--z-gray-border)">
                 <div style="font-size:14px;font-weight:600; color: var(--z-dark);">Tổng cộng</div>
                 <div class="z-display" style="font-size:22px;font-weight:700;color:var(--z-accent)">{{ fmtMoney(detailOrder.tongTien) }}</div>
              </div>
           </div>
+
+          <div class="d-flex justify-content-end mt-3" v-if="detailOrder.trangThai === 0">
+            <button class="lm-btn-secondary" style="color:var(--z-danger);border-color:var(--z-danger)" @click="handleCancelOrder">
+              <i class="bi bi-x-circle me-1"></i> Xin huỷ đơn
+            </button>
+          </div>
+
 
         </div>
       </div>
@@ -257,12 +272,12 @@ let pollingInterval = null
 const statusMap = {
   0: { key: 'pending', label: 'Chờ xử lý' },
   1: { key: 'warning', label: 'Đã xác nhận' },
-  2: { key: 'info', label: 'Đang giao' },
-  3: { key: 'success', label: 'Hoàn thành' },
-  4: { key: 'danger', label: 'Đã huỷ' },
-  5: { key: 'danger', label: 'Giao thất bại' },
+  2: { key: 'info', label: 'Đang chuẩn bị' },
+  3: { key: 'primary', label: 'Đang giao' },
+  4: { key: 'success', label: 'Hoàn thành' },
+  5: { key: 'danger', label: 'Đã huỷ' },
 }
-const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Đang giao', 'Hoàn thành']
+const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
 const sortedOrders = computed(() => {
   return [...orders.value].sort((a, b) => {
@@ -304,6 +319,19 @@ async function openOrderDetail(order) {
     detailOrder.value = order
   } finally {
     loadingDetail.value = false
+  }
+}
+
+async function handleCancelOrder() {
+  if (!confirm('Bạn có chắc chắn muốn xin huỷ đơn hàng này?')) return
+  try {
+    await api().cancelMyOrder(detailOrder.value.id, 'Khách hàng yêu cầu huỷ')
+    showToast('Đã huỷ đơn hàng thành công')
+    detailOrder.value.trangThai = 5
+    const idx = orders.value.findIndex(o => o.id === detailOrder.value.id)
+    if (idx !== -1) orders.value[idx].trangThai = 5
+  } catch (e) {
+    showToast(e.error || 'Lỗi khi huỷ đơn hàng')
   }
 }
 

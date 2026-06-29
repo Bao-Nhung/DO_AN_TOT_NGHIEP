@@ -51,6 +51,21 @@ public class HoaDonController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        return hoaDonRepo.findById(id).map(hd -> {
+            if (hd.getTrangThai() == 0) {
+                hd.setTrangThai((byte) 5); // 5 = Cancelled
+                if (body.get("ghiChu") != null) {
+                    hd.setGhiChu((String) body.get("ghiChu"));
+                }
+                hoaDonRepo.save(hd);
+                return ResponseEntity.ok(toMap(hd));
+            }
+            return ResponseEntity.badRequest().body(Map.of("error", "Chỉ được huỷ khi đơn hàng đang chờ xử lý"));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     private Map<String, Object> toMap(HoaDon hd) {
         long soSanPham = hoaDonCtRepo.countByHoaDonId(hd.getId());
         Map<String, Object> map = new LinkedHashMap<>();
@@ -95,6 +110,8 @@ public class HoaDonController {
                 // GIỮ NGUYÊN KEY GỐC: tenVay
                 item.put("tenVay", ct.getVayChiTiet().getVay() != null 
                         ? ct.getVayChiTiet().getVay().getTenVay() : null);
+                item.put("maSanPham", ct.getVayChiTiet().getVay() != null 
+                        ? ct.getVayChiTiet().getVay().getMaVay() : null);
                 item.put("mauSac", ct.getVayChiTiet().getMauSac() != null 
                         ? ct.getVayChiTiet().getMauSac().getTenMauSac() : null);
                 item.put("maHex", ct.getVayChiTiet().getMauSac() != null 
@@ -110,6 +127,7 @@ public class HoaDonController {
             }
             item.put("soLuong", ct.getSoLuong());
             item.put("donGia", ct.getDonGia() != null ? ct.getDonGia() : BigDecimal.ZERO);
+            item.put("phanTramGiam", ct.getPhanTramGiam());
             items.add(item);
         }
         map.put("chiTiets", items);

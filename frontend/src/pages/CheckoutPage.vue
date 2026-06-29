@@ -144,7 +144,11 @@
                 </div>
                 <div class="z-order-item-info">
                   <div class="z-order-item-name">{{ item.name }}</div>
-                  <div class="z-order-item-variant">{{ item.variant || 'Mặc định' }}</div>
+                  <div class="z-order-item-variant">
+                    <span v-if="item.size">Size: {{ item.size }}</span>
+                    <span v-if="item.color"> | Màu: {{ item.color }}</span>
+                    <span v-if="!item.size && !item.color">{{ item.variant || 'Mặc định' }}</span>
+                  </div>
                   <div class="z-order-item-qty">x{{ item.qty }}</div>
                 </div>
                 <div class="z-order-item-price">

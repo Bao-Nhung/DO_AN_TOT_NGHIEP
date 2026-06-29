@@ -69,6 +69,11 @@ export function api() {
           ...(daThanhToan !== undefined ? { daThanhToan } : {})
         })
       }),
+    cancelMyOrder: (id, ghiChu) =>
+      request(`/hoa-don/${id}/cancel`, {
+        method: 'PUT',
+        body: JSON.stringify({ ghiChu: ghiChu || null })
+      }),
 
     // Customers
     getKhachHang: () => request('/khach-hang'),

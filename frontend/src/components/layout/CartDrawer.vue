@@ -41,7 +41,10 @@
                 <i class="bi bi-x-lg"></i>
               </button>
             </div>
-            <div style="font-size:10px;color:var(--lm-gray);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;flex:1">{{ item.variant }}</div>
+            <div style="font-size:11px;color:var(--lm-gray);letter-spacing:0.05em;margin-bottom:12px;flex:1">
+              <div v-if="item.maVayChiTiet">Mã SP: {{ item.maVayChiTiet }}</div>
+              <div>Màu: {{ item.color || 'N/A' }} &nbsp;|&nbsp; Size: {{ item.size || 'N/A' }}</div>
+            </div>
             <div class="d-flex justify-content-between align-items-center">
               <div class="lm-qty-control">
                 <button class="lm-qty-btn" @click="cart.changeQty(item.id, -1)">−</button>

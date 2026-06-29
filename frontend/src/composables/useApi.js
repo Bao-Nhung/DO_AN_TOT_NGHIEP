@@ -112,8 +112,13 @@ export function api() {
 
     // Promotion CRUD
     addKhuyenMai: (data) => request('/khuyen-mai', { method: 'POST', body: JSON.stringify(data) }),
-    updateKhuyenMai: (id, data) => request(`/khuyen-mai/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteKhuyenMai: (id) => request(`/khuyen-mai/${id}`, { method: 'DELETE' }),
+
+    // Cart
+    getCart: () => request('/gio-hang'),
+    addToCart: (idVayChiTiet, soLuong) => request('/gio-hang', { method: 'POST', body: JSON.stringify({ idVayChiTiet, soLuong }) }),
+    updateCartItem: (id, soLuong) => request(`/gio-hang/${id}`, { method: 'PUT', body: JSON.stringify({ soLuong }) }),
+    deleteCartItem: (id) => request(`/gio-hang/${id}`, { method: 'DELETE' }),
   }
 }
 

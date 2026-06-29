@@ -30,7 +30,8 @@
 
         <!-- Info -->
         <div class="col-lg-6 pt-lg-2">
-          <p class="lm-eyebrow mb-3">Zestia — {{ product.loaiVay || 'Bộ Sưu Tập' }}</p>
+          <p class="lm-eyebrow mb-2">Zestia — {{ product.loaiVay || 'Bộ Sưu Tập' }}</p>
+          <p style="font-size:12px;color:var(--z-gray);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">MÃ SP: {{ product.maVay }}</p>
           <h1 class="z-display mb-3" style="font-size:36px;font-weight:400;line-height:1.15;color:var(--z-dark)">
             {{ productName.main }}<br><em style="font-style:italic;color:var(--z-gray)">{{ productName.sub }}</em>
           </h1>
@@ -40,13 +41,13 @@
               <i v-for="s in 5" :key="s" class="bi bi-star-fill"
                  :style="{ color: s <= 4 ? 'var(--z-accent)' : 'var(--z-gray-border)', fontSize:'14px' }"></i>
             </div>
-            <span style="font-size:13px;color:var(--z-gray)">4.2 · {{ product.tonKho || 0 }} tồn kho</span>
+            <span style="font-size:13px;color:var(--z-gray)">4.2 · {{ selectedVariant ? selectedVariant.soLuong : (product.tonKho || 0) }} tồn kho</span>
           </div>
 
           <div class="d-flex align-items-baseline gap-3 mb-4 pb-4" style="border-bottom:1px solid var(--z-gray-border)">
-            <div class="z-display" style="font-size:32px;font-weight:500;color:var(--z-dark)">{{ fmtPrice(product.giaBan) }}</div>
-            <div v-if="product.giaBanGoc && Number(product.giaBanGoc) > Number(product.giaBan)"
-                 style="font-size:16px;color:var(--z-gray-light);text-decoration:line-through;font-weight:400">{{ fmtPrice(product.giaBanGoc) }}</div>
+            <div class="z-display" style="font-size:32px;font-weight:500;color:var(--z-dark)">{{ fmtPrice(selectedVariant ? selectedVariant.giaBan : product.giaBan) }}</div>
+            <div v-if="(selectedVariant ? selectedVariant.giaBanGoc : product.giaBanGoc) && Number(selectedVariant ? selectedVariant.giaBanGoc : product.giaBanGoc) > Number(selectedVariant ? selectedVariant.giaBan : product.giaBan)"
+                 style="font-size:16px;color:var(--z-gray-light);text-decoration:line-through;font-weight:400">{{ fmtPrice(selectedVariant ? selectedVariant.giaBanGoc : product.giaBanGoc) }}</div>
             <div v-if="discountPct"
                  style="font-size:12px;font-weight:600;color:var(--z-accent);background:var(--z-accent-soft);padding:4px 12px;border-radius:20px">-{{ discountPct }}%</div>
           </div>
@@ -57,19 +58,19 @@
 
           <!-- Colors -->
           <div class="mb-3">
-            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Màu sắc</span>
+            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Màu sắc: <span style="font-weight:400;color:var(--z-gray)">{{ activeColor || 'Chưa chọn' }}</span></span>
           </div>
           <div class="d-flex gap-2 mb-4">
-            <div v-for="(c, i) in colors" :key="i"
-                 :style="{ background: c.bg, border: activeColor === i ? '2px solid var(--z-accent)' : (c.border || '2px solid transparent'), width:'32px', height:'32px', borderRadius:'50%', cursor:'pointer', boxSizing:'border-box', transition:'all 0.2s' }"
+            <div v-for="c in colors" :key="c.name"
+                 :style="{ background: c.bg, border: activeColor === c.name ? '2px solid var(--z-accent)' : (c.border || '2px solid transparent'), width:'32px', height:'32px', borderRadius:'50%', cursor:'pointer', boxSizing:'border-box', transition:'all 0.2s' }"
                  :title="c.name"
-                 @click="activeColor = i">
+                 @click="activeColor = c.name">
             </div>
           </div>
 
           <!-- Sizes -->
           <div class="mb-3">
-            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Kích thước</span>
+            <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Kích thước: <span style="font-weight:400;color:var(--z-gray)">{{ activeSize || 'Chưa chọn' }}</span></span>
           </div>
           <div class="d-flex gap-2 mb-4">
             <button v-for="s in sizes" :key="s.label"
@@ -84,8 +85,8 @@
 
           <!-- Actions -->
           <div class="d-grid gap-2 mb-4" style="grid-template-columns:1fr 52px">
-            <button class="lm-btn-primary justify-content-center" @click="addToCart()">
-              <span>Thêm vào giỏ hàng</span>
+            <button class="lm-btn-primary justify-content-center" @click="addToCart()" :disabled="isAdding">
+              <span>{{ isAdding ? 'Đang thêm...' : 'Thêm vào giỏ hàng' }}</span>
             </button>
             <button @click="toggleWish"
                     style="border:1px solid var(--z-gray-border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;border-radius:var(--z-radius)"
@@ -128,14 +129,15 @@ import { fmtPrice } from '@/composables/useProducts'
 import { useWishlist } from '@/composables/useWishlist'
 
 const route = useRoute()
-const { addItem } = useCart()
+const { addItem, openCart } = useCart()
 const { showToast } = useToast()
 const { isInWishlist, toggleWishlist } = useWishlist()
 
 const product = ref({})
 const activeThumb = ref(0)
-const activeColor = ref(0)
-const activeSize  = ref('')
+const activeColor = ref(null)
+const activeSize  = ref(null)
+const isAdding = ref(false)
 const isLiked = computed(() => isInWishlist(product.value.id))
 
 const letters = ['Z', 'e', 's', 't', 'i', 'a']
@@ -165,9 +167,15 @@ const productName = computed(() => {
   return { main: words.slice(0, mid).join(' '), sub: words.slice(mid).join(' ') }
 })
 
+const selectedVariant = computed(() => {
+  if (!activeColor.value || !activeSize.value) return null
+  const bienThe = product.value.bienThe || []
+  return bienThe.find(bt => bt.mauSac === activeColor.value && bt.kichThuoc === activeSize.value) || null
+})
+
 const discountPct = computed(() => {
-  const orig = Number(product.value.giaBanGoc)
-  const cur = Number(product.value.giaBan)
+  const orig = Number(selectedVariant.value ? selectedVariant.value.giaBanGoc : product.value.giaBanGoc)
+  const cur = Number(selectedVariant.value ? selectedVariant.value.giaBan : product.value.giaBan)
   if (!orig || orig <= cur) return 0
   return Math.round((1 - cur / orig) * 100)
 })
@@ -196,7 +204,15 @@ const sizes = computed(() => {
   for (const bt of bienThe) {
     if (bt.kichThuoc && !seen.has(bt.kichThuoc)) {
       seen.add(bt.kichThuoc)
-      unique.push({ label: bt.kichThuoc, soldOut: bt.soLuong === 0 })
+      // Nếu đã chọn màu, check xem size này với màu đó có còn hàng không
+      let isSoldOut = false
+      if (activeColor.value) {
+        const variant = bienThe.find(v => v.mauSac === activeColor.value && v.kichThuoc === bt.kichThuoc)
+        isSoldOut = !variant || variant.soLuong <= 0
+      } else {
+        isSoldOut = bt.soLuong <= 0
+      }
+      unique.push({ label: bt.kichThuoc, soldOut: isSoldOut })
     }
   }
   return unique.length ? unique : [{ label: 'Free', soldOut: false }]
@@ -206,24 +222,50 @@ onMounted(async () => {
   try {
     const id = route.params.id
     product.value = await api().getVayById(id)
-    if (sizes.value.length) activeSize.value = sizes.value.find(s => !s.soldOut)?.label || sizes.value[0].label
   } catch (e) { console.error('Failed to load product:', e) }
 })
 
-function addToCart() {
+async function addToCart() {
+  if (!activeColor.value) {
+    return showToast('Vui lòng chọn màu sắc!')
+  }
+  if (!activeSize.value) {
+    return showToast('Vui lòng chọn kích thước!')
+  }
+  const variant = selectedVariant.value
+  if (!variant) {
+    return showToast('Biến thể này không tồn tại!')
+  }
+  if (variant.soLuong <= 0) {
+    return showToast('Sản phẩm đã hết hàng!')
+  }
+  
   const p = product.value
   const idx = (p.id || 0) % letters.length
-  const colorName = colors.value[activeColor.value]?.name || ''
-  const variantText = [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · ')
-  addItem({
-    id: p.id, name: p.tenVay || 'Sản phẩm',
-    variant: variantText,
-    price: Number(p.giaBan) || 0,
-    image: p.anhUrl || null,
-    letter: letters[idx], bg: bgs[idx % bgs.length]
-  })
-  showToast('Đã thêm vào giỏ hàng')
+  
+  isAdding.value = true
+  try {
+    await addItem({
+      idVayChiTiet: variant.id,
+      maVayChiTiet: variant.maVayChiTiet,
+      name: p.tenVay || 'Sản phẩm',
+      size: activeSize.value,
+      color: activeColor.value,
+      price: Number(variant.giaBan) || 0,
+      image: p.anhUrl || null,
+      letter: letters[idx], 
+      bg: bgs[idx % bgs.length],
+      qty: 1
+    })
+    showToast('Đã thêm vào giỏ hàng')
+    openCart()
+  } catch (e) {
+    showToast(e.error || 'Lỗi thêm vào giỏ hàng')
+  } finally {
+    isAdding.value = false
+  }
 }
+
 function toggleWish() {
   const added = toggleWishlist(product.value.id)
   showToast(added ? 'Đã thêm vào yêu thích' : 'Đã xoá khỏi yêu thích')

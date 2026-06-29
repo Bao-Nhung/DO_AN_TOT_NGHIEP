@@ -215,12 +215,66 @@
           </div>
 
           <div class="d-flex justify-content-end mt-3" v-if="detailOrder.trangThai === 0">
-            <button class="lm-btn-secondary" style="color:var(--z-danger);border-color:var(--z-danger)" @click="handleCancelOrder">
+            <button class="lm-btn-secondary" style="color:var(--z-danger);border-color:var(--z-danger)" @click="openCancelModal">
               <i class="bi bi-x-circle me-1"></i> Xin huỷ đơn
             </button>
           </div>
 
 
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showCancelModal" class="z-modal-overlay" @click.self="showCancelModal = false" style="z-index: 1060; backdrop-filter: blur(2px);">
+      <div class="z-modal" style="max-width:400px; padding: 0; overflow: hidden; border-radius: 12px;">
+        <div class="d-flex justify-content-between align-items-center" style="padding: 16px 20px; border-bottom: 1px solid var(--z-gray-border);">
+          <div style="width: 32px;"></div>
+          <h3 style="font-size:16px;font-weight:600;margin:0; text-align: center; flex-grow: 1;">Lý do hủy</h3>
+          <button class="z-icon-btn" @click="showCancelModal = false" style="width: 32px; height: 32px;"><i class="bi bi-x-lg"></i></button>
+        </div>
+        
+        <div style="padding: 16px 20px; max-height: 60vh; overflow-y: auto;">
+          <div style="font-size: 14px; color: var(--z-gray); margin-bottom: 16px;">Vui lòng chọn lý do hủy. Quá trình này không thể hoàn tác.</div>
+          
+          <div class="cancel-reason-list">
+             <div class="cancel-reason-item" @click="cancelReason = 'Thay đổi ý định'">
+                <span style="font-size: 15px; color: var(--z-dark);">Thay đổi ý định</span>
+                <i class="bi" :class="cancelReason === 'Thay đổi ý định' ? 'bi-check-circle-fill' : 'bi-circle'" :style="cancelReason === 'Thay đổi ý định' ? 'font-size: 20px; color: #fe2c55;' : 'font-size: 20px; color: #d1d5db;'"></i>
+             </div>
+             
+             <div class="cancel-reason-item" @click="cancelReason = 'Muốn thay đổi sản phẩm/địa chỉ'">
+                <span style="font-size: 15px; color: var(--z-dark);">Muốn thay đổi sản phẩm/địa chỉ</span>
+                <i class="bi" :class="cancelReason === 'Muốn thay đổi sản phẩm/địa chỉ' ? 'bi-check-circle-fill' : 'bi-circle'" :style="cancelReason === 'Muốn thay đổi sản phẩm/địa chỉ' ? 'font-size: 20px; color: #fe2c55;' : 'font-size: 20px; color: #d1d5db;'"></i>
+             </div>
+
+             <div class="cancel-reason-item" @click="cancelReason = 'Tìm thấy giá rẻ hơn ở nơi khác'">
+                <span style="font-size: 15px; color: var(--z-dark);">Tìm thấy giá rẻ hơn ở nơi khác</span>
+                <i class="bi" :class="cancelReason === 'Tìm thấy giá rẻ hơn ở nơi khác' ? 'bi-check-circle-fill' : 'bi-circle'" :style="cancelReason === 'Tìm thấy giá rẻ hơn ở nơi khác' ? 'font-size: 20px; color: #fe2c55;' : 'font-size: 20px; color: #d1d5db;'"></i>
+             </div>
+
+             <div class="cancel-reason-item" @click="cancelReason = 'Người bán không trả lời thắc mắc'">
+                <span style="font-size: 15px; color: var(--z-dark);">Người bán không trả lời thắc mắc</span>
+                <i class="bi" :class="cancelReason === 'Người bán không trả lời thắc mắc' ? 'bi-check-circle-fill' : 'bi-circle'" :style="cancelReason === 'Người bán không trả lời thắc mắc' ? 'font-size: 20px; color: #fe2c55;' : 'font-size: 20px; color: #d1d5db;'"></i>
+             </div>
+             
+             <div class="cancel-reason-item" @click="cancelReason = 'Lý do khác'" style="border-bottom: none;">
+                <span style="font-size: 15px; color: var(--z-dark);">Lý do khác</span>
+                <i class="bi" :class="cancelReason === 'Lý do khác' ? 'bi-check-circle-fill' : 'bi-circle'" :style="cancelReason === 'Lý do khác' ? 'font-size: 20px; color: #fe2c55;' : 'font-size: 20px; color: #d1d5db;'"></i>
+             </div>
+             
+             <div v-if="cancelReason === 'Lý do khác'" class="mb-2">
+               <textarea class="lm-input w-100" v-model="cancelReasonOther" rows="3" placeholder="Vui lòng nhập lý do (bắt buộc)..." style="background: #f8f9fa; border: none; padding: 12px; border-radius: 8px; outline: none; box-shadow: none; resize: none;"></textarea>
+             </div>
+          </div>
+        </div>
+
+        <div style="padding: 16px 20px; border-top: 1px solid var(--z-gray-border);">
+          <button class="w-100 lm-btn-primary d-flex justify-content-center align-items-center" 
+                  :disabled="!cancelReason || (cancelReason === 'Lý do khác' && !cancelReasonOther.trim())" 
+                  :style="(cancelReason && (cancelReason !== 'Lý do khác' || cancelReasonOther.trim())) ? 'background: #fe2c55; border-color: #fe2c55; color: white;' : 'background: #f1f1f2; border-color: #f1f1f2; color: #161823; opacity: 0.5;'" 
+                  @click="confirmCancelOrder" style="padding: 12px; font-weight: 600; font-size: 15px; border-radius: 8px;">
+            Gửi yêu cầu
+          </button>
         </div>
       </div>
     </div>
@@ -264,6 +318,10 @@ const orders = ref([])
 const showDetail = ref(false)
 const detailOrder = ref(null)
 const loadingDetail = ref(false)
+
+const showCancelModal = ref(false)
+const cancelReason = ref('')
+const cancelReasonOther = ref('')
 
 // Real-time Sync (Polling) variable
 let pollingInterval = null
@@ -322,14 +380,31 @@ async function openOrderDetail(order) {
   }
 }
 
-async function handleCancelOrder() {
-  if (!confirm('Bạn có chắc chắn muốn xin huỷ đơn hàng này?')) return
+function openCancelModal() {
+  cancelReason.value = ''
+  cancelReasonOther.value = ''
+  showCancelModal.value = true
+}
+
+async function confirmCancelOrder() {
+  if (!cancelReason.value) {
+    showToast('Vui lòng chọn lý do huỷ đơn hàng')
+    return
+  }
+  if (cancelReason.value === 'Lý do khác' && !cancelReasonOther.value.trim()) {
+    showToast('Vui lòng nhập lý do khác')
+    return
+  }
+
+  const finalReason = cancelReason.value === 'Lý do khác' ? cancelReasonOther.value.trim() : cancelReason.value
+
   try {
-    await api().cancelMyOrder(detailOrder.value.id, 'Khách hàng yêu cầu huỷ')
+    await api().cancelMyOrder(detailOrder.value.id, finalReason)
     showToast('Đã huỷ đơn hàng thành công')
     detailOrder.value.trangThai = 5
     const idx = orders.value.findIndex(o => o.id === detailOrder.value.id)
     if (idx !== -1) orders.value[idx].trangThai = 5
+    showCancelModal.value = false
   } catch (e) {
     showToast(e.error || 'Lỗi khi huỷ đơn hàng')
   }
@@ -461,5 +536,16 @@ const navItems = [
 .z-step.active .z-step-label { color: var(--z-dark); }
 .z-step-line { width: 32px; height: 2px; background: var(--z-gray-border); margin: 0 4px; }
 .z-step-line.filled { background: var(--z-accent); }
-</style>
 
+.cancel-reason-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--z-gray-border);
+  cursor: pointer;
+}
+.cancel-reason-item:last-child {
+  border-bottom: none;
+}
+</style>

@@ -197,7 +197,7 @@ const form = ref({
 onMounted(() => {
   const { isLoggedIn } = useAuth()
   if (!isLoggedIn()) {
-    showToast('Vui lòng đăng nhập để thanh toán')
+    showToast('Vui lòng đăng nhập để thanh toán', 'warning')
     router.push('/login')
     return
   }
@@ -210,9 +210,9 @@ onMounted(() => {
 })
 
 async function placeOrder() {
-  if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
-  if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
-  if (!form.value.diaChi.trim()) return showToast('Vui lòng nhập địa chỉ giao hàng')
+  if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên', 'warning')
+  if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại', 'warning')
+  if (!form.value.diaChi.trim()) return showToast('Vui lòng nhập địa chỉ giao hàng', 'warning')
 
   loading.value = true
   try {
@@ -227,25 +227,32 @@ async function placeOrder() {
 
     const order = await api().createOrder(orderData)
 
+    // Hiển thị thông báo thành công
+    showToast(`✓ Đơn hàng ${order.maHoaDon} được tạo thành công!`, 'success')
+
     if (form.value.hinhThuc === 'COD') {
       clearCart()
-      router.push({
-        path: '/payment-result',
-        query: { status: 'success', orderId: order.maHoaDon, amount: order.tongTien, method: 'COD' }
-      })
+      setTimeout(() => {
+        router.push({
+          path: '/payment-result',
+          query: { status: 'success', orderId: order.maHoaDon, amount: order.tongTien, method: 'COD' }
+        })
+      }, 1500)
       return
     }
 
     if (form.value.hinhThuc === 'VNPAY' || form.value.hinhThuc === 'MOMO') {
       clearCart()
-      router.push({
-        path: '/qr-payment',
-        query: { method: form.value.hinhThuc, orderId: order.maHoaDon, amount: order.tongTien }
-      })
+      setTimeout(() => {
+        router.push({
+          path: '/qr-payment',
+          query: { method: form.value.hinhThuc, orderId: order.maHoaDon, amount: order.tongTien }
+        })
+      }, 1500)
       return
     }
   } catch (err) {
-    showToast(err.error || 'Đã xảy ra lỗi khi đặt hàng')
+    showToast(err.error || 'Đã xảy ra lỗi khi đặt hàng', 'error')
   } finally {
     loading.value = false
   }

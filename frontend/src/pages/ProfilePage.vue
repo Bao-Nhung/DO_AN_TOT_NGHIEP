@@ -54,8 +54,7 @@
             </div>
             <div v-else class="d-flex flex-column gap-3">
               <div v-for="order in sortedOrders" :key="order.id"
-                   class="z-order-card"
-                   @click="openOrderDetail(order)">
+                   class="z-order-card">
                 <div class="d-flex justify-content-between align-items-start mb-3 pb-3" style="border-bottom:1px solid var(--z-gray-border)">
                   <div>
                     <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ order.maHoaDon }}</div>
@@ -68,9 +67,16 @@
                 <div class="d-flex justify-content-between align-items-center">
                   <div>
                     <div class="z-display" style="font-size:20px;font-weight:500;color:var(--z-dark)">{{ fmtMoney(order.tongTien) }}</div>
-                    <div style="font-size:12px;color:var(--z-gray-light);margin-top:2px">{{ order.soSanPham || 0 }} sản phẩm · Nhấn xem chi tiết</div>
+                    <div style="font-size:12px;color:var(--z-gray-light);margin-top:2px">{{ order.soSanPham || 0 }} sản phẩm</div>
                   </div>
-                  <i class="bi bi-chevron-right" style="color:var(--z-gray-light);font-size:18px"></i>
+                  <div class="d-flex gap-2">
+                    <button class="z-order-btn-small" @click="openOrderDetail(order)" title="Xem chi tiết">
+                      <i class="bi bi-eye"></i> Chi tiết
+                    </button>
+                    <button class="z-order-btn-small z-order-btn-tracking" @click="openOrderTracking(order)" title="Xem tracking">
+                      <i class="bi bi-box-seam"></i> Tracking
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -100,7 +106,7 @@
                 <select class="lm-input" v-model="address.city"><option>Hà Nội</option><option>TP. Hồ Chí Minh</option><option>Đà Nẵng</option></select>
               </div>
             </div>
-            <button class="lm-btn-primary" @click="showToast('Đã lưu địa chỉ!')"><span>Lưu địa chỉ</span></button>
+            <button class="lm-btn-primary" @click="showToast('Đã lưu địa chỉ!', 'success')"><span>Lưu địa chỉ</span></button>
           </div>
 
         </div>
@@ -165,21 +171,72 @@
           </div>
 
           <div class="d-flex justify-content-between align-items-center pt-3" style="border-top:2px solid var(--z-dark)">
-            <div style="font-size:16px;font-weight:600;color:var(--z-dark)">Tổng cộng</div>
-            <div class="z-display" style="font-size:22px;font-weight:600;color:var(--z-accent)">{{ fmtMoney(detailOrder.tongTien) }}</div>
+            <div>Tổng tiền:</div>
+            <div class="z-display" style="font-size:20px;font-weight:600">{{ fmtMoney(detailOrder.tongTien) }}</div>
           </div>
         </div>
       </div>
     </div>
 
-    <AppFooter />
+    <!-- Order Tracking Modal -->
+    <div v-if="showTracking" class="z-modal-overlay" @click.self="showTracking = false">
+      <div class="z-modal" style="max-width:700px">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h3 style="font-size:18px;font-weight:600;margin:0">Theo dõi đơn hàng</h3>
+            <div style="font-size:13px;color:var(--z-gray)">{{ trackingOrder?.maHoaDon }}</div>
+          </div>
+          <button class="z-icon-btn" @click="showTracking = false"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div v-if="loadingTracking" class="text-center py-4">
+          <div class="spinner-border spinner-border-sm text-secondary"></div>
+          <p style="font-size:13px;color:var(--z-gray);margin-top:8px">Đang tải...</p>
+        </div>
+
+        <div v-else-if="trackingOrder">
+          <!-- Tracking Summary -->
+          <div class="z-tracking-summary mb-4 p-4" style="background:var(--z-accent-soft);border-radius:var(--z-radius-lg)">
+            <div style="font-size:13px;color:var(--z-gray);margin-bottom:8px">Trạng thái hiện tại</div>
+            <div style="font-size:18px;font-weight:600;color:var(--z-accent);margin-bottom:12px">
+              {{ trackingStatusLabel }}
+            </div>
+            <div style="font-size:12px;color:var(--z-gray)">
+              <div v-if="trackingOrder.ngayGiaoHangDuKien">
+                📅 Dự kiến giao: {{ fmtDate(trackingOrder.ngayGiaoHangDuKien) }}
+              </div>
+              <div v-if="trackingOrder.ngayGiaoHangThucTe">
+                ✓ Đã giao: {{ fmtDate(trackingOrder.ngayGiaoHangThucTe) }}
+              </div>
+              <div v-if="trackingOrder.diaChiGiaoHang">
+                📍 {{ trackingOrder.diaChiGiaoHang }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Tracking Timeline -->
+          <div v-if="trackingOrder.trackingHistory && trackingOrder.trackingHistory.length > 0">
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:16px">Lịch sử cập nhật</h4>
+            <div class="z-timeline">
+              <div v-for="(event, idx) in trackingOrder.trackingHistory" :key="idx" class="z-timeline-item">
+                <div class="z-timeline-dot" :class="'z-timeline-dot-' + event.trangThai"></div>
+                <div class="z-timeline-content">
+                  <div style="font-size:14px;font-weight:500;color:var(--z-dark)">{{ getTrackingLabel(event.trangThai) }}</div>
+                  <div v-if="event.moTa" style="font-size:13px;color:var(--z-gray);margin-top:4px">{{ event.moTa }}</div>
+                  <div style="font-size:12px;color:var(--z-gray-light);margin-top:6px">{{ fmtDateTime(event.ngayCapNhat) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import AppFooter from '@/components/layout/AppFooter.vue'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
 
@@ -212,6 +269,10 @@ const showDetail = ref(false)
 const detailOrder = ref(null)
 const loadingDetail = ref(false)
 
+const showTracking = ref(false)
+const trackingOrder = ref(null)
+const loadingTracking = ref(false)
+
 const statusMap = {
   0: { key: 'pending', label: 'Chờ xử lý' },
   1: { key: 'paid', label: 'Đã xác nhận' },
@@ -220,6 +281,18 @@ const statusMap = {
   4: { key: 'cancelled', label: 'Đã huỷ' },
   5: { key: 'failed', label: 'Thất bại' },
 }
+
+const trackingStatusMap = {
+  'pending': 'Chờ xử lý',
+  'processing': 'Đang xử lý',
+  'shipped': 'Đã gửi đi',
+  'delivered': 'Đã giao',
+  'cancelled': 'Đã hủy'
+}
+
+const trackingStatusLabel = computed(() => {
+  return trackingStatusMap[trackingOrder.value?.trangThaiTracking] || 'Chưa xác định'
+})
 
 const sortedOrders = computed(() => {
   return [...orders.value].sort((a, b) => {
@@ -237,6 +310,17 @@ function fmtDate(d) {
   if (!d) return ''
   const dt = new Date(d)
   return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function fmtDateTime(d) {
+  if (!d) return ''
+  const dt = new Date(d)
+  return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' + 
+         dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+}
+
+function getTrackingLabel(status) {
+  return trackingStatusMap[status] || 'Cập nhật'
 }
 
 const stats = computed(() => {
@@ -261,6 +345,19 @@ async function openOrderDetail(order) {
     detailOrder.value = order
   } finally {
     loadingDetail.value = false
+  }
+}
+
+async function openOrderTracking(order) {
+  showTracking.value = true
+  loadingTracking.value = true
+  try {
+    trackingOrder.value = await api().getOrderTracking(order.id)
+  } catch (e) {
+    showToast('Không thể tải thông tin tracking', 'error')
+    showTracking.value = false
+  } finally {
+    loadingTracking.value = false
   }
 }
 
@@ -297,9 +394,9 @@ async function saveProfile() {
       localStorage.setItem('zestia_user', JSON.stringify(stored))
       user.value = stored
     }
-    showToast('Đã lưu thông tin!')
+    showToast('Đã lưu thông tin!', 'success')
   } catch (e) {
-    showToast(e.error || 'Lỗi khi lưu thông tin')
+    showToast(e.error || 'Lỗi khi lưu thông tin', 'error')
   } finally {
     saving.value = false
   }
@@ -307,7 +404,7 @@ async function saveProfile() {
 
 function doLogout() {
   logout()
-  showToast('Đã đăng xuất')
+  showToast('Đã đăng xuất', 'info')
   router.push('/login')
 }
 
@@ -324,13 +421,39 @@ const navItems = [
   padding: 20px;
   background: var(--z-white);
   border-radius: var(--z-radius-lg);
-  cursor: pointer;
   transition: all 0.2s;
 }
 .z-order-card:hover {
   border-color: var(--z-accent);
   box-shadow: 0 4px 16px rgba(212,86,78,0.08);
 }
+
+.z-order-btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+  border: 1px solid var(--z-gray-border);
+  background: var(--z-white);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--z-gray);
+}
+
+.z-order-btn-small:hover {
+  border-color: var(--z-accent);
+  color: var(--z-accent);
+  background: var(--z-accent-soft);
+}
+
+.z-order-btn-tracking {
+  color: var(--z-accent);
+  border-color: var(--z-accent);
+  background: var(--z-accent-soft);
+}
+
 .z-modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4);
   display: flex; align-items: center; justify-content: center; z-index: 1000;
@@ -346,4 +469,74 @@ const navItems = [
   cursor: pointer; color: var(--z-gray); transition: all 0.2s; font-size: 14px;
 }
 .z-icon-btn:hover { background: var(--z-bg-alt); color: var(--z-dark); }
+
+/* Tracking Timeline */
+.z-timeline {
+  position: relative;
+  padding-left: 24px;
+}
+
+.z-timeline-item {
+  position: relative;
+  padding-bottom: 24px;
+  display: flex;
+  gap: 16px;
+}
+
+.z-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.z-timeline-dot {
+  position: absolute;
+  left: -32px;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--z-gray-border);
+  background: var(--z-white);
+  flex-shrink: 0;
+}
+
+.z-timeline-dot-pending {
+  border-color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.z-timeline-dot-processing {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.z-timeline-dot-shipped {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.z-timeline-dot-delivered {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.z-timeline-dot-cancelled {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.z-timeline-content {
+  flex: 1;
+  padding-top: 2px;
+}
+
+.z-timeline-item:not(:last-child) .z-timeline-dot::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 24px;
+  background: var(--z-gray-border);
+}
 </style>

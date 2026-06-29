@@ -1584,3 +1584,101 @@ SET IDENTITY_INSERT [dbo].[Nhat_ky] OFF;
 END
 GO
 
+
+-- ============================================================
+-- ZESTIA - fashion_shop (UPDATE - Thêm cột tracking + bảng mới)
+-- Phần này được gộp sau schema gốc, chạy idempotent (an toàn chạy nhiều lần)
+-- ============================================================
+
+-- ===== ALTER Hoa_don: thêm cột trang_thai_tracking =====
+IF NOT EXISTS (
+  SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_NAME='Hoa_don' AND COLUMN_NAME='trang_thai_tracking'
+)
+BEGIN
+  ALTER TABLE [dbo].[Hoa_don]
+  ADD [trang_thai_tracking] nvarchar(50) DEFAULT 'pending';
+END
+GO
+
+-- ===== ALTER Hoa_don: thêm cột ngay_giao_hang_du_kien =====
+IF NOT EXISTS (
+  SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_NAME='Hoa_don' AND COLUMN_NAME='ngay_giao_hang_du_kien'
+)
+BEGIN
+  ALTER TABLE [dbo].[Hoa_don]
+  ADD [ngay_giao_hang_du_kien] datetime2(7) NULL;
+END
+GO
+
+-- ===== ALTER Hoa_don: thêm cột ngay_giao_hang_thuc_te =====
+IF NOT EXISTS (
+  SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_NAME='Hoa_don' AND COLUMN_NAME='ngay_giao_hang_thuc_te'
+)
+BEGIN
+  ALTER TABLE [dbo].[Hoa_don]
+  ADD [ngay_giao_hang_thuc_te] datetime2(7) NULL;
+END
+GO
+
+-- ===== Lich_su_tracking =====
+-- Bảng mới hoàn toàn, ghi lại lịch sử thay đổi trạng thái giao hàng của từng đơn
+-- Status values: pending | processing | shipped | delivered | cancelled
+IF OBJECT_ID(N'dbo.Lich_su_tracking','U') IS NULL
+BEGIN
+  CREATE TABLE [dbo].[Lich_su_tracking] (
+    [id]            int IDENTITY(1,1) NOT NULL,
+    [id_hoa_don]    int NOT NULL,
+    [trang_thai]    nvarchar(50) NOT NULL,
+    [mo_ta]         nvarchar(max) NULL,
+    [ngay_cap_nhat] datetime2(7) NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [PK_Lich_su_tracking] PRIMARY KEY ([id]),
+    CONSTRAINT [FK_Lich_su_tracking_Hoa_don] FOREIGN KEY ([id_hoa_don])
+      REFERENCES [dbo].[Hoa_don]([id])
+  );
+END
+GO
+
+-- Insert dữ liệu mẫu cho Lich_su_tracking (chỉ insert nếu bảng trống)
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Lich_su_tracking])
+BEGIN
+  SET IDENTITY_INSERT [dbo].[Lich_su_tracking] ON;
+  INSERT INTO [dbo].[Lich_su_tracking] ([id], [id_hoa_don], [trang_thai], [mo_ta], [ngay_cap_nhat]) VALUES
+  (1,  2,  N'pending',    N'Đơn hàng mới được tạo, chờ xử lý',                  '2026-06-10T23:44:29.300'),
+  (2,  2,  N'processing', N'Nhân viên đã tiếp nhận, đang chuẩn bị hàng',        '2026-06-11T08:00:00.000'),
+  (3,  2,  N'shipped',    N'Đã bàn giao cho đơn vị vận chuyển',                  '2026-06-11T14:00:00.000'),
+  (4,  3,  N'pending',    N'Đơn hàng mới được tạo, chờ xử lý',                  '2026-06-10T23:44:29.300'),
+  (5,  3,  N'processing', N'Đang đóng gói sản phẩm',                             '2026-06-11T09:00:00.000'),
+  (6,  3,  N'shipped',    N'Giao cho GHTK - mã vận đơn GHTK20250115001',        '2026-06-11T15:30:00.000'),
+  (7,  3,  N'delivered',  N'Khách hàng đã nhận hàng thành công',                '2026-06-12T10:20:00.000'),
+  (8,  4,  N'pending',    N'Đơn hàng tại quầy, chờ thu tiền mặt',               '2026-06-10T23:44:29.300'),
+  (9,  4,  N'delivered',  N'Khách nhận trực tiếp tại cửa hàng',                  '2026-06-10T23:50:00.000'),
+  (10, 5,  N'pending',    N'Đơn hàng mới, chờ thanh toán VNPay',                '2026-06-10T23:44:29.300'),
+  (11, 5,  N'cancelled',  N'Khách hủy đơn do chưa thanh toán trong 24h',        '2026-06-11T23:44:29.300'),
+  (12, 8,  N'pending',    N'Đơn hàng online mới tạo',                            '2026-06-11T13:54:56.363'),
+  (13, 8,  N'processing', N'Thanh toán VNPay thành công, đang chuẩn bị hàng',   '2026-06-11T13:55:09.146'),
+  (14, 19, N'pending',    N'Đơn hàng mới được tạo',                              '2026-06-14T10:48:17.814'),
+  (15, 19, N'processing', N'Đang xử lý đơn hàng',                               '2026-06-14T15:20:51.593'),
+  (16, 19, N'shipped',    N'Đã giao cho đơn vị vận chuyển',                      '2026-06-14T15:21:02.356');
+  SET IDENTITY_INSERT [dbo].[Lich_su_tracking] OFF;
+END
+GO
+
+-- ===== Cập nhật trang_thai_tracking trên Hoa_don theo trạng thái mới nhất =====
+-- Chỉ cập nhật các đơn hàng có trang_thai_tracking vẫn là 'pending' (giá trị default)
+-- để không ghi đè dữ liệu thực tế nếu đã được cập nhật trước đó
+UPDATE [dbo].[Hoa_don]
+SET [trang_thai_tracking] = latest.[trang_thai]
+FROM [dbo].[Hoa_don] hd
+INNER JOIN (
+  SELECT [id_hoa_don], [trang_thai]
+  FROM [dbo].[Lich_su_tracking] lst
+  WHERE [id] = (
+    SELECT MAX([id]) FROM [dbo].[Lich_su_tracking]
+    WHERE [id_hoa_don] = lst.[id_hoa_don]
+  ) 
+) latest ON hd.[id] = latest.[id_hoa_don]
+WHERE hd.[trang_thai_tracking] = 'pending' OR hd.[trang_thai_tracking] IS NULL;
+GO

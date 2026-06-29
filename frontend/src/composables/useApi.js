@@ -149,3 +149,92 @@ export function useAuth() {
 
   return { saveLogin, getUser, isLoggedIn, logout }
 }
+
+/**
+ * Tra cứu đơn hàng (không cần đăng nhập)
+ */
+async function searchOrder(params) {
+  const query = new URLSearchParams()
+  if (params.maHoaDon) query.append('maHoaDon', params.maHoaDon)
+  if (params.soDienThoai) query.append('soDienThoai', params.soDienThoai)
+  
+  const response = await fetch(`${API_URL}/hoa-don/search?${query}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  return handleResponse(response)
+}
+
+/**
+ * Tra cứu đơn hàng theo số điện thoại (không cần đăng nhập)
+ */
+async function searchOrderByPhone(soDienThoai) {
+  const response = await fetch(`${API_URL}/hoa-don/search-by-phone?soDienThoai=${soDienThoai}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  return handleResponse(response)
+}
+
+/**
+ * Lấy danh sách đơn hàng của khách hàng (cần đăng nhập)
+ */
+async function getMyOrders() {
+  const response = await fetch(`${API_URL}/hoa-don/my-orders`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getToken()}`
+    }
+  })
+  return handleResponse(response)
+}
+
+/**
+ * Lấy danh sách đơn hàng theo khách hàng ID
+ */
+async function getOrdersByCustomerId(customerId) {
+  const response = await fetch(`${API_URL}/hoa-don/customer/${customerId}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  return handleResponse(response)
+}
+
+/**
+ * Lấy thông tin tracking của đơn hàng
+ */
+async function getOrderTracking(orderId) {
+  const response = await fetch(`${API_URL}/hoa-don/${orderId}/tracking`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getToken()}`
+    }
+  })
+  return handleResponse(response)
+}
+
+/**
+ * Lấy danh sách đơn hàng theo trạng thái
+ */
+async function getOrdersByStatus(status) {
+  const response = await fetch(`${API_URL}/hoa-don/status/${status}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  return handleResponse(response)
+}
+
+// Thêm vào export
+export function useApi() {
+  return {
+    // ... methods khác
+    searchOrder,
+    searchOrderByPhone,
+    getMyOrders,
+    getOrdersByCustomerId,
+    getOrderTracking,
+    getOrdersByStatus
+  }
+}

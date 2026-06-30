@@ -207,7 +207,7 @@ onMounted(async () => {
 })
 
 function addToCart() {
-  // --- LOGIC CHẶN NGƯỜI DÙNG KHI CHƯA CHỌN MÀU/SIZE ---
+  // --- BẮT BUỘC CHỌN MÀU VÀ SIZE ---
   if (activeColor.value === null) {
     showToast('Vui lòng chọn Màu sắc trước khi mua!', 'warning')
     return
@@ -221,12 +221,15 @@ function addToCart() {
   const idx = (p.id || 0) % letters.length
   const colorName = colors.value[activeColor.value]?.name || ''
   
+  // TẠO ID DUY NHẤT ĐỂ GIỎ HÀNG KHÔNG GỘP CHUNG SẢN PHẨM KHÁC SIZE/MÀU
+  const uniqueCartId = `${p.id}-${colorName}-${activeSize.value}`
+
   addItem({
-    id: p.id, 
+    id: uniqueCartId,       // ID ảo để tách giỏ hàng
+    productId: p.id,        // ID gốc bắt buộc phải có cho Backend
     name: p.tenVay || 'Sản phẩm',
-    // Gửi tách biệt size và color để hiển thị chuẩn bên CheckoutPage
-    size: activeSize.value,
-    color: colorName,
+    size: activeSize.value, // Lưu size vào giỏ
+    color: colorName,       // Lưu màu vào giỏ
     variant: [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · '),
     price: Number(p.giaBan) || 0,
     image: p.anhUrl || null,

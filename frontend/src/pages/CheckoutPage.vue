@@ -375,7 +375,12 @@ async function placeOrder() {
       hinhThucThanhToan: form.value.hinhThuc,
       maGiamGia: appliedVoucher.value || null,
       phiVanChuyen: shippingFee.value, // CẬP NHẬT GỬI PHÍ SHIP LÊN BACKEND
-      items: state.items.map(i => ({ productId: i.id, qty: i.qty }))
+      items: state.items.map(i => ({ 
+        productId: i.productId || parseInt(i.id), // Lấy đúng ID gốc của váy
+        qty: i.qty,
+        size: i.size,   // Truyền size khách đã chọn
+        color: i.color  // Truyền màu khách đã chọn
+      }))
     }
 
     const order = await api().createOrder(orderData)

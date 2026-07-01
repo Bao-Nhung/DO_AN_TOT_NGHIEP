@@ -635,3 +635,129 @@ body.z-admin-active input[type="password"], body.z-admin-active textarea { curso
 
   .lm-profile-nav-item { font-size: 13px; padding: 12px 0; }
 }
+
+/* ════════════════════════════════════════
+   Admin Dashboard & Premium Design System
+   ════════════════════════════════════════ */
+
+/* --- Card Design --- */
+.z-admin-card {
+  background: var(--z-white);
+  border-radius: var(--z-radius-lg);
+  border: 1px solid var(--z-gray-border);
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(27,27,31,0.02);
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-color 0.3s ease;
+}
+.z-admin-card:hover {
+  box-shadow: 0 15px 35px rgba(27,27,31,0.05);
+}
+
+/* --- Stat Indicators --- */
+.z-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--z-white);
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius-lg);
+  box-shadow: 0 10px 30px rgba(27,27,31,0.02);
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.z-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(27,27,31,0.05);
+  border-color: var(--z-accent-light);
+}
+.z-stat-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--z-accent); background: var(--z-accent-soft);
+  font-size: 20px; flex-shrink: 0;
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.z-stat-card:hover .z-stat-icon {
+  transform: scale(1.08);
+  background: var(--z-accent);
+  color: var(--z-white);
+}
+
+/* --- Admin Tables --- */
+.z-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: var(--z-font-body);
+}
+.z-table th {
+  background: var(--z-bg-alt);
+  color: var(--z-dark);
+  font-weight: 600;
+  padding: 14px 18px;
+  text-align: left;
+  border-bottom: 1px solid var(--z-gray-border);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+}
+.z-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--z-gray-border);
+  color: var(--z-dark);
+  vertical-align: middle;
+  transition: background 0.2s ease;
+}
+.z-table tr:hover td {
+  background: var(--z-accent-soft) !important;
+}
+
+/* --- Status Badges --- */
+.z-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.z-status.success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.z-status.pending { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.z-status.danger, .z-status.failed { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.z-status.info { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.z-status.warning { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+
+/* --- Skeleton Shimmer Animation --- */
+.z-skeleton {
+  background: linear-gradient(90deg, #f3f2ee 25%, #e4e4e7 50%, #f3f2ee 75%);
+  background-size: 200% 100%;
+  animation: z-skeleton-shimmer 1.5s infinite ease-in-out;
+  border-radius: var(--z-radius);
+  display: inline-block;
+  width: 100%;
+  height: 16px;
+}
+@keyframes z-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* --- Premium Visual Accents --- */
+.z-gradient-text {
+  background: linear-gradient(135deg, var(--z-dark) 30%, var(--z-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.z-gradient-bg {
+  background: linear-gradient(135deg, var(--z-dark) 0%, var(--z-dark-soft) 100%);
+}
+.z-glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+

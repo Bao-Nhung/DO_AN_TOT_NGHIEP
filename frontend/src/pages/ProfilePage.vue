@@ -87,13 +87,35 @@
           <div v-if="activeTab === 'address'">
             <h2 class="z-display mb-4" style="font-size:28px;font-weight:400">Địa chỉ <em style="font-style:italic;color:var(--z-gray)">giao hàng</em></h2>
             <div class="row g-4 mb-4" style="background:var(--z-white);padding:24px;border-radius:var(--z-radius-lg);border:1px solid var(--z-gray-border)">
-              <div class="col-12"><label class="lm-form-label mb-2">Địa chỉ</label><input class="lm-input" v-model="address.street"></div>
-              <div class="col-md-6"><label class="lm-form-label mb-2">Quận / Huyện</label><input class="lm-input" v-model="address.district"></div>
-              <div class="col-md-6"><label class="lm-form-label mb-2">Tỉnh / Thành phố</label>
-                <select class="lm-input" v-model="address.city"><option>Hà Nội</option><option>TP. Hồ Chí Minh</option><option>Đà Nẵng</option></select>
+              <div class="col-md-4">
+                <label class="lm-form-label mb-2">Tỉnh / Thành phố *</label>
+                <select v-model="selectedCity" class="lm-input" @change="onCityChange">
+                  <option value="">Chọn Tỉnh/Thành</option>
+                  <option v-for="c in addressData" :key="c.code" :value="c.code">{{ c.name }}</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="lm-form-label mb-2">Quận / Huyện *</label>
+                <select v-model="selectedDistrict" class="lm-input" :disabled="!selectedCity" @change="onDistrictChange">
+                  <option value="">Chọn Quận/Huyện</option>
+                  <option v-for="d in availableDistricts" :key="d.code" :value="d.code">{{ d.name }}</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="lm-form-label mb-2">Phường / Xã *</label>
+                <select v-model="selectedWard" class="lm-input" :disabled="!selectedDistrict">
+                  <option value="">Chọn Phường/Xã</option>
+                  <option v-for="w in availableWards" :key="w.code" :value="w.code">{{ w.name }}</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="lm-form-label mb-2">Địa chỉ cụ thể *</label>
+                <input class="lm-input" v-model="specificAddress" placeholder="Số nhà, tên đường, ngõ ngách...">
               </div>
             </div>
-            <button class="lm-btn-primary" @click="showToast('Đã lưu địa chỉ!')"><span>Lưu địa chỉ</span></button>
+            <button class="lm-btn-primary" @click="saveAddress" :disabled="savingAddress">
+              <span>{{ savingAddress ? 'Đang lưu...' : 'Lưu địa chỉ' }}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -152,7 +174,11 @@
                <div style="font-size:13px;color:var(--z-gray); margin-bottom: 4px;"><strong>Phương thức:</strong> {{ detailOrder.hinhThucThanhToan }}</div>
                <div style="font-size:13px;color:var(--z-gray);">
                  <strong>Trạng thái: </strong> 
-                 <span :class="detailOrder.daThanhToan ? 'text-success' : 'text-warning'" style="font-weight: 500;">
+                 <span v-if="detailOrder.phuongThucThanhToanOnline === 'FAILED' || (detailOrder.trangThai === 5 && (detailOrder.hinhThucThanhToan === 'MOMO' || detailOrder.hinhThucThanhToan === 'ZALOPAY') && !detailOrder.daThanhToan)"
+                       class="text-danger" style="font-weight: 600;">
+                    Thanh toán thất bại
+                 </span>
+                 <span v-else :class="detailOrder.daThanhToan ? 'text-success' : 'text-warning'" style="font-weight: 500;">
                     {{ detailOrder.daThanhToan ? 'Đã thanh toán' : 'Chưa thanh toán' }}
                  </span>
                </div>
@@ -306,7 +332,80 @@ const profile = ref({
   gioiTinh: gioiTinhMap[user.value.gioiTinh] || '',
 })
 
-const address = ref({ street: '', district: '', city: 'Hà Nội' })
+const addressData = ref([])
+const selectedCity = ref('')
+const selectedDistrict = ref('')
+const selectedWard = ref('')
+const specificAddress = ref('')
+const savingAddress = ref(false)
+
+const availableDistricts = computed(() => {
+  const city = addressData.value.find(c => c.code === selectedCity.value)
+  return city ? city.districts : []
+})
+
+const availableWards = computed(() => {
+  const district = availableDistricts.value.find(d => d.code === selectedDistrict.value)
+  return district ? district.wards : []
+})
+
+function onCityChange() {
+  selectedDistrict.value = ''
+  selectedWard.value = ''
+}
+
+function onDistrictChange() {
+  selectedWard.value = ''
+}
+
+async function loadProfileAddress() {
+  try {
+    const addr = await api().getProfileAddress()
+    if (addr && addr.tinhThanhPho) {
+      const city = addressData.value.find(c => c.name === addr.tinhThanhPho)
+      if (city) {
+        selectedCity.value = city.code
+        const dist = city.districts.find(d => d.name === addr.quanHuyen)
+        if (dist) {
+          selectedDistrict.value = dist.code
+          const ward = dist.wards.find(w => w.name === addr.xaPhuong)
+          if (ward) {
+            selectedWard.value = ward.code
+          }
+        }
+      }
+      specificAddress.value = addr.duong || ''
+    }
+  } catch (e) {
+    console.error("Lỗi khi tải địa chỉ:", e)
+  }
+}
+
+async function saveAddress() {
+  if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
+    showToast('Vui lòng nhập đầy đủ thông tin địa chỉ giao hàng!', 'warning')
+    return
+  }
+
+  savingAddress.value = true
+  try {
+    const cityName = addressData.value.find(c => c.code === selectedCity.value)?.name || ''
+    const districtName = availableDistricts.value.find(d => d.code === selectedDistrict.value)?.name || ''
+    const wardName = availableWards.value.find(w => w.code === selectedWard.value)?.name || ''
+    
+    await api().updateProfileAddress({
+      tinhThanhPho: cityName,
+      quanHuyen: districtName,
+      xaPhuong: wardName,
+      duong: specificAddress.value.trim()
+    })
+    showToast('Đã lưu địa chỉ thành công!', 'success')
+  } catch (e) {
+    showToast(e.error || 'Lỗi khi lưu địa chỉ', 'error')
+  } finally {
+    savingAddress.value = false
+  }
+}
 
 const orders = ref([])
 const showDetail = ref(false)
@@ -440,6 +539,15 @@ onMounted(async () => {
     return
   }
   await loadOrders()
+  
+  try {
+    const res = await fetch('https://provinces.open-api.vn/api/?depth=3')
+    addressData.value = await res.json()
+    await loadProfileAddress()
+  } catch(e) {
+    console.error("Lỗi khi tải danh sách tỉnh thành/địa chỉ mặc định", e)
+  }
+
   pollingInterval = setInterval(async () => {
       if (!showDetail.value && !showCancelModal.value) {
           await loadOrdersSilent()

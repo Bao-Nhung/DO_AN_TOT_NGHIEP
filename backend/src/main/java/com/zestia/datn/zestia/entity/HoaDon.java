@@ -80,6 +80,12 @@ public class HoaDon {
     @Column(name = "da_thanh_toan")
     private Boolean daThanhToan;
 
+    @Column(name = "ten_khach_hang")
+    private String tenKhachHang;
+
+    @Column(name = "so_dien_thoai")
+    private String soDienThoai;
+
     private String ghiChu;
 
     @Column(name = "ngay_tao")

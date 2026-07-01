@@ -13,6 +13,7 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, Integer> {
     
     // Các method cũ của hệ thống
     List<HoaDon> findByKhachHangId(Integer khachHangId);
+    List<HoaDon> findByNhanVienId(Integer nhanVienId);
     
     List<HoaDon> findByHinhThucNhanHang(Byte hinhThucNhanHang);
     

@@ -30,7 +30,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in filteredCustomers" :key="c.id" class="z-clickable-row" @click="openDetail(c)">
+          <tr v-for="c in paginatedCustomers" :key="c.id" class="z-clickable-row" @click="openDetail(c)">
             <td>
               <div class="d-flex align-items-center gap-3">
                 <div :style="{ width:'36px', height:'36px', borderRadius:'50%', background: c.color, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--z-white)', fontWeight:600, fontSize:'13px', flexShrink:0 }">
@@ -53,6 +53,32 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+        <span style="font-size: 13px; color: var(--z-gray)">
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredCustomers.length) }} trong tổng số {{ filteredCustomers.length }} khách hàng
+        </span>
+        <div class="d-flex gap-2">
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
+            Trước
+          </button>
+          <button v-for="page in totalPages" :key="page" 
+                  class="lm-btn-secondary" 
+                  :style="{
+                    padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
+                    background: currentPage === page ? 'var(--z-dark)' : '',
+                    color: currentPage === page ? '#fff' : '',
+                    borderColor: currentPage === page ? 'var(--z-dark)' : ''
+                  }"
+                  @click="currentPage = page">
+            {{ page }}
+          </button>
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === totalPages" @click="currentPage++">
+            Sau
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Customer Detail Modal -->
@@ -119,7 +145,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
@@ -152,6 +178,20 @@ const filteredCustomers = computed(() => {
     c.phone.includes(q) ||
     c.code.toLowerCase().includes(q)
   )
+})
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filteredCustomers.value.length / itemsPerPage))
+
+const paginatedCustomers = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredCustomers.value.slice(start, start + itemsPerPage)
+})
+
+watch(search, () => {
+  currentPage.value = 1
 })
 
 function openDetail(c) {

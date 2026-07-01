@@ -172,6 +172,22 @@
                 {{ voucherMsg }}
               </div>
               <div class="z-voucher-hint">Mã thử: <strong>ZESTIA10</strong>, <strong>SUMMER20</strong></div>
+
+              <!-- Active Vouchers List -->
+              <div v-if="activeVouchers.length" class="mt-3">
+                <div style="font-size:12px; font-weight:600; color:var(--z-dark); margin-bottom:8px">Voucher khả dụng:</div>
+                <div class="d-flex flex-wrap gap-2">
+                  <div v-for="v in activeVouchers" :key="v.id" 
+                       class="z-voucher-tag" 
+                       @click="if (!appliedVoucher) { voucherCode = v.maGiamGia; applyVoucher(); }"
+                       style="cursor:pointer; padding:6px 12px; background:var(--z-accent-soft); border:1px dashed var(--z-accent); border-radius:6px; font-size:11px; display:inline-block">
+                    <strong style="color:var(--z-accent)">{{ v.maGiamGia }}</strong>:
+                    <span v-if="v.phanTramGiam > 0"> Giảm {{ v.phanTramGiam }}%</span>
+                    <span v-else-if="v.gioTriGiam > 0"> Giảm {{ formatPrice(v.gioTriGiam) }}</span>
+                    <div style="font-size:9px; color:var(--z-gray); margin-top:2px">Đơn tối thiểu: {{ formatPrice(v.giaTriDonToiThieu || 0) }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="z-order-totals">
@@ -197,7 +213,7 @@
               </div>
             </div>
 
-            <button class="lm-btn-primary w-100 mt-4" @click="placeOrder" :disabled="loading">
+            <button class="lm-btn-primary w-100 mt-4" @click="handlePlaceOrder" :disabled="loading">
               <span v-if="loading">
                 <i class="bi bi-arrow-repeat z-spin"></i> Đang xử lý...
               </span>
@@ -217,6 +233,21 @@
     </div>
 
     <AppFooter />
+
+    <!-- Confirm Payment Modal -->
+    <div v-if="showConfirmModal" class="z-modal-overlay" @click.self="showConfirmModal = false" style="z-index: 2000; backdrop-filter: blur(2px);">
+      <div class="z-modal" style="max-width:400px; text-align:center">
+        <div class="mb-3" style="font-size:48px; color:var(--z-accent)">
+          <i class="bi bi-question-circle"></i>
+        </div>
+        <h4 class="z-display mb-3" style="font-size:18px; font-weight:600">Xác nhận thanh toán</h4>
+        <p style="font-size:14px; color:var(--z-gray); margin-bottom:24px">Bạn có chắc chắn muốn thanh toán đơn hàng này?</p>
+        <div class="d-flex gap-3">
+          <button class="lm-btn-secondary flex-fill" style="height:40px;" @click="showConfirmModal = false">Hủy</button>
+          <button class="lm-btn-primary flex-fill" style="height:40px;" @click="confirmAndPlaceOrder">Xác nhận</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -325,26 +356,80 @@ function removeVoucher() {
   voucherMsg.value = ''
 }
 
+const vouchersList = ref([])
+const activeVouchers = computed(() => {
+  const today = new Date().toISOString().split('T')[0]
+  return vouchersList.value.filter(v => {
+    if (v.trangThai !== 1) return false
+    if (v.soLuong !== null && v.soLuong <= 0) return false
+    if (v.ngayBatDau && v.ngayBatDau > today) return false
+    if (v.ngayKetThuc && v.ngayKetThuc < today) return false
+    return true
+  })
+})
+
+const showConfirmModal = ref(false)
+
+function handlePlaceOrder() {
+  if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
+  if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
+  
+  if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
+    return showToast('Vui lòng chọn và nhập đầy đủ địa chỉ giao hàng')
+  }
+  
+  showConfirmModal.value = true
+}
+
+function confirmAndPlaceOrder() {
+  showConfirmModal.value = false
+  placeOrder()
+}
+
 onMounted(async () => {
   const { isLoggedIn } = useAuth()
-  if (!isLoggedIn()) {
-    showToast('Vui lòng đăng nhập để thanh toán')
-    router.push('/login')
-    return
-  }
-  const user = getUser()
-  if (user) {
-    form.value.hoTen = user.hoVaTen || ''
-    form.value.soDienThoai = user.soDienThoai || ''
-    form.value.email = user.email || ''
+  if (isLoggedIn()) {
+    const user = getUser()
+    if (user) {
+      form.value.hoTen = user.hoVaTen || ''
+      form.value.soDienThoai = user.soDienThoai || ''
+      form.value.email = user.email || ''
+    }
   }
 
   // Tự động load dữ liệu Tỉnh thành VN khi mở trang
   try {
     const res = await fetch('https://provinces.open-api.vn/api/?depth=3')
     addressData.value = await res.json()
+    
+    if (isLoggedIn()) {
+      const addr = await api().getProfileAddress()
+      if (addr && addr.tinhThanhPho) {
+        const city = addressData.value.find(c => c.name === addr.tinhThanhPho)
+        if (city) {
+          selectedCity.value = city.code
+          const dist = city.districts.find(d => d.name === addr.quanHuyen)
+          if (dist) {
+            selectedDistrict.value = dist.code
+            const ward = dist.wards.find(w => w.name === addr.xaPhuong)
+            if (ward) {
+              selectedWard.value = ward.code
+            }
+          }
+        }
+        specificAddress.value = addr.duong || ''
+      }
+    }
   } catch(e) {
     console.error("Lỗi khi tải danh sách tỉnh thành", e)
+  }
+
+  // Load active vouchers
+  try {
+    const list = await api().getGiamGia()
+    vouchersList.value = Array.isArray(list) ? list : []
+  } catch (e) {
+    console.error("Lỗi khi tải vouchers:", e)
   }
 })
 
@@ -583,5 +668,14 @@ async function placeOrder() {
 .z-spin {
   display: inline-block;
   animation: z-spin-anim 0.8s linear infinite;
+}
+.z-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 2000;
+}
+.z-modal {
+  background: var(--z-white); border-radius: var(--z-radius-lg);
+  padding: 28px; width: 100%; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 }
 </style>

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <AdminLayout>
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
@@ -13,6 +13,40 @@
               @click="activeStatus = tab.value">
         {{ tab.label }}
         <span class="z-tab-count">{{ tab.count }}</span>
+      </button>
+    </div>
+
+    <!-- Nguồn đơn hàng (Online/Offline) -->
+    <div class="d-flex gap-2 mb-3">
+      <button class="lm-btn-secondary" 
+              :style="{
+                padding:'6px 16px', fontSize:'13px', borderRadius:'20px', height:'auto',
+                background: orderTypeTab === 'all' ? 'var(--z-dark)' : '',
+                color: orderTypeTab === 'all' ? '#fff' : '',
+                borderColor: orderTypeTab === 'all' ? 'var(--z-dark)' : ''
+              }"
+              @click="orderTypeTab = 'all'">
+        Tất cả nguồn
+      </button>
+      <button class="lm-btn-secondary" 
+              :style="{
+                padding:'6px 16px', fontSize:'13px', borderRadius:'20px', height:'auto',
+                background: orderTypeTab === 'online' ? 'var(--z-dark)' : '',
+                color: orderTypeTab === 'online' ? '#fff' : '',
+                borderColor: orderTypeTab === 'online' ? 'var(--z-dark)' : ''
+              }"
+              @click="orderTypeTab = 'online'">
+        <i class="bi bi-globe me-1"></i> Online (Đặt trực tuyến)
+      </button>
+      <button class="lm-btn-secondary" 
+              :style="{
+                padding:'6px 16px', fontSize:'13px', borderRadius:'20px', height:'auto',
+                background: orderTypeTab === 'offline' ? 'var(--z-dark)' : '',
+                color: orderTypeTab === 'offline' ? '#fff' : '',
+                borderColor: orderTypeTab === 'offline' ? 'var(--z-dark)' : ''
+              }"
+              @click="orderTypeTab = 'offline'">
+        <i class="bi bi-shop me-1"></i> Offline (Tại quầy)
       </button>
     </div>
 
@@ -38,7 +72,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="o in filteredOrders" :key="o.id" class="z-clickable-row" @click="openDetail(o)">
+          <tr v-for="o in paginatedOrders" :key="o.id" class="z-clickable-row" @click="openDetail(o)">
             <td style="font-weight:600">{{ o.id }}</td>
             <td>
               <div style="font-weight:500">{{ o.customer }}</div>
@@ -48,7 +82,12 @@
             <td style="font-weight:600">{{ o.total }}</td>
             <td>
               <div>{{ o.payment }}</div>
-              <span class="z-pay-badge" :class="o.paid ? 'paid' : 'unpaid'">
+              <span v-if="o.raw.phuongThucThanhToanOnline === 'FAILED' || (o.statusValue === '5' && (o.payment === 'MOMO' || o.payment === 'ZALOPAY') && !o.paid)" 
+                    class="z-pay-badge unpaid" style="background:#fee2e2; color:#b91c1c; border-color:#fee2e2">
+                <i class="bi bi-x-circle-fill"></i>
+                Thanh toán thất bại
+              </span>
+              <span v-else class="z-pay-badge" :class="o.paid ? 'paid' : 'unpaid'">
                 <i class="bi" :class="o.paid ? 'bi-check-circle-fill' : 'bi-clock'"></i>
                 {{ o.paid ? 'Đã thanh toán' : 'Chưa thanh toán' }}
               </span>
@@ -67,6 +106,32 @@
       <div v-if="filteredOrders.length === 0" class="text-center py-5">
         <i class="bi bi-inbox" style="font-size:36px;color:var(--z-gray-border)"></i>
         <p style="color:var(--z-gray);font-size:14px;margin-top:8px">Không có đơn hàng nào</p>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+        <span style="font-size: 13px; color: var(--z-gray)">
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredOrders.length) }} trong tổng số {{ filteredOrders.length }} đơn hàng
+        </span>
+        <div class="d-flex gap-2">
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
+            Trước
+          </button>
+          <button v-for="page in totalPages" :key="page" 
+                  class="lm-btn-secondary" 
+                  :style="{
+                    padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
+                    background: currentPage === page ? 'var(--z-dark)' : '',
+                    color: currentPage === page ? '#fff' : '',
+                    borderColor: currentPage === page ? 'var(--z-dark)' : ''
+                  }"
+                  @click="currentPage = page">
+            {{ page }}
+          </button>
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === totalPages" @click="currentPage++">
+            Sau
+          </button>
+        </div>
       </div>
     </div>
 
@@ -109,9 +174,31 @@
                   <div class="row g-3 mb-4 p-3 bg-light rounded">
                     <div class="col-12">
                       <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Khách hàng</div>
-                      <div style="font-size:14px;font-weight:500">
-                          {{ detailData.khachHang || 'Khách lẻ' }} 
+                      <div style="font-size:14px;font-weight:500" class="d-flex align-items-center gap-2">
+                        <template v-if="!editingCustomer">
+                          <span>{{ detailData.tenKhachHang || detailData.khachHang || 'Khách lẻ' }}</span>
                           <span v-if="detailData.soDienThoai"> - {{ detailData.soDienThoai }}</span>
+                          
+                          <button v-if="detailData.hinhThucNhanHang === 0" 
+                                  class="z-action-btn d-inline-flex align-items-center justify-content-center" 
+                                  style="width:24px; height:24px; font-size:11px;"
+                                  title="Chỉnh sửa thông tin khách" 
+                                  @click="startEditCustomer">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                        </template>
+                        <template v-else>
+                          <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <input v-model="editCustForm.tenKhachHang" class="lm-input" style="padding:4px 8px; font-size:12px; max-width:140px;" placeholder="Tên khách">
+                            <input v-model="editCustForm.soDienThoai" class="lm-input" style="padding:4px 8px; font-size:12px; max-width:110px;" placeholder="SĐT">
+                            <button class="lm-btn-primary" style="padding:4px 10px; font-size:11px; height:auto; border-radius:4px" @click="saveCustomerInfo" :disabled="savingCustomer">
+                              Lưu
+                            </button>
+                            <button class="lm-btn-secondary" style="padding:4px 10px; font-size:11px; height:auto; border-radius:4px" @click="editingCustomer = false">
+                              Hủy
+                            </button>
+                          </div>
+                        </template>
                       </div>
                       <div style="font-size:13px; color:var(--z-gray);" v-if="detailData.emailKhachHang">{{ detailData.emailKhachHang }}</div>
                     </div>
@@ -120,7 +207,7 @@
                         <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Phương thức vận chuyển</div>
                         <div style="font-size:14px;font-weight:500; display:flex; align-items: center; gap: 5px;">
                             <i class="bi" :class="detailData.hinhThucNhanHang === 0 ? 'bi-shop' : 'bi-truck'"></i>
-                            {{ detailData.hinhThucNhanHang === 0 ? 'Nhận tại cửa hàng' : 'Giao hàng tận nơi' }}
+                            {{ detailData.hinhThucNhanHang === 0 ? 'Mua trực tiếp' : 'Giao hàng tận nơi' }}
                         </div>
                     </div>
 
@@ -137,7 +224,11 @@
                       <div style="font-size:14px;font-weight:500">
                         {{ detailData.hinhThucThanhToan || 'N/A' }}
                         <div class="mt-1">
-                            <span class="z-pay-badge" :class="detailData.daThanhToan ? 'paid' : 'unpaid'">
+                            <span v-if="detailData.phuongThucThanhToanOnline === 'FAILED' || (detailData.trangThai === 5 && (detailData.hinhThucThanhToan === 'MOMO' || detailData.hinhThucThanhToan === 'ZALOPAY') && !detailData.daThanhToan)"
+                                  class="z-pay-badge unpaid" style="background:#fee2e2; color:#b91c1c; border-color:#fee2e2">
+                              <i class="bi bi-x-circle-fill"></i> Thanh toán thất bại
+                            </span>
+                            <span v-else class="z-pay-badge" :class="detailData.daThanhToan ? 'paid' : 'unpaid'">
                             <i class="bi" :class="detailData.daThanhToan ? 'bi-check-circle-fill' : 'bi-clock'"></i>
                             {{ detailData.daThanhToan ? 'Đã thanh toán' : 'Chưa thanh toán' }}
                             </span>
@@ -149,8 +240,8 @@
                       <div style="font-size:14px;font-weight:500">{{ detailData.ngayTao ? new Date(detailData.ngayTao).toLocaleString('vi-VN') : '' }}</div>
                     </div>
                     <div class="col-12">
-                      <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Người tạo đơn (Nhân viên)</div>
-                      <div style="font-size:14px;font-weight:500"><i class="bi bi-person-badge me-1"></i>{{ detailData.nhanVien || 'Khách hàng tự đặt' }}</div>
+                      <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Người tạo đơn</div>
+                      <div style="font-size:14px;font-weight:500"><i class="bi bi-person-badge me-1"></i>{{ detailData.nhanVien || detailData.tenKhachHang || detailData.khachHang || 'Khách hàng tự đặt' }}</div>
                     </div>
                   </div>
 
@@ -283,7 +374,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
@@ -310,6 +401,36 @@ const rawOrders = ref([])
 const showDetail = ref(false)
 const detailData = ref(null)
 const loadingDetail = ref(false)
+
+const orderTypeTab = ref('all') // 'all', 'online', 'offline'
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const editingCustomer = ref(false)
+const savingCustomer = ref(false)
+const editCustForm = ref({ tenKhachHang: '', soDienThoai: '' })
+
+function startEditCustomer() {
+  editCustForm.value.tenKhachHang = detailData.value.tenKhachHang || detailData.value.khachHang || ''
+  if (editCustForm.value.tenKhachHang === 'Khách lẻ') editCustForm.value.tenKhachHang = ''
+  editCustForm.value.soDienThoai = detailData.value.soDienThoai || ''
+  editingCustomer.value = true
+}
+
+async function saveCustomerInfo() {
+  savingCustomer.value = true
+  try {
+    const updated = await api().updateOrderCustomer(detailData.value.id, editCustForm.value)
+    detailData.value = updated
+    showToast('Cập nhật thông tin khách hàng thành công!')
+    editingCustomer.value = false
+    await loadOrders()
+  } catch (e) {
+    showToast('Lỗi: ' + (e.message || 'Không thể lưu'))
+  } finally {
+    savingCustomer.value = false
+  }
+}
 
 const showConfirm = ref(false)
 const confirmTitle = ref('')
@@ -393,8 +514,23 @@ const filteredOrders = computed(() => {
   return allOrders.value.filter(o => {
     const matchSearch = !search.value || o.id.toLowerCase().includes(search.value.toLowerCase()) || o.customer.toLowerCase().includes(search.value.toLowerCase())
     const matchStatus = activeStatus.value === 'all' || o.statusValue === activeStatus.value
-    return matchSearch && matchStatus
+    
+    const isOffline = o.raw?.hinhThucNhanHang === 0
+    const matchType = orderTypeTab.value === 'all' || (orderTypeTab.value === 'offline' && isOffline) || (orderTypeTab.value === 'online' && !isOffline)
+    
+    return matchSearch && matchStatus && matchType
   })
+})
+
+const totalPages = computed(() => Math.ceil(filteredOrders.value.length / itemsPerPage))
+
+const paginatedOrders = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredOrders.value.slice(start, start + itemsPerPage)
+})
+
+watch([search, activeStatus, orderTypeTab], () => {
+  currentPage.value = 1
 })
 
 function canAdvance(o) {

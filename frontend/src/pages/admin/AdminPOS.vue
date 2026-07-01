@@ -60,14 +60,19 @@
                    class="d-flex align-items-center gap-3 p-2" style="background:var(--z-bg-alt);border-radius:var(--z-radius)">
                 <div class="flex-grow-1">
                   <div style="font-size:13px;font-weight:500">{{ item.name }}</div>
-                  <div style="font-size:12px;color:var(--z-gray)">{{ fmtPrice(item.price) }}</div>
+                  <div style="font-size:12px;color:var(--z-gray)">
+                    {{ fmtPrice(item.price) }}
+                    <span v-if="item.color || item.size" style="color:var(--z-accent);font-weight:500"> | {{ item.color }} - {{ item.size }}</span>
+                  </div>
                 </div>
                 <div class="d-flex align-items-center gap-1">
                   <button class="z-qty-btn" @click="item.qty > 1 ? item.qty-- : removeFromCart(i)">
                     <i class="bi" :class="item.qty > 1 ? 'bi-dash' : 'bi-trash'"></i>
                   </button>
                   <span style="width:28px;text-align:center;font-size:13px;font-weight:600">{{ item.qty }}</span>
-                  <button class="z-qty-btn" @click="item.qty++"><i class="bi bi-plus"></i></button>
+                  <button class="z-qty-btn" @click="item.qty < item.maxQty ? item.qty++ : showToast('Đạt giới hạn tồn kho!')">
+                    <i class="bi bi-plus"></i>
+                  </button>
                 </div>
                 <div style="font-size:13px;font-weight:600;min-width:80px;text-align:right">{{ fmtPrice(item.price * item.qty) }}</div>
               </div>
@@ -77,6 +82,10 @@
             <div class="mb-3 pt-3" style="border-top:1px solid var(--z-gray-border)">
               <label class="z-label">Khách hàng (tuỳ chọn)</label>
               <input v-model="customerName" class="lm-input" placeholder="Tên khách hàng" style="font-size:13px;padding:8px 12px">
+            </div>
+            <div class="mb-3">
+              <label class="z-label">Số điện thoại (tuỳ chọn)</label>
+              <input v-model="customerPhone" class="lm-input" placeholder="Số điện thoại" style="font-size:13px;padding:8px 12px">
             </div>
 
             <!-- Voucher -->
@@ -211,6 +220,61 @@
         </div>
       </div>
     </div>
+
+    <!-- Variant Selection Modal -->
+    <div v-if="showVariantModal" class="z-modal-overlay" @click.self="showVariantModal = false" style="z-index: 2000; backdrop-filter: blur(2px);">
+      <div class="z-modal" style="max-width: 450px;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="z-display mb-0" style="font-size:18px; font-weight:600">Chọn biến thể</h4>
+          <button class="z-icon-btn" @click="showVariantModal = false"><i class="bi bi-x-lg"></i></button>
+        </div>
+        
+        <div v-if="selectedProduct" class="mb-4">
+          <h5 style="font-size:15px; font-weight:500; color:var(--z-dark)">{{ selectedProduct.name }}</h5>
+          <p style="font-size:12px; color:var(--z-gray)">Mã: {{ selectedProduct.code }}</p>
+          
+          <!-- Colors -->
+          <div class="mb-3">
+            <label class="z-label mb-2">Màu sắc *</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button v-for="c in uniqueColors" :key="c.name"
+                      class="lm-btn-secondary d-flex align-items-center gap-2"
+                      :style="{
+                        padding:'6px 12px', fontSize:'12px', height:'auto',
+                        borderColor: selectedColor === c.name ? 'var(--z-accent)' : '',
+                        background: selectedColor === c.name ? 'var(--z-accent-soft)' : ''
+                      }"
+                      @click="selectedColor = c.name">
+                <span :style="{ width:'12px', height:'12px', borderRadius:'50%', background: c.hex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
+                {{ c.name }}
+              </button>
+            </div>
+          </div>
+          
+          <!-- Sizes -->
+          <div class="mb-3">
+            <label class="z-label mb-2">Kích thước *</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button v-for="s in uniqueSizes" :key="s"
+                      class="lm-btn-secondary"
+                      :style="{
+                        padding:'6px 12px', fontSize:'12px', height:'auto',
+                        borderColor: selectedSize === s ? 'var(--z-accent)' : '',
+                        background: selectedSize === s ? 'var(--z-accent-soft)' : ''
+                      }"
+                      @click="selectedSize = s">
+                {{ s }}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="d-flex gap-3">
+          <button class="lm-btn-secondary flex-fill" style="height:40px;" @click="showVariantModal = false">Đóng</button>
+          <button class="lm-btn-primary flex-fill" style="height:40px;" @click="confirmAddVariant">Thêm vào giỏ</button>
+        </div>
+      </div>
+    </div>
   </AdminLayout>
 </template>
 
@@ -228,11 +292,39 @@ const search = ref('')
 const allProducts = ref([])
 const cart = ref([])
 const customerName = ref('')
+const customerPhone = ref('')
 const paymentMethod = ref('cash')
 const transferMethod = ref('vietqr')
 const tienKhachDua = ref(null)
 const note = ref('')
 const creating = ref(false)
+
+// Variant Selection Modal State
+const showVariantModal = ref(false)
+const selectedProduct = ref(null)
+const selectedColor = ref(null)
+const selectedSize = ref(null)
+const productVariants = ref([])
+
+const uniqueColors = computed(() => {
+  const colorsMap = {}
+  productVariants.value.forEach(v => {
+    if (v.mauSac && v.trangThai === 1) {
+      colorsMap[v.mauSac] = { name: v.mauSac, hex: v.maHex }
+    }
+  })
+  return Object.values(colorsMap)
+})
+
+const uniqueSizes = computed(() => {
+  const sizes = new Set()
+  productVariants.value.forEach(v => {
+    if (v.kichThuoc && v.trangThai === 1) {
+      sizes.add(v.kichThuoc)
+    }
+  })
+  return Array.from(sizes)
+})
 
 // Voucher
 const voucherCode = ref('')
@@ -351,14 +443,69 @@ async function openZaloCard() {
   }
 }
 
-function addToCart(p) {
-  const existing = cart.value.find(c => c.id === p.id)
+async function addToCart(p) {
+  try {
+    const detail = await api().getVayById(p.rawId || p.id)
+    selectedProduct.value = p
+    productVariants.value = detail.bienThe || []
+    
+    // Reset selection
+    selectedColor.value = null
+    selectedSize.value = null
+    showVariantModal.value = true
+  } catch (e) {
+    showToast('Lỗi khi tải chi tiết sản phẩm: ' + e.message)
+  }
+}
+
+function confirmAddVariant() {
+  if (!selectedColor.value) {
+    showToast('Vui lòng chọn màu sắc!', 'warning')
+    return
+  }
+  if (!selectedSize.value) {
+    showToast('Vui lòng chọn kích thước!', 'warning')
+    return
+  }
+  
+  const match = productVariants.value.find(v => 
+    v.mauSac === selectedColor.value && 
+    v.kichThuoc === selectedSize.value
+  )
+  
+  if (!match) {
+    showToast('Biến thể này không khả dụng!', 'error')
+    return
+  }
+  
+  if (match.soLuong <= 0) {
+    showToast('Biến thể này đã hết hàng!', 'warning')
+    return
+  }
+  
+  const itemKey = `${selectedProduct.value.id}-${selectedColor.value}-${selectedSize.value}`
+  const existing = cart.value.find(c => c.key === itemKey)
   if (existing) {
+    if (existing.qty >= match.soLuong) {
+      showToast('Không thể thêm quá số lượng tồn kho!', 'warning')
+      return
+    }
     existing.qty++
   } else {
-    cart.value.push({ id: p.id, name: p.name, price: p.salePrice || p.price, qty: 1 })
+    cart.value.push({
+      key: itemKey,
+      id: selectedProduct.value.id,
+      name: selectedProduct.value.name,
+      price: match.giaBan || selectedProduct.value.price,
+      qty: 1,
+      color: selectedColor.value,
+      size: selectedSize.value,
+      maxQty: match.soLuong
+    })
   }
-  showToast(`Đã thêm "${p.name}"`)
+  
+  showVariantModal.value = false
+  showToast(`Đã thêm ${selectedProduct.value.name} (${selectedColor.value} / ${selectedSize.value})`)
 }
 
 function removeFromCart(index) {
@@ -410,7 +557,12 @@ async function createOrder() {
     if (note.value) noteText += ` · ${note.value}`
 
     const orderData = {
-      items: cart.value.map(item => ({ productId: item.id, qty: item.qty })),
+      items: cart.value.map(item => ({ 
+        productId: item.id, 
+        qty: item.qty,
+        color: item.color,
+        size: item.size
+      })),
       hinhThucThanhToan: paymentLabel(),
       hinhThucNhanHang: 1,
       trangThai: 3,            // Hoàn thành ngay
@@ -419,11 +571,13 @@ async function createOrder() {
       nhanVienId: user && (user.role === 'Admin' || user.role === 'Nhân viên') ? user.userId : null,
       ghiChu: noteText,
       tenKhachHang: customerName.value || 'Khách lẻ',
+      soDienThoai: customerPhone.value || null
     }
     await api().createOrder(orderData)
     showToast('Tạo đơn & thanh toán thành công!')
     cart.value = []
     customerName.value = ''
+    customerPhone.value = ''
     note.value = ''
     tienKhachDua.value = null
     paymentConfirmed.value = false

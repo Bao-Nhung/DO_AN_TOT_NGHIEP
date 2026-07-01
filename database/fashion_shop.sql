@@ -89,7 +89,15 @@ SET IDENTITY_INSERT [dbo].[Lich_lam_viec] ON;
 INSERT INTO [dbo].[Lich_lam_viec] ([id], [id_nhan_vien], [ngay_lam], [ca_lam], [gio_bat_dau], [gio_ket_thuc], [ghi_chu], [trang_thai], [ngay_tao]) VALUES
 (1, 1, '2026-06-22', N'Ca sáng', '08:00:00', '12:00:00', N'Trực quản lý cửa hàng', 1, '2026-06-22T08:00:00'),
 (2, 2, '2026-06-22', N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn khách và kiểm hàng', 1, '2026-06-22T08:00:00'),
-(3, 2, '2026-06-23', N'Ca sáng', '08:00:00', '12:00:00', N'Hỗ trợ bán tại quầy', 0, '2026-06-22T08:00:00');
+(3, 2, '2026-06-23', N'Ca sáng', '08:00:00', '12:00:00', N'Hỗ trợ bán tại quầy', 0, '2026-06-22T08:00:00'),
+(4, 1, '2026-06-29', N'Ca sáng', '08:00:00', '12:00:00', N'Ca trực đầu tuần - Admin', 1, '2026-06-29T08:00:00'),
+(5, 2, '2026-06-29', N'Ca chiều', '13:00:00', '17:00:00', N'Bán hàng ca chiều', 1, '2026-06-29T08:00:00'),
+(6, 2, '2026-06-30', N'Ca sáng', '08:00:00', '12:00:00', N'Kiểm tra hàng tồn kho', 1, '2026-06-29T08:00:00'),
+(7, 3, '2026-07-01', N'Ca sáng', '08:00:00', '12:00:00', N'Quản lý nhập kho gấm', 1, '2026-06-29T08:00:00'),
+(8, 1, '2026-07-01', N'Ca chiều', '13:00:00', '17:00:00', N'Họp giao ban giữa tuần', 1, '2026-06-29T08:00:00'),
+(9, 2, '2026-07-01', N'Ca tối', '18:00:00', '22:00:00', N'Trực ca tối bán hàng', 0, '2026-06-29T08:00:00'),
+(10, 3, '2026-07-02', N'Ca sáng', '08:00:00', '12:00:00', N'Sắp xếp kệ hàng', 1, '2026-06-29T08:00:00'),
+(11, 2, '2026-07-03', N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn trực tuyến', 1, '2026-06-29T08:00:00');
 SET IDENTITY_INSERT [dbo].[Lich_lam_viec] OFF;
 END
 GO
@@ -1366,6 +1374,8 @@ CREATE TABLE [dbo].[Hoa_don] (
   [ghi_chu] nvarchar(max) NULL,
   [ngay_tao] datetime2(7) NULL,
   [da_thanh_toan] bit NULL,
+  [ten_khach_hang] nvarchar(150) NULL,
+  [so_dien_thoai] nvarchar(20) NULL,
   CONSTRAINT [PK_Hoa_don] PRIMARY KEY ([id])
 );
 END
@@ -1606,4 +1616,30 @@ CREATE TABLE [dbo].[Lich_su_tracking] (
   CONSTRAINT [PK_Lich_su_tracking] PRIMARY KEY ([id]),
   CONSTRAINT [FK_Lich_su_tracking_Hoa_don] FOREIGN KEY ([id_hoa_don]) REFERENCES [dbo].[Hoa_don]([id])
 );
+
+-- ===== Thong_bao =====
+IF OBJECT_ID(N'dbo.Thong_bao','U') IS NOT NULL
+BEGIN
+  DROP TABLE [dbo].[Thong_bao];
+END
+GO
+
+CREATE TABLE [dbo].[Thong_bao] (
+  [id] int IDENTITY(1,1) NOT NULL,
+  [tieu_de] nvarchar(255) NOT NULL,
+  [noi_dung] nvarchar(max) NOT NULL,
+  [loai] nvarchar(50) NULL,
+  [trang_thai] tinyint NULL DEFAULT 1,
+  [ngay_tao] datetime2(7) NULL DEFAULT GETDATE(),
+  CONSTRAINT [PK_Thong_bao] PRIMARY KEY ([id])
+);
+GO
+
+SET IDENTITY_INSERT [dbo].[Thong_bao] ON;
+INSERT INTO [dbo].[Thong_bao] ([id], [tieu_de], [noi_dung], [loai], [trang_thai], [ngay_tao]) VALUES
+(1, N'Chào mừng khai trương cơ sở mới', N'Chúng tôi hân hạnh thông báo khai trương cơ sở Zestia mới tại 45 Nguyễn Huệ, Quận 1, TP.HCM với nhiều ưu đãi lớn lên đến 30%!', N'HeThong', 1, '2026-06-25T10:00:00'),
+(2, N'Ưu đãi tháng 7 - Giảm giá đến 50%', N'Chương trình khuyến mãi siêu sale tháng 7 bắt đầu từ ngày 01/07. Áp dụng cho toàn bộ các mẫu váy đầm dạ hội và váy cưới thiết kế mới nhất!', N'KhuyenMai', 1, '2026-07-01T00:00:00'),
+(3, N'Bảo trì hệ thống thanh toán ZaloPay', N'Cổng thanh toán ZaloPay sẽ tạm dừng hoạt động bảo trì từ 01:00 đến 03:00 ngày 05/07/2026. Quý khách vui lòng chọn MoMo hoặc COD thay thế.', N'HeThong', 1, '2026-07-01T15:30:00');
+SET IDENTITY_INSERT [dbo].[Thong_bao] OFF;
+GO
 

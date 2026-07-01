@@ -3,8 +3,10 @@ package com.zestia.datn.zestia.controller;
 import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.dto.LoginRequest;
 import com.zestia.datn.zestia.dto.LoginResponse;
+import com.zestia.datn.zestia.entity.DiaChi;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.entity.NhanVien;
+import com.zestia.datn.zestia.repository.DiaChiRepository;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class AuthController {
     private final KhachHangRepository khachHangRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final DiaChiRepository diaChiRepo;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
@@ -211,5 +214,87 @@ public class AuthController {
             "role", claims.get("role"),
             "userId", claims.get("userId")
         ));
+    }
+
+    @GetMapping("/profile/address")
+    public ResponseEntity<?> getProfileAddress(@RequestHeader("Authorization") String header) {
+        if (header == null || !header.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        String token = header.substring(7);
+        if (!jwtUtil.isValid(token)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Token hết hạn"));
+        }
+        var claims = jwtUtil.extractClaims(token);
+        String role = (String) claims.get("role");
+        Integer userId = ((Number) claims.get("userId")).intValue();
+
+        if ("KhachHang".equals(role)) {
+            Optional<DiaChi> dcOpt = diaChiRepo.findByKhachHangIdAndMacDinh(userId, (byte) 1);
+            if (dcOpt.isPresent()) {
+                DiaChi dc = dcOpt.get();
+                return ResponseEntity.ok(Map.of(
+                    "tinhThanhPho", dc.getTinhThanhPho() != null ? dc.getTinhThanhPho() : "",
+                    "quanHuyen", dc.getQuanHuyen() != null ? dc.getQuanHuyen() : "",
+                    "xaPhuong", dc.getXaPhuong() != null ? dc.getXaPhuong() : "",
+                    "duong", dc.getDuong() != null ? dc.getDuong() : ""
+                ));
+            } else {
+                return ResponseEntity.ok(Map.of(
+                    "tinhThanhPho", "",
+                    "quanHuyen", "",
+                    "xaPhuong", "",
+                    "duong", ""
+                ));
+            }
+        }
+        return ResponseEntity.badRequest().body(Map.of("error", "Chức năng này chỉ dành cho khách hàng"));
+    }
+
+    @PutMapping("/profile/address")
+    public ResponseEntity<?> updateProfileAddress(@RequestHeader("Authorization") String header,
+                                                   @RequestBody Map<String, String> body) {
+        if (header == null || !header.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        String token = header.substring(7);
+        if (!jwtUtil.isValid(token)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Token hết hạn"));
+        }
+        var claims = jwtUtil.extractClaims(token);
+        String role = (String) claims.get("role");
+        Integer userId = ((Number) claims.get("userId")).intValue();
+
+        if ("KhachHang".equals(role)) {
+            return khachHangRepo.findById(userId).map(kh -> {
+                String tinhThanhPho = body.get("tinhThanhPho");
+                String quanHuyen = body.get("quanHuyen");
+                String xaPhuong = body.get("xaPhuong");
+                String duong = body.get("duong");
+
+                // Validate
+                if (tinhThanhPho == null || tinhThanhPho.isBlank() ||
+                    quanHuyen == null || quanHuyen.isBlank() ||
+                    xaPhuong == null || xaPhuong.isBlank() ||
+                    duong == null || duong.isBlank()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ thông tin địa chỉ"));
+                }
+
+                DiaChi dc = diaChiRepo.findByKhachHangIdAndMacDinh(userId, (byte) 1)
+                        .orElseGet(() -> DiaChi.builder()
+                                .khachHang(kh)
+                                .macDinh((byte) 1)
+                                .build());
+
+                dc.setTinhThanhPho(tinhThanhPho);
+                dc.setQuanHuyen(quanHuyen);
+                dc.setXaPhuong(xaPhuong);
+                dc.setDuong(duong);
+
+                diaChiRepo.save(dc);
+                return ResponseEntity.ok(Map.of("message", "Cập nhật địa chỉ thành công"));
+            }).orElse(ResponseEntity.notFound().build());
+        }
+        return ResponseEntity.badRequest().body(Map.of("error", "Chức năng này chỉ dành cho khách hàng"));
     }
 }

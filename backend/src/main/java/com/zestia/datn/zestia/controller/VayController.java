@@ -33,7 +33,7 @@ public class VayController {
 
     @GetMapping
     public List<Map<String, Object>> getAll() {
-        List<Vay> list = vayRepo.findAll();
+        List<Vay> list = vayRepo.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"));
         List<Map<String, Object>> result = new ArrayList<>();
         for (Vay v : list) {
             result.add(toMap(v));
@@ -54,11 +54,40 @@ public class VayController {
                 .map(this::toMap).toList();
     }
 
+    private Integer toInt(Object val) {
+        if (val == null) return null;
+        if (val instanceof Number) return ((Number) val).intValue();
+        try {
+            return Integer.parseInt(val.toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String generateProductCode() {
+        List<Vay> vays = vayRepo.findAll();
+        int maxNum = 0;
+        for (Vay v : vays) {
+            String code = v.getMaVay();
+            if (code != null && code.startsWith("SP")) {
+                try {
+                    int num = Integer.parseInt(code.substring(2));
+                    if (num > maxNum) {
+                        maxNum = num;
+                    }
+                } catch (NumberFormatException e) {
+                    // ignore
+                }
+            }
+        }
+        return String.format("SP%04d", maxNum + 1);
+    }
+
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         Vay v = new Vay();
         v.setTenVay((String) body.get("tenVay"));
-        v.setMaVay((String) body.get("maVay"));
+        v.setMaVay(generateProductCode());
         v.setMoTa((String) body.get("moTa"));
         v.setTrangThai(body.get("trangThai") != null ? ((Number) body.get("trangThai")).byteValue() : (byte) 1);
         v.setNgayTao(LocalDateTime.now());
@@ -75,7 +104,34 @@ public class VayController {
 
         Vay saved = vayRepo.save(v);
 
-        if (body.get("giaBan") != null) {
+        if (body.get("variants") != null) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> variants = (List<Map<String, Object>>) body.get("variants");
+            int varIdx = 1;
+            for (Map<String, Object> bt : variants) {
+                VayChiTiet ct = new VayChiTiet();
+                ct.setVay(saved);
+                ct.setMaVayChiTiet(saved.getMaVay() + "-" + String.format("%03d", varIdx++));
+                ct.setGiaBan(new BigDecimal(bt.get("giaBan").toString()));
+                if (bt.get("giaBanGoc") != null) {
+                    ct.setGiaBanGoc(new BigDecimal(bt.get("giaBanGoc").toString()));
+                }
+                ct.setSoLuong(bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0);
+                
+                Integer idMau = toInt(bt.get("idMauSac"));
+                if (idMau != null) {
+                    mauSacRepo.findById(idMau).ifPresent(ct::setMauSac);
+                }
+                Integer idKich = toInt(bt.get("idKichThuoc"));
+                if (idKich != null) {
+                    kichThuocRepo.findById(idKich).ifPresent(ct::setKichThuoc);
+                }
+                
+                ct.setTrangThai((byte) 1);
+                ct.setNgayTao(LocalDateTime.now());
+                vayCtRepo.save(ct);
+            }
+        } else if (body.get("giaBan") != null) {
             VayChiTiet ct = new VayChiTiet();
             ct.setVay(saved);
             ct.setMaVayChiTiet(saved.getMaVay() + "-001");
@@ -96,7 +152,6 @@ public class VayController {
     public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         return vayRepo.findById(id).map(v -> {
             if (body.get("tenVay") != null) v.setTenVay((String) body.get("tenVay"));
-            if (body.get("maVay") != null) v.setMaVay((String) body.get("maVay"));
             if (body.get("moTa") != null) v.setMoTa((String) body.get("moTa"));
             if (body.get("trangThai") != null) v.setTrangThai(((Number) body.get("trangThai")).byteValue());
             if (body.get("idLoaiVay") != null) {
@@ -108,7 +163,71 @@ public class VayController {
             if (body.get("idNhaCungCap") != null) {
                 nhaCungCapRepo.findById(((Number) body.get("idNhaCungCap")).intValue()).ifPresent(v::setNhaCungCap);
             }
-            return ResponseEntity.ok(toMap(vayRepo.save(v)));
+            
+            Vay saved = vayRepo.save(v);
+            
+            if (body.get("variants") != null) {
+                List<VayChiTiet> oldVariants = vayCtRepo.findByVayId(saved.getId());
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> newVariants = (List<Map<String, Object>>) body.get("variants");
+                
+                Set<Integer> keptIds = new HashSet<>();
+                int varIdx = oldVariants.size() + 1;
+                
+                for (Map<String, Object> bt : newVariants) {
+                    Integer idMau = toInt(bt.get("idMauSac"));
+                    Integer idKich = toInt(bt.get("idKichThuoc"));
+                    
+                    VayChiTiet match = null;
+                    for (VayChiTiet ov : oldVariants) {
+                        Integer ovMau = ov.getMauSac() != null ? ov.getMauSac().getId() : null;
+                        Integer ovKich = ov.getKichThuoc() != null ? ov.getKichThuoc().getId() : null;
+                        if (Objects.equals(ovMau, idMau) && Objects.equals(ovKich, idKich)) {
+                            match = ov;
+                            break;
+                        }
+                    }
+                    
+                    if (match != null) {
+                        match.setGiaBan(new BigDecimal(bt.get("giaBan").toString()));
+                        if (bt.get("giaBanGoc") != null) {
+                            match.setGiaBanGoc(new BigDecimal(bt.get("giaBanGoc").toString()));
+                        }
+                        match.setSoLuong(bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0);
+                        match.setTrangThai((byte) 1);
+                        vayCtRepo.save(match);
+                        keptIds.add(match.getId());
+                    } else {
+                        VayChiTiet ct = new VayChiTiet();
+                        ct.setVay(saved);
+                        ct.setMaVayChiTiet(saved.getMaVay() + "-" + String.format("%03d", varIdx++));
+                        ct.setGiaBan(new BigDecimal(bt.get("giaBan").toString()));
+                        if (bt.get("giaBanGoc") != null) {
+                            ct.setGiaBanGoc(new BigDecimal(bt.get("giaBanGoc").toString()));
+                        }
+                        ct.setSoLuong(bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0);
+                        
+                        if (idMau != null) {
+                            mauSacRepo.findById(idMau).ifPresent(ct::setMauSac);
+                        }
+                        if (idKich != null) {
+                            kichThuocRepo.findById(idKich).ifPresent(ct::setKichThuoc);
+                        }
+                        ct.setTrangThai((byte) 1);
+                        ct.setNgayTao(LocalDateTime.now());
+                        vayCtRepo.save(ct);
+                    }
+                }
+                
+                for (VayChiTiet ov : oldVariants) {
+                    if (!keptIds.contains(ov.getId())) {
+                        ov.setTrangThai((byte) 0);
+                        vayCtRepo.save(ov);
+                    }
+                }
+            }
+            
+            return ResponseEntity.ok(toMap(saved));
         }).orElse(ResponseEntity.notFound().build());
     }
 

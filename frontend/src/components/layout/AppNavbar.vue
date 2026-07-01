@@ -22,6 +22,38 @@
         <button class="lm-nav-icon-btn" @click="$router.push('/wishlist')" title="Yêu thích">
           <i class="bi bi-heart"></i>
         </button>
+
+        <!-- Notifications Dropdown -->
+        <div class="position-relative d-inline-block z-notif-container">
+          <button class="lm-nav-icon-btn" @click="toggleNotifs" title="Thông báo">
+            <i class="bi bi-bell"></i>
+            <span v-if="unreadCount > 0" class="lm-cart-badge" style="background:var(--z-accent)">{{ unreadCount }}</span>
+          </button>
+          
+          <div v-if="notifOpen" class="z-notif-dropdown shadow">
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+              <strong style="font-size:12px;color:var(--z-dark)">Thông báo</strong>
+              <button @click="markAllAsRead" style="border:none;background:none;font-size:11px;color:var(--z-accent);font-weight:600;cursor:pointer">Đọc hết</button>
+            </div>
+            <div class="z-notif-list">
+              <div v-if="loadingNotif" class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-secondary"></div>
+              </div>
+              <div v-else-if="notifs.length === 0" class="text-center py-4 text-muted" style="font-size:11px">
+                Không có thông báo mới
+              </div>
+              <div v-else v-for="n in notifs" :key="n.id" class="z-notif-item" :class="{ unread: !n.read }" @click="viewNotif(n)">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span :class="['z-status', getLabelClass(n.loai)]" style="font-size:8px; padding:1px 5px; height:auto; line-height:1.2;">{{ getTypeName(n.loai) }}</span>
+                  <span class="z-notif-time">{{ formatTime(n.ngayTao) }}</span>
+                </div>
+                <div class="z-notif-title">{{ n.tieuDe }}</div>
+                <div class="z-notif-body">{{ n.noiDung }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button class="lm-nav-icon-btn" @click="openCart()" title="Giỏ hàng">
           <i class="bi bi-bag"></i>
           <span class="lm-cart-badge" :style="badgeScale">{{ totalCount }}</span>
@@ -82,6 +114,26 @@
       </div>
     </div>
   </div>
+
+  <!-- Notification Detail Modal -->
+  <div v-if="activeNotifDetail" class="z-modal-overlay" @click.self="activeNotifDetail = null" style="z-index: 10000;">
+    <div class="z-modal" style="max-width: 480px; background: var(--z-white); border-radius: var(--z-radius-lg); padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.12)">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span :class="['z-status', getLabelClass(activeNotifDetail.loai)]">{{ getTypeName(activeNotifDetail.loai) }}</span>
+        <button class="z-icon-btn" @click="activeNotifDetail = null"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <h4 style="font-size:15px; font-weight:700; color:var(--z-dark); margin-bottom:8px;">{{ activeNotifDetail.tieuDe }}</h4>
+      <div style="font-size:11px; color:var(--z-gray); margin-bottom:16px;">Ngày đăng: {{ formatDateTime(activeNotifDetail.ngayTao) }}</div>
+      <div class="p-3 rounded bg-light" style="font-size:13px; line-height:1.6; color:var(--z-dark); border:1px solid var(--z-gray-border); white-space:pre-wrap;">
+        {{ activeNotifDetail.noiDung }}
+      </div>
+      <div class="d-flex justify-content-end mt-4">
+        <button class="lm-btn-primary" style="padding:10px 24px; font-size:12px; height:auto;" @click="activeNotifDetail = null">
+          <span>Đóng</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -89,6 +141,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
 import { products, loadProducts } from '@/composables/useProducts'
+import { api } from '@/composables/useApi'
 
 const router = useRouter()
 const { openCart, totalCount, formatPrice } = useCart()
@@ -99,7 +152,10 @@ const mobileOpen = ref(false)
 const searchQuery = ref('')
 const searchInput = ref(null)
 
-onMounted(() => loadProducts())
+onMounted(() => {
+  loadProducts()
+  fetchNotifs()
+})
 
 const searchResults = computed(() => {
   if (searchQuery.value.length < 2) return []
@@ -136,5 +192,159 @@ watch(totalCount, () => {
 
 function onScroll() { isScrolled.value = window.scrollY > 50 }
 onMounted  (() => window.addEventListener('scroll', onScroll))
-onUnmounted(() => window.removeEventListener('scroll', onScroll))
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  document.removeEventListener('click', closeNotifsOutside)
+})
+
+// Notifications State & Actions
+const notifOpen = ref(false)
+const notifs = ref([])
+const loadingNotif = ref(false)
+const activeNotifDetail = ref(null)
+const readIds = ref(JSON.parse(localStorage.getItem('read_notif_ids') || '[]'))
+
+const unreadCount = computed(() => {
+  return notifs.value.filter(n => !readIds.value.includes(n.id)).length
+})
+
+async function fetchNotifs() {
+  loadingNotif.value = true
+  try {
+    const list = await api().getThongBaoActive()
+    notifs.value = list.map(n => ({
+      ...n,
+      read: readIds.value.includes(n.id)
+    }))
+  } catch (e) {
+    console.error('Lỗi khi tải thông báo', e)
+  } finally {
+    loadingNotif.value = false
+  }
+}
+
+function toggleNotifs() {
+  notifOpen.value = !notifOpen.value
+  if (notifOpen.value) {
+    fetchNotifs()
+    setTimeout(() => {
+      document.addEventListener('click', closeNotifsOutside)
+    }, 10)
+  } else {
+    document.removeEventListener('click', closeNotifsOutside)
+  }
+}
+
+function closeNotifsOutside(e) {
+  const container = document.querySelector('.z-notif-container')
+  if (container && !container.contains(e.target)) {
+    notifOpen.value = false
+    document.removeEventListener('click', closeNotifsOutside)
+  }
+}
+
+function markAllAsRead() {
+  notifs.value.forEach(n => {
+    if (!readIds.value.includes(n.id)) {
+      readIds.value.push(n.id)
+    }
+    n.read = true
+  })
+  localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
+}
+
+function viewNotif(n) {
+  if (!readIds.value.includes(n.id)) {
+    readIds.value.push(n.id)
+    n.read = true
+    localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
+  }
+  activeNotifDetail.value = n
+  notifOpen.value = false
+}
+
+function getLabelClass(type) {
+  const classes = {
+    HeThong: 'info',
+    KhuyenMai: 'success',
+    DonHang: 'warning'
+  }
+  return classes[type] || 'info'
+}
+
+function getTypeName(type) {
+  const names = {
+    HeThong: 'Hệ thống',
+    KhuyenMai: 'Khuyến mãi',
+    DonHang: 'Đơn hàng'
+  }
+  return names[type] || type
+}
+
+function formatTime(val) {
+  if (!val) return ''
+  const d = new Date(val)
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function formatDateTime(val) {
+  if (!val) return ''
+  const d = new Date(val)
+  return d.toLocaleString('vi-VN')
+}
 </script>
+
+<style scoped>
+.z-notif-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 320px;
+  max-height: 420px;
+  background: var(--z-white);
+  border-radius: var(--z-radius-lg);
+  border: 1px solid var(--z-gray-border);
+  margin-top: 10px;
+  overflow: hidden;
+  z-index: 1010;
+  display: flex;
+  flex-direction: column;
+}
+.z-notif-list {
+  overflow-y: auto;
+  flex: 1;
+}
+.z-notif-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--z-bg-alt);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  text-align: left;
+}
+.z-notif-item:hover {
+  background: var(--z-bg-alt);
+}
+.z-notif-item.unread {
+  background: var(--z-accent-soft);
+}
+.z-notif-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--z-dark);
+  margin-top: 4px;
+}
+.z-notif-body {
+  font-size: 12px;
+  color: var(--z-gray);
+  margin-top: 2px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.z-notif-time {
+  font-size: 10px;
+  color: var(--z-gray-light);
+}
+</style>

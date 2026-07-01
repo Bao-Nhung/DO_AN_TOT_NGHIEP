@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.LichSuThanhToan;
+import com.zestia.datn.zestia.entity.LichSuTracking;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
+import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +42,7 @@ public class GatewayPaymentController {
 
     private final HoaDonRepository hoaDonRepo;
     private final LichSuThanhToanRepository lichSuRepo;
+    private final LichSuTrackingRepository trackingRepo;
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -334,6 +337,20 @@ public class GatewayPaymentController {
                     .noiDung("Thanh toán " + method + " thành công - " + hd.getMaHoaDon())
                     .ngayTao(LocalDateTime.now()).build());
         } else {
+            hd.setTrangThai((byte) 5);       // Đơn hàng: Đã hủy (5)
+            hd.setDaThanhToan(false);
+            hd.setPhuongThucThanhToanOnline("FAILED");
+            hd.setTrangThaiTracking("cancelled");
+            hoaDonRepo.save(hd);
+
+            // Ghi lịch sử tracking đơn bị hủy do thanh toán thất bại
+            trackingRepo.save(LichSuTracking.builder()
+                    .hoaDon(hd)
+                    .trangThai("cancelled")
+                    .moTa("Đơn hàng bị hủy tự động do thanh toán online " + method + " thất bại.")
+                    .ngayCapNhat(LocalDateTime.now())
+                    .build());
+
             lichSuRepo.save(LichSuThanhToan.builder()
                     .hoaDon(hd).soTien(BigDecimal.ZERO).phuongThuc(method)
                     .maGiaoDich(txn).trangThai("FAILED")

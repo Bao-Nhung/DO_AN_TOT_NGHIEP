@@ -4,6 +4,8 @@ import com.zestia.datn.zestia.entity.NhanVien;
 import com.zestia.datn.zestia.entity.VaiTro;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
 import com.zestia.datn.zestia.repository.VaiTroRepository;
+import com.zestia.datn.zestia.repository.LichLamViecRepository;
+import com.zestia.datn.zestia.repository.HoaDonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,10 +24,47 @@ public class NhanVienController {
     private final NhanVienRepository nhanVienRepo;
     private final VaiTroRepository vaiTroRepo;
     private final PasswordEncoder passwordEncoder;
+    private final LichLamViecRepository lichLamViecRepo;
+    private final HoaDonRepository hoaDonRepo;
 
     @GetMapping
     public List<Map<String, Object>> getAll() {
         return nhanVienRepo.findAll().stream().map(this::toMap).toList();
+    }
+
+    @GetMapping("/{id}/hieu-suat")
+    public ResponseEntity<?> getPerformance(@PathVariable Integer id) {
+        return nhanVienRepo.findById(id).map(nv -> {
+            java.math.BigDecimal totalSales = java.math.BigDecimal.ZERO;
+            List<com.zestia.datn.zestia.entity.HoaDon> orders = hoaDonRepo.findByNhanVienId(id);
+            long orderCount = orders.size();
+            long completedOrders = 0;
+            for (com.zestia.datn.zestia.entity.HoaDon hd : orders) {
+                if (hd.getTrangThai() != null && hd.getTrangThai() == 4) {
+                    completedOrders++;
+                    if (hd.getTongTien() != null) {
+                        totalSales = totalSales.add(hd.getTongTien());
+                    }
+                }
+            }
+            
+            double totalHours = 0;
+            List<com.zestia.datn.zestia.entity.LichLamViec> schedules = lichLamViecRepo.findByNhanVienIdOrderByNgayLamAscGioBatDauAsc(id);
+            for (com.zestia.datn.zestia.entity.LichLamViec sch : schedules) {
+                if (sch.getGioBatDau() != null && sch.getGioKetThuc() != null) {
+                    double diff = java.time.Duration.between(sch.getGioBatDau(), sch.getGioKetThuc()).toMinutes() / 60.0;
+                    totalHours += Math.max(0.0, diff);
+                }
+            }
+
+            Map<String, Object> stats = new LinkedHashMap<>();
+            stats.put("totalSales", totalSales);
+            stats.put("totalOrders", orderCount);
+            stats.put("completedOrders", completedOrders);
+            stats.put("totalHours", totalHours);
+            stats.put("shiftCount", schedules.size());
+            return ResponseEntity.ok(stats);
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/vai-tro")

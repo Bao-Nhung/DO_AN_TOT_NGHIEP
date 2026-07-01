@@ -51,7 +51,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in filteredProducts" :key="p.id" class="z-clickable-row" @click="openProductDetail(p)">
+          <tr v-for="p in paginatedProducts" :key="p.id" class="z-clickable-row" @click="openProductDetail(p)">
             <td @click.stop><input type="checkbox"></td>
             <td>
               <div class="d-flex align-items-center gap-3">
@@ -89,6 +89,32 @@
       <div v-if="filteredProducts.length === 0" class="text-center py-5">
         <i class="bi bi-inbox" style="font-size:36px;color:var(--z-gray-border)"></i>
         <p style="color:var(--z-gray);font-size:14px;margin-top:8px">Không có sản phẩm nào</p>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+        <span style="font-size: 13px; color: var(--z-gray)">
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredProducts.length) }} trong tổng số {{ filteredProducts.length }} sản phẩm
+        </span>
+        <div class="d-flex gap-2">
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
+            Trước
+          </button>
+          <button v-for="page in totalPages" :key="page" 
+                  class="lm-btn-secondary" 
+                  :style="{
+                    padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
+                    background: currentPage === page ? 'var(--z-dark)' : '',
+                    color: currentPage === page ? '#fff' : '',
+                    borderColor: currentPage === page ? 'var(--z-dark)' : ''
+                  }"
+                  @click="currentPage = page">
+            {{ page }}
+          </button>
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === totalPages" @click="currentPage++">
+            Sau
+          </button>
+        </div>
       </div>
     </div>
 
@@ -305,7 +331,7 @@
           <div class="row g-3">
             <div class="col-6">
               <label class="z-label">Mã sản phẩm</label>
-              <input v-model="form.maVay" class="lm-input" placeholder="VD: VAY-001">
+              <input :value="editingId ? form.maVay : 'Hệ thống tự sinh mã (SPXXXX)'" class="lm-input" disabled>
             </div>
             <div class="col-6">
               <label class="z-label">Trạng thái</label>
@@ -403,7 +429,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { mapProduct, fmtPrice } from '@/composables/useProducts'
@@ -523,6 +549,20 @@ const filteredProducts = computed(() => {
   })
 })
 
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage))
+
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredProducts.value.slice(start, start + itemsPerPage)
+})
+
+watch([search, filterCategory, filterStatus], () => {
+  currentPage.value = 1
+})
+
 function addVariant() {
   form.value.variants.push({ idMauSac: null, idKichThuoc: null, giaBan: null, giaBanGoc: null, soLuong: 0 })
 }
@@ -581,12 +621,42 @@ async function openProductDetail(p) {
 
 async function doSave() {
   if (!form.value.tenVay) { showToast('Vui lòng nhập tên sản phẩm'); return }
+  
+  // Validate variants list
+  if (!form.value.variants || form.value.variants.length === 0) {
+    showToast('Vui lòng thêm ít nhất một biến thể cho sản phẩm!', 'error')
+    return
+  }
+
+  for (let idx = 0; idx < form.value.variants.length; idx++) {
+    const v = form.value.variants[idx]
+    if (!v.idMauSac) {
+      showToast(`Biến thể số ${idx + 1} chưa chọn màu sắc!`, 'error')
+      return
+    }
+    if (!v.idKichThuoc) {
+      showToast(`Biến thể số ${idx + 1} chưa chọn kích thước!`, 'error')
+      return
+    }
+    if (v.giaBan === null || v.giaBan === undefined || v.giaBan < 0) {
+      showToast(`Biến thể số ${idx + 1} chưa nhập giá bán hợp lệ!`, 'error')
+      return
+    }
+    if (v.giaBanGoc === null || v.giaBanGoc === undefined || v.giaBanGoc < 0) {
+      showToast(`Biến thể số ${idx + 1} chưa nhập giá gốc hợp lệ!`, 'error')
+      return
+    }
+    if (Number(v.giaBanGoc) >= Number(v.giaBan)) {
+      showToast(`Biến thể số ${idx + 1}: Giá gốc phải nhỏ hơn Giá bán!`, 'error')
+      return
+    }
+  }
+
   saving.value = true
   try {
     const firstVariant = form.value.variants[0] || {}
     const payload = {
       tenVay: form.value.tenVay,
-      maVay: form.value.maVay,
       moTa: form.value.moTa,
       trangThai: form.value.trangThai,
       idLoaiVay: form.value.idLoaiVay,
@@ -595,6 +665,13 @@ async function doSave() {
       giaBan: firstVariant.giaBan,
       giaBanGoc: firstVariant.giaBanGoc,
       soLuong: firstVariant.soLuong || 0,
+      variants: form.value.variants.map(v => ({
+        idMauSac: v.idMauSac,
+        idKichThuoc: v.idKichThuoc,
+        giaBan: v.giaBan,
+        giaBanGoc: v.giaBanGoc,
+        soLuong: v.soLuong || 0
+      }))
     }
     let result
     if (editingId.value) {

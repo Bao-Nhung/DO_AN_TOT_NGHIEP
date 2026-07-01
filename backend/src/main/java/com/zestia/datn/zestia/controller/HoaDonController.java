@@ -48,6 +48,9 @@ public class HoaDonController {
 @PutMapping("/{id}/trang-thai")
     public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         return hoaDonRepo.findById(id).map(hd -> {
+            if (hd.getTrangThai() != null && hd.getTrangThai() == 5) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng đã bị hủy, không thể thay đổi trạng thái"));
+            }
             if (body.get("trangThai") != null) {
                 byte newTrangThai = ((Number) body.get("trangThai")).byteValue();
                 hd.setTrangThai(newTrangThai);
@@ -96,6 +99,20 @@ public class HoaDonController {
             }
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(toMap(hd));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}/khach-hang")
+    public ResponseEntity<?> updateCustomerInfo(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        return hoaDonRepo.findById(id).map(hd -> {
+            if (body.containsKey("tenKhachHang")) {
+                hd.setTenKhachHang((String) body.get("tenKhachHang"));
+            }
+            if (body.containsKey("soDienThoai")) {
+                hd.setSoDienThoai((String) body.get("soDienThoai"));
+            }
+            HoaDon saved = hoaDonRepo.save(hd);
+            return ResponseEntity.ok(toDetailMap(saved));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -310,8 +327,10 @@ public class HoaDonController {
         map.put("id", hd.getId());
         map.put("maHoaDon", hd.getMaHoaDon());
         
-        map.put("khachHang", hd.getKhachHang() != null ? hd.getKhachHang().getHoVaTen() : "Khách lẻ");
-        map.put("soDienThoai", hd.getKhachHang() != null ? hd.getKhachHang().getSoDienThoai() : null);
+        String tenKH = hd.getKhachHang() != null ? hd.getKhachHang().getHoVaTen() : hd.getTenKhachHang();
+        String sdt = hd.getKhachHang() != null ? hd.getKhachHang().getSoDienThoai() : hd.getSoDienThoai();
+        map.put("khachHang", tenKH != null ? tenKH : "Khách lẻ");
+        map.put("soDienThoai", sdt);
         map.put("soSanPham", soSanPham);
         
         map.put("tongTien", hd.getTongTien() != null ? hd.getTongTien() : BigDecimal.ZERO);

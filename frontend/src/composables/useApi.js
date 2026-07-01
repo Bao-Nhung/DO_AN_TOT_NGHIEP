@@ -93,6 +93,7 @@ export function api() {
 
     // Employees
     getNhanVien: () => request('/nhan-vien'),
+    getNhanVienHieuSuat: (id) => request(`/nhan-vien/${id}/hieu-suat`),
     getVaiTroNhanVien: () => request('/nhan-vien/vai-tro'),
     addNhanVien: (data) => request('/nhan-vien', { method: 'POST', body: JSON.stringify(data) }),
     updateNhanVien: (id, data) => request(`/nhan-vien/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -190,7 +191,18 @@ export function api() {
     // Promotion CRUD
     addKhuyenMai: (data) => request('/khuyen-mai', { method: 'POST', body: JSON.stringify(data) }),
     updateKhuyenMai: (id, data) => request(`/khuyen-mai/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    deleteKhuyenMai: (id) => request(`/khuyen-mai/${id}`, { method: 'DELETE' })
+    deleteKhuyenMai: (id) => request(`/khuyen-mai/${id}`, { method: 'DELETE' }),
+
+    getProfileAddress: () => request('/auth/profile/address'),
+    updateProfileAddress: (data) =>
+      request('/auth/profile/address', { method: 'PUT', body: JSON.stringify(data) }),
+    updateOrderCustomer: (id, data) =>
+      request(`/hoa-don/${id}/khach-hang`, { method: 'PUT', body: JSON.stringify(data) }),
+    getThongBao: () => request('/thong-bao'),
+    getThongBaoActive: () => request('/thong-bao/active'),
+    addThongBao: (data) => request('/thong-bao', { method: 'POST', body: JSON.stringify(data) }),
+    updateThongBao: (id, data) => request(`/thong-bao/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteThongBao: (id) => request(`/thong-bao/${id}`, { method: 'DELETE' })
   }
 }
 

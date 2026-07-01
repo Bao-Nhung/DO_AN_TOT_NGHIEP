@@ -196,11 +196,12 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
 
 const router = useRouter()
+const route = useRoute()
 const { showToast } = useToast()
 const { saveLogin } = useAuth()
 
@@ -240,7 +241,11 @@ async function doLogin() {
     const data = await api().login(username.value, password.value)
     saveLogin(data)
     showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
-    if (data.role && data.role !== 'KhachHang') {
+    
+    const redirectPath = route.query.redirect
+    if (redirectPath) {
+      router.push(redirectPath)
+    } else if (data.role && data.role !== 'KhachHang') {
       router.push('/admin')
     } else {
       router.push('/profile')

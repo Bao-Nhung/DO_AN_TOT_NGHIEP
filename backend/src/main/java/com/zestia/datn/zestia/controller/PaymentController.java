@@ -36,6 +36,9 @@ public class PaymentController {
                                          @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
         String hoTen = (String) body.get("hoTen");
+        if (hoTen == null) {
+            hoTen = (String) body.get("tenKhachHang");
+        }
         String soDienThoai = (String) body.get("soDienThoai");
         String diaChi = (String) body.get("diaChi");
         String ghiChu = (String) body.get("ghiChu");
@@ -193,6 +196,8 @@ public class PaymentController {
                 .daThanhToan(daThanhToan)
                 .ghiChu(ghiChu)
                 .ngayTao(LocalDateTime.now())
+                .tenKhachHang(hoTen)
+                .soDienThoai(soDienThoai)
                 .build();
 
         hoaDon = hoaDonRepo.save(hoaDon);

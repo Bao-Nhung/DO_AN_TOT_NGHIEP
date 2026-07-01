@@ -88,7 +88,7 @@
           <tr v-else-if="filteredEmployees.length === 0">
             <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Không có nhân viên phù hợp</td>
           </tr>
-          <tr v-for="nv in filteredEmployees" v-else :key="nv.id">
+          <tr v-for="nv in paginatedEmployees" v-else :key="nv.id">
             <td>
               <div class="d-flex align-items-center gap-3">
                 <div class="z-avatar">{{ (nv.hoVaTen || 'N').charAt(0) }}</div>
@@ -125,10 +125,36 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+        <span style="font-size: 13px; color: var(--z-gray)">
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredEmployees.length) }} trong tổng số {{ filteredEmployees.length }} nhân viên
+        </span>
+        <div class="d-flex gap-2">
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
+            Trước
+          </button>
+          <button v-for="page in totalPages" :key="page" 
+                  class="lm-btn-secondary" 
+                  :style="{
+                    padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
+                    background: currentPage === page ? 'var(--z-dark)' : '',
+                    color: currentPage === page ? '#fff' : '',
+                    borderColor: currentPage === page ? 'var(--z-dark)' : ''
+                  }"
+                  @click="currentPage = page">
+            {{ page }}
+          </button>
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === totalPages" @click="currentPage++">
+            Sau
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="showModal" class="z-modal-overlay" @click.self="showModal = false">
-      <div class="z-modal">
+      <div class="z-modal" :style="editingId ? 'max-width: 980px;' : 'max-width: 600px;'">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h3 style="font-size:18px;font-weight:600;margin:0">{{ editingId ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới' }}</h3>
@@ -137,7 +163,9 @@
           <button class="z-icon-btn" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
-        <div class="d-flex flex-column gap-3">
+        <div class="row">
+          <div :class="editingId ? 'col-md-7 border-end pe-4' : 'col-md-12'">
+            <div class="d-flex flex-column gap-3">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="z-label">Họ và tên *</label>
@@ -203,14 +231,62 @@
           <div>
             <label class="z-label">Địa chỉ</label>
             <input v-model="form.diaChi" class="lm-input" placeholder="Địa chỉ liên hệ">
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2 mt-4">
+              <button class="lm-btn-secondary" @click="showModal = false">Huỷ</button>
+              <button class="lm-btn-primary" :disabled="saving" @click="saveEmployee">
+                <span>{{ saving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Thêm mới') }}</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="d-flex justify-content-end gap-2 mt-4">
-          <button class="lm-btn-secondary" @click="showModal = false">Huỷ</button>
-          <button class="lm-btn-primary" :disabled="saving" @click="saveEmployee">
-            <span>{{ saving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Thêm mới') }}</span>
-          </button>
+        <div class="col-md-5 ps-4" v-if="editingId">
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:16px; color: var(--z-dark); text-transform:uppercase; letter-spacing:0.04em;">Báo cáo hiệu suất & ca làm</h4>
+            <div v-if="loadingPerf" class="text-center py-5">
+              <div class="spinner-border spinner-border-sm text-secondary"></div>
+              <p style="color:var(--z-gray);font-size:12px;margin-top:8px">Đang tính toán hiệu suất...</p>
+            </div>
+            <div v-else-if="perfStats" class="d-flex flex-column gap-3">
+              <div class="z-stat-box" style="background:#f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--z-radius); padding: 16px; display:flex; align-items:center; gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;color:#15803d;font-size:18px"><i class="bi bi-cash-coin"></i></div>
+                <div>
+                  <div style="font-size:11px;color:#166534">Doanh số POS (Tại quầy)</div>
+                  <strong style="font-size:16px;color:#14532d">{{ fmtPrice(perfStats.totalSales) }}</strong>
+                </div>
+              </div>
+
+              <div class="z-stat-box" style="background:#fffbeb; border: 1px solid #fde68a; border-radius: var(--z-radius); padding: 16px; display:flex; align-items:center; gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;color:#b45309;font-size:18px"><i class="bi bi-receipt"></i></div>
+                <div>
+                  <div style="font-size:11px;color:#92400e">Đơn hàng thành công</div>
+                  <strong style="font-size:16px;color:#78350f">{{ perfStats.completedOrders }} / {{ perfStats.totalOrders }} đơn</strong>
+                </div>
+              </div>
+
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="p-3 bg-light rounded text-center" style="border: 1px solid var(--z-gray-border)">
+                    <div style="font-size:11px;color:var(--z-gray)">Số ca làm tuần này</div>
+                    <strong style="font-size:18px;color:var(--z-dark)" class="d-block mt-1">{{ perfStats.shiftCount }} ca</strong>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="p-3 bg-light rounded text-center" style="border: 1px solid var(--z-gray-border)">
+                    <div style="font-size:11px;color:var(--z-gray)">Tổng giờ làm dự kiến</div>
+                    <strong style="font-size:18px;color:var(--z-dark)" class="d-block mt-1">{{ perfStats.totalHours }}h</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded" style="background:var(--z-bg-alt); border-left:4px solid var(--z-accent); font-size:12px; line-height:1.45;">
+                <i class="bi bi-star-fill text-warning me-1"></i>
+                <span v-if="perfStats.totalSales > 10000000" style="color:var(--z-dark); font-weight:600">Nhân viên xuất sắc!</span>
+                <span v-else style="color:var(--z-gray)">Hiệu suất làm việc được cập nhật trực tiếp dựa trên lịch phân ca và đơn hàng bán tại POS.</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -218,7 +294,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
@@ -230,6 +306,8 @@ const saving = ref(false)
 const showModal = ref(false)
 const showPassword = ref(false)
 const editingId = ref(null)
+const loadingPerf = ref(false)
+const perfStats = ref(null)
 const search = ref('')
 const filterRole = ref('')
 const filterStatus = ref('')
@@ -254,6 +332,20 @@ const filteredEmployees = computed(() => {
     const matchStatus = filterStatus.value === '' || String(nv.tinhTrangLamViec ?? 1) === filterStatus.value
     return matchSearch && matchRole && matchStatus
   })
+})
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filteredEmployees.value.length / itemsPerPage))
+
+const paginatedEmployees = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredEmployees.value.slice(start, start + itemsPerPage)
+})
+
+watch([search, filterRole, filterStatus], () => {
+  currentPage.value = 1
 })
 
 const activeCount = computed(() => employees.value.filter(nv => Number(nv.tinhTrangLamViec) === 1).length)
@@ -287,8 +379,21 @@ async function loadRoles() {
   }
 }
 
+async function loadPerformance(employeeId) {
+  loadingPerf.value = true
+  perfStats.value = null
+  try {
+    perfStats.value = await api().getNhanVienHieuSuat(employeeId)
+  } catch (e) {
+    console.error('Không thể tải hiệu suất nhân viên', e)
+  } finally {
+    loadingPerf.value = false
+  }
+}
+
 function openAdd() {
   editingId.value = null
+  perfStats.value = null
   showPassword.value = false
   form.value = defaultForm()
   if (roles.value.length) {
@@ -314,6 +419,7 @@ function openEdit(nv) {
     diaChi: nv.diaChi || ''
   }
   showModal.value = true
+  loadPerformance(nv.id)
 }
 
 async function saveEmployee() {

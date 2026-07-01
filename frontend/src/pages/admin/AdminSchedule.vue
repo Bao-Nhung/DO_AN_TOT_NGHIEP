@@ -153,7 +153,7 @@
           <tr v-else-if="filteredSchedules.length === 0">
             <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Chưa có ca làm phù hợp</td>
           </tr>
-          <tr v-for="item in filteredSchedules" v-else :key="item.id">
+          <tr v-for="item in paginatedSchedules" v-else :key="item.id">
             <td>
               <div style="font-weight:600;color:var(--z-dark)">{{ formatDate(item.ngayLam) }}</div>
               <div style="font-size:12px;color:var(--z-gray)">{{ weekdayLabel(item.ngayLam) }}</div>
@@ -180,6 +180,32 @@
           </tr>
         </tbody>
       </table>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+        <span style="font-size: 13px; color: var(--z-gray)">
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredSchedules.length) }} trong tổng số {{ filteredSchedules.length }} ca làm
+        </span>
+        <div class="d-flex gap-2">
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
+            Trước
+          </button>
+          <button v-for="page in totalPages" :key="page" 
+                  class="lm-btn-secondary" 
+                  :style="{
+                    padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
+                    background: currentPage === page ? 'var(--z-dark)' : '',
+                    color: currentPage === page ? '#fff' : '',
+                    borderColor: currentPage === page ? 'var(--z-dark)' : ''
+                  }"
+                  @click="currentPage = page">
+            {{ page }}
+          </button>
+          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === totalPages" @click="currentPage++">
+            Sau
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="showModal" class="z-modal-overlay" @click.self="showModal = false">
@@ -253,7 +279,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
@@ -290,6 +316,20 @@ const filteredSchedules = computed(() => {
     (item.ghiChu || '').toLowerCase().includes(q)
   )
 })
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+const totalPages = computed(() => Math.ceil(filteredSchedules.value.length / itemsPerPage))
+
+const paginatedSchedules = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredSchedules.value.slice(start, start + itemsPerPage)
+})
+
+watch([search, filters], () => {
+  currentPage.value = 1
+}, { deep: true })
 
 const activeStaffCount = computed(() => new Set(schedules.value.map(item => item.nhanVienId).filter(Boolean)).size)
 const confirmedCount = computed(() => schedules.value.filter(item => Number(item.trangThai) === 1).length)

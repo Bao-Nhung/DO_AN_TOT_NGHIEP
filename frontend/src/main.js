@@ -23,6 +23,8 @@ import AboutPage       from '@/pages/AboutPage.vue'
 import CheckoutPage    from '@/pages/CheckoutPage.vue'
 import PaymentResultPage from '@/pages/PaymentResultPage.vue'
 import QRPaymentPage from '@/pages/QRPaymentPage.vue'
+import NotificationsPage from '@/pages/NotificationsPage.vue'
+import MyOrdersPage from '@/pages/MyOrdersPage.vue'
 
 // Pages — Admin
 import AdminDashboard  from '@/pages/admin/AdminDashboard.vue'
@@ -48,6 +50,8 @@ const routes = [
   { path: '/checkout',       component: CheckoutPage,   name: 'checkout' },
   { path: '/payment-result', component: PaymentResultPage, name: 'payment-result' },
   { path: '/qr-payment',    component: QRPaymentPage,     name: 'qr-payment' },
+  { path: '/notifications',  component: NotificationsPage, name: 'notifications' },
+  { path: '/my-orders',      component: MyOrdersPage,      name: 'my-orders' },
 
   { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
   { path: '/admin/thong-ke',  component: AdminStatisticalDashboard, name: 'admin-thong-ke' },
@@ -74,7 +78,7 @@ import { useAuth } from '@/composables/useApi'
 router.beforeEach((to, from, next) => {
   const { isLoggedIn, getUser } = useAuth()
   const isAdminRoute = to.path.startsWith('/admin')
-  const isProfileRoute = to.path.startsWith('/profile')
+  const isProfileRoute = to.path.startsWith('/profile') || to.path.startsWith('/my-orders')
 
   if (isAdminRoute || isProfileRoute) {
     if (!isLoggedIn()) {

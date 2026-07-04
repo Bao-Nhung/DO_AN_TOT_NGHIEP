@@ -10,6 +10,7 @@
         <li><RouterLink class="lm-nav-link" to="/">Trang Chủ</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/collections">Sản Phẩm</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/tracking">Tra Cứu Đơn</RouterLink></li>
+        <li><RouterLink v-if="isLoggedIn()" class="lm-nav-link" to="/my-orders">Đơn Hàng</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/wishlist">Yêu Thích</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/about">Thông Tin</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/profile">Tài Khoản</RouterLink></li>
@@ -51,6 +52,11 @@
                 <div class="z-notif-body">{{ n.noiDung }}</div>
               </div>
             </div>
+            <div class="p-2 border-top text-center bg-light">
+              <RouterLink to="/notifications" class="text-decoration-none" style="font-size:11px;color:var(--z-dark);font-weight:600;display:block;padding:4px;" @click="notifOpen = false">
+                Xem tất cả thông báo <i class="bi bi-arrow-right ms-1"></i>
+              </RouterLink>
+            </div>
           </div>
         </div>
 
@@ -74,6 +80,7 @@
         <RouterLink class="z-mobile-link" to="/" @click="mobileOpen = false">Trang Chủ</RouterLink>
         <RouterLink class="z-mobile-link" to="/collections" @click="mobileOpen = false">Sản Phẩm</RouterLink>
         <RouterLink class="z-mobile-link" to="/tracking" @click="mobileOpen = false">Tra Cứu Đơn</RouterLink>
+        <RouterLink v-if="isLoggedIn()" class="z-mobile-link" to="/my-orders" @click="mobileOpen = false">Đơn Hàng</RouterLink>
         <RouterLink class="z-mobile-link" to="/wishlist" @click="mobileOpen = false">Yêu Thích</RouterLink>
         <RouterLink class="z-mobile-link" to="/about" @click="mobileOpen = false">Thông Tin</RouterLink>
         <RouterLink class="z-mobile-link" to="/profile" @click="mobileOpen = false">Tài Khoản</RouterLink>
@@ -141,10 +148,11 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
 import { products, loadProducts } from '@/composables/useProducts'
-import { api } from '@/composables/useApi'
+import { api, useAuth } from '@/composables/useApi'
 
 const router = useRouter()
 const { openCart, totalCount, formatPrice } = useCart()
+const { isLoggedIn } = useAuth()
 const isScrolled = ref(false)
 const badgeScale = ref('')
 const searchOpen = ref(false)
@@ -191,10 +199,14 @@ watch(totalCount, () => {
 })
 
 function onScroll() { isScrolled.value = window.scrollY > 50 }
-onMounted  (() => window.addEventListener('scroll', onScroll))
+onMounted(() => {
+  window.addEventListener('scroll', onScroll)
+  window.addEventListener('notifs-changed', syncReadIds)
+})
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
   document.removeEventListener('click', closeNotifsOutside)
+  window.removeEventListener('notifs-changed', syncReadIds)
 })
 
 // Notifications State & Actions
@@ -207,6 +219,13 @@ const readIds = ref(JSON.parse(localStorage.getItem('read_notif_ids') || '[]'))
 const unreadCount = computed(() => {
   return notifs.value.filter(n => !readIds.value.includes(n.id)).length
 })
+
+function syncReadIds() {
+  readIds.value = JSON.parse(localStorage.getItem('read_notif_ids') || '[]')
+  notifs.value.forEach(n => {
+    n.read = readIds.value.includes(n.id)
+  })
+}
 
 async function fetchNotifs() {
   loadingNotif.value = true

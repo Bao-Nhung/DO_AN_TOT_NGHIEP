@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+﻿import { createApp } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 
 // Bootstrap
@@ -12,32 +12,32 @@ import '@/assets/main.css'
 // Root component
 import App from './App.vue'
 
-// Pages — Client
-import HomePage        from '@/pages/HomePage.vue'
-import ProductsPage    from '@/pages/ProductsPage.vue'
-import ProductDetail   from '@/pages/ProductDetail.vue'
-import WishlistPage    from '@/pages/WishlistPage.vue'
-import ProfilePage     from '@/pages/ProfilePage.vue'
-import LoginPage       from '@/pages/LoginPage.vue'
-import AboutPage       from '@/pages/AboutPage.vue'
-import CheckoutPage    from '@/pages/CheckoutPage.vue'
-import PaymentResultPage from '@/pages/PaymentResultPage.vue'
-import QRPaymentPage from '@/pages/QRPaymentPage.vue'
-import NotificationsPage from '@/pages/NotificationsPage.vue'
-import MyOrdersPage from '@/pages/MyOrdersPage.vue'
+// Lazy-loaded pages keep the initial bundle smaller.
+const HomePage = () => import('@/pages/HomePage.vue')
+const ProductsPage = () => import('@/pages/ProductsPage.vue')
+const ProductDetail = () => import('@/pages/ProductDetail.vue')
+const WishlistPage = () => import('@/pages/WishlistPage.vue')
+const ProfilePage = () => import('@/pages/ProfilePage.vue')
+const LoginPage = () => import('@/pages/LoginPage.vue')
+const AboutPage = () => import('@/pages/AboutPage.vue')
+const CheckoutPage = () => import('@/pages/CheckoutPage.vue')
+const PaymentResultPage = () => import('@/pages/PaymentResultPage.vue')
+const QRPaymentPage = () => import('@/pages/QRPaymentPage.vue')
+const NotificationsPage = () => import('@/pages/NotificationsPage.vue')
+const MyOrdersPage = () => import('@/pages/MyOrdersPage.vue')
+const OrderTrackingPage = () => import('@/pages/OrderTrackingPage.vue')
 
-// Pages — Admin
-import AdminDashboard  from '@/pages/admin/AdminDashboard.vue'
-import AdminProducts   from '@/pages/admin/AdminProducts.vue'
-import AdminOrders     from '@/pages/admin/AdminOrders.vue'
-import AdminCustomers  from '@/pages/admin/AdminCustomers.vue'
-import AdminEmployees  from '@/pages/admin/AdminEmployees.vue'
-import AdminVouchers   from '@/pages/admin/AdminVouchers.vue'
-import AdminSettings   from '@/pages/admin/AdminSettings.vue'
-import AdminPOS        from '@/pages/admin/AdminPOS.vue'
-import AdminSchedule   from '@/pages/admin/AdminSchedule.vue'
-import AdminStatisticalDashboard from '@/pages/admin/AdminStatisticalDashboard.vue'
-import AdminNotifications from '@/pages/admin/AdminNotifications.vue'
+const AdminDashboard = () => import('@/pages/admin/AdminDashboard.vue')
+const AdminProducts = () => import('@/pages/admin/AdminProducts.vue')
+const AdminOrders = () => import('@/pages/admin/AdminOrders.vue')
+const AdminCustomers = () => import('@/pages/admin/AdminCustomers.vue')
+const AdminEmployees = () => import('@/pages/admin/AdminEmployees.vue')
+const AdminVouchers = () => import('@/pages/admin/AdminVouchers.vue')
+const AdminSettings = () => import('@/pages/admin/AdminSettings.vue')
+const AdminPOS = () => import('@/pages/admin/AdminPOS.vue')
+const AdminSchedule = () => import('@/pages/admin/AdminSchedule.vue')
+const AdminStatisticalDashboard = () => import('@/pages/admin/AdminStatisticalDashboard.vue')
+const AdminNotifications = () => import('@/pages/admin/AdminNotifications.vue')
 
 const routes = [
   { path: '/',               component: HomePage,       name: 'home' },
@@ -64,7 +64,7 @@ const routes = [
   { path: '/admin/notifications', component: AdminNotifications, name: 'admin-notifications' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },
-  { path: '/tracking', name: 'Tracking', component: () => import('@/pages/OrderTrackingPage.vue') },
+  { path: '/tracking', name: 'Tracking', component: OrderTrackingPage },
 ]
 
 const router = createRouter({
@@ -75,12 +75,31 @@ const router = createRouter({
 
 import { useAuth } from '@/composables/useApi'
 
+const adminOnlyRouteNames = new Set([
+  'admin-thong-ke',
+  'admin-products',
+  'admin-customers',
+  'admin-employees',
+  'admin-vouchers',
+  'admin-notifications',
+  'admin-settings',
+])
+
+function isAdminRole(role) {
+  return role === 'Admin'
+}
+
+function isStaffRole(role) {
+  return isAdminRole(role) || role === 'NhanVien' || role === 'Nhân viên'
+}
+
 router.beforeEach((to, from, next) => {
   const { isLoggedIn, getUser } = useAuth()
   const isAdminRoute = to.path.startsWith('/admin')
   const isProfileRoute = to.path.startsWith('/profile') || to.path.startsWith('/my-orders')
+  const requiresLogin = to.name === 'home' || isAdminRoute || isProfileRoute
 
-  if (isAdminRoute || isProfileRoute) {
+  if (requiresLogin) {
     if (!isLoggedIn()) {
       return next({ name: 'login', query: { redirect: to.fullPath } })
     }
@@ -89,8 +108,11 @@ router.beforeEach((to, from, next) => {
       return next({ name: 'login', query: { redirect: to.fullPath } })
     }
     if (isAdminRoute) {
-      if (user.role === 'KhachHang') {
+      if (!isStaffRole(user.role)) {
         return next({ name: 'home' })
+      }
+      if (!isAdminRole(user.role) && adminOnlyRouteNames.has(to.name)) {
+        return next({ name: 'admin-pos' })
       }
     }
   }
@@ -98,3 +120,4 @@ router.beforeEach((to, from, next) => {
 })
 
 createApp(App).use(router).mount('#app')
+

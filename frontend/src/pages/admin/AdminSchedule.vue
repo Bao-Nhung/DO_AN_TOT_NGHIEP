@@ -5,7 +5,7 @@
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Lịch làm việc</h1>
         <p style="font-size:14px;color:var(--z-gray);margin:0">Sắp ca và theo dõi lịch làm việc của nhân viên</p>
       </div>
-      <button class="lm-btn-primary" @click="openAdd"><span>Thêm ca làm</span></button>
+      <button v-if="isAdmin" class="lm-btn-primary" @click="openAdd"><span>Thêm ca làm</span></button>
     </div>
 
     <div class="row g-3 mb-4">
@@ -49,7 +49,7 @@
 
     <div class="z-admin-card mb-3" style="padding:14px 20px">
       <div class="row g-3 align-items-end">
-        <div class="col-lg-3 col-md-6">
+        <div v-if="isAdmin" class="col-lg-3 col-md-6">
           <label class="z-label">Từ ngày</label>
           <input v-model="filters.startDate" type="date" class="lm-input" @change="loadSchedules">
         </div>
@@ -111,13 +111,13 @@
               <div style="font-size:12px;color:var(--z-gray)">{{ shiftRangeText(shift) }}</div>
             </div>
             <div v-for="day in weekDays" :key="shift + day.value" class="z-day-cell">
-              <button class="z-add-mini" title="Thêm ca vào ngày này" @click="openAddFor(day.value, shift)">
+              <button v-if="isAdmin" class="z-add-mini" title="Thêm ca vào ngày này" @click="openAddFor(day.value, shift)">
                 <i class="bi bi-plus-lg"></i>
               </button>
               <div v-if="cellSchedules(day.value, shift).length" class="d-flex flex-column gap-2">
                 <div v-for="item in cellSchedules(day.value, shift)" :key="item.id"
                      class="z-schedule-chip" :class="statusClass(item.trangThai)"
-                     @click="openEdit(item)">
+                     @click="isAdmin && openEdit(item)">
                   <div class="d-flex justify-content-between align-items-start gap-2">
                     <div style="font-weight:600;line-height:1.25">{{ item.tenNhanVien || 'Chưa rõ' }}</div>
                     <span style="font-size:11px;white-space:nowrap">{{ shortTime(item.gioBatDau) }}-{{ shortTime(item.gioKetThuc) }}</span>
@@ -143,18 +143,18 @@
             <th>Thời gian</th>
             <th>Ghi chú</th>
             <th>Trạng thái</th>
-            <th style="width:90px">Thao tác</th>
+            <th v-if="isAdmin" style="width:90px">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Đang tải lịch làm việc...</td>
+            <td :colspan="isAdmin ? 7 : 6" class="text-center py-4" style="color:var(--z-gray)">Đang tải lịch làm việc...</td>
           </tr>
           <tr v-else-if="filteredSchedules.length === 0">
-            <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Chưa có ca làm phù hợp</td>
+            <td :colspan="isAdmin ? 7 : 6" class="text-center py-4" style="color:var(--z-gray)">Chưa có ca làm phù hợp</td>
           </tr>
           <tr v-for="item in paginatedSchedules" v-else :key="item.id">
-            <td>
+            <td v-if="isAdmin">
               <div style="font-weight:600;color:var(--z-dark)">{{ formatDate(item.ngayLam) }}</div>
               <div style="font-size:12px;color:var(--z-gray)">{{ weekdayLabel(item.ngayLam) }}</div>
             </td>
@@ -281,10 +281,14 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { api } from '@/composables/useApi'
+import { api, useAuth } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
+const { getUser } = useAuth()
+const isAdmin = computed(() => getUser()?.role === 'Admin')
 
 const loading = ref(false)
 const saving = ref(false)
@@ -303,7 +307,15 @@ const filters = ref({
 const form = ref(defaultForm())
 
 onMounted(async () => {
-  await Promise.all([loadStaff(), loadSchedules()])
+  const user = getUser()
+  if (!isAdmin.value && user?.userId) {
+    filters.value.nhanVienId = user.userId
+  }
+  if (isAdmin.value) {
+    await Promise.all([loadStaff(), loadSchedules()])
+  } else {
+    await loadSchedules()
+  }
 })
 
 const filteredSchedules = computed(() => {
@@ -380,12 +392,14 @@ async function loadSchedules() {
 }
 
 function openAdd() {
+  if (!isAdmin.value) return
   editingId.value = null
   form.value = defaultForm()
   showModal.value = true
 }
 
 function openAddFor(day, shift) {
+  if (!isAdmin.value) return
   editingId.value = null
   form.value = { ...defaultForm(), ngayLam: day, caLam: shift }
   applyShiftPreset()
@@ -393,6 +407,7 @@ function openAddFor(day, shift) {
 }
 
 function openEdit(item) {
+  if (!isAdmin.value) return
   editingId.value = item.id
   form.value = {
     nhanVienId: item.nhanVienId || '',
@@ -407,6 +422,7 @@ function openEdit(item) {
 }
 
 async function saveSchedule() {
+  if (!isAdmin.value) return
   if (!form.value.nhanVienId || !form.value.ngayLam || !form.value.gioBatDau || !form.value.gioKetThuc) {
     showToast('Vui lòng nhập đầy đủ nhân viên, ngày và giờ làm')
     return
@@ -445,7 +461,13 @@ async function saveSchedule() {
 }
 
 async function deleteSchedule(item) {
-  if (!confirm(`Xóa ca làm của ${item.tenNhanVien || 'nhân viên'} ngày ${formatDate(item.ngayLam)}?`)) return
+  if (!isAdmin.value) return
+  if (!await confirmDialog({
+    title: 'Xóa ca làm',
+    message: `Xóa ca làm của ${item.tenNhanVien || 'nhân viên'} ngày ${formatDate(item.ngayLam)}?`,
+    confirmText: 'Xóa',
+    variant: 'danger'
+  })) return
   try {
     await api().deleteLichLamViec(item.id)
     showToast('Đã xóa ca làm!')

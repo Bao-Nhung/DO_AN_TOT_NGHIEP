@@ -298,8 +298,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -459,6 +461,12 @@ async function saveEmployee() {
 
 async function toggleStatus(nv) {
   const next = Number(nv.tinhTrangLamViec) === 1 ? 0 : 1
+  if (!await confirmDialog({
+    title: next === 1 ? 'Mở khóa nhân viên' : 'Tạm khóa nhân viên',
+    message: `${next === 1 ? 'Mở khóa' : 'Tạm khóa'} tài khoản nhân viên "${nv.hoVaTen}"?`,
+    confirmText: next === 1 ? 'Mở khóa' : 'Tạm khóa',
+    variant: next === 1 ? 'primary' : 'danger'
+  })) return
   try {
     await api().updateNhanVienStatus(nv.id, next)
     showToast(next === 1 ? 'Đã mở khoá nhân viên' : 'Đã tạm khoá nhân viên')
@@ -469,7 +477,12 @@ async function toggleStatus(nv) {
 }
 
 async function deleteEmployee(nv) {
-  if (!confirm(`Tạm khoá tài khoản nhân viên "${nv.hoVaTen}"?`)) return
+  if (!await confirmDialog({
+    title: 'Tạm khóa nhân viên',
+    message: `Tạm khóa tài khoản nhân viên "${nv.hoVaTen}"?`,
+    confirmText: 'Tạm khóa',
+    variant: 'danger'
+  })) return
   try {
     await api().deleteNhanVien(nv.id)
     showToast('Đã tạm khoá nhân viên')

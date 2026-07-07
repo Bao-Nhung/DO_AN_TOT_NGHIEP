@@ -143,7 +143,7 @@
           </div>
 
           <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <template v-if="detailOrder.trangThai === 5">
+            <template v-if="detailOrder.trangThai === 5 || detailOrder.trangThai === 7">
                <div class="z-step active">
                   <div class="z-step-dot" style="background: var(--z-danger);"></div>
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
@@ -430,6 +430,8 @@ const statusMap = {
   6: { key: 'danger', label: 'Giao thất bại' },
 }
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
+
+statusMap[7] = { key: 'danger', label: 'Thanh toán thất bại' }
 
 const sortedOrders = computed(() => {
   return [...orders.value].sort((a, b) => {

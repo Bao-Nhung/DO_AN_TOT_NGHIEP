@@ -434,8 +434,10 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { mapProduct, fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
 const search = ref('')
 const filterCategory = ref('')
 const filterStatus = ref('')
@@ -531,8 +533,13 @@ async function loadAttrs() {
 async function loadProducts() {
   try {
     const data = await api().getVay()
-    rawProducts.value = data
-    allProducts.value = data.map((p, i) => {
+    const sortedData = [...data].sort((a, b) => {
+      const da = a.ngayTao ? new Date(a.ngayTao).getTime() : Number(a.id || 0)
+      const db = b.ngayTao ? new Date(b.ngayTao).getTime() : Number(b.id || 0)
+      return db - da
+    })
+    rawProducts.value = sortedData
+    allProducts.value = sortedData.map((p, i) => {
       const m = mapProduct(p, i)
       return { ...m, priceDisplay: fmtPrice(m.salePrice || m.price), rawId: p.id, raw: p }
     })
@@ -592,8 +599,8 @@ async function openEdit(p) {
     existingImages.value = detail.anhList || []
     if (detail.bienThe && detail.bienThe.length > 0) {
       form.value.variants = detail.bienThe.map(bt => ({
-        idMauSac: mauSacList.value.find(m => m.tenMauSac === bt.mauSac)?.id || null,
-        idKichThuoc: kichThuocList.value.find(k => k.tenKichThuoc === bt.kichThuoc)?.id || null,
+        idMauSac: bt.idMauSac || mauSacList.value.find(m => m.tenMauSac === bt.mauSac)?.id || null,
+        idKichThuoc: bt.idKichThuoc || kichThuocList.value.find(k => k.tenKichThuoc === bt.kichThuoc)?.id || null,
         giaBan: bt.giaBan ? Number(bt.giaBan) : null,
         giaBanGoc: bt.giaBanGoc ? Number(bt.giaBanGoc) : null,
         soLuong: bt.soLuong || 0,
@@ -704,7 +711,7 @@ async function addColor() {
   try { await api().addMauSac(newColor.value); showToast('Thêm màu thành công!'); newColor.value = { tenMauSac: '', maHex: '#c08b7e' }; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
 async function deleteColor(c) {
-  if (!confirm(`Xóa màu "${c.name}"?`)) return
+  if (!await confirmDialog({ title: 'Xóa màu sắc', message: `Xóa màu "${c.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
   try { await api().deleteMauSac(c.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
 }
 async function addSize() {
@@ -712,7 +719,7 @@ async function addSize() {
   try { await api().addKichThuoc({ tenKichThuoc: newSize.value }); showToast('Thêm kích thước thành công!'); newSize.value = ''; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
 async function deleteSize(s) {
-  if (!confirm(`Xóa kích thước "${s.name}"?`)) return
+  if (!await confirmDialog({ title: 'Xóa kích thước', message: `Xóa kích thước "${s.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
   try { await api().deleteKichThuoc(s.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
 }
 async function addMaterial() {
@@ -720,7 +727,7 @@ async function addMaterial() {
   try { await api().addChatLieu({ tenChatLieu: newMaterial.value }); showToast('Thêm chất liệu thành công!'); newMaterial.value = ''; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
 async function deleteMaterial(m) {
-  if (!confirm(`Xóa chất liệu "${m.name}"?`)) return
+  if (!await confirmDialog({ title: 'Xóa chất liệu', message: `Xóa chất liệu "${m.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
   try { await api().deleteChatLieu(m.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
 }
 async function addCategory() {
@@ -728,7 +735,7 @@ async function addCategory() {
   try { await api().addLoaiVay({ tenLoaiVay: newCategory.value }); showToast('Thêm danh mục thành công!'); newCategory.value = ''; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
 async function deleteCategory(cat) {
-  if (!confirm(`Xóa danh mục "${cat.name}"?`)) return
+  if (!await confirmDialog({ title: 'Xóa danh mục', message: `Xóa danh mục "${cat.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
   try { await api().deleteLoaiVay(cat.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
 }
 async function addSupplier() {
@@ -736,12 +743,12 @@ async function addSupplier() {
   try { await api().addNhaCungCap(newSupplier.value); showToast('Thêm nhà cung cấp thành công!'); newSupplier.value = { tenNhaCungCap: '', diaChi: '', soDienThoai: '', email: '' }; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
 async function deleteSupplier(s) {
-  if (!confirm(`Xóa nhà cung cấp "${s.name}"?`)) return
+  if (!await confirmDialog({ title: 'Xóa nhà cung cấp', message: `Xóa nhà cung cấp "${s.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
   try { await api().deleteNhaCungCap(s.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
 }
 
 async function doDelete(p) {
-  if (!confirm(`Bạn có chắc muốn xóa "${p.name}"?`)) return
+  if (!await confirmDialog({ title: 'Xóa sản phẩm', message: `Bạn có chắc muốn xóa "${p.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
   try {
     await api().deleteVay(p.rawId || p.id)
     showToast('Đã xóa sản phẩm!')

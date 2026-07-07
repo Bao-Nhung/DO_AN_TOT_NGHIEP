@@ -133,7 +133,7 @@
                 <div class="d-flex gap-2 flex-wrap">
                   <!-- Repay Online -->
                   <button 
-                    v-if="!order.daThanhToan && order.trangThai !== 5 && (order.hinhThucThanhToan === 'MOMO' || order.hinhThucThanhToan === 'ZALOPAY')"
+                    v-if="!order.daThanhToan && order.trangThai !== 5 && order.trangThai !== 7 && (order.hinhThucThanhToan === 'MOMO' || order.hinhThucThanhToan === 'ZALOPAY')"
                     class="lm-btn-outline-accent py-2 px-3 d-flex align-items-center gap-2"
                     style="font-size: 12px; height: auto;"
                     @click="repayOrder(order)"
@@ -214,7 +214,7 @@
 
           <!-- Progress timeline -->
           <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <template v-if="detailOrder.trangThai === 5">
+            <template v-if="detailOrder.trangThai === 5 || detailOrder.trangThai === 7">
                <div class="z-step active">
                   <div class="z-step-dot" style="background: var(--z-danger);"></div>
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
@@ -421,6 +421,8 @@ const statusMap = {
 
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
+statusMap[7] = { key: 'danger', label: 'Thanh toán thất bại' }
+
 onMounted(() => {
   loadOrders()
 })
@@ -458,12 +460,12 @@ const stats = computed(() => {
 function getCountByTab(tabValue) {
   if (tabValue === 'all') return orders.value.length
   if (tabValue === 'unpaid') {
-    return orders.value.filter(o => o.hinhThucThanhToan !== 'COD' && !o.daThanhToan && o.trangThai !== 5).length
+    return orders.value.filter(o => o.hinhThucThanhToan !== 'COD' && !o.daThanhToan && o.trangThai !== 5 && o.trangThai !== 7).length
   }
   if (tabValue === 'pending') return orders.value.filter(o => o.trangThai === 0).length
   if (tabValue === 'processing') return orders.value.filter(o => o.trangThai >= 1 && o.trangThai <= 3).length
   if (tabValue === 'completed') return orders.value.filter(o => o.trangThai === 4).length
-  if (tabValue === 'cancelled') return orders.value.filter(o => o.trangThai === 5 || o.trangThai === 6).length
+  if (tabValue === 'cancelled') return orders.value.filter(o => o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7).length
   return 0
 }
 
@@ -473,7 +475,7 @@ const filteredOrders = computed(() => {
     // Filter by Tab
     let matchesTab = true
     if (currentTab.value === 'unpaid') {
-      matchesTab = o.hinhThucThanhToan !== 'COD' && !o.daThanhToan && o.trangThai !== 5
+      matchesTab = o.hinhThucThanhToan !== 'COD' && !o.daThanhToan && o.trangThai !== 5 && o.trangThai !== 7
     } else if (currentTab.value === 'pending') {
       matchesTab = o.trangThai === 0
     } else if (currentTab.value === 'processing') {
@@ -481,7 +483,7 @@ const filteredOrders = computed(() => {
     } else if (currentTab.value === 'completed') {
       matchesTab = o.trangThai === 4
     } else if (currentTab.value === 'cancelled') {
-      matchesTab = o.trangThai === 5 || o.trangThai === 6
+      matchesTab = o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7
     }
 
     // Filter by Search

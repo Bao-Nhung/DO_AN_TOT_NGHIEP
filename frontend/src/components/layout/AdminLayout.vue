@@ -4,7 +4,7 @@
     <aside class="z-admin-sidebar">
       <div class="z-admin-logo" @click="$router.push('/admin')">
         <span class="z-admin-logo-text">Zest<span style="color:var(--z-accent)">ia</span></span>
-        <span class="z-admin-badge">Admin</span>
+        <span class="z-admin-badge">{{ roleBadge }}</span>
       </div>
 
       <nav class="z-admin-nav">
@@ -52,20 +52,25 @@ const currentUser = computed(() => getUser() || {})
 const adminName = computed(() => currentUser.value.hoVaTen || currentUser.value.username || 'Nhân viên')
 const adminEmail = computed(() => currentUser.value.email || currentUser.value.role || '')
 const adminInitial = computed(() => (adminName.value || 'N').charAt(0).toUpperCase())
+const roleName = computed(() => currentUser.value.role || '')
+const isAdmin = computed(() => roleName.value === 'Admin')
+const roleBadge = computed(() => isAdmin.value ? 'Admin' : 'Nhân viên')
 
-const navItems = [
-  { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan' },
-  { path: '/admin/thong-ke',  icon: 'bi-bar-chart',    label: 'Thống kê' },
+const allNavItems = [
+  { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan', adminOnly: true },
+  { path: '/admin/thong-ke',  icon: 'bi-bar-chart',    label: 'Thống kê', adminOnly: true },
   { path: '/admin/pos',       icon: 'bi-shop',         label: 'Bán tại quầy' },
-  { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm' },
+  { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm', adminOnly: true },
   { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },
-  { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng' },
-  { path: '/admin/employees', icon: 'bi-person-badge', label: 'Nhân viên' },
+  { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng', adminOnly: true },
+  { path: '/admin/employees', icon: 'bi-person-badge', label: 'Nhân viên', adminOnly: true },
   { path: '/admin/schedule',  icon: 'bi-calendar-week', label: 'Lịch làm việc' },
-  { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Voucher' },
-  { path: '/admin/notifications', icon: 'bi-bell',     label: 'Thông báo' },
-  { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt' },
+  { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Voucher', adminOnly: true },
+  { path: '/admin/notifications', icon: 'bi-bell',     label: 'Thông báo', adminOnly: true },
+  { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt', adminOnly: true },
 ]
+
+const navItems = computed(() => isAdmin.value ? allNavItems : allNavItems.filter(item => !item.adminOnly || item.path === '/admin'))
 
 onMounted(async () => {
   try {

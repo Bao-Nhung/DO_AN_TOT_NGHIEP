@@ -150,7 +150,13 @@
 
         <div v-else-if="detailData">
           <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <template v-if="detailData.trangThai === 5">
+            <template v-if="detailData.trangThai === 7">
+               <div class="z-step active">
+                  <div class="z-step-dot" style="background: var(--z-danger);"></div>
+                  <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Thanh toán thất bại</div>
+               </div>
+            </template>
+            <template v-else-if="detailData.trangThai === 5">
                <div class="z-step active">
                   <div class="z-step-dot" style="background: var(--z-danger);"></div>
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
@@ -241,7 +247,7 @@
                     </div>
                     <div class="col-12">
                       <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Người tạo đơn</div>
-                      <div style="font-size:14px;font-weight:500"><i class="bi bi-person-badge me-1"></i>{{ detailData.nhanVien || detailData.tenKhachHang || detailData.khachHang || 'Khách hàng tự đặt' }}</div>
+                      <div style="font-size:14px;font-weight:500"><i class="bi bi-person-badge me-1"></i>{{ detailData.nguoiTaoDon || detailData.nhanVien || detailData.tenKhachHang || detailData.khachHang || 'Khách hàng tự đặt' }}</div>
                     </div>
                   </div>
 
@@ -393,6 +399,8 @@ const statusMap = {
 }
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
+statusMap[7] = { text: 'Thanh toán thất bại', cls: 'danger' }
+
 const search = ref('')
 const activeStatus = ref('all')
 const allOrders = ref([])
@@ -508,6 +516,7 @@ const statusTabs = computed(() => [
   { label: 'Hoàn thành',    value: '4',    count: allOrders.value.filter(o => o.statusValue === '4').length },
   { label: 'Đã huỷ',        value: '5',    count: allOrders.value.filter(o => o.statusValue === '5').length },
   { label: 'Giao thất bại', value: '6',    count: allOrders.value.filter(o => o.statusValue === '6').length },
+  { label: 'Thanh toán thất bại', value: '7', count: allOrders.value.filter(o => o.statusValue === '7').length },
 ])
 
 const filteredOrders = computed(() => {

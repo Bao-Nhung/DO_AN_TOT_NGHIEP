@@ -3,13 +3,18 @@ package com.zestia.datn.zestia.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zestia.datn.zestia.entity.HoaDon;
+import com.zestia.datn.zestia.entity.HoaDonChiTiet;
 import com.zestia.datn.zestia.entity.LichSuThanhToan;
 import com.zestia.datn.zestia.entity.LichSuTracking;
+import com.zestia.datn.zestia.entity.VayChiTiet;
+import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
+import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,8 +44,12 @@ import java.util.*;
 @RequestMapping("/api/payment")
 @RequiredArgsConstructor
 public class GatewayPaymentController {
+    private static final byte STATUS_CONFIRMED = 1;
+    private static final byte STATUS_PAYMENT_FAILED = 7;
 
     private final HoaDonRepository hoaDonRepo;
+    private final HoaDonChiTietRepository hoaDonChiTietRepo;
+    private final VayChiTietRepository vayChiTietRepo;
     private final LichSuThanhToanRepository lichSuRepo;
     private final LichSuTrackingRepository trackingRepo;
 
@@ -58,8 +67,10 @@ public class GatewayPaymentController {
     private static final String ZALO_KEY2  = "kLtgPl8HHhfvMuDHPwKfgfsY4Ydm9eIz";
     private static final String ZALO_ENDPOINT = "https://sb-openapi.zalopay.vn/v2/create";
 
-    private static final String BACKEND  = "http://localhost:8080";
-    private static final String FRONTEND = "http://localhost:5173/#/payment-result";
+    @Value("${app.backend-url:http://localhost:8080}")
+    private String backendBaseUrl;
+    @Value("${app.payment-result-url:http://localhost:5173/#/payment-result}")
+    private String paymentResultUrl;
 
     // ============================ MoMo ============================
 
@@ -116,8 +127,8 @@ public class GatewayPaymentController {
     private JsonNode momoCreate(long amount, String orderId, String orderInfo, String extraData) throws Exception {
         String amt = String.valueOf(amount);
         String requestId = orderId;
-        String redirectUrl = BACKEND + "/api/payment/momo/return";
-        String ipnUrl = BACKEND + "/api/payment/momo/ipn";
+        String redirectUrl = backendBaseUrl + "/api/payment/momo/return";
+        String ipnUrl = backendBaseUrl + "/api/payment/momo/ipn";
         String requestType = "captureWallet";
 
         String raw = "accessKey=" + MOMO_ACCESS +
@@ -161,7 +172,7 @@ public class GatewayPaymentController {
         }
         boolean success = valid && "0".equals(q.get("resultCode"));
         finishOnline(maHoaDon, "MOMO", q.get("amount"), q.get("transId"), success);
-        response.sendRedirect(FRONTEND + "?status=" + (success ? "success" : "failed")
+        response.sendRedirect(paymentResultUrl + "?status=" + (success ? "success" : "failed")
                 + "&orderId=" + enc(maHoaDon) + "&amount=" + enc(q.getOrDefault("amount", ""))
                 + "&method=MOMO&txn=" + enc(q.getOrDefault("transId", "")));
     }
@@ -251,9 +262,9 @@ public class GatewayPaymentController {
     /** Gọi API tạo đơn ZaloPay, trả nguyên response. */
     private JsonNode zaloCreate(long amount, String appTransId, long appTime, String description) throws Exception {
         String item = "[]";
-        String redirectUrl = BACKEND + "/api/payment/zalopay/return";
+        String redirectUrl = backendBaseUrl + "/api/payment/zalopay/return";
         String embedData = mapper.writeValueAsString(Map.of("redirecturl", redirectUrl));
-        String callbackUrl = BACKEND + "/api/payment/zalopay/callback";
+        String callbackUrl = backendBaseUrl + "/api/payment/zalopay/callback";
         String appUser = "zestia_user";
 
         // mac = HMAC256(key1, app_id|app_trans_id|app_user|amount|app_time|embed_data|item)
@@ -295,7 +306,7 @@ public class GatewayPaymentController {
                         appTransId, success);
             }
         }
-        response.sendRedirect(FRONTEND + "?status=" + (success ? "success" : "failed")
+        response.sendRedirect(paymentResultUrl + "?status=" + (success ? "success" : "failed")
                 + "&orderId=" + enc(maHoaDon) + "&amount=" + enc(q.getOrDefault("amount", ""))
                 + "&method=ZALOPAY&txn=" + enc(appTransId));
     }
@@ -337,18 +348,31 @@ public class GatewayPaymentController {
                     .noiDung("Thanh toán " + method + " thành công - " + hd.getMaHoaDon())
                     .ngayTao(LocalDateTime.now()).build());
         } else {
+            if (!"FAILED".equalsIgnoreCase(hd.getPhuongThucThanhToanOnline())) {
+                restoreStock(hd);
+            }
             hd.setTrangThai((byte) 5);       // Đơn hàng: Đã hủy (5)
             hd.setDaThanhToan(false);
             hd.setPhuongThucThanhToanOnline("FAILED");
-            hd.setTrangThaiTracking("cancelled");
+            hd.setTrangThai(STATUS_PAYMENT_FAILED);
+            hd.setTrangThaiTracking("payment_failed");
             hoaDonRepo.save(hd);
 
             // Ghi lịch sử tracking đơn bị hủy do thanh toán thất bại
             trackingRepo.save(LichSuTracking.builder()
                     .hoaDon(hd)
-                    .trangThai("cancelled")
+                    .trangThai("payment_failed")
                     .moTa("Đơn hàng bị hủy tự động do thanh toán online " + method + " thất bại.")
                     .ngayCapNhat(LocalDateTime.now())
+                    .moTa("Thanh toan online " + method + " that bai. Don hang khong duoc phep xu ly tiep.")
+                    .build());
+
+            trackingRepo.save(LichSuTracking.builder()
+                    .hoaDon(hd)
+                    .trangThai("payment_failed")
+                    .moTa("Thanh toan online " + method + " that bai. Don hang khong duoc phep xu ly tiep.")
+                    .ngayCapNhat(LocalDateTime.now())
+                    .moTa("Thanh toan online " + method + " that bai. Don hang khong duoc phep xu ly tiep.")
                     .build());
 
             lichSuRepo.save(LichSuThanhToan.builder()
@@ -356,6 +380,17 @@ public class GatewayPaymentController {
                     .maGiaoDich(txn).trangThai("FAILED")
                     .noiDung("Thanh toán " + method + " thất bại - " + hd.getMaHoaDon())
                     .ngayTao(LocalDateTime.now()).build());
+        }
+    }
+
+    private void restoreStock(HoaDon hoaDon) {
+        List<HoaDonChiTiet> items = hoaDonChiTietRepo.findByHoaDonId(hoaDon.getId());
+        for (HoaDonChiTiet ct : items) {
+            VayChiTiet variant = ct.getVayChiTiet();
+            if (variant == null || ct.getSoLuong() == null) continue;
+            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
+            variant.setSoLuong(currentStock + ct.getSoLuong());
+            vayChiTietRepo.save(variant);
         }
     }
 

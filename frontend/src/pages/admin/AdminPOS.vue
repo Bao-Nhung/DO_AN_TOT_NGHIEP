@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <AdminLayout>
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
@@ -18,7 +18,7 @@
         </div>
 
         <div class="z-admin-card" style="padding:0;overflow:hidden;max-height:calc(100vh - 280px);overflow-y:auto">
-          <div v-for="p in filteredProducts" :key="p.id"
+          <div v-for="p in paginatedProducts" :key="p.id"
                class="d-flex align-items-center gap-3 z-pos-item" @click="addToCart(p)">
             <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
               <img v-if="p.image" :src="p.image" style="width:100%;height:100%;object-fit:cover">
@@ -38,9 +38,17 @@
             <i class="bi bi-search" style="font-size:32px;color:var(--z-gray-border)"></i>
             <p style="font-size:13px;color:var(--z-gray);margin-top:8px">Không tìm thấy sản phẩm</p>
           </div>
+          <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--z-gray-border)">
+            <span style="font-size:12px;color:var(--z-gray)">
+              {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage, filteredProducts.length) }} / {{ filteredProducts.length }}
+            </span>
+            <div class="d-flex gap-2">
+              <button class="lm-btn-secondary" style="padding:6px 10px;font-size:12px;height:auto;border-radius:6px" :disabled="currentPage === 1" @click.stop="currentPage--">Trước</button>
+              <button class="lm-btn-secondary" style="padding:6px 10px;font-size:12px;height:auto;border-radius:6px" :disabled="currentPage === totalPages" @click.stop="currentPage++">Sau</button>
+            </div>
+          </div>
         </div>
       </div>
-
       <!-- Cart -->
       <div class="col-lg-5">
         <div class="z-admin-card" style="position:sticky;top:100px">
@@ -104,7 +112,7 @@
             <div class="mb-3">
               <label class="z-label">Hình thức thanh toán</label>
               <div class="d-flex gap-2">
-                <button v-for="pm in paymentMethods" :key="pm.value"
+                <button v-for="pm in availablePaymentMethods" :key="pm.value"
                         class="z-pm-btn" :class="{ active: paymentMethod === pm.value }"
                         @click="paymentMethod = pm.value">
                   <i class="bi" :class="pm.icon"></i> {{ pm.label }}
@@ -158,36 +166,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Card: liên kết trang ZaloPay (thanh toán bằng thẻ) -->
-            <div v-else-if="paymentMethod === 'card'" class="z-pay-panel mb-3">
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px">
-                <i class="bi bi-credit-card-2-front me-1" style="color:#0068FF"></i>Thanh toán thẻ qua ZaloPay (sandbox)
-              </div>
-              <div style="font-size:12px;color:var(--z-gray);margin-bottom:12px">
-                Mở trang ZaloPay để khách chọn thanh toán bằng <strong>thẻ ATM / thẻ quốc tế</strong>.
-              </div>
-              <button class="z-confirm-btn" style="border-color:#0068FF;color:#0068FF" @click="openZaloCard" :disabled="openingCard">
-                <i class="bi bi-box-arrow-up-right me-1"></i>{{ openingCard ? 'Đang mở...' : 'Mở trang thanh toán thẻ ZaloPay' }}
-              </button>
-              <div class="z-test-card mt-3">
-                <div class="z-test-card-row"><span>Thẻ test (ATM nội địa)</span><strong>9704 0540 0000 0000</strong></div>
-                <div class="z-test-card-row"><span>Tên chủ thẻ</span><strong>NGUYEN VAN A</strong></div>
-                <div class="z-test-card-row"><span>Ngày phát hành</span><strong>03/22</strong></div>
-                <div class="z-test-card-row"><span>OTP</span><strong>otp</strong></div>
-              </div>
-              <!-- Xác nhận đã nhận tiền -->
-              <div class="mt-3 pt-3" style="border-top:1px dashed var(--z-gray-border)">
-                <button v-if="!paymentConfirmed" class="z-confirm-btn" @click="paymentConfirmed = true">
-                  <i class="bi bi-check2-circle me-1"></i>Đã nhận được thanh toán
-                </button>
-                <div v-else class="z-confirmed">
-                  <span><i class="bi bi-check-circle-fill me-1"></i>Đã xác nhận nhận tiền</span>
-                  <button class="z-undo" @click="paymentConfirmed = false">Huỷ</button>
-                </div>
-              </div>
-            </div>
-
             <!-- Note -->
             <div class="mb-3">
               <label class="z-label">Ghi chú</label>
@@ -284,8 +262,10 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
 import { mapProduct, fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
 const { getUser } = useAuth()
 
 const search = ref('')
@@ -336,24 +316,28 @@ const voucherMsg = ref('')
 const transferQrSrc = ref('')
 const loadingQr = ref(false)
 const paymentConfirmed = ref(false)   // nhân viên đã báo "đã nhận tiền"
-const openingCard = ref(false)
 
 const paymentMethods = [
   { value: 'cash', label: 'Tiền mặt', icon: 'bi-cash-stack' },
   { value: 'transfer', label: 'Chuyển khoản', icon: 'bi-bank' },
-  { value: 'card', label: 'Thẻ', icon: 'bi-credit-card' },
 ]
 const transferMethods = [
   { value: 'vietqr', label: 'VietQR' },
   { value: 'momo', label: 'MoMo' },
   { value: 'zalopay', label: 'ZaloPay' },
 ]
+const availablePaymentMethods = computed(() => paymentMethods)
 const quickCash = [100000, 200000, 500000, 1000000]
 
 onMounted(async () => {
   try {
     const data = await api().getVay()
-    allProducts.value = data.filter(p => p.trangThai === 1).map((p, i) => {
+    const sortedData = [...data].sort((a, b) => {
+      const da = a.ngayTao ? new Date(a.ngayTao).getTime() : Number(a.id || 0)
+      const db = b.ngayTao ? new Date(b.ngayTao).getTime() : Number(b.id || 0)
+      return db - da
+    })
+    allProducts.value = sortedData.filter(p => p.trangThai === 1).map((p, i) => {
       const m = mapProduct(p, i)
       return { ...m, priceDisplay: fmtPrice(m.salePrice || m.price), rawId: p.id }
     })
@@ -366,6 +350,18 @@ const filteredProducts = computed(() => {
   return allProducts.value.filter(p =>
     p.name.toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q)
   )
+})
+
+const currentPage = ref(1)
+const itemsPerPage = 10
+const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage))
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredProducts.value.slice(start, start + itemsPerPage)
+})
+
+watch(search, () => {
+  currentPage.value = 1
 })
 
 const cartTotal = computed(() => cart.value.reduce((s, item) => s + item.price * item.qty, 0))
@@ -420,28 +416,6 @@ const canPay = computed(() => {
   // Chuyển khoản / thẻ: nhân viên phải báo đã nhận tiền
   return paymentConfirmed.value
 })
-
-async function openZaloCard() {
-  if (finalTotal.value < 1000) return showToast('Giỏ hàng trống')
-  // Mở tab đồng bộ ngay trong sự kiện click để tránh bị chặn popup
-  const win = window.open('', '_blank')
-  openingCard.value = true
-  try {
-    const res = await api().zaloQr(finalTotal.value)
-    if (res && res.payUrl) {
-      if (win) win.location = res.payUrl
-      else window.location.href = res.payUrl  // popup bị chặn -> mở ngay tab hiện tại
-    } else {
-      if (win) win.close()
-      showToast(res?.error || 'Không mở được trang ZaloPay')
-    }
-  } catch (e) {
-    if (win) win.close()
-    showToast('Lỗi mở trang ZaloPay')
-  } finally {
-    openingCard.value = false
-  }
-}
 
 async function addToCart(p) {
   try {
@@ -540,13 +514,18 @@ function removeVoucher() {
 
 function paymentLabel() {
   if (paymentMethod.value === 'cash') return 'Tiền mặt'
-  if (paymentMethod.value === 'card') return 'Thẻ (ZaloPay)'
   const t = { vietqr: 'Chuyển khoản (VietQR)', momo: 'Chuyển khoản (MoMo)', zalopay: 'Chuyển khoản (ZaloPay)' }
   return t[transferMethod.value] || 'Chuyển khoản'
 }
 
 async function createOrder() {
   if (!canPay.value) return
+  if (!await confirmDialog({
+    title: 'Xác nhận thanh toán POS',
+    message: `Hoàn tất đơn tại quầy với tổng tiền ${fmtPrice(finalTotal.value)} bằng ${paymentLabel()}?`,
+    confirmText: 'Hoàn tất',
+    variant: 'success'
+  })) return
   creating.value = true
   try {
     const user = getUser()
@@ -564,11 +543,11 @@ async function createOrder() {
         size: item.size
       })),
       hinhThucThanhToan: paymentLabel(),
-      hinhThucNhanHang: 1,
-      trangThai: 3,            // Hoàn thành ngay
+      hinhThucNhanHang: 0,
+      trangThai: 4,
       daThanhToan: true,
       maGiamGia: appliedVoucher.value || null,
-      nhanVienId: user && (user.role === 'Admin' || user.role === 'Nhân viên') ? user.userId : null,
+      nhanVienId: user?.userId || null,
       ghiChu: noteText,
       tenKhachHang: customerName.value || 'Khách lẻ',
       soDienThoai: customerPhone.value || null
@@ -598,6 +577,22 @@ async function createOrder() {
 }
 .z-pos-item:hover { background: var(--z-accent-soft); }
 .z-pos-item:last-child { border-bottom: none; }
+.z-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000; padding: 20px; backdrop-filter: blur(2px);
+}
+.z-modal {
+  background: var(--z-white); border-radius: var(--z-radius-lg);
+  padding: 28px; width: 100%; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.z-icon-btn {
+  width: 32px; height: 32px; border: none; background: transparent;
+  border-radius: var(--z-radius); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--z-gray); transition: all 0.2s; font-size: 14px;
+}
+.z-icon-btn:hover { background: var(--z-bg-alt); color: var(--z-dark); }
 .z-add-btn {
   width: 32px; height: 32px; border: 1px solid var(--z-accent);
   background: var(--z-white); border-radius: 50%;
@@ -661,3 +656,6 @@ async function createOrder() {
 .z-test-card-row span { color: var(--z-gray); }
 .z-test-card-row strong { color: var(--z-dark); font-family: monospace; }
 </style>
+
+
+

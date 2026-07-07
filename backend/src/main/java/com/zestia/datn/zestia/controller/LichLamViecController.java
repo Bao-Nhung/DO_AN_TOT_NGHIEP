@@ -2,6 +2,7 @@ package com.zestia.datn.zestia.controller;
 
 import com.zestia.datn.zestia.entity.LichLamViec;
 import com.zestia.datn.zestia.entity.NhanVien;
+import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.repository.LichLamViecRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +23,20 @@ public class LichLamViecController {
 
     private final LichLamViecRepository lichLamViecRepo;
     private final NhanVienRepository nhanVienRepo;
+    private final JwtUtil jwtUtil;
 
     @GetMapping
     public List<Map<String, Object>> getAll(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Integer nhanVienId
+            @RequestParam(required = false) Integer nhanVienId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
     ) {
+        Integer tokenUserId = extractStaffUserId(authHeader);
+        if (!isAdmin(authHeader) && tokenUserId != null) {
+            nhanVienId = tokenUserId;
+        }
+
         List<LichLamViec> data;
         if (nhanVienId != null) {
             data = lichLamViecRepo.findByNhanVienIdOrderByNgayLamAscGioBatDauAsc(nhanVienId);
@@ -43,6 +51,39 @@ public class LichLamViecController {
                 .filter(item -> endDate == null || !item.getNgayLam().isAfter(endDate))
                 .map(this::toMap)
                 .toList();
+    }
+
+    private Integer extractStaffUserId(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) return null;
+        try {
+            String token = authHeader.substring(7);
+            if (!jwtUtil.isValid(token)) return null;
+            return toInt(jwtUtil.extractClaims(token).get("userId"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean isAdmin(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) return false;
+        try {
+            String token = authHeader.substring(7);
+            if (!jwtUtil.isValid(token)) return false;
+            String role = jwtUtil.extractClaims(token).get("role", String.class);
+            return "Admin".equals(role);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Integer toInt(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number n) return n.intValue();
+        try {
+            return Integer.parseInt(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @GetMapping("/nhan-vien")

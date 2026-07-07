@@ -7,7 +7,9 @@ import com.zestia.datn.zestia.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -20,6 +22,9 @@ import java.util.*;
 @RequestMapping("/api/payment")
 @RequiredArgsConstructor
 public class PaymentController {
+    private static final byte STATUS_PENDING = 0;
+    private static final byte STATUS_CONFIRMED = 1;
+    private static final byte STATUS_PAYMENT_FAILED = 7;
 
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
@@ -30,8 +35,11 @@ public class PaymentController {
     private final NhanVienRepository nhanVienRepo;
     private final VNPayConfig vnPayConfig;
     private final JwtUtil jwtUtil;
+    @Value("${app.payment-result-url:http://localhost:5173/#/payment-result}")
+    private String paymentResultUrl;
 
     @PostMapping("/create-order")
+    @Transactional
     public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> body,
                                          @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
@@ -51,21 +59,45 @@ public class PaymentController {
         }
 
         KhachHang kh = null;
+        NhanVien nv = null;
+        String tokenRole = null;
+        Integer tokenUserId = null;
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             try {
                 String token = authHeader.substring(7);
+                if (!jwtUtil.isValid(token)) {
+                    return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+                }
                 String username = jwtUtil.extractUsername(token);
-                kh = khachHangRepo.findByEmail(username)
-                        .or(() -> khachHangRepo.findBySoDienThoai(username))
-                        .orElse(null);
+                var claims = jwtUtil.extractClaims(token);
+                tokenRole = claims.get("role", String.class);
+                tokenUserId = toInt(claims.get("userId"));
+                if (isCustomerRole(tokenRole)) {
+                    kh = khachHangRepo.findByEmail(username)
+                            .or(() -> khachHangRepo.findBySoDienThoai(username))
+                            .orElse(null);
+                } else if (isStaffRole(tokenRole) && tokenUserId != null) {
+                    nv = nhanVienRepo.findById(tokenUserId).orElse(null);
+                }
             } catch (Exception ignored) {}
         }
+
+        Integer requestedShippingType = toInt(body.get("hinhThucNhanHang"));
+        Integer requestedStatus = toInt(body.get("trangThai"));
+        boolean requestedOffline = requestedShippingType != null && requestedShippingType == 0;
+        boolean requestedPaid = isTruthy(body.get("daThanhToan")) || (requestedStatus != null && requestedStatus >= 3);
+        if ((requestedOffline || requestedPaid) && nv == null) {
+            return ResponseEntity.status(403).body(Map.of("error", "Chi nhan vien hoac admin moi duoc tao don ban tai quay"));
+        }
+        boolean staffDirectSale = nv != null && (requestedOffline || requestedPaid);
 
         String maHoaDon = "HD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"))
                           + String.format("%04d", new Random().nextInt(10000));
 
         BigDecimal tamTinh = BigDecimal.ZERO;
         List<HoaDonChiTiet> chiTietList = new ArrayList<>();
+        Map<Integer, VayChiTiet> plannedVariants = new LinkedHashMap<>();
+        Map<Integer, Integer> stockDeductions = new LinkedHashMap<>();
 
         for (Map<String, Object> item : items) {
             // === THÊM 1 DÒNG ĐỂ ĐỌC ĐƯỢC CẢ "productId" HOẶC "id" TỪ FRONTEND GỬI LÊN ===
@@ -102,7 +134,8 @@ public class PaymentController {
             // KIỂM TRA VÀ TRỪ TỒN KHO THỰC TẾ
             // ==========================================
             int soLuongKho = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
-            if (soLuongKho < qty) {
+            int plannedQty = stockDeductions.getOrDefault(variant.getId(), 0) + qty;
+            if (soLuongKho < plannedQty) {
                 String tenSp = variant.getVay() != null ? variant.getVay().getTenVay() : "Sản phẩm";
                 String thongTinBT = (color != null ? " - Màu " + color : "") + (size != null ? " - Size " + size : "");
                 return ResponseEntity.badRequest().body(Map.of("error", 
@@ -110,8 +143,8 @@ public class PaymentController {
             }
             
             // Tiến hành trừ kho ngay khi đặt hàng
-            variant.setSoLuong(soLuongKho - qty);
-            vayCtRepo.save(variant);
+            plannedVariants.put(variant.getId(), variant);
+            stockDeductions.put(variant.getId(), plannedQty);
             // ==========================================
 
             BigDecimal price = variant.getGiaBan();
@@ -143,6 +176,13 @@ public class PaymentController {
         }
 
         // Lấy phí vận chuyển từ Frontend gửi lên (Mặc định là 0 nếu không có)
+        for (Map.Entry<Integer, Integer> entry : stockDeductions.entrySet()) {
+            VayChiTiet variant = plannedVariants.get(entry.getKey());
+            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
+            variant.setSoLuong(currentStock - entry.getValue());
+            vayCtRepo.save(variant);
+        }
+
         BigDecimal phiVanChuyen = BigDecimal.ZERO;
         if (body.get("phiVanChuyen") != null) {
             phiVanChuyen = new BigDecimal(body.get("phiVanChuyen").toString());
@@ -165,21 +205,20 @@ public class PaymentController {
         if (tongTien.compareTo(BigDecimal.ZERO) < 0) tongTien = BigDecimal.ZERO;
 
         // Trạng thái: mặc định 0 (Chờ xử lý). POS gửi trangThai=4 (Hoàn thành - cập nhật theo luồng mới).
-        byte trangThai = (byte) 0;
-        if (body.get("trangThai") != null) trangThai = ((Number) body.get("trangThai")).byteValue();
+        byte trangThai = staffDirectSale ? (byte) 4 : STATUS_PENDING;
+        if (staffDirectSale && requestedStatus != null && requestedStatus >= 0 && requestedStatus <= 4) {
+            trangThai = requestedStatus.byteValue();
+        }
 
         // Nhân viên (đơn bán tại quầy)
-        NhanVien nv = null;
         Integer nhanVienId = toInt(body.get("nhanVienId"));
-        if (nhanVienId != null) {
-            nv = nhanVienRepo.findById(nhanVienId).orElse(null);
+        if (staffDirectSale && nhanVienId != null && !Objects.equals(nhanVienId, tokenUserId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Nhan vien khong khop voi token dang nhap"));
         }
 
         // Đã thanh toán: POS = true; nếu body chỉ định thì theo body
-        boolean daThanhToan = trangThai >= 3;
-        if (body.get("daThanhToan") != null) {
-            daThanhToan = Boolean.parseBoolean(String.valueOf(body.get("daThanhToan")));
-        }
+        boolean daThanhToan = staffDirectSale && (body.get("daThanhToan") == null || isTruthy(body.get("daThanhToan")));
+        byte hinhThucNhanHang = (byte) (staffDirectSale ? 0 : 1);
 
         HoaDon hoaDon = HoaDon.builder()
                 .maHoaDon(maHoaDon)
@@ -189,7 +228,7 @@ public class PaymentController {
                 .tongTien(tongTien)
                 .phiVanChuyen(phiVanChuyen)
                 .giamGiaKhuyenMai(giamGia)
-                .hinhThucNhanHang(body.get("nhanVienId") != null ? (byte) 0 : (byte) 1)
+                .hinhThucNhanHang(hinhThucNhanHang)
                 .diaChiGiaoHang(diaChi != null ? diaChi : "")
                 .hinhThucThanhToan(hinhThuc != null ? hinhThuc : "COD")
                 .trangThai(trangThai)
@@ -234,6 +273,8 @@ public class PaymentController {
         result.put("phiVanChuyen", phiVanChuyen);
         result.put("tongTien", tongTien);
         result.put("hinhThucThanhToan", hoaDon.getHinhThucThanhToan());
+        result.put("hinhThucNhanHang", hoaDon.getHinhThucNhanHang());
+        result.put("trangThai", hoaDon.getTrangThai());
 
         return ResponseEntity.ok(result);
     }
@@ -263,6 +304,11 @@ public class PaymentController {
     /** Xác nhận thanh toán online (MoMo / ZaloPay / VNPay) — đơn được xác nhận ngay. */
     @PostMapping("/confirm")
     public ResponseEntity<?> confirmPayment(@RequestBody Map<String, Object> body) {
+        if (body == null || body != null) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "Khong duoc tu xac nhan thanh toan online. He thong chi cap nhat khi cong thanh toan tra ve ket qua hop le."
+            ));
+        }
         Integer orderId = toInt(body.get("orderId"));
         String maHoaDon = (String) body.get("maHoaDon");
         String method = (String) body.get("method");
@@ -398,7 +444,7 @@ public class PaymentController {
         boolean isDemo = "DEMO_MODE".equals(params.get("vnp_SecureHash"));
         boolean validSignature = isDemo || vnPayConfig.validateSignature(params);
 
-        String frontendBase = "http://localhost:5173/#/payment-result";
+        String frontendBase = paymentResultUrl;
 
         if (!validSignature) {
             response.sendRedirect(frontendBase + "?status=error&code=INVALID_SIGNATURE");
@@ -415,7 +461,8 @@ public class PaymentController {
         boolean success = "00".equals(responseCode);
 
         if (success) {
-            hd.setTrangThai((byte) 1);
+            hd.setTrangThai(STATUS_CONFIRMED);
+            hd.setDaThanhToan(true);
             hd.setPhuongThucThanhToanOnline("VNPAY");
             hoaDonRepo.save(hd);
 
@@ -436,7 +483,13 @@ public class PaymentController {
             lichSuRepo.save(ls);
         } else {
             // Thanh toán VNPay thất bại, không lưu là Đã Hủy (5) nữa mà đổi về Giao Thất Bại (6) hoặc giữ Chờ Xử Lý (0)
-            hd.setTrangThai((byte) 6);
+            if (!"FAILED".equalsIgnoreCase(hd.getPhuongThucThanhToanOnline())) {
+                restoreStock(hd);
+            }
+            hd.setTrangThai(STATUS_PAYMENT_FAILED);
+            hd.setDaThanhToan(false);
+            hd.setPhuongThucThanhToanOnline("FAILED");
+            hd.setTrangThaiTracking("payment_failed");
             hoaDonRepo.save(hd);
 
             LichSuThanhToan ls = LichSuThanhToan.builder()
@@ -512,5 +565,32 @@ public class PaymentController {
         if (obj instanceof Integer i) return i;
         if (obj instanceof Number n) return n.intValue();
         try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
+    }
+
+    private static boolean isTruthy(Object obj) {
+        if (obj == null) return false;
+        if (obj instanceof Boolean b) return b;
+        return Boolean.parseBoolean(String.valueOf(obj));
+    }
+
+    private static boolean isCustomerRole(String role) {
+        return "KhachHang".equalsIgnoreCase(role);
+    }
+
+    private static boolean isStaffRole(String role) {
+        return "Admin".equalsIgnoreCase(role)
+                || "NhanVien".equalsIgnoreCase(role)
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+    }
+
+    private void restoreStock(HoaDon hoaDon) {
+        List<HoaDonChiTiet> items = hoaDonCtRepo.findByHoaDonId(hoaDon.getId());
+        for (HoaDonChiTiet ct : items) {
+            VayChiTiet variant = ct.getVayChiTiet();
+            if (variant == null || ct.getSoLuong() == null) continue;
+            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
+            variant.setSoLuong(currentStock + ct.getSoLuong());
+            vayCtRepo.save(variant);
+        }
     }
 }

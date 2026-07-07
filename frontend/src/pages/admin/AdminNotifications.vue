@@ -208,8 +208,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -319,7 +321,12 @@ async function saveItem() {
 }
 
 async function deleteItem(id) {
-  if (!confirm('Bạn có chắc chắn muốn xoá thông báo này?')) return
+  if (!await confirmDialog({
+    title: 'Xóa thông báo',
+    message: 'Bạn có chắc chắn muốn xoá thông báo này?',
+    confirmText: 'Xóa',
+    variant: 'danger'
+  })) return
   try {
     await api().deleteThongBao(id)
     showToast('Xoá thông báo thành công', 'success')
@@ -353,3 +360,55 @@ function formatDateTime(val) {
   return d.toLocaleString('vi-VN')
 }
 </script>
+
+<style scoped>
+.z-icon-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--z-radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--z-gray);
+  transition: all 0.2s;
+}
+
+.z-icon-btn:hover {
+  background: var(--z-bg-alt);
+  color: var(--z-dark);
+}
+
+.z-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(17, 24, 39, 0.46);
+  backdrop-filter: blur(3px);
+}
+
+.z-modal {
+  width: min(100%, 600px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--z-white);
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius-lg);
+  padding: 28px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+
+.z-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--z-dark);
+  font-size: 13px;
+  font-weight: 600;
+}
+</style>

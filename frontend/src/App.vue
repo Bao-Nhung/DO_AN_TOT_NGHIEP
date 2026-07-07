@@ -8,6 +8,7 @@
 
   <!-- Toast -->
   <ToastNotification />
+  <ConfirmModal />
 
   <!-- Navbar (hidden on login & admin pages) -->
   <AppNavbar v-if="!isLoginPage && !isAdminPage" />
@@ -31,6 +32,7 @@ import { useRoute } from 'vue-router'
 import AppNavbar        from '@/components/layout/AppNavbar.vue'
 import CartDrawer       from '@/components/layout/CartDrawer.vue'
 import ToastNotification from '@/components/layout/ToastNotification.vue'
+import ConfirmModal      from '@/components/ui/ConfirmModal.vue'
 
 const route = useRoute()
 const isLoginPage = computed(() => route.name === 'login')

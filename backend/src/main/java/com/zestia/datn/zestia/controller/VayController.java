@@ -85,6 +85,12 @@ public class VayController {
 
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        if (body.get("variants") == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "San pham phai co it nhat mot bien the mau sac va kich thuoc"));
+        }
+        ResponseEntity<?> validationError = validateVariants(body.get("variants"));
+        if (validationError != null) return validationError;
+
         Vay v = new Vay();
         v.setTenVay((String) body.get("tenVay"));
         v.setMaVay(generateProductCode());
@@ -150,6 +156,9 @@ public class VayController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        ResponseEntity<?> validationError = validateVariants(body.get("variants"));
+        if (validationError != null) return validationError;
+
         return vayRepo.findById(id).map(v -> {
             if (body.get("tenVay") != null) v.setTenVay((String) body.get("tenVay"));
             if (body.get("moTa") != null) v.setMoTa((String) body.get("moTa"));
@@ -215,7 +224,8 @@ public class VayController {
                         }
                         ct.setTrangThai((byte) 1);
                         ct.setNgayTao(LocalDateTime.now());
-                        vayCtRepo.save(ct);
+                        VayChiTiet savedCt = vayCtRepo.save(ct);
+                        keptIds.add(savedCt.getId());
                     }
                 }
                 
@@ -387,6 +397,68 @@ public class VayController {
         return candidates[0].toAbsolutePath().normalize();
     }
 
+    @SuppressWarnings("unchecked")
+    private ResponseEntity<?> validateVariants(Object variantsObj) {
+        if (variantsObj == null) return null;
+        if (!(variantsObj instanceof List<?> variants) || variants.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "San pham phai co it nhat mot bien the"));
+        }
+
+        Set<String> uniqueKeys = new HashSet<>();
+        int idx = 1;
+        for (Object obj : variants) {
+            if (!(obj instanceof Map<?, ?> raw)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " khong hop le"));
+            }
+            Map<String, Object> bt = (Map<String, Object>) raw;
+            Integer idMau = toInt(bt.get("idMauSac"));
+            Integer idKich = toInt(bt.get("idKichThuoc"));
+            BigDecimal giaBan = toDecimal(bt.get("giaBan"));
+            BigDecimal giaBanGoc = toDecimal(bt.get("giaBanGoc"));
+            Integer soLuong = toInt(bt.get("soLuong"));
+
+            if (idMau == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua chon mau sac"));
+            }
+            if (idKich == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua chon kich thuoc"));
+            }
+            if (!mauSacRepo.existsById(idMau)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " co mau sac khong ton tai"));
+            }
+            if (!kichThuocRepo.existsById(idKich)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " co kich thuoc khong ton tai"));
+            }
+            if (giaBan == null || giaBan.compareTo(BigDecimal.ZERO) < 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co gia ban hop le"));
+            }
+            if (giaBanGoc == null || giaBanGoc.compareTo(BigDecimal.ZERO) < 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co gia goc hop le"));
+            }
+            if (giaBanGoc.compareTo(giaBan) >= 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + ": gia goc phai thap hon gia ban"));
+            }
+            if (soLuong == null || soLuong < 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co so luong hop le"));
+            }
+            String key = idMau + "-" + idKich;
+            if (!uniqueKeys.add(key)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " bi trung mau sac va kich thuoc"));
+            }
+            idx++;
+        }
+        return null;
+    }
+
+    private BigDecimal toDecimal(Object val) {
+        if (val == null) return null;
+        try {
+            return new BigDecimal(val.toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private Map<String, Object> toMap(Vay v) {
         List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId());
         BigDecimal minPrice = bienThe.stream()
@@ -443,8 +515,10 @@ public class VayController {
             Map<String, Object> btMap = new LinkedHashMap<>();
             btMap.put("id", bt.getId());
             btMap.put("maVayChiTiet", bt.getMaVayChiTiet());
+            btMap.put("idMauSac", bt.getMauSac() != null ? bt.getMauSac().getId() : null);
             btMap.put("mauSac", bt.getMauSac() != null ? bt.getMauSac().getTenMauSac() : null);
             btMap.put("maHex", bt.getMauSac() != null ? bt.getMauSac().getMaHex() : null);
+            btMap.put("idKichThuoc", bt.getKichThuoc() != null ? bt.getKichThuoc().getId() : null);
             btMap.put("kichThuoc", bt.getKichThuoc() != null ? bt.getKichThuoc().getTenKichThuoc() : null);
             btMap.put("giaBan", bt.getGiaBan());
             btMap.put("giaBanGoc", bt.getGiaBanGoc());

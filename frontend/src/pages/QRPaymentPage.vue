@@ -88,7 +88,7 @@
             <button class="lm-btn-primary w-100" @click="confirmDone" :disabled="confirming">
               <span><i class="bi bi-check2-circle me-2"></i>{{ confirming ? 'Đang xác nhận...' : 'Tôi đã thanh toán' }}</span>
             </button>
-            <button class="z-qr-cancel" @click="cancelOrder">
+            <button class="z-qr-cancel" @click="requestCancelOrder">
               Huỷ đơn hàng
             </button>
           </div>
@@ -104,10 +104,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/composables/useApi'
+import { useConfirm } from '@/composables/useConfirm'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { confirmDialog } = useConfirm()
 
 const method = computed(() => route.query.method || 'MOMO')
 const orderId = computed(() => route.query.orderId || '')       // id số của hoá đơn
@@ -161,15 +163,21 @@ async function confirmDone() {
   confirming.value = true
   try {
     await api().confirmPayment(Number(orderId.value) || null, method.value, maHoaDon.value)
+    router.push({
+      path: '/payment-result',
+      query: { status: 'success', orderId: maHoaDon.value, amount: amount.value, method: method.value }
+    })
+    return
   } catch (e) {
+    router.push({
+      path: '/payment-result',
+      query: { status: 'failed', orderId: maHoaDon.value, method: method.value, reason: 'confirm-denied' }
+    })
+    return
     // vẫn cho qua trang kết quả ở chế độ demo
   } finally {
     confirming.value = false
   }
-  router.push({
-    path: '/payment-result',
-    query: { status: 'success', orderId: maHoaDon.value, amount: amount.value, method: method.value }
-  })
 }
 
 function cancelOrder() {
@@ -177,6 +185,16 @@ function cancelOrder() {
     path: '/payment-result',
     query: { status: 'failed', orderId: maHoaDon.value, method: method.value }
   })
+}
+
+async function requestCancelOrder() {
+  if (!await confirmDialog({
+    title: 'Hủy thanh toán',
+    message: 'Bạn có chắc muốn hủy phiên thanh toán này?',
+    confirmText: 'Hủy thanh toán',
+    variant: 'danger'
+  })) return
+  cancelOrder()
 }
 
 onMounted(() => {

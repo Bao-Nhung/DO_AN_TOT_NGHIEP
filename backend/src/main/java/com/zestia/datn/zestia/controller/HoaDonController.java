@@ -23,6 +23,8 @@ import java.util.*;
 @RequestMapping("/api/hoa-don")
 @RequiredArgsConstructor
 public class HoaDonController {
+    private static final byte STATUS_CANCELLED = 5;
+    private static final byte STATUS_PAYMENT_FAILED = 7;
 
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
@@ -48,6 +50,9 @@ public class HoaDonController {
 @PutMapping("/{id}/trang-thai")
     public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         return hoaDonRepo.findById(id).map(hd -> {
+            if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_PAYMENT_FAILED) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Don hang thanh toan that bai, khong the xu ly tiep"));
+            }
             if (hd.getTrangThai() != null && hd.getTrangThai() == 5) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng đã bị hủy, không thể thay đổi trạng thái"));
             }
@@ -117,8 +122,12 @@ public class HoaDonController {
     }
 
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelOrder(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> cancelOrder(@PathVariable Integer id,
+                                         @RequestBody Map<String, Object> body,
+                                         @RequestHeader(value = "Authorization", required = false) String authHeader) {
         return hoaDonRepo.findById(id).map(hd -> {
+            ResponseEntity<?> authError = authorizeCancel(hd, authHeader);
+            if (authError != null) return authError;
             if (hd.getTrangThai() == 0) {
                 hd.setTrangThai((byte) 5); // Trạng thái 5 = Đã Hủy
                 
@@ -331,6 +340,7 @@ public class HoaDonController {
         String sdt = hd.getKhachHang() != null ? hd.getKhachHang().getSoDienThoai() : hd.getSoDienThoai();
         map.put("khachHang", tenKH != null ? tenKH : "Khách lẻ");
         map.put("soDienThoai", sdt);
+        map.put("tenKhachHang", hd.getTenKhachHang());
         map.put("soSanPham", soSanPham);
         
         map.put("tongTien", hd.getTongTien() != null ? hd.getTongTien() : BigDecimal.ZERO);
@@ -338,6 +348,8 @@ public class HoaDonController {
         map.put("giamGiaKhuyenMai", hd.getGiamGiaKhuyenMai() != null ? hd.getGiamGiaKhuyenMai() : BigDecimal.ZERO);
         
         map.put("nhanVien", hd.getNhanVien() != null ? hd.getNhanVien().getHoVaTen() : null);
+        map.put("nhanVienId", hd.getNhanVien() != null ? hd.getNhanVien().getId() : null);
+        map.put("nguoiTaoDon", hd.getNhanVien() != null ? hd.getNhanVien().getHoVaTen() : "Khach hang tu dat");
         map.put("khuyenMai", hd.getKhuyenMai() != null ? hd.getKhuyenMai().getTenKhuyenMai() : null);
         map.put("giamGia", hd.getGiamGia() != null ? hd.getGiamGia().getTenGiamGia() : null);
         map.put("hinhThucThanhToan", hd.getHinhThucThanhToan());
@@ -400,5 +412,42 @@ public class HoaDonController {
         map.put("moTa", tracking.getMoTa());
         map.put("ngayCapNhat", tracking.getNgayCapNhat());
         return map;
+    }
+
+    private ResponseEntity<?> authorizeCancel(HoaDon hd, String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            String token = authHeader.substring(7);
+            if (!jwtUtil.isValid(token)) {
+                return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+            }
+            var claims = jwtUtil.extractClaims(token);
+            String role = claims.get("role", String.class);
+            Integer userId = toInt(claims.get("userId"));
+            if (isStaffRole(role)) return null;
+            if ("KhachHang".equalsIgnoreCase(role)
+                    && hd.getKhachHang() != null
+                    && Objects.equals(hd.getKhachHang().getId(), userId)) {
+                return null;
+            }
+            return ResponseEntity.status(403).body(Map.of("error", "Khong co quyen huy don hang nay"));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+        }
+    }
+
+    private static boolean isStaffRole(String role) {
+        return "Admin".equalsIgnoreCase(role)
+                || "NhanVien".equalsIgnoreCase(role)
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+    }
+
+    private static Integer toInt(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Integer i) return i;
+        if (obj instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
     }
 }

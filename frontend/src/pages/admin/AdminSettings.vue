@@ -117,8 +117,11 @@
 import { ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { useToast } from '@/composables/useToast'
+import { api } from '@/composables/useApi'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
 
 const activeTab = ref('account')
 const tabs = [
@@ -127,9 +130,14 @@ const tabs = [
 ]
 
 async function seedProducts() {
+  if (!await confirmDialog({
+    title: 'Tạo dữ liệu mẫu',
+    message: 'Thao tác này sẽ tạo thêm dữ liệu sản phẩm mẫu nếu hệ thống chưa đủ dữ liệu. Bạn muốn tiếp tục?',
+    confirmText: 'Tạo dữ liệu',
+    variant: 'primary'
+  })) return
   try {
-    const res = await fetch('http://localhost:8080/api/vay/seed', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-    const data = await res.json()
+    const data = await api().seedVay()
     showToast(data.message || 'Đã tạo dữ liệu mẫu!')
   } catch (e) { showToast('Lỗi khi tạo dữ liệu mẫu') }
 }

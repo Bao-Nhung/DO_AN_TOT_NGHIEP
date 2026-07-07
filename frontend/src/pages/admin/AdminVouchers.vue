@@ -10,7 +10,7 @@
 
     <!-- Active Vouchers Grid -->
     <div class="row g-3 mb-4">
-      <div v-for="v in vouchers" :key="v.id" class="col-lg-4">
+      <div v-for="v in paginatedVouchers" :key="v.id" class="col-lg-4">
         <div class="z-admin-card h-100 d-flex flex-column justify-content-between">
           <div>
             <div class="d-flex justify-content-between align-items-start mb-3">
@@ -46,9 +46,28 @@
           </div>
         </div>
       </div>
-      <div v-if="vouchers.length === 0" class="col-12 text-center py-5">
+      <div v-if="filteredVouchers.length === 0" class="col-12 text-center py-5">
         <i class="bi bi-ticket-perforated" style="font-size:48px;color:var(--z-gray-border)"></i>
         <p style="color:var(--z-gray);font-size:14px;margin-top:8px">Không có mã giảm giá nào</p>
+      </div>
+    </div>
+
+    <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mb-4">
+      <span style="font-size:13px;color:var(--z-gray)">
+        Hiển thị {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredVouchers.length) }} / {{ filteredVouchers.length }} voucher
+      </span>
+      <div class="d-flex gap-2">
+        <button class="lm-btn-secondary z-page-btn" :disabled="currentPage === 1" @click="currentPage--">Trước</button>
+        <button
+          v-for="page in totalPages"
+          :key="page"
+          class="lm-btn-secondary z-page-btn"
+          :class="{ active: currentPage === page }"
+          @click="currentPage = page"
+        >
+          {{ page }}
+        </button>
+        <button class="lm-btn-secondary z-page-btn" :disabled="currentPage === totalPages" @click="currentPage++">Sau</button>
       </div>
     </div>
 
@@ -191,16 +210,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString('vi-VN') : '' }
 function fmtPrice(v) { return v ? Number(v).toLocaleString('vi-VN') + 'đ' : '0đ' }
 
 const vouchers = ref([])
+const currentPage = ref(1)
+const itemsPerPage = 9
 const showVoucherModal = ref(false)
 const showViewModal = ref(false)
 const viewData = ref(null)
@@ -222,7 +245,19 @@ const vForm = ref({
 
 onMounted(() => loadData())
 
+const filteredVouchers = computed(() => vouchers.value)
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredVouchers.value.length / itemsPerPage)))
+const paginatedVouchers = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  return filteredVouchers.value.slice(start, start + itemsPerPage)
+})
+
+watch(filteredVouchers, () => {
+  if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
+})
+
 async function loadData() {
+  currentPage.value = 1
   try {
     const data = await api().getAllKhuyenMai()
     if (data.giamGia) {
@@ -297,7 +332,12 @@ async function saveVoucher() {
 }
 
 async function deleteVoucher(v) {
-  if (!confirm(`Bạn có chắc muốn xóa voucher "${v.code}"?`)) return
+  if (!await confirmDialog({
+    title: 'Xóa voucher',
+    message: `Bạn có chắc muốn xóa voucher "${v.code}"?`,
+    confirmText: 'Xóa',
+    variant: 'danger'
+  })) return
   try {
     await api().deleteGiamGia(v.id)
     showToast('Đã xóa voucher!')
@@ -316,4 +356,6 @@ async function deleteVoucher(v) {
 .z-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .z-modal { background: var(--z-white); border-radius: var(--z-radius-lg); padding: 28px; width: 100%; max-width: 560px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
 .z-label { display: block; font-size: 13px; font-weight: 500; color: var(--z-dark); margin-bottom: 6px; }
+.z-page-btn { padding: 6px 12px; height: auto; border-radius: 6px; font-size: 12px; }
+.z-page-btn.active { background: var(--z-dark); color: #fff; border-color: var(--z-dark); }
 </style>

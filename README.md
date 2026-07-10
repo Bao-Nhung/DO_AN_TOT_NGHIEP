@@ -1,4 +1,65 @@
+Dữ liệu test chính nằm ở file [database/fashion_shop.sql](<C:/Users/Admin/Documents/GitHub/DO_AN_TOT_NGHIEP/database/fashion_shop.sql>). Nếu muốn test trên dữ liệu sạch, import file này vào SQL Server trước rồi chạy backend.
 
+**Tài Khoản Test**
+
+| Vai trò | Tài khoản | Mật khẩu | Ghi chú |
+|---|---|---:|---|
+| Admin | `admin` hoặc `admin@zestia.vn` | `123456` | Vào được toàn bộ `/admin` |
+| Nhân viên POS | `nv_pos` hoặc `nv.pos@zestia.vn` | `123456` | Quyền ít hơn admin, nên dùng để test bán tại quầy |
+| Nhân viên cũ | `tuannv` hoặc `tuan@zestia.vn` | `123456` | Cũng có role nhân viên |
+| Khách hàng | `khach.demo@zestia.vn` hoặc `0911111111` | `123456` | Có địa chỉ mặc định để test checkout |
+| SQL Server local | user `sa` | `123456` | Theo `application.properties` và README |
+
+Tôi đã kiểm tra hash BCrypt trong SQL, password test admin/nhân viên khớp `123456`.
+
+**Voucher Test**
+
+| Mã | Điều kiện |
+|---|---|
+| `ZESTIA10` | Giảm 10% cho đơn từ 500K, tối đa 100K |
+| `ZESTIA50` | Giảm 50K cho đơn từ 800K |
+| `FREESHIP` | Hỗ trợ 30K phí vận chuyển cho đơn từ 300K |
+| `SUMMER20` | Có trong dữ liệu gốc, giảm 20% cho đơn từ 1 triệu |
+
+**Đơn Hàng Có Sẵn Để Tra Cứu**
+
+Dùng trang tra cứu đơn:
+
+| Mã đơn | SĐT |
+|---|---|
+| `HD-2025-0001` | `0912345678` |
+| `HD-2025-0002` | `0912345678` |
+| `HD-2025-0003` | `0923456789` |
+
+Đơn guest mới thì sau khi đặt xong lấy `maHoaDon` + SĐT vừa nhập để tra cứu.
+
+**Tồn Kho Trừ Lúc Nào**
+
+Tồn kho nằm ở bảng `Vay_chi_tiet.so_luong`, xem được trong admin phần sản phẩm/biến thể. Ví dụ dữ liệu seed có `VAY001-TRANG-S` tồn `15`, `VAY001-TRANG-M` tồn `20`.
+
+Luồng tồn kho hiện tại:
+
+| Luồng | Khi nào trừ kho? |
+|---|---|
+| Thêm vào giỏ | Chưa trừ |
+| Checkout COD online | Trừ ngay khi bấm đặt hàng, API `/api/payment/create-order` chạy |
+| Checkout Momo/ZaloPay/VNPay | Trừ ngay khi tạo đơn trước khi chuyển sang cổng thanh toán |
+| Thanh toán online thành công | Không trừ thêm lần nữa |
+| Thanh toán online thất bại | Hoàn kho |
+| Bỏ thanh toán quá hạn | Sau khoảng 30 phút, job tự chuyển `Thanh toán thất bại` và hoàn kho |
+| POS bán tại quầy | Trừ khi nhân viên bấm thanh toán/tạo đơn POS, không trừ lúc chỉ chọn sản phẩm |
+| Hủy đơn đang chờ | Hoàn kho |
+| Admin đổi trạng thái sang hủy/giao thất bại/thanh toán thất bại/hoàn tiền | Hoàn kho nếu trước đó chưa hoàn |
+
+**Checklist Test Tay Nên Chạy**
+
+1. Login admin `admin / 123456`, vào sản phẩm xem tồn kho một biến thể.
+2. Login khách `khach.demo@zestia.vn / 123456`, đặt COD một sản phẩm, kiểm tra tồn kho giảm.
+3. Hủy đơn khi đang chờ xử lý, kiểm tra tồn kho tăng lại.
+4. Login nhân viên `nv_pos / 123456`, bán tại quầy, chọn màu/size, thanh toán tiền mặt, kiểm tra đơn offline và tồn kho giảm.
+5. Test voucher `ZESTIA10`, `ZESTIA50`, `FREESHIP`.
+6. Test guest checkout không đăng nhập, sau đó tra cứu bằng mã đơn + SĐT.
+7. Test quên mật khẩu bằng email có thật nếu bạn đã cấu hình `MAIL_USERNAME`/`MAIL_PASSWORD`.
 ```
 DO_AN_TOT_NGHIEP
 ├─ backend

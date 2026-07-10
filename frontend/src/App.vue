@@ -15,6 +15,7 @@
 
   <!-- Cart Drawer -->
   <CartDrawer v-if="!isLoginPage && !isAdminPage" />
+  <CustomerChatWidget v-if="!isLoginPage && !isAdminPage" />
 
   <!-- Page content -->
   <main :style="{ paddingTop: (isLoginPage || isAdminPage) ? '0' : '72px' }">
@@ -31,6 +32,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar        from '@/components/layout/AppNavbar.vue'
 import CartDrawer       from '@/components/layout/CartDrawer.vue'
+import CustomerChatWidget from '@/components/layout/CustomerChatWidget.vue'
 import ToastNotification from '@/components/layout/ToastNotification.vue'
 import ConfirmModal      from '@/components/ui/ConfirmModal.vue'
 

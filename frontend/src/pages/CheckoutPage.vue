@@ -33,7 +33,7 @@
                 <input v-model="form.soDienThoai" class="lm-input" placeholder="0901234567" />
               </div>
               <div class="col-12">
-                <label class="z-label">Email</label>
+                <label class="z-label">Email *</label>
                 <input v-model="form.email" type="email" class="lm-input" placeholder="email@example.com" />
               </div>
               
@@ -373,6 +373,7 @@ const showConfirmModal = ref(false)
 function handlePlaceOrder() {
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
   if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
+  if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
   
   if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
     return showToast('Vui lòng chọn và nhập đầy đủ địa chỉ giao hàng')
@@ -436,6 +437,7 @@ onMounted(async () => {
 async function placeOrder() {
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
   if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
+  if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
   
   // Validate địa chỉ mới
   if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
@@ -455,6 +457,7 @@ async function placeOrder() {
     const orderData = {
       hoTen: form.value.hoTen,
       soDienThoai: form.value.soDienThoai,
+      email: form.value.email.trim(),
       diaChi: fullAddress, // Gửi chuỗi địa chỉ đã ghép
       ghiChu: form.value.ghiChu,
       hinhThucThanhToan: form.value.hinhThuc,
@@ -462,6 +465,7 @@ async function placeOrder() {
       phiVanChuyen: shippingFee.value, // CẬP NHẬT GỬI PHÍ SHIP LÊN BACKEND
       items: state.items.map(i => ({ 
         productId: i.productId || parseInt(i.id), // Lấy đúng ID gốc của váy
+        variantId: i.variantId || null,
         qty: i.qty,
         size: i.size,   // Truyền size khách đã chọn
         color: i.color  // Truyền màu khách đã chọn
@@ -497,6 +501,10 @@ async function placeOrder() {
   } finally {
     loading.value = false
   }
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
 }
 </script>
 

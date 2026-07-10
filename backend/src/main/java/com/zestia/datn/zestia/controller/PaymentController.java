@@ -4,12 +4,15 @@ import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.config.VNPayConfig;
 import com.zestia.datn.zestia.entity.*;
 import com.zestia.datn.zestia.repository.*;
+import com.zestia.datn.zestia.service.EmailService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -17,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/payment")
@@ -24,7 +28,9 @@ import java.util.*;
 public class PaymentController {
     private static final byte STATUS_PENDING = 0;
     private static final byte STATUS_CONFIRMED = 1;
+    private static final byte STATUS_CANCELLED = 5;
     private static final byte STATUS_PAYMENT_FAILED = 7;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
 
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
@@ -35,6 +41,7 @@ public class PaymentController {
     private final NhanVienRepository nhanVienRepo;
     private final VNPayConfig vnPayConfig;
     private final JwtUtil jwtUtil;
+    private final EmailService emailService;
     @Value("${app.payment-result-url:http://localhost:5173/#/payment-result}")
     private String paymentResultUrl;
 
@@ -48,6 +55,7 @@ public class PaymentController {
             hoTen = (String) body.get("tenKhachHang");
         }
         String soDienThoai = (String) body.get("soDienThoai");
+        String emailKhachHang = cleanString(body.get("email"));
         String diaChi = (String) body.get("diaChi");
         String ghiChu = (String) body.get("ghiChu");
         String hinhThuc = (String) body.get("hinhThucThanhToan");
@@ -91,6 +99,17 @@ public class PaymentController {
         }
         boolean staffDirectSale = nv != null && (requestedOffline || requestedPaid);
 
+        if (emailKhachHang == null && kh != null && kh.getEmail() != null && !kh.getEmail().isBlank()) {
+            emailKhachHang = kh.getEmail().trim();
+        }
+        if (!staffDirectSale) {
+            if (emailKhachHang == null || !EMAIL_PATTERN.matcher(emailKhachHang).matches()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Vui long nhap email hop le de nhan hoa don"));
+            }
+        } else if (emailKhachHang != null && !EMAIL_PATTERN.matcher(emailKhachHang).matches()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email khach hang khong hop le"));
+        }
+
         String maHoaDon = "HD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"))
                           + String.format("%04d", new Random().nextInt(10000));
 
@@ -101,24 +120,49 @@ public class PaymentController {
 
         for (Map<String, Object> item : items) {
             // === THÊM 1 DÒNG ĐỂ ĐỌC ĐƯỢC CẢ "productId" HOẶC "id" TỪ FRONTEND GỬI LÊN ===
-            Integer productId = toInt(item.get("productId"));
+            Integer productId = firstInt(item, "productId", "idVay", "vayId");
             if (productId == null) productId = toInt(item.get("id")); // Dòng này là "cứu tinh"
             
-            Integer qty = toInt(item.get("qty"));
-            if (qty == null) qty = toInt(item.get("quantity"));
-            if (productId == null || qty == null || qty <= 0) continue;
+            Integer variantId = firstInt(item, "variantId", "vayChiTietId", "idVayChiTiet");
+            Integer qty = firstInt(item, "qty", "quantity", "soLuong");
+            if (qty == null || qty <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "So luong san pham khong hop le"));
+            }
 
-            var variants = vayCtRepo.findByVayId(productId);
-            if (variants.isEmpty()) continue;
+            VayChiTiet selectedById = null;
+            if (variantId != null) {
+                selectedById = vayCtRepo.findById(variantId).orElse(null);
+                if (!isOrderableVariant(selectedById)) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Bien the san pham khong ton tai hoac da ngung ban"));
+                }
+                if (productId != null && !Objects.equals(productId, selectedById.getVay().getId())) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Bien the khong thuoc san pham da chon"));
+                }
+                productId = selectedById.getVay().getId();
+            }
+            if (productId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Thieu thong tin san pham"));
+            }
+
+            var variants = vayCtRepo.findByVayId(productId).stream()
+                    .filter(PaymentController::isOrderableVariant)
+                    .toList();
+            if (variants.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "San pham khong co bien the dang ban"));
+            }
 
             // ==========================================
             // TÌM CHÍNH XÁC BIẾN THỂ (KÍCH THƯỚC & MÀU SẮC)
             // ==========================================
             VayChiTiet variant = variants.get(0); // Lấy mặc định nếu không khớp
-            String size = (String) item.get("size");
-            String color = (String) item.get("color");
+            String size = cleanString(item.get("size"));
+            String color = cleanString(item.get("color"));
+            variant = selectedById;
 
-            if (size != null || color != null) {
+            if (variant == null) {
+                if (size == null || color == null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Vui long chon day du mau sac va kich thuoc"));
+                }
                 for (VayChiTiet v : variants) {
                     boolean matchSize = size == null || (v.getKichThuoc() != null && size.equalsIgnoreCase(v.getKichThuoc().getTenKichThuoc()));
                     boolean matchColor = color == null || (v.getMauSac() != null && color.equalsIgnoreCase(v.getMauSac().getTenMauSac()));
@@ -128,6 +172,9 @@ public class PaymentController {
                         break;
                     }
                 }
+            }
+            if (variant == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the mau/size khong ton tai hoac da ngung ban"));
             }
 
             // ==========================================
@@ -237,6 +284,7 @@ public class PaymentController {
                 .ngayTao(LocalDateTime.now())
                 .tenKhachHang(hoTen)
                 .soDienThoai(soDienThoai)
+                .emailKhachHang(emailKhachHang)
                 .build();
 
         hoaDon = hoaDonRepo.save(hoaDon);
@@ -265,6 +313,8 @@ public class PaymentController {
                     .build());
         }
 
+        sendOrderConfirmationAfterCommit(hoaDon);
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("orderId", hoaDon.getId());
         result.put("maHoaDon", maHoaDon);
@@ -275,6 +325,7 @@ public class PaymentController {
         result.put("hinhThucThanhToan", hoaDon.getHinhThucThanhToan());
         result.put("hinhThucNhanHang", hoaDon.getHinhThucNhanHang());
         result.put("trangThai", hoaDon.getTrangThai());
+        result.put("emailKhachHang", hoaDon.getEmailKhachHang());
 
         return ResponseEntity.ok(result);
     }
@@ -301,17 +352,18 @@ public class PaymentController {
         return ResponseEntity.ok(res);
     }
 
-    /** Xác nhận thanh toán online (MoMo / ZaloPay / VNPay) — đơn được xác nhận ngay. */
+    /** Staff-only manual confirmation for sandbox/demo payment flows. */
     @PostMapping("/confirm")
     public ResponseEntity<?> confirmPayment(@RequestBody Map<String, Object> body) {
-        if (body == null || body != null) {
-            return ResponseEntity.status(403).body(Map.of(
-                    "error", "Khong duoc tu xac nhan thanh toan online. He thong chi cap nhat khi cong thanh toan tra ve ket qua hop le."
-            ));
+        if (body == null || body.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Thieu thong tin xac nhan thanh toan"));
         }
         Integer orderId = toInt(body.get("orderId"));
         String maHoaDon = (String) body.get("maHoaDon");
         String method = (String) body.get("method");
+        if (orderId == null && (maHoaDon == null || maHoaDon.isBlank())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Thieu orderId hoac maHoaDon"));
+        }
 
         Optional<HoaDon> opt = orderId != null
                 ? hoaDonRepo.findById(orderId)
@@ -321,18 +373,28 @@ public class PaymentController {
         }
 
         HoaDon hd = opt.get();
-        hd.setTrangThai((byte) 1); // Đã xác nhận
+        if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_PAYMENT_FAILED) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Don hang thanh toan that bai, khong the xac nhan lai"));
+        }
+        if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_CANCELLED) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Don hang da huy, khong the xac nhan thanh toan"));
+        }
+        String paymentMethod = method != null && !method.isBlank() ? method : hd.getHinhThucThanhToan();
+
+        hd.setTrangThai(STATUS_CONFIRMED);
         hd.setDaThanhToan(true);
-        hd.setPhuongThucThanhToanOnline(method != null ? method : hd.getHinhThucThanhToan());
+        hd.setPhuongThucThanhToanOnline(paymentMethod);
         hoaDonRepo.save(hd);
+        emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_CONFIRMED),
+                "Thanh toán " + paymentMethod + " đã được xác nhận. Đơn hàng đang chờ xử lý tiếp.");
 
         lichSuRepo.save(LichSuThanhToan.builder()
                 .hoaDon(hd)
                 .soTien(hd.getTongTien())
-                .phuongThuc(method != null ? method : hd.getHinhThucThanhToan())
-                .maGiaoDich((method != null ? method : "PAY") + System.currentTimeMillis())
+                .phuongThuc(paymentMethod)
+                .maGiaoDich((paymentMethod != null ? paymentMethod : "PAY") + System.currentTimeMillis())
                 .trangThai("SUCCESS")
-                .noiDung("Thanh toán online thành công - " + hd.getMaHoaDon())
+                .noiDung("Xac nhan thanh toan sandbox - " + hd.getMaHoaDon())
                 .ngayTao(LocalDateTime.now())
                 .build());
 
@@ -465,6 +527,8 @@ public class PaymentController {
             hd.setDaThanhToan(true);
             hd.setPhuongThucThanhToanOnline("VNPAY");
             hoaDonRepo.save(hd);
+            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_CONFIRMED),
+                    "Thanh toán VNPay thành công. Đơn hàng đã được xác nhận.");
 
             BigDecimal soTien = BigDecimal.ZERO;
             if (amountStr != null) {
@@ -491,6 +555,8 @@ public class PaymentController {
             hd.setPhuongThucThanhToanOnline("FAILED");
             hd.setTrangThaiTracking("payment_failed");
             hoaDonRepo.save(hd);
+            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_PAYMENT_FAILED),
+                    "Thanh toán VNPay thất bại. Đơn hàng không được xử lý tiếp.");
 
             LichSuThanhToan ls = LichSuThanhToan.builder()
                     .hoaDon(hd)
@@ -512,9 +578,12 @@ public class PaymentController {
     }
 
     @GetMapping("/order/{id}")
-    public ResponseEntity<?> getOrder(@PathVariable Integer id) {
+    public ResponseEntity<?> getOrder(@PathVariable Integer id,
+                                      @RequestHeader(value = "Authorization", required = false) String authHeader) {
         return hoaDonRepo.findById(id)
                 .map(hd -> {
+                    ResponseEntity<?> authError = authorizeOrderAccess(hd, authHeader);
+                    if (authError != null) return authError;
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("id", hd.getId());
                     map.put("maHoaDon", hd.getMaHoaDon());
@@ -560,6 +629,30 @@ public class PaymentController {
         }
     }
 
+    private static Integer firstInt(Map<String, Object> map, String... keys) {
+        if (map == null || keys == null) return null;
+        for (String key : keys) {
+            Integer value = toInt(map.get(key));
+            if (value != null) return value;
+        }
+        return null;
+    }
+
+    private static String cleanString(Object obj) {
+        if (obj == null) return null;
+        String value = String.valueOf(obj).trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    private static boolean isOrderableVariant(VayChiTiet variant) {
+        return variant != null
+                && variant.getVay() != null
+                && variant.getMauSac() != null
+                && variant.getKichThuoc() != null
+                && (variant.getTrangThai() == null || variant.getTrangThai() == 1)
+                && (variant.getVay().getTrangThai() == null || variant.getVay().getTrangThai() == 1);
+    }
+
     private static Integer toInt(Object obj) {
         if (obj == null) return null;
         if (obj instanceof Integer i) return i;
@@ -581,6 +674,59 @@ public class PaymentController {
         return "Admin".equalsIgnoreCase(role)
                 || "NhanVien".equalsIgnoreCase(role)
                 || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+    }
+
+    private void sendOrderConfirmationAfterCommit(HoaDon hoaDon) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    emailService.sendOrderConfirmationEmail(hoaDon);
+                }
+            });
+            return;
+        }
+        emailService.sendOrderConfirmationEmail(hoaDon);
+    }
+
+    private static String statusLabel(byte status) {
+        return switch (status) {
+            case 0 -> "Chờ xử lý";
+            case 1 -> "Đã xác nhận";
+            case 2 -> "Đang chuẩn bị";
+            case 3 -> "Đang giao hàng";
+            case 4 -> "Giao hàng thành công";
+            case 5 -> "Đã hủy";
+            case 6 -> "Giao hàng thất bại";
+            case 7 -> "Thanh toán thất bại";
+            case 8 -> "Yêu cầu đổi/trả";
+            case 9 -> "Đã hoàn tiền/hoàn tất";
+            default -> "Cập nhật trạng thái";
+        };
+    }
+
+    private ResponseEntity<?> authorizeOrderAccess(HoaDon hd, String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+        }
+        try {
+            String token = authHeader.substring(7);
+            if (!jwtUtil.isValid(token)) {
+                return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+            }
+            var claims = jwtUtil.extractClaims(token);
+            String role = claims.get("role", String.class);
+            Integer userId = toInt(claims.get("userId"));
+            if (isStaffRole(role)) return null;
+            if (isCustomerRole(role)
+                    && hd.getKhachHang() != null
+                    && Objects.equals(hd.getKhachHang().getId(), userId)) {
+                return null;
+            }
+            return ResponseEntity.status(403).body(Map.of("error", "Khong co quyen xem don hang nay"));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+        }
     }
 
     private void restoreStock(HoaDon hoaDon) {

@@ -12,6 +12,7 @@ import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
 import com.zestia.datn.zestia.repository.VayChiTietRepository;
+import com.zestia.datn.zestia.service.EmailService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,20 +53,29 @@ public class GatewayPaymentController {
     private final VayChiTietRepository vayChiTietRepo;
     private final LichSuThanhToanRepository lichSuRepo;
     private final LichSuTrackingRepository trackingRepo;
+    private final EmailService emailService;
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    // ===== Credentials test công khai (giống server.js của bạn) =====
-    private static final String MOMO_PARTNER = "MOMO";
-    private static final String MOMO_ACCESS  = "F8BBA842ECF85";
-    private static final String MOMO_SECRET  = "K951B6PE1waDMi640xX08PD3vg6EkVlz";
-    private static final String MOMO_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/create";
+    // Payment gateway credentials are read from environment-backed properties.
+    @Value("${payment.momo.partner-code:MOMO}")
+    private String momoPartnerCode;
+    @Value("${payment.momo.access-key:}")
+    private String momoAccessKey;
+    @Value("${payment.momo.secret-key:}")
+    private String momoSecretKey;
+    @Value("${payment.momo.endpoint:https://test-payment.momo.vn/v2/gateway/api/create}")
+    private String momoEndpoint;
 
-    private static final int    ZALO_APPID = 2553;
-    private static final String ZALO_KEY1  = "PcY4iZIKFCIdgZvA6ueMcMHHUbRLYjPL";
-    private static final String ZALO_KEY2  = "kLtgPl8HHhfvMuDHPwKfgfsY4Ydm9eIz";
-    private static final String ZALO_ENDPOINT = "https://sb-openapi.zalopay.vn/v2/create";
+    @Value("${payment.zalopay.app-id:2553}")
+    private int zaloAppId;
+    @Value("${payment.zalopay.key1:}")
+    private String zaloKey1;
+    @Value("${payment.zalopay.key2:}")
+    private String zaloKey2;
+    @Value("${payment.zalopay.endpoint:https://sb-openapi.zalopay.vn/v2/create}")
+    private String zaloEndpoint;
 
     @Value("${app.backend-url:http://localhost:8080}")
     private String backendBaseUrl;
@@ -125,27 +135,30 @@ public class GatewayPaymentController {
 
     /** Gọi API tạo đơn MoMo, trả nguyên response. */
     private JsonNode momoCreate(long amount, String orderId, String orderInfo, String extraData) throws Exception {
+        requireConfigured(momoPartnerCode, "MOMO_PARTNER_CODE");
+        requireConfigured(momoAccessKey, "MOMO_ACCESS_KEY");
+        requireConfigured(momoSecretKey, "MOMO_SECRET_KEY");
         String amt = String.valueOf(amount);
         String requestId = orderId;
         String redirectUrl = backendBaseUrl + "/api/payment/momo/return";
         String ipnUrl = backendBaseUrl + "/api/payment/momo/ipn";
         String requestType = "captureWallet";
 
-        String raw = "accessKey=" + MOMO_ACCESS +
+        String raw = "accessKey=" + momoAccessKey +
                 "&amount=" + amt +
                 "&extraData=" + extraData +
                 "&ipnUrl=" + ipnUrl +
                 "&orderId=" + orderId +
                 "&orderInfo=" + orderInfo +
-                "&partnerCode=" + MOMO_PARTNER +
+                "&partnerCode=" + momoPartnerCode +
                 "&redirectUrl=" + redirectUrl +
                 "&requestId=" + requestId +
                 "&requestType=" + requestType;
-        String signature = hmacHex("HmacSHA256", MOMO_SECRET, raw);
+        String signature = hmacHex("HmacSHA256", momoSecretKey, raw);
 
         Map<String, Object> req = new LinkedHashMap<>();
-        req.put("partnerCode", MOMO_PARTNER);
-        req.put("accessKey", MOMO_ACCESS);
+        req.put("partnerCode", momoPartnerCode);
+        req.put("accessKey", momoAccessKey);
         req.put("requestId", requestId);
         req.put("amount", amt);
         req.put("orderId", orderId);
@@ -157,7 +170,7 @@ public class GatewayPaymentController {
         req.put("signature", signature);
         req.put("lang", "vi");
 
-        return postJson(MOMO_ENDPOINT, mapper.writeValueAsString(req));
+        return postJson(momoEndpoint, mapper.writeValueAsString(req));
     }
 
     @GetMapping("/momo/return")
@@ -184,7 +197,8 @@ public class GatewayPaymentController {
     }
 
     private boolean verifyMomo(Map<String, String> q) {
-        String raw = "accessKey=" + MOMO_ACCESS +
+        if (isBlank(momoAccessKey) || isBlank(momoSecretKey)) return false;
+        String raw = "accessKey=" + momoAccessKey +
                 "&amount=" + n(q.get("amount")) +
                 "&extraData=" + n(q.get("extraData")) +
                 "&message=" + n(q.get("message")) +
@@ -198,7 +212,7 @@ public class GatewayPaymentController {
                 "&resultCode=" + n(q.get("resultCode")) +
                 "&transId=" + n(q.get("transId"));
         try {
-            return hmacHex("HmacSHA256", MOMO_SECRET, raw).equals(q.get("signature"));
+            return hmacHex("HmacSHA256", momoSecretKey, raw).equals(q.get("signature"));
         } catch (Exception e) { return false; }
     }
 
@@ -261,6 +275,8 @@ public class GatewayPaymentController {
 
     /** Gọi API tạo đơn ZaloPay, trả nguyên response. */
     private JsonNode zaloCreate(long amount, String appTransId, long appTime, String description) throws Exception {
+        requireConfigured(String.valueOf(zaloAppId), "ZALOPAY_APP_ID");
+        requireConfigured(zaloKey1, "ZALOPAY_KEY1");
         String item = "[]";
         String redirectUrl = backendBaseUrl + "/api/payment/zalopay/return";
         String embedData = mapper.writeValueAsString(Map.of("redirecturl", redirectUrl));
@@ -268,12 +284,12 @@ public class GatewayPaymentController {
         String appUser = "zestia_user";
 
         // mac = HMAC256(key1, app_id|app_trans_id|app_user|amount|app_time|embed_data|item)
-        String macData = ZALO_APPID + "|" + appTransId + "|" + appUser + "|" + amount + "|"
+        String macData = zaloAppId + "|" + appTransId + "|" + appUser + "|" + amount + "|"
                 + appTime + "|" + embedData + "|" + item;
-        String mac = hmacHex("HmacSHA256", ZALO_KEY1, macData);
+        String mac = hmacHex("HmacSHA256", zaloKey1, macData);
 
         Map<String, String> form = new LinkedHashMap<>();
-        form.put("app_id", String.valueOf(ZALO_APPID));
+        form.put("app_id", String.valueOf(zaloAppId));
         form.put("app_trans_id", appTransId);
         form.put("app_user", appUser);
         form.put("app_time", String.valueOf(appTime));
@@ -285,7 +301,7 @@ public class GatewayPaymentController {
         form.put("callback_url", callbackUrl);
         form.put("mac", mac);
 
-        return postForm(ZALO_ENDPOINT, form);
+        return postForm(zaloEndpoint, form);
     }
 
     @GetMapping("/zalopay/return")
@@ -318,7 +334,7 @@ public class GatewayPaymentController {
             JsonNode node = mapper.readTree(raw);
             String data = node.path("data").asText("");
             String mac = node.path("mac").asText("");
-            boolean ok = hmacHex("HmacSHA256", ZALO_KEY2, data).equals(mac);
+            boolean ok = !isBlank(zaloKey2) && hmacHex("HmacSHA256", zaloKey2, data).equals(mac);
             return ResponseEntity.ok(Map.of("return_code", ok ? 1 : -1,
                     "return_message", ok ? "success" : "mac not equal"));
         } catch (Exception e) {
@@ -342,6 +358,8 @@ public class GatewayPaymentController {
             hd.setDaThanhToan(true);
             hd.setPhuongThucThanhToanOnline(method);
             hoaDonRepo.save(hd);
+            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_CONFIRMED),
+                    "Thanh toán " + method + " thành công. Đơn hàng đã được xác nhận.");
             lichSuRepo.save(LichSuThanhToan.builder()
                     .hoaDon(hd).soTien(amount).phuongThuc(method)
                     .maGiaoDich(txn).trangThai("SUCCESS")
@@ -351,28 +369,19 @@ public class GatewayPaymentController {
             if (!"FAILED".equalsIgnoreCase(hd.getPhuongThucThanhToanOnline())) {
                 restoreStock(hd);
             }
-            hd.setTrangThai((byte) 5);       // Đơn hàng: Đã hủy (5)
             hd.setDaThanhToan(false);
             hd.setPhuongThucThanhToanOnline("FAILED");
             hd.setTrangThai(STATUS_PAYMENT_FAILED);
             hd.setTrangThaiTracking("payment_failed");
             hoaDonRepo.save(hd);
-
-            // Ghi lịch sử tracking đơn bị hủy do thanh toán thất bại
-            trackingRepo.save(LichSuTracking.builder()
-                    .hoaDon(hd)
-                    .trangThai("payment_failed")
-                    .moTa("Đơn hàng bị hủy tự động do thanh toán online " + method + " thất bại.")
-                    .ngayCapNhat(LocalDateTime.now())
-                    .moTa("Thanh toan online " + method + " that bai. Don hang khong duoc phep xu ly tiep.")
-                    .build());
+            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_PAYMENT_FAILED),
+                    "Thanh toán online " + method + " thất bại. Đơn hàng không được xử lý tiếp.");
 
             trackingRepo.save(LichSuTracking.builder()
                     .hoaDon(hd)
                     .trangThai("payment_failed")
                     .moTa("Thanh toan online " + method + " that bai. Don hang khong duoc phep xu ly tiep.")
                     .ngayCapNhat(LocalDateTime.now())
-                    .moTa("Thanh toan online " + method + " that bai. Don hang khong duoc phep xu ly tiep.")
                     .build());
 
             lichSuRepo.save(LichSuThanhToan.builder()
@@ -442,6 +451,24 @@ public class GatewayPaymentController {
         if (obj == null) return null;
         if (obj instanceof Number num) return num.intValue();
         try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
+    }
+
+    private static String statusLabel(byte status) {
+        return switch (status) {
+            case 1 -> "Đã xác nhận";
+            case 7 -> "Thanh toán thất bại";
+            default -> "Cập nhật trạng thái";
+        };
+    }
+
+    private static void requireConfigured(String value, String name) {
+        if (isBlank(value)) {
+            throw new IllegalStateException("Chua cau hinh bien moi truong " + name);
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private static long toLong(Object obj) {

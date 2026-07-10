@@ -43,7 +43,9 @@ export async function loadProducts(force = false) {
   _loading = true
   try {
     const data = await api().getVay()
-    _products.value = data.map(mapProduct)
+    _products.value = data
+      .filter(p => p.trangThai === 1 || p.trangThai === true)
+      .map(mapProduct)
   } catch (e) {
     console.error('Failed to load products:', e)
   } finally {

@@ -26,14 +26,20 @@ function closeCart() { state.isOpen = false; document.body.style.overflow = '' }
 
 function addItem(product) {
   const existing = state.items.find(i => i.id === product.id)
-  if (existing) { existing.qty++ }
+  const maxQty = Number(product.maxQty || existing?.maxQty || 0)
+  if (existing) {
+    if (maxQty > 0) existing.qty = Math.min(maxQty, existing.qty + 1)
+    else existing.qty++
+  }
   else { state.items.push({ ...product, qty: 1 }) }
 }
 
 function changeQty(id, delta) {
   const item = state.items.find(i => i.id === id)
   if (!item) return
-  item.qty = Math.max(1, item.qty + delta)
+  const maxQty = Number(item.maxQty || 0)
+  const next = Math.max(1, item.qty + delta)
+  item.qty = maxQty > 0 ? Math.min(maxQty, next) : next
 }
 
 function removeItem(id) {

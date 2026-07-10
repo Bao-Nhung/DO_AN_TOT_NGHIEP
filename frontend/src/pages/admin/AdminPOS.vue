@@ -457,7 +457,7 @@ function confirmAddVariant() {
     return
   }
   
-  const itemKey = `${selectedProduct.value.id}-${selectedColor.value}-${selectedSize.value}`
+  const itemKey = `variant-${match.id}`
   const existing = cart.value.find(c => c.key === itemKey)
   if (existing) {
     if (existing.qty >= match.soLuong) {
@@ -469,6 +469,7 @@ function confirmAddVariant() {
     cart.value.push({
       key: itemKey,
       id: selectedProduct.value.id,
+      variantId: match.id,
       name: selectedProduct.value.name,
       price: match.giaBan || selectedProduct.value.price,
       qty: 1,
@@ -538,6 +539,7 @@ async function createOrder() {
     const orderData = {
       items: cart.value.map(item => ({ 
         productId: item.id, 
+        variantId: item.variantId,
         qty: item.qty,
         color: item.color,
         size: item.size

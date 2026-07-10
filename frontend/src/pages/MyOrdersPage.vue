@@ -154,6 +154,16 @@
                     <span>Hủy đơn</span>
                   </button>
 
+                  <button
+                    v-if="order.trangThai === 4"
+                    class="lm-btn-outline-accent py-2 px-3 d-flex align-items-center gap-2"
+                    style="font-size: 12px; height: auto;"
+                    @click="openReturn(order)"
+                  >
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <span>Yêu cầu đổi/trả</span>
+                  </button>
+
                   <!-- View details -->
                   <button 
                     class="lm-btn-primary py-2 px-3 d-flex align-items-center gap-2"
@@ -371,6 +381,23 @@
         </div>
       </div>
     </div>
+
+    <div v-if="showReturnModal" class="z-modal-overlay" @click.self="showReturnModal = false" style="z-index: 1060; background: rgba(0,0,0,0.6);">
+      <div class="z-modal" style="max-width:500px">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h3 style="font-size:18px;font-weight:600;margin:0">Yêu cầu đổi/trả hàng</h3>
+          <button class="z-icon-btn" @click="showReturnModal = false"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <p style="font-size:14px;color:var(--z-gray);margin-bottom:16px">
+          Vui lòng nhập lý do đổi/trả cho đơn {{ orderToReturn?.maHoaDon }}. Zestia sẽ kiểm tra và phản hồi trong phần trạng thái đơn hàng.
+        </p>
+        <textarea v-model="returnReason" class="lm-input mb-4" rows="4" placeholder="Ví dụ: sai size, lỗi sản phẩm, muốn đổi màu..."></textarea>
+        <div class="d-flex gap-3">
+          <button class="lm-btn-secondary flex-fill" style="height:44px;" @click="showReturnModal = false">Đóng</button>
+          <button class="lm-btn-primary flex-fill" style="height:44px;" @click="submitReturnOrder">Xác nhận gửi</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -398,6 +425,9 @@ const showCancelModal = ref(false)
 const cancelReason = ref('')
 const otherCancelReason = ref('')
 const orderToCancel = ref(null)
+const showReturnModal = ref(false)
+const returnReason = ref('')
+const orderToReturn = ref(null)
 const payingId = ref(null)
 
 const orderTabs = [
@@ -407,6 +437,7 @@ const orderTabs = [
   { label: 'Đang xử lý / giao', value: 'processing' },
   { label: 'Đã hoàn thành', value: 'completed' },
   { label: 'Đã huỷ', value: 'cancelled' }
+  , { label: 'Đổi/trả', value: 'return' }
 ]
 
 const statusMap = {
@@ -422,6 +453,8 @@ const statusMap = {
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
 statusMap[7] = { key: 'danger', label: 'Thanh toán thất bại' }
+statusMap[8] = { key: 'warning', label: 'Yêu cầu đổi/trả' }
+statusMap[9] = { key: 'danger', label: 'Đã hoàn tiền' }
 
 onMounted(() => {
   loadOrders()
@@ -465,6 +498,7 @@ function getCountByTab(tabValue) {
   if (tabValue === 'pending') return orders.value.filter(o => o.trangThai === 0).length
   if (tabValue === 'processing') return orders.value.filter(o => o.trangThai >= 1 && o.trangThai <= 3).length
   if (tabValue === 'completed') return orders.value.filter(o => o.trangThai === 4).length
+  if (tabValue === 'return') return orders.value.filter(o => o.trangThai === 8 || o.trangThai === 9).length
   if (tabValue === 'cancelled') return orders.value.filter(o => o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7).length
   return 0
 }
@@ -482,6 +516,8 @@ const filteredOrders = computed(() => {
       matchesTab = o.trangThai >= 1 && o.trangThai <= 3
     } else if (currentTab.value === 'completed') {
       matchesTab = o.trangThai === 4
+    } else if (currentTab.value === 'return') {
+      matchesTab = o.trangThai === 8 || o.trangThai === 9
     } else if (currentTab.value === 'cancelled') {
       matchesTab = o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7
     }
@@ -535,6 +571,12 @@ function openCancel(order) {
   showCancelModal.value = true
 }
 
+function openReturn(order) {
+  orderToReturn.value = order
+  returnReason.value = ''
+  showReturnModal.value = true
+}
+
 async function submitCancelOrder() {
   if (!cancelReason.value) {
     toast.showToast('Vui lòng chọn lý do hủy!', 'warning')
@@ -557,6 +599,22 @@ async function submitCancelOrder() {
     }
   } catch (e) {
     toast.showToast(e.error || 'Lỗi khi hủy đơn hàng', 'error')
+  }
+}
+
+async function submitReturnOrder() {
+  if (!returnReason.value.trim()) {
+    toast.showToast('Vui lòng nhập lý do đổi/trả', 'warning')
+    return
+  }
+
+  try {
+    await api().requestReturnOrder(orderToReturn.value.id, returnReason.value.trim())
+    toast.showToast('Đã gửi yêu cầu đổi/trả hàng', 'success')
+    showReturnModal.value = false
+    await loadOrders()
+  } catch (e) {
+    toast.showToast(e.error || 'Không thể gửi yêu cầu đổi/trả', 'error')
   }
 }
 

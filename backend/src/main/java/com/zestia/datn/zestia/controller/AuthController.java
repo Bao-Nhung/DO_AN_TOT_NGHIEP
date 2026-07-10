@@ -6,15 +6,22 @@ import com.zestia.datn.zestia.dto.LoginResponse;
 import com.zestia.datn.zestia.entity.DiaChi;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.entity.NhanVien;
+import com.zestia.datn.zestia.entity.PasswordResetToken;
 import com.zestia.datn.zestia.repository.DiaChiRepository;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
+import com.zestia.datn.zestia.repository.PasswordResetTokenRepository;
+import com.zestia.datn.zestia.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -23,11 +30,20 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String ACCOUNT_NHAN_VIEN = "NHAN_VIEN";
+    private static final String ACCOUNT_KHACH_HANG = "KHACH_HANG";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final NhanVienRepository nhanVienRepo;
     private final KhachHangRepository khachHangRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final DiaChiRepository diaChiRepo;
+    private final EmailService emailService;
+    private final PasswordResetTokenRepository passwordResetTokenRepo;
+
+    @Value("${app.password-reset-token-minutes:30}")
+    private long passwordResetTokenMinutes;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
@@ -124,44 +140,134 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> req) {
+    public ResponseEntity<?> requestPasswordReset(@RequestBody Map<String, String> req) {
         String identifier = req.get("identifier");
         if (identifier == null || identifier.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập email hoặc tên đăng nhập"));
         }
+        identifier = identifier.trim();
 
-        // Check NhanVien
         Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDung(identifier);
         if (nvOpt.isEmpty()) nvOpt = nhanVienRepo.findByEmail(identifier);
         if (nvOpt.isPresent()) {
-            NhanVien nv = nvOpt.get();
-            return ResponseEntity.ok(Map.of(
-                "found", true,
-                "maskedEmail", maskEmail(nv.getEmail()),
-                "hint", "Mật khẩu mặc định: 123456. Hãy liên hệ admin để đặt lại."
-            ));
+            issuePasswordResetForEmployee(nvOpt.get());
+            return passwordResetAccepted();
         }
 
-        // Check KhachHang
         Optional<KhachHang> khOpt = khachHangRepo.findByEmail(identifier);
         if (khOpt.isEmpty()) khOpt = khachHangRepo.findBySoDienThoai(identifier);
-        if (khOpt.isPresent()) {
-            KhachHang kh = khOpt.get();
-            return ResponseEntity.ok(Map.of(
-                "found", true,
-                "maskedEmail", maskEmail(kh.getEmail()),
-                "hint", "Mật khẩu mặc định: 123456. Hãy liên hệ admin để đặt lại."
-            ));
-        }
+        khOpt.ifPresent(this::issuePasswordResetForCustomer);
 
-        return ResponseEntity.status(404).body(Map.of("error", "Không tìm thấy tài khoản"));
+        return passwordResetAccepted();
     }
 
-    private String maskEmail(String email) {
-        if (email == null) return "***";
-        int at = email.indexOf('@');
-        if (at <= 2) return "***" + email.substring(at);
-        return email.substring(0, 2) + "***" + email.substring(at);
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> req) {
+        String token = req.get("token");
+        String newPassword = firstNonBlank(req.get("newPassword"), req.get("password"), req.get("matKhau"));
+        if (token == null || token.isBlank() || newPassword == null || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ token và mật khẩu mới"));
+        }
+        if (newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu mới phải có tối thiểu 6 ký tự"));
+        }
+
+        Optional<PasswordResetToken> resetTokenOpt = passwordResetTokenRepo.findByTokenAndUsedAtIsNull(token.trim());
+        if (resetTokenOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã được sử dụng"));
+        }
+
+        PasswordResetToken resetToken = resetTokenOpt.get();
+        LocalDateTime now = LocalDateTime.now();
+        if (resetToken.getExpiresAt() == null || resetToken.getExpiresAt().isBefore(now)) {
+            resetToken.setUsedAt(now);
+            passwordResetTokenRepo.save(resetToken);
+            return ResponseEntity.badRequest().body(Map.of("error", "Liên kết đặt lại mật khẩu đã hết hạn"));
+        }
+
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        if (ACCOUNT_NHAN_VIEN.equals(resetToken.getAccountType())) {
+            Optional<NhanVien> nvOpt = nhanVienRepo.findById(resetToken.getAccountId());
+            if (nvOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Tài khoản không còn tồn tại"));
+            }
+            NhanVien nv = nvOpt.get();
+            nv.setMatKhau(encodedPassword);
+            nhanVienRepo.save(nv);
+        } else if (ACCOUNT_KHACH_HANG.equals(resetToken.getAccountType())) {
+            Optional<KhachHang> khOpt = khachHangRepo.findById(resetToken.getAccountId());
+            if (khOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Tài khoản không còn tồn tại"));
+            }
+            KhachHang kh = khOpt.get();
+            kh.setMatKhau(encodedPassword);
+            khachHangRepo.save(kh);
+        } else {
+            return ResponseEntity.badRequest().body(Map.of("error", "Loại tài khoản không hợp lệ"));
+        }
+
+        resetToken.setUsedAt(now);
+        passwordResetTokenRepo.save(resetToken);
+        return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới."));
+    }
+
+    private ResponseEntity<Map<String, String>> passwordResetAccepted() {
+        return ResponseEntity.ok(Map.of(
+                "message",
+                "Nếu tài khoản tồn tại và có email, hệ thống đã gửi hướng dẫn đặt lại mật khẩu."
+        ));
+    }
+
+    private void issuePasswordResetForEmployee(NhanVien nv) {
+        if (nv == null || isBlank(nv.getEmail())) return;
+        PasswordResetToken token = createPasswordResetToken(ACCOUNT_NHAN_VIEN, nv.getId());
+        emailService.sendPasswordResetEmail(nv.getEmail(), displayName(nv.getHoVaTen(), nv.getTenNguoiDung()), token.getToken(), token.getExpiresAt());
+    }
+
+    private void issuePasswordResetForCustomer(KhachHang kh) {
+        if (kh == null || isBlank(kh.getEmail())) return;
+        PasswordResetToken token = createPasswordResetToken(ACCOUNT_KHACH_HANG, kh.getId());
+        emailService.sendPasswordResetEmail(kh.getEmail(), displayName(kh.getHoVaTen(), kh.getEmail()), token.getToken(), token.getExpiresAt());
+    }
+
+    private PasswordResetToken createPasswordResetToken(String accountType, Integer accountId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<PasswordResetToken> activeTokens = passwordResetTokenRepo.findByAccountTypeAndAccountIdAndUsedAtIsNull(accountType, accountId);
+        activeTokens.forEach(activeToken -> activeToken.setUsedAt(now));
+        passwordResetTokenRepo.saveAll(activeTokens);
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(generateSecureToken())
+                .accountType(accountType)
+                .accountId(accountId)
+                .expiresAt(now.plusMinutes(passwordResetTokenMinutes))
+                .createdAt(now)
+                .build();
+        return passwordResetTokenRepo.save(resetToken);
+    }
+
+    private String generateSecureToken() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) return null;
+        for (String value : values) {
+            if (value != null && !value.isBlank()) return value.trim();
+        }
+        return null;
+    }
+
+    private String displayName(String primary, String fallback) {
+        if (!isBlank(primary)) return primary.trim();
+        if (!isBlank(fallback)) return fallback.trim();
+        return "Zestia member";
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     @PutMapping("/profile")

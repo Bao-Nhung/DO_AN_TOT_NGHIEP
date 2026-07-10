@@ -37,6 +37,16 @@ export function api() {
       request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
     forgotPassword: (identifier) =>
       request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ identifier }) }),
+    resetPassword: (token, newPassword) =>
+      request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
+
+    // Customer AI support
+    sendAiChat: (data) =>
+      request('/ai-chat', { method: 'POST', body: JSON.stringify(data) }),
+
+    // Newsletter
+    subscribeNewsletter: (email) =>
+      request('/newsletter/subscribe', { method: 'POST', body: JSON.stringify({ email }) }),
 
     // Products
     getVay: () => request('/vay'),
@@ -80,6 +90,11 @@ export function api() {
       method: 'PUT',
       body: JSON.stringify({ maHoaDon, soDienThoai, ghiChu: ghiChu || null })
     }),
+    requestReturnOrder: (id, lyDo) => request(`/hoa-don/${id}/return-request`, {
+      method: 'PUT',
+      body: JSON.stringify({ lyDo: lyDo || null })
+    }),
+    getOrderAuditLog: (id) => request(`/hoa-don/${id}/audit-log`),
       
     // ====== API MỚI CHO TRACKING ======
     searchOrder: (params) => {

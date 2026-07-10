@@ -162,6 +162,14 @@
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
                </div>
             </template>
+            <template v-else-if="detailData.trangThai === 8 || detailData.trangThai === 9">
+               <div class="z-step active">
+                  <div class="z-step-dot" :style="detailData.trangThai === 9 ? 'background: var(--z-danger);' : 'background: var(--z-accent);'"></div>
+                  <div class="z-step-label" :style="detailData.trangThai === 9 ? 'color: var(--z-danger); font-weight: 600;' : 'color: var(--z-accent); font-weight: 600;'">
+                    {{ detailData.trangThai === 9 ? 'Đã hoàn tiền/hoàn tất' : 'Yêu cầu đổi/trả' }}
+                  </div>
+               </div>
+            </template>
             <template v-else>
                 <div v-for="(step, i) in statusSteps" :key="i"
                      class="z-step" :class="{ active: detailData.trangThai >= i && detailData.trangThai !== 6, current: detailData.trangThai === i, failed: i === 4 && detailData.trangThai === 6 }">
@@ -254,6 +262,18 @@
                   <div v-if="detailData.ghiChu" class="mb-3 p-3" style="background:#fef3cd;border-radius:var(--z-radius);font-size:13px">
                     <strong>Ghi chú:</strong> {{ detailData.ghiChu }}
                   </div>
+                  <div v-if="detailData.auditLogs?.length" class="mb-3">
+                    <h4 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--z-dark)">Lịch sử thao tác</h4>
+                    <div class="d-flex flex-column gap-2">
+                      <div v-for="log in detailData.auditLogs.slice(0, 5)" :key="log.id" class="z-audit-row">
+                        <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ log.hanhDong }}</div>
+                        <div style="font-size:12px;color:var(--z-gray)">
+                          {{ log.nguoiThucHien || 'System' }} · {{ log.vaiTro || 'System' }} · {{ log.ngayTao ? new Date(log.ngayTao).toLocaleString('vi-VN') : '' }}
+                        </div>
+                        <div v-if="log.ghiChu" style="font-size:12px;color:var(--z-gray)">{{ log.ghiChu }}</div>
+                      </div>
+                    </div>
+                  </div>
               </div>
 
               <div class="col-md-5 ps-4">
@@ -328,6 +348,16 @@
               <i class="bi bi-trash me-1"></i> Huỷ đơn
             </button>
             
+            <button v-if="detailData.trangThai === 4" class="z-btn-action z-btn-secondary"
+                    @click="confirmReturnProcess(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) }, 8)">
+              <i class="bi bi-arrow-counterclockwise me-1"></i> Tiếp nhận đổi/trả
+            </button>
+
+            <button v-if="detailData.trangThai === 8" class="z-btn-action z-btn-primary"
+                    @click="confirmReturnProcess(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) }, 9)">
+              <i class="bi bi-cash-coin me-1"></i> Hoàn tiền/hoàn tất
+            </button>
+
             <button v-if="canAdvance({ statusValue: detailData.trangThai })" class="z-btn-action z-btn-primary" 
                     @click="confirmAdvance(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai), isCod: (detailData.hinhThucThanhToan || '').toUpperCase().includes('COD'), paid: detailData.daThanhToan })">
               <i class="bi bi-check-circle me-1"></i> {{ nextStatusLabel({ statusValue: detailData.trangThai }) }}
@@ -400,6 +430,8 @@ const statusMap = {
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
 statusMap[7] = { text: 'Thanh toán thất bại', cls: 'danger' }
+statusMap[8] = { text: 'Yêu cầu đổi/trả', cls: 'warning' }
+statusMap[9] = { text: 'Đã hoàn tiền', cls: 'danger' }
 
 const search = ref('')
 const activeStatus = ref('all')
@@ -517,6 +549,8 @@ const statusTabs = computed(() => [
   { label: 'Đã huỷ',        value: '5',    count: allOrders.value.filter(o => o.statusValue === '5').length },
   { label: 'Giao thất bại', value: '6',    count: allOrders.value.filter(o => o.statusValue === '6').length },
   { label: 'Thanh toán thất bại', value: '7', count: allOrders.value.filter(o => o.statusValue === '7').length },
+  { label: 'Yêu cầu đổi/trả', value: '8', count: allOrders.value.filter(o => o.statusValue === '8').length },
+  { label: 'Đã hoàn tiền', value: '9', count: allOrders.value.filter(o => o.statusValue === '9').length },
 ])
 
 const filteredOrders = computed(() => {
@@ -592,6 +626,20 @@ function confirmCancel(o) {
   confirmOrder.value = o
   confirmNewStatus.value = 5 // Đã hủy là 5
   cancelNote.value = ''
+  showConfirm.value = true
+}
+
+function confirmReturnProcess(o, nextStatus) {
+  const isRefund = Number(nextStatus) === 9
+  confirmTitle.value = isRefund ? 'Hoàn tiền/hoàn tất đổi trả' : 'Tiếp nhận yêu cầu đổi/trả'
+  confirmMessage.value = isRefund
+    ? `Xác nhận đã xử lý hoàn tiền/đổi trả cho đơn hàng ${o.id}?`
+    : `Tiếp nhận yêu cầu đổi/trả cho đơn hàng ${o.id}?`
+  confirmType.value = isRefund ? 'refund' : 'return'
+  confirmOrder.value = o
+  confirmNewStatus.value = nextStatus
+  actionNote.value = ''
+  confirmPaid.value = false
   showConfirm.value = true
 }
 
@@ -689,6 +737,12 @@ async function openDetail(o) {
 .z-pay-badge.unpaid { background: #fef3cd; color: #b45309; }
 .z-cod-paid {
   background: #fff8e1; border: 1px solid #fde68a; border-radius: var(--z-radius); padding: 12px 14px;
+}
+.z-audit-row {
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-bg-alt);
+  padding: 10px 12px;
 }
 
 /* ============================================================== */

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface HoaDonRepository extends JpaRepository<HoaDon, Integer> {
     
@@ -28,15 +29,27 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, Integer> {
     @Query("SELECT h FROM HoaDon h WHERE h.maHoaDon = :maHoaDon")
     Optional<HoaDon> findOrderByCode(@Param("maHoaDon") String maHoaDon);
 
-    @Query("SELECT h FROM HoaDon h WHERE h.khachHang.soDienThoai = :soDienThoai ORDER BY h.ngayTao DESC")
+    @Query("SELECT h FROM HoaDon h LEFT JOIN h.khachHang kh WHERE kh.soDienThoai = :soDienThoai OR h.soDienThoai = :soDienThoai ORDER BY h.ngayTao DESC")
     List<HoaDon> findOrdersByPhoneNumber(@Param("soDienThoai") String soDienThoai);
 
     @Query("SELECT h FROM HoaDon h WHERE h.khachHang.id = :khachHangId ORDER BY h.ngayTao DESC")
     List<HoaDon> findByCustomerIdOrderByLatest(@Param("khachHangId") Integer khachHangId);
 
-    @Query("SELECT h FROM HoaDon h WHERE h.maHoaDon = :maHoaDon AND h.khachHang.soDienThoai = :soDienThoai")
+    @Query("SELECT h FROM HoaDon h LEFT JOIN h.khachHang kh WHERE h.maHoaDon = :maHoaDon AND (kh.soDienThoai = :soDienThoai OR h.soDienThoai = :soDienThoai)")
     Optional<HoaDon> findOrderByCodeAndPhone(@Param("maHoaDon") String maHoaDon, @Param("soDienThoai") String soDienThoai);
 
     @Query("SELECT h FROM HoaDon h WHERE h.trangThaiTracking = :trangThaiTracking ORDER BY h.ngayTao DESC")
     List<HoaDon> findByTrackingStatus(@Param("trangThaiTracking") String trangThaiTracking);
+
+    @Query("""
+            SELECT h FROM HoaDon h
+            WHERE h.trangThai = :status
+              AND (h.daThanhToan IS NULL OR h.daThanhToan = false)
+              AND h.ngayTao < :cutoff
+              AND UPPER(h.hinhThucThanhToan) IN :onlineMethods
+              AND (h.phuongThucThanhToanOnline IS NULL OR UPPER(h.phuongThucThanhToanOnline) <> 'FAILED')
+            """)
+    List<HoaDon> findExpiredPendingOnlinePayments(@Param("status") Byte status,
+                                                  @Param("cutoff") LocalDateTime cutoff,
+                                                  @Param("onlineMethods") List<String> onlineMethods);
 }

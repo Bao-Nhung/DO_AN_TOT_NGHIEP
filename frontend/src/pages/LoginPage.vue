@@ -83,7 +83,7 @@
             <label class="d-flex align-items-center gap-2" style="color:var(--z-gray);cursor:pointer">
               <input type="checkbox" checked style="accent-color:var(--z-accent)"> Ghi nhớ đăng nhập
             </label>
-            <a @click="view = 'forgot'; error = ''" style="color:var(--z-accent);cursor:pointer;font-weight:500">Quên mật khẩu?</a>
+            <a @click="view = 'forgot'; error = ''; forgotMessage = ''" style="color:var(--z-accent);cursor:pointer;font-weight:500">Quên mật khẩu?</a>
           </div>
 
           <button class="lm-btn-primary w-100 justify-content-center mb-3" :disabled="loading" @click="doLogin">
@@ -141,16 +141,15 @@
         <template v-if="view === 'forgot'">
           <h1 class="z-display mb-2" style="font-size:32px;font-weight:400;color:var(--z-dark)">Quên mật khẩu</h1>
           <p class="mb-4" style="font-size:14px;font-weight:400;color:var(--z-gray)">
-            Nhập email hoặc tên đăng nhập để xem gợi ý mật khẩu
+            Nhập email, tên đăng nhập hoặc số điện thoại để nhận liên kết đặt lại mật khẩu
           </p>
 
           <div v-if="error" class="mb-3" style="padding:12px 16px;background:#fee2e2;color:#dc2626;border-radius:var(--z-radius);font-size:13px">
             {{ error }}
           </div>
 
-          <div v-if="forgotResult" class="mb-3" style="padding:16px;background:#dcfce7;color:#16a34a;border-radius:var(--z-radius);font-size:13px">
-            <div class="mb-2"><strong>Email:</strong> {{ forgotResult.maskedEmail }}</div>
-            <div><strong>Gợi ý:</strong> {{ forgotResult.hint }}</div>
+          <div v-if="forgotMessage" class="mb-3" style="padding:16px;background:#dcfce7;color:#16a34a;border-radius:var(--z-radius);font-size:13px">
+            {{ forgotMessage }}
           </div>
 
           <div class="d-flex flex-column gap-3 mb-4">
@@ -162,12 +161,52 @@
           </div>
 
           <button class="lm-btn-primary w-100 justify-content-center mb-3" :disabled="loading" @click="doForgot">
-            <span v-if="loading">Đang tìm kiếm...</span>
-            <span v-else>Tìm tài khoản</span>
+            <span v-if="loading">Đang gửi yêu cầu...</span>
+            <span v-else>Gửi liên kết đặt lại</span>
           </button>
 
           <div class="text-center">
-            <a @click="view = 'login'; error = ''; forgotResult = null" style="color:var(--z-accent);cursor:pointer;font-size:13px;font-weight:500">
+            <a @click="view = 'login'; error = ''; forgotMessage = ''" style="color:var(--z-accent);cursor:pointer;font-size:13px;font-weight:500">
+              <i class="bi bi-arrow-left me-1"></i> Quay lại đăng nhập
+            </a>
+          </div>
+        </template>
+
+        <!-- RESET PASSWORD VIEW -->
+        <template v-if="view === 'reset'">
+          <h1 class="z-display mb-2" style="font-size:32px;font-weight:400;color:var(--z-dark)">Đặt lại mật khẩu</h1>
+          <p class="mb-4" style="font-size:14px;font-weight:400;color:var(--z-gray)">
+            Nhập mật khẩu mới cho tài khoản của bạn.
+          </p>
+
+          <div v-if="error" class="mb-3" style="padding:12px 16px;background:#fee2e2;color:#dc2626;border-radius:var(--z-radius);font-size:13px">
+            {{ error }}
+          </div>
+
+          <div class="d-flex flex-column gap-3 mb-4">
+            <div class="position-relative">
+              <label class="lm-form-label d-block mb-2">Mật khẩu mới</label>
+              <input class="lm-input" v-model="resetPassword" :type="showPw ? 'text' : 'password'" placeholder="Tối thiểu 6 ký tự"
+                     @keydown.enter="doResetPassword">
+              <button @click="showPw = !showPw"
+                      style="position:absolute;right:14px;bottom:12px;border:none;background:none;cursor:pointer;color:var(--z-gray-light)">
+                <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'" style="font-size:16px"></i>
+              </button>
+            </div>
+            <div>
+              <label class="lm-form-label d-block mb-2">Xác nhận mật khẩu mới</label>
+              <input class="lm-input" v-model="resetPasswordConfirm" :type="showPw ? 'text' : 'password'" placeholder="Nhập lại mật khẩu mới"
+                     @keydown.enter="doResetPassword">
+            </div>
+          </div>
+
+          <button class="lm-btn-primary w-100 justify-content-center mb-3" :disabled="loading" @click="doResetPassword">
+            <span v-if="loading">Đang cập nhật...</span>
+            <span v-else>Cập nhật mật khẩu</span>
+          </button>
+
+          <div class="text-center">
+            <a @click="view = 'login'; error = ''" style="color:var(--z-accent);cursor:pointer;font-size:13px;font-weight:500">
               <i class="bi bi-arrow-left me-1"></i> Quay lại đăng nhập
             </a>
           </div>
@@ -195,7 +234,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
@@ -228,7 +267,17 @@ const features = [
 const regForm = ref({ hoVaTen: '', email: '', soDienThoai: '', matKhau: '' })
 const regSuccess = ref('')
 const forgotId = ref('')
-const forgotResult = ref(null)
+const forgotMessage = ref('')
+const resetToken = ref('')
+const resetPassword = ref('')
+const resetPasswordConfirm = ref('')
+
+onMounted(() => {
+  if (route.query.resetToken) {
+    resetToken.value = String(route.query.resetToken)
+    view.value = 'reset'
+  }
+})
 
 async function doLogin() {
   if (!username.value || !password.value) {
@@ -287,13 +336,48 @@ async function doForgot() {
     return
   }
   error.value = ''
-  forgotResult.value = null
+  forgotMessage.value = ''
   loading.value = true
   try {
     const data = await api().forgotPassword(forgotId.value)
-    forgotResult.value = data
+    forgotMessage.value = data?.message || 'Nếu tài khoản tồn tại, hệ thống đã gửi email hướng dẫn đặt lại mật khẩu.'
   } catch (e) {
-    error.value = e.error || e.message || 'Không tìm thấy tài khoản'
+    error.value = e.error || e.message || 'Không thể gửi yêu cầu đặt lại mật khẩu'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function doResetPassword() {
+  if (!resetToken.value) {
+    error.value = 'Liên kết đặt lại mật khẩu không hợp lệ'
+    return
+  }
+  if (!resetPassword.value || !resetPasswordConfirm.value) {
+    error.value = 'Vui lòng nhập đầy đủ mật khẩu mới'
+    return
+  }
+  if (resetPassword.value.length < 6) {
+    error.value = 'Mật khẩu mới phải có tối thiểu 6 ký tự'
+    return
+  }
+  if (resetPassword.value !== resetPasswordConfirm.value) {
+    error.value = 'Mật khẩu xác nhận không khớp'
+    return
+  }
+
+  error.value = ''
+  loading.value = true
+  try {
+    await api().resetPassword(resetToken.value, resetPassword.value)
+    showToast('Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.')
+    resetToken.value = ''
+    resetPassword.value = ''
+    resetPasswordConfirm.value = ''
+    view.value = 'login'
+    router.replace('/login')
+  } catch (e) {
+    error.value = e.error || e.message || 'Đặt lại mật khẩu thất bại'
   } finally {
     loading.value = false
   }

@@ -154,11 +154,27 @@
                 </div>
                 <div class="flex-grow-1">
                   <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ p.name }}</div>
-                  <div style="font-size:12px;color:var(--z-gray)">Tồn kho: {{ p.sold }}</div>
+                  <div style="font-size:12px;color:var(--z-gray)">Đã bán: {{ p.sold }}</div>
                 </div>
                 <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ p.revenue }}</div>
               </div>
             </div>
+          </div>
+
+          <div class="z-admin-card mt-3">
+            <h3 class="z-admin-card-title mb-3">Tồn kho thấp</h3>
+            <div v-if="lowStockVariants.length" class="d-flex flex-column gap-3">
+              <div v-for="v in lowStockVariants" :key="v.variantId" class="d-flex justify-content-between gap-3">
+                <div>
+                  <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ v.tenVay }}</div>
+                  <div style="font-size:12px;color:var(--z-gray)">
+                    {{ v.maVay }} · {{ v.mauSac || 'N/A' }} · Size {{ v.kichThuoc || 'N/A' }}
+                  </div>
+                </div>
+                <span class="z-status danger">Còn {{ v.soLuong }}</span>
+              </div>
+            </div>
+            <div v-else style="font-size:13px;color:var(--z-gray)">Chưa có biến thể tồn kho thấp.</div>
           </div>
         </div>
       </div>
@@ -188,6 +204,9 @@ const statusMap = {
   7: { text: 'Thanh toán thất bại', cls: 'danger' },
 }
 
+statusMap[8] = { text: 'Yêu cầu đổi/trả', cls: 'warning' }
+statusMap[9] = { text: 'Đã hoàn tiền', cls: 'danger' }
+
 const stats = ref([
   { label: 'Doanh thu', value: '...', change: '', up: true, icon: 'bi-graph-up', color: '#16a34a' },
   { label: 'Đơn hàng', value: '...', change: '', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
@@ -196,6 +215,7 @@ const stats = ref([
 ])
 const recentOrders = ref([])
 const topProducts = ref([])
+const lowStockVariants = ref([])
 const staffStats = ref([])
 const todayShifts = ref([])
 const myRecentOrders = ref([])
@@ -216,16 +236,29 @@ async function loadAdminDashboard() {
       { label: 'Doanh thu', value: fmtPrice(s.doanhThu), change: `${s.tongLoaiVay} loại váy`, up: true, icon: 'bi-graph-up', color: '#16a34a' },
       { label: 'Đơn hàng', value: String(s.tongDonHang), change: 'Tổng đơn trong hệ thống', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
       { label: 'Khách hàng', value: String(s.tongKhachHang), change: 'Tài khoản khách hàng', up: true, icon: 'bi-people', color: '#6366f1' },
-      { label: 'Sản phẩm', value: String(s.tongSanPham), change: `${s.tongLoaiVay} loại`, up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
+      { label: 'Sản phẩm', value: String(s.tongSanPham), change: `${s.tongBienThe || 0} biến thể`, up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
     ]
 
     recentOrders.value = sortByDate(orders).slice(0, 6).map(mapOrder)
 
-    const mapped = prods.map(mapProduct).sort((a, b) => b.stock - a.stock)
-    topProducts.value = mapped.slice(0, 5).map(p => ({
-      name: p.name, sold: String(p.stock), revenue: fmtPrice((p.salePrice || p.price) * Math.max(1, p.stock || 1)),
-      letter: p.letter, bg: p.bg, image: p.image || null
-    }))
+    lowStockVariants.value = s.lowStockVariants || []
+    const topSelling = s.topSellingProducts || []
+    if (topSelling.length) {
+      topProducts.value = topSelling.map((p, i) => ({
+        name: p.tenVay,
+        sold: String(p.soLuongBan || 0),
+        revenue: fmtPrice(p.doanhThu || 0),
+        letter: (p.tenVay || 'Z').charAt(0),
+        bg: ['#D4A99E', '#C4A98E', '#A8A49E'][i % 3],
+        image: null
+      }))
+    } else {
+      const mapped = prods.map(mapProduct).sort((a, b) => b.stock - a.stock)
+      topProducts.value = mapped.slice(0, 5).map(p => ({
+        name: p.name, sold: String(p.stock), revenue: fmtPrice((p.salePrice || p.price) * Math.max(1, p.stock || 1)),
+        letter: p.letter, bg: p.bg, image: p.image || null
+      }))
+    }
   } catch (e) {
     console.error('Dashboard load failed:', e)
   }

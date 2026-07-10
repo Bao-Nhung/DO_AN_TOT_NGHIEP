@@ -86,6 +86,9 @@ public class HoaDon {
     @Column(name = "so_dien_thoai")
     private String soDienThoai;
 
+    @Column(name = "email_khach_hang")
+    private String emailKhachHang;
+
     private String ghiChu;
 
     @Column(name = "ngay_tao")

@@ -6,7 +6,8 @@ Thư mục này chứa **dữ liệu chuẩn** của dự án. Nhờ nó, dự �
 
 | File | Mô tả |
 |------|-------|
-| **`fashion_shop.sql`** | File SQL **duy nhất, hoàn chỉnh**: tạo database, tạo tất cả bảng và nạp đầy đủ dữ liệu (60 sản phẩm, 548 biến thể kèm **giá**, 240 **hình ảnh**, đơn hàng, khách hàng, tài khoản...). |
+| **`fashion_shop.sql`** | File SQL chính, hoàn chỉnh: tạo database, tạo tất cả bảng và nạp đầy đủ dữ liệu (60 sản phẩm, 548 biến thể kèm **giá**, 240 **hình ảnh**, đơn hàng, khách hàng, tài khoản, newsletter, token đặt lại mật khẩu...). |
+| `zestia_database_complete_2026.sql` | Bản complete cùng nội dung với `fashion_shop.sql`, giữ lại để nhóm dễ đối chiếu lịch sử gộp dữ liệu. |
 | `export-db.ps1` | Script PowerShell để **xuất lại** `fashion_shop.sql` từ database đang chạy (chỉ dùng khi cần cập nhật dữ liệu chuẩn). |
 
 ## Cách dùng (cài trên máy mới)

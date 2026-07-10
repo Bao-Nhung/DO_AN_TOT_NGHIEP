@@ -3,7 +3,6 @@ package com.zestia.datn.zestia.controller;
 import java.time.LocalDateTime;
 
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/admin/thong-ke")
 @RequiredArgsConstructor
-@CrossOrigin("*")
 public class ThongKeController {
 
     private final ThongKeRepository thongKeRepository;

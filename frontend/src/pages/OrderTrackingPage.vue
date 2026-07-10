@@ -5,7 +5,7 @@
         <p class="lm-eyebrow mb-3">Hỗ trợ khách hàng</p>
         <h1 class="mb-3">Tra cứu <em>đơn hàng</em></h1>
         <p style="font-size:16px;color:var(--z-gray);max-width:600px;margin: 0 auto;">
-          Nhập mã đơn hàng hoặc số điện thoại để xem trạng thái giao hàng của bạn.
+          Nhập mã đơn hàng và số điện thoại để xem trạng thái giao hàng của bạn.
         </p>
       </div>
     </div>
@@ -20,8 +20,8 @@
               <input v-model="form.maHoaDon" class="lm-input" placeholder="VD: HD2606..." required />
             </div>
             <div class="col-md-6">
-              <label class="form-label" style="font-size: 13px; font-weight: 500;">Số điện thoại (tùy chọn)</label>
-              <input v-model="form.soDienThoai" class="lm-input" placeholder="Nhập SĐT đặt hàng" />
+              <label class="form-label" style="font-size: 13px; font-weight: 500;">Số điện thoại *</label>
+              <input v-model="form.soDienThoai" class="lm-input" placeholder="Nhập SĐT đặt hàng" required />
             </div>
             <div class="col-12 mt-4">
               <button type="submit" class="lm-btn-primary w-100" :disabled="loading">
@@ -223,7 +223,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useOrders } from '@/composables/useOrders'
 import { useToast } from '@/composables/useToast'
 import AppFooter from '@/components/layout/AppFooter.vue'
@@ -232,6 +233,7 @@ import { api } from '@/composables/useApi'
 
 const { searchOrder, currentOrder, loading } = useOrders()
 const { showToast } = useToast()
+const route = useRoute()
 
 const form = ref({
   maHoaDon: '',
@@ -243,9 +245,23 @@ const cancelReason = ref('')
 const otherCancelReason = ref('')
 const payingId = ref(null)
 
+onMounted(() => {
+  const maHoaDon = route.query.maHoaDon ? String(route.query.maHoaDon) : ''
+  const soDienThoai = route.query.soDienThoai ? String(route.query.soDienThoai) : ''
+  if (maHoaDon) form.value.maHoaDon = maHoaDon
+  if (soDienThoai) form.value.soDienThoai = soDienThoai
+  if (maHoaDon && soDienThoai) {
+    handleSearch()
+  }
+})
+
 async function handleSearch() {
   if (!form.value.maHoaDon.trim()) {
     showToast('Vui lòng nhập mã đơn hàng', 'warning')
+    return
+  }
+  if (!form.value.soDienThoai.trim()) {
+    showToast('Vui lòng nhập số điện thoại', 'warning')
     return
   }
   try {

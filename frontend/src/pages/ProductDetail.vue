@@ -78,6 +78,19 @@
             </button>
           </div>
 
+          <div class="z-size-guide mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Gợi ý chọn size</span>
+              <span v-if="activeSize" style="font-size:12px;color:var(--z-accent)">Đang chọn {{ activeSize }}</span>
+            </div>
+            <div class="d-grid gap-2" style="grid-template-columns:repeat(4,1fr)">
+              <div v-for="row in sizeGuideRows" :key="row.size" class="z-size-guide-cell" :class="{ active: activeSize === row.size }">
+                <strong>{{ row.size }}</strong>
+                <span>{{ row.fit }}</span>
+              </div>
+            </div>
+          </div>
+
           <div class="d-grid gap-2 mb-4" style="grid-template-columns:1fr 52px">
             <button class="lm-btn-primary justify-content-center" @click="addToCart()">
               <span>Thêm vào giỏ hàng</span>
@@ -113,7 +126,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import { useCart } from '@/composables/useCart'
@@ -133,6 +146,12 @@ const activeThumb = ref(0)
 const activeColor = ref(null) 
 const activeSize  = ref(null) 
 const isLiked = computed(() => isInWishlist(product.value.id))
+const sizeGuideRows = [
+  { size: 'S', fit: '40-48kg' },
+  { size: 'M', fit: '49-56kg' },
+  { size: 'L', fit: '57-64kg' },
+  { size: 'XL', fit: '65-72kg' },
+]
 
 const letters = ['Z', 'e', 's', 't', 'i', 'a']
 const bgs = [
@@ -168,8 +187,12 @@ const discountPct = computed(() => {
   return Math.round((1 - cur / orig) * 100)
 })
 
+const activeVariants = computed(() => {
+  return (product.value.bienThe || []).filter(v => Number(v.trangThai) === 1 && Number(v.soLuong || 0) > 0)
+})
+
 const colors = computed(() => {
-  const bienThe = product.value.bienThe || []
+  const bienThe = activeVariants.value
   const unique = []
   const seen = new Set()
   for (const bt of bienThe) {
@@ -186,16 +209,31 @@ const colors = computed(() => {
 })
 
 const sizes = computed(() => {
-  const bienThe = product.value.bienThe || []
+  const colorName = activeColor.value !== null ? colors.value[activeColor.value]?.name : null
+  const bienThe = colorName
+    ? activeVariants.value.filter(bt => bt.mauSac === colorName)
+    : activeVariants.value
   const unique = []
   const seen = new Set()
   for (const bt of bienThe) {
     if (bt.kichThuoc && !seen.has(bt.kichThuoc)) {
       seen.add(bt.kichThuoc)
-      unique.push({ label: bt.kichThuoc, soldOut: bt.soLuong === 0 })
+      unique.push({ label: bt.kichThuoc, soldOut: Number(bt.soLuong || 0) <= 0 })
     }
   }
-  return unique.length ? unique : [{ label: 'Free', soldOut: false }]
+  return unique
+})
+
+const selectedVariant = computed(() => {
+  if (activeColor.value === null || !activeSize.value) return null
+  const colorName = colors.value[activeColor.value]?.name
+  return activeVariants.value.find(bt => bt.mauSac === colorName && bt.kichThuoc === activeSize.value) || null
+})
+
+watch(activeColor, () => {
+  if (activeSize.value && !sizes.value.some(s => s.label === activeSize.value && !s.soldOut)) {
+    activeSize.value = null
+  }
 })
 
 onMounted(async () => {
@@ -217,12 +255,18 @@ function addToCart() {
     return
   }
 
+  const variantMatch = selectedVariant.value
+  if (!variantMatch) {
+    showToast('Biến thể này không khả dụng hoặc đã hết hàng!', 'warning')
+    return
+  }
+
   const p = product.value
   const idx = (p.id || 0) % letters.length
   const colorName = colors.value[activeColor.value]?.name || ''
   
   // TẠO ID DUY NHẤT ĐỂ GIỎ HÀNG KHÔNG GỘP CHUNG SẢN PHẨM KHÁC SIZE/MÀU
-  const uniqueCartId = `${p.id}-${colorName}-${activeSize.value}`
+  const uniqueCartId = `variant-${variantMatch.id}`
 
   addItem({
     id: uniqueCartId,       // ID ảo để tách giỏ hàng
@@ -231,7 +275,9 @@ function addToCart() {
     size: activeSize.value, // Lưu size vào giỏ
     color: colorName,       // Lưu màu vào giỏ
     variant: [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · '),
-    price: Number(p.giaBan) || 0,
+    price: Number(variantMatch.giaBan || p.giaBan) || 0,
+    maxQty: Number(variantMatch.soLuong || 0),
+    variantId: variantMatch.id,
     image: p.anhUrl || null,
     letter: letters[idx], 
     bg: bgs[idx % bgs.length]
@@ -249,4 +295,24 @@ function toggleWish() {
 .z-size-btn.active       { background: var(--z-dark) !important; color: var(--z-white); border-color: var(--z-dark) !important; }
 .z-size-btn.sold-out     { opacity: 0.3; cursor: not-allowed !important; text-decoration: line-through; }
 .z-size-btn:not(.sold-out):not(.active):hover { border-color: var(--z-dark); }
+.z-size-guide {
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  padding: 12px;
+  background: var(--z-bg-alt);
+}
+.z-size-guide-cell {
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+  padding: 8px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.z-size-guide-cell strong { font-size: 13px; color: var(--z-dark); }
+.z-size-guide-cell span { font-size: 11px; color: var(--z-gray); white-space: nowrap; }
+.z-size-guide-cell.active { border-color: var(--z-accent); background: var(--z-accent-soft); }
 </style>

@@ -128,10 +128,12 @@
       <p class="lm-eyebrow mb-3">Cộng đồng Zestia</p>
       <h2 class="z-display">Nhận ưu đãi <em>độc quyền</em></h2>
       <p>Đăng ký để nhận bộ sưu tập mới, voucher thành viên và gợi ý phối đồ theo mùa.</p>
-      <div class="z-newsletter-form">
-        <input class="lm-input" type="email" placeholder="Email của bạn...">
-        <button @click="showToast('Đăng ký thành công!')">Đăng ký</button>
-      </div>
+      <form class="z-newsletter-form" @submit.prevent="subscribeNewsletter">
+        <input v-model="newsletterEmail" class="lm-input" type="email" placeholder="Email của bạn..." :disabled="newsletterLoading">
+        <button type="submit" :disabled="newsletterLoading">
+          {{ newsletterLoading ? 'Đang gửi...' : 'Đăng ký' }}
+        </button>
+      </form>
     </section>
 
     <AppFooter />
@@ -139,7 +141,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import MarqueeStrip from '@/components/ui/MarqueeStrip.vue'
 import ProductCard from '@/components/ui/ProductCard.vue'
 import CollectionCard from '@/components/ui/CollectionCard.vue'
@@ -147,9 +149,12 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 import { useToast } from '@/composables/useToast'
 import { useReveal } from '@/composables/useReveal'
 import { products, loadProducts } from '@/composables/useProducts'
+import { api } from '@/composables/useApi'
 
 useReveal()
 const { showToast } = useToast()
+const newsletterEmail = ref('')
+const newsletterLoading = ref(false)
 
 const newArrivals = computed(() => products.value.slice(0, 4))
 const serviceHighlights = [
@@ -173,6 +178,24 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 function onScroll() {
   const hero = document.getElementById('hero-parallax')
   if (hero) hero.style.transform = `translateY(${window.scrollY * 0.08}px) scale(1.04)`
+}
+
+async function subscribeNewsletter() {
+  const email = newsletterEmail.value.trim()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Vui lòng nhập email hợp lệ')
+    return
+  }
+  newsletterLoading.value = true
+  try {
+    const res = await api().subscribeNewsletter(email)
+    showToast(res?.message || 'Đăng ký nhận tin thành công!')
+    newsletterEmail.value = ''
+  } catch (err) {
+    showToast(err.error || 'Không thể đăng ký nhận tin')
+  } finally {
+    newsletterLoading.value = false
+  }
 }
 </script>
 
@@ -423,6 +446,10 @@ function onScroll() {
 }
 .z-newsletter-form button:hover {
   background: var(--z-accent);
+}
+.z-newsletter-form button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 @media (max-width: 992px) {

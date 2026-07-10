@@ -1,5 +1,6 @@
 package com.zestia.datn.zestia.controller;
 
+import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.*;
 import com.zestia.datn.zestia.entity.Anh;
 import com.zestia.datn.zestia.repository.*;
@@ -30,10 +31,16 @@ public class VayController {
     private final MauSacRepository mauSacRepo;
     private final KichThuocRepository kichThuocRepo;
     private final AnhRepository anhRepo;
+    private final JwtUtil jwtUtil;
 
     @GetMapping
-    public List<Map<String, Object>> getAll() {
-        List<Vay> list = vayRepo.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"));
+    public List<Map<String, Object>> getAll(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        boolean staff = hasStaffAccess(authHeader);
+        List<Vay> list = staff
+                ? vayRepo.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"))
+                : vayRepo.findByTrangThai((byte) 1).stream()
+                        .sorted(Comparator.comparing(Vay::getId, Comparator.nullsLast(Comparator.reverseOrder())))
+                        .toList();
         List<Map<String, Object>> result = new ArrayList<>();
         for (Vay v : list) {
             result.add(toMap(v));
@@ -42,16 +49,48 @@ public class VayController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Integer id) {
+    public ResponseEntity<?> getById(@PathVariable Integer id,
+                                     @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        boolean staff = hasStaffAccess(authHeader);
         return vayRepo.findById(id)
-                .map(v -> ResponseEntity.ok(toDetailMap(v)))
+                .map(v -> {
+                    if (!staff && (v.getTrangThai() == null || v.getTrangThai() != 1)) {
+                        return ResponseEntity.notFound().build();
+                    }
+                    return ResponseEntity.ok(toDetailMap(v));
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search")
-    public List<Map<String, Object>> search(@RequestParam String q) {
+    public List<Map<String, Object>> search(@RequestParam String q,
+                                            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        boolean staff = hasStaffAccess(authHeader);
         return vayRepo.findByTenVayContainingIgnoreCase(q).stream()
+                .filter(v -> staff || (v.getTrangThai() != null && v.getTrangThai() == 1))
                 .map(this::toMap).toList();
+    }
+
+    private boolean hasStaffAccess(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) return false;
+        try {
+            String token = authHeader.substring(7);
+            if (!jwtUtil.isValid(token)) return false;
+            String role = jwtUtil.extractClaims(token).get("role", String.class);
+            return isStaffRole(role);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static boolean isStaffRole(String role) {
+        return "Admin".equalsIgnoreCase(role)
+                || "NhanVien".equalsIgnoreCase(role)
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+    }
+
+    private static boolean activeVariant(VayChiTiet variant) {
+        return variant != null && (variant.getTrangThai() == null || variant.getTrangThai() == 1);
     }
 
     private Integer toInt(Object val) {
@@ -460,7 +499,9 @@ public class VayController {
     }
 
     private Map<String, Object> toMap(Vay v) {
-        List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId());
+        List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId()).stream()
+                .filter(VayController::activeVariant)
+                .toList();
         BigDecimal minPrice = bienThe.stream()
                 .map(VayChiTiet::getGiaBan)
                 .filter(Objects::nonNull)
@@ -509,7 +550,9 @@ public class VayController {
 
     private Map<String, Object> toDetailMap(Vay v) {
         Map<String, Object> map = toMap(v);
-        List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId());
+        List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId()).stream()
+                .filter(VayController::activeVariant)
+                .toList();
         List<Map<String, Object>> variants = new ArrayList<>();
         for (VayChiTiet bt : bienThe) {
             Map<String, Object> btMap = new LinkedHashMap<>();

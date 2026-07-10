@@ -74,7 +74,7 @@
           <!-- Sandbox note -->
           <div class="z-qr-sandbox">
             <i class="bi bi-info-circle"></i>
-            Đây là thanh toán <strong>test/sandbox</strong>. Nhấn "Tôi đã thanh toán" để mô phỏng giao dịch thành công.
+            Đây là thanh toán <strong>test/sandbox</strong>. Trạng thái đơn hàng chỉ được cập nhật khi cổng thanh toán trả kết quả hợp lệ.
           </div>
 
           <!-- Timer -->
@@ -85,8 +85,8 @@
 
           <!-- Actions -->
           <div class="z-qr-actions">
-            <button class="lm-btn-primary w-100" @click="confirmDone" :disabled="confirming">
-              <span><i class="bi bi-check2-circle me-2"></i>{{ confirming ? 'Đang xác nhận...' : 'Tôi đã thanh toán' }}</span>
+            <button class="lm-btn-primary w-100" @click="goTracking">
+              <span><i class="bi bi-search me-2"></i>Tra cứu đơn hàng</span>
             </button>
             <button class="z-qr-cancel" @click="requestCancelOrder">
               Huỷ đơn hàng
@@ -103,7 +103,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api } from '@/composables/useApi'
 import { useConfirm } from '@/composables/useConfirm'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
@@ -118,7 +117,6 @@ const amount = computed(() => Number(route.query.amount) || 0)
 
 const qrError = ref(false)
 const copied = ref('')
-const confirming = ref(false)
 const remainSeconds = ref(15 * 60)
 let timer = null
 
@@ -159,25 +157,8 @@ function formatPrice(n) {
   return Number(n || 0).toLocaleString('vi-VN') + 'đ'
 }
 
-async function confirmDone() {
-  confirming.value = true
-  try {
-    await api().confirmPayment(Number(orderId.value) || null, method.value, maHoaDon.value)
-    router.push({
-      path: '/payment-result',
-      query: { status: 'success', orderId: maHoaDon.value, amount: amount.value, method: method.value }
-    })
-    return
-  } catch (e) {
-    router.push({
-      path: '/payment-result',
-      query: { status: 'failed', orderId: maHoaDon.value, method: method.value, reason: 'confirm-denied' }
-    })
-    return
-    // vẫn cho qua trang kết quả ở chế độ demo
-  } finally {
-    confirming.value = false
-  }
+function goTracking() {
+  router.push('/tracking')
 }
 
 function cancelOrder() {

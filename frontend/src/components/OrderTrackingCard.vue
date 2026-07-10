@@ -43,7 +43,10 @@ const mapTrangThai = {
   3: 'shipped',
   4: 'delivered',
   5: 'cancelled',
-  6: 'failed'
+  6: 'failed',
+  7: 'payment_failed',
+  8: 'return_requested',
+  9: 'refunded'
 }
 
 const computedTrackingStatus = computed(() => {
@@ -61,7 +64,10 @@ const statusClass = computed(() => {
     'shipped': 'bg-primary',
     'delivered': 'bg-success',
     'cancelled': 'bg-danger',
-    'failed': 'bg-danger'
+    'failed': 'bg-danger',
+    'payment_failed': 'bg-danger',
+    'return_requested': 'bg-warning text-dark',
+    'refunded': 'bg-danger'
   }
   return map[computedTrackingStatus.value] || 'bg-secondary'
 })
@@ -102,6 +108,9 @@ function getTrackingStatusName(status) {
     'cancelled': 'Đã hủy',
     'failed': 'Giao thất bại'
   }
+  map.payment_failed = 'Thanh toán thất bại'
+  map.return_requested = 'Yêu cầu đổi/trả'
+  map.refunded = 'Đã hoàn tiền'
   return map[status] || 'Không xác định'
 }
 
@@ -159,4 +168,7 @@ function formatDateTime(dateStr) {
 .z-timeline-dot-delivered { border-color: #198754; background: #d1e7dd; }
 .z-timeline-dot-cancelled { border-color: #dc3545; background: #f8d7da; }
 .z-timeline-dot-failed { border-color: #dc3545; background: #f8d7da; }
+.z-timeline-dot-payment_failed { border-color: #dc3545; background: #f8d7da; }
+.z-timeline-dot-return_requested { border-color: #f59e0b; background: #fef3c7; }
+.z-timeline-dot-refunded { border-color: #dc3545; background: #f8d7da; }
 </style>

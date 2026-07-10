@@ -134,7 +134,14 @@ INSERT INTO [dbo].[Khach_hang] ([id], [ma_khach_hang], [ho_va_ten], [gioi_tinh],
 (1, N'KH001', N'Nguyễn Lan Anh', 0, '1995-03-15', N'0912345678', N'lananh@email.com', N'$2a$10$NgsNjrRb637ghlDZct04PeWt91d7ilCBmeRZYP2O6A/5QyvUIrhcu', '2026-06-10T23:44:29.206'),
 (2, N'KH002', N'Phạm Thị Hương', 1, '1998-07-22', N'0923456789', N'huong@email.com', N'$2a$10$ODu0aFkPU/3g7rm.k2CNMemX5S8xX1pQyK9wre2.m3H38pdJgO//K', '2026-06-10T23:44:29.206'),
 (3, N'KH003', N'Lê Văn Minh', 1, '1992-11-08', N'0934567890', N'minh@email.com', N'$2a$10$TtnHfT8nBplciIuAZBeBzeB5bCClZ3hYtKSgZXfyvNryoHVBa5SXS', '2026-06-10T23:44:29.206'),
-(4, N'KH00004', N'Test User', NULL, NULL, N'0901234567', N'test@zestia.vn', N'$2a$10$v57XvllkZqAlI0bAOZOZ4u5I/uXqKdzhesaLfCRhyRVj9FyUmBzxO', '2026-06-11T14:02:40.926');
+(4, N'KH00004', N'Test User', NULL, NULL, N'0901234567', N'test@zestia.vn', N'$2a$10$v57XvllkZqAlI0bAOZOZ4u5I/uXqKdzhesaLfCRhyRVj9FyUmBzxO', '2026-06-11T14:02:40.926'),
+(5, N'KH005', N'Nguyễn Gia Bảo', NULL, NULL, N'0900000005', N'nguyengiabaoo2008@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(6, N'KH006', N'Ngọc Anh', NULL, NULL, N'0900000006', N'ngocanh2701ss@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(7, N'KH007', N'Hoàng Anh Minh', NULL, NULL, N'0900000007', N'hoanganhminh110706@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(8, N'KH008', N'Thủy NP', NULL, NULL, N'0900000008', N'Thuynpth06788@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(9, N'KH009', N'Tony VN', NULL, NULL, N'0900000009', N'tonyvn081106@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(10, N'KH010', N'Nguyễn Thành', NULL, NULL, N'0900000010', N'nguyenthanh.hn090307@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(11, N'KH011', N'Bảo Nguyễn', NULL, NULL, N'0900000011', N'baongts01859@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000');
 SET IDENTITY_INSERT [dbo].[Khach_hang] OFF;
 END
 GO
@@ -1561,6 +1568,9 @@ CREATE TABLE [dbo].[Thong_bao] (
   [noi_dung] nvarchar(max) NULL,
   [loai] nvarchar(50) NULL,
   [da_doc] tinyint NULL,
+  [gui_email] tinyint NULL DEFAULT 0,
+  [da_gui] tinyint NULL DEFAULT 0,
+  [ngay_gui] datetime2(7) NULL,
   [ngay_tao] datetime2(7) NULL,
   CONSTRAINT [PK_Thong_bao] PRIMARY KEY ([id])
 );
@@ -1638,6 +1648,9 @@ CREATE TABLE [dbo].[Thong_bao] (
   [noi_dung] nvarchar(max) NOT NULL,
   [loai] nvarchar(50) NULL,
   [trang_thai] tinyint NULL DEFAULT 1,
+  [gui_email] tinyint NULL DEFAULT 0,
+  [da_gui] tinyint NULL DEFAULT 0,
+  [ngay_gui] datetime2(7) NULL,
   [ngay_tao] datetime2(7) NULL DEFAULT GETDATE(),
   CONSTRAINT [PK_Thong_bao] PRIMARY KEY ([id])
 );

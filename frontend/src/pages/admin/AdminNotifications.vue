@@ -30,6 +30,7 @@
             <option value="">Tất cả trạng thái</option>
             <option value="1">Đang hiển thị (Active)</option>
             <option value="0">Bản nháp (Draft)</option>
+            <option value="2">Hẹn giờ gửi (Scheduled)</option>
           </select>
         </div>
       </div>
@@ -70,12 +71,23 @@
                 <div style="font-size:12px;color:var(--z-gray);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:350px">
                   {{ item.noiDung }}
                 </div>
+                <div v-if="item.ngayGui" style="font-size:11px;color:var(--z-accent);margin-top:2px">
+                  <i class="bi bi-clock-fill"></i> Hẹn gửi: {{ formatDateTime(item.ngayGui) }}
+                </div>
               </td>
               <td>{{ formatDateTime(item.ngayTao) }}</td>
               <td>
-                <span :class="['z-status', item.trangThai === 1 ? 'success' : 'pending']">
-                  {{ item.trangThai === 1 ? 'Đang hiển thị' : 'Bản nháp' }}
-                </span>
+                <div class="d-flex flex-column gap-1">
+                  <span :class="['z-status', item.trangThai === 1 ? 'success' : (item.trangThai === 2 ? 'info' : 'pending')]">
+                    {{ item.trangThai === 1 ? 'Đang hiển thị' : (item.trangThai === 2 ? 'Hẹn giờ' : 'Bản nháp') }}
+                  </span>
+                  <div v-if="item.guiEmail === 1" class="d-flex align-items-center gap-1" style="font-size: 11px; margin-left: 4px;">
+                    <i :class="['bi', item.daGui === 1 ? 'bi-envelope-check-fill text-success' : 'bi-envelope-exclamation-fill text-warning']"></i>
+                    <span :class="item.daGui === 1 ? 'text-success' : 'text-warning'">
+                      {{ item.daGui === 1 ? 'Đã gửi mail' : 'Chờ gửi mail' }}
+                    </span>
+                  </div>
+                </div>
               </td>
               <td>
                 <div class="d-flex justify-content-end gap-2">
@@ -160,6 +172,36 @@
             <label class="z-label">Nội dung chi tiết *</label>
             <textarea v-model="form.noiDung" class="lm-input" rows="5" placeholder="Nhập nội dung thông báo..."></textarea>
           </div>
+
+          <!-- Gửi Email & Hẹn Giờ -->
+          <div class="p-3 rounded" style="background: var(--z-bg-alt); border: 1px solid var(--z-gray-border);">
+            <div class="form-check form-switch mb-3">
+              <input v-model="form.guiEmail" :true-value="1" :false-value="0" class="form-check-input" type="checkbox" id="guiEmailSwitch" style="cursor: pointer;">
+              <label class="form-check-label fw-bold" for="guiEmailSwitch" style="cursor: pointer; font-size: 13px;">
+                <i class="bi bi-envelope-fill me-1"></i> Gửi email thông báo này đến tất cả khách hàng
+              </label>
+            </div>
+
+            <div v-if="form.guiEmail === 1" class="row g-3">
+              <div class="col-md-6">
+                <label class="z-label">Thời gian gửi</label>
+                <div class="d-flex gap-3 mt-1">
+                  <div class="form-check">
+                    <input v-model="form.isScheduled" :value="false" class="form-check-input" type="radio" name="sendTimeOpt" id="sendImmediate">
+                    <label class="form-check-label" for="sendImmediate" style="font-size: 13px; cursor: pointer;">Gửi ngay</label>
+                  </div>
+                  <div class="form-check">
+                    <input v-model="form.isScheduled" :value="true" class="form-check-input" type="radio" name="sendTimeOpt" id="sendSchedule">
+                    <label class="form-check-label" for="sendSchedule" style="font-size: 13px; cursor: pointer;">Lên lịch gửi</label>
+                  </div>
+                </div>
+              </div>
+              <div v-if="form.isScheduled" class="col-md-6">
+                <label class="z-label">Hẹn giờ gửi *</label>
+                <input v-model="form.ngayGui" type="datetime-local" class="lm-input" style="padding: 5px 10px;">
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-4">
@@ -184,10 +226,22 @@
         <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ selectedItem.tieuDe }}</h3>
         <p style="font-size: 12px; color: var(--z-gray); margin-bottom: 16px;">
           Ngày tạo: {{ formatDateTime(selectedItem.ngayTao) }} | Trạng thái: 
-          <span :style="{ color: selectedItem.trangThai === 1 ? '#10b981' : '#f59e0b', fontWeight: '600' }">
-            {{ selectedItem.trangThai === 1 ? 'Đang hiển thị' : 'Bản nháp' }}
+          <span :style="{ color: selectedItem.trangThai === 1 ? '#10b981' : (selectedItem.trangThai === 2 ? '#0284c7' : '#f59e0b'), fontWeight: '600' }">
+            {{ selectedItem.trangThai === 1 ? 'Đang hiển thị' : (selectedItem.trangThai === 2 ? 'Hẹn giờ gửi' : 'Bản nháp') }}
           </span>
         </p>
+
+        <div v-if="selectedItem.guiEmail === 1" class="p-3 mb-3 rounded" style="background: var(--z-bg-alt); border: 1px solid var(--z-gray-border); font-size: 13px;">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i :class="['bi', selectedItem.daGui === 1 ? 'bi-envelope-check-fill text-success' : 'bi-clock-history text-primary']" style="font-size: 16px;"></i>
+            <strong :class="selectedItem.daGui === 1 ? 'text-success' : 'text-primary'">
+              {{ selectedItem.daGui === 1 ? 'Đã gửi Email thành công' : 'Đang chờ gửi Email' }}
+            </strong>
+          </div>
+          <div v-if="selectedItem.ngayGui" class="text-secondary" style="font-size: 12px;">
+            Thời gian hẹn gửi: {{ formatDateTime(selectedItem.ngayGui) }}
+          </div>
+        </div>
 
         <div class="p-3 bg-light rounded" style="border: 1px solid var(--z-gray-border); line-height: 1.6; font-size: 13px; white-space: pre-wrap;">
           {{ selectedItem.noiDung }}
@@ -229,7 +283,10 @@ const form = ref({
   tieuDe: '',
   noiDung: '',
   loai: 'HeThong',
-  trangThai: 1
+  trangThai: 1,
+  guiEmail: 0,
+  isScheduled: false,
+  ngayGui: ''
 })
 
 onMounted(() => {
@@ -277,7 +334,10 @@ function openAdd() {
     tieuDe: '',
     noiDung: '',
     loai: 'HeThong',
-    trangThai: 1
+    trangThai: 1,
+    guiEmail: 0,
+    isScheduled: false,
+    ngayGui: ''
   }
   showModal.value = true
 }
@@ -288,7 +348,10 @@ function openEdit(item) {
     tieuDe: item.tieuDe,
     noiDung: item.noiDung,
     loai: item.loai || 'HeThong',
-    trangThai: item.trangThai ?? 1
+    trangThai: item.trangThai ?? 1,
+    guiEmail: item.guiEmail || 0,
+    isScheduled: !!item.ngayGui,
+    ngayGui: item.ngayGui ? item.ngayGui.substring(0, 16) : ''
   }
   showModal.value = true
 }
@@ -302,13 +365,27 @@ async function saveItem() {
     showToast('Vui lòng nhập đầy đủ tiêu đề và nội dung')
     return
   }
+  if (form.value.guiEmail === 1 && form.value.isScheduled && !form.value.ngayGui) {
+    showToast('Vui lòng chọn ngày giờ hẹn gửi')
+    return
+  }
   saving.value = true
+  
+  const payload = {
+    tieuDe: form.value.tieuDe,
+    noiDung: form.value.noiDung,
+    loai: form.value.loai,
+    trangThai: form.value.guiEmail === 1 && form.value.isScheduled ? 2 : form.value.trangThai,
+    guiEmail: form.value.guiEmail,
+    ngayGui: form.value.guiEmail === 1 && form.value.isScheduled ? form.value.ngayGui : null
+  }
+  
   try {
     if (editingId.value) {
-      await api().updateThongBao(editingId.value, form.value)
+      await api().updateThongBao(editingId.value, payload)
       showToast('Cập nhật thông báo thành công', 'success')
     } else {
-      await api().addThongBao(form.value)
+      await api().addThongBao(payload)
       showToast('Tạo thông báo thành công', 'success')
     }
     showModal.value = false

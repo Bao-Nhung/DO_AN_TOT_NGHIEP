@@ -150,6 +150,51 @@ public class HoaDonController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{id}/cancel-guest")
+    public ResponseEntity<?> cancelOrderGuest(@PathVariable Integer id,
+                                              @RequestBody Map<String, Object> body) {
+        return hoaDonRepo.findById(id).map(hd -> {
+            String maHoaDon = (String) body.get("maHoaDon");
+            String soDienThoai = (String) body.get("soDienThoai");
+            
+            String phoneClean = soDienThoai != null ? soDienThoai.trim() : "";
+            String orderPhoneClean = hd.getSoDienThoai() != null ? hd.getSoDienThoai().trim() : "";
+            String codeClean = maHoaDon != null ? maHoaDon.trim() : "";
+            String orderCodeClean = hd.getMaHoaDon() != null ? hd.getMaHoaDon().trim() : "";
+
+            // Xác thực xem đúng mã đơn hàng và số điện thoại của hóa đơn này không
+            if (codeClean.isEmpty() || !codeClean.equalsIgnoreCase(orderCodeClean) ||
+                !phoneClean.equals(orderPhoneClean)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Thông tin xác thực đơn hàng không chính xác. Vui lòng nhập đúng Mã đơn hàng và Số điện thoại."));
+            }
+            
+            if (hd.getTrangThai() == 5) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng này đã được huỷ trước đó."));
+            }
+            
+            if (hd.getTrangThai() != 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng đã được xác nhận hoặc đang vận chuyển, không thể huỷ ở thời điểm này."));
+            }
+            
+            hd.setTrangThai((byte) 5); // Trạng thái 5 = Đã Hủy
+            
+            String ghiChu = body.get("ghiChu") != null ? (String) body.get("ghiChu") : "Khách hàng hủy qua tra cứu đơn";
+            hd.setGhiChu(ghiChu);
+            hd.setTrangThaiTracking("cancelled");
+            
+            LichSuTracking tracking = LichSuTracking.builder()
+                    .hoaDon(hd)
+                    .trangThai("cancelled")
+                    .moTa(ghiChu)
+                    .ngayCapNhat(LocalDateTime.now())
+                    .build();
+            lichSuTrackingRepo.save(tracking);
+            
+            hoaDonRepo.save(hd);
+            return ResponseEntity.ok(toMap(hd));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     // ========================================================
     // ===== TRACKING ENDPOINTS (TÍCH HỢP TỪ CODE ĐỒNG ĐỘI) =====
     // ========================================================

@@ -338,4 +338,51 @@ public class EmailService {
 
         mailSender.send(message);
     }
+
+    /**
+     * Gửi email thông báo từ cửa hàng
+     */
+    public void sendAnnouncementEmail(String to, String hoVaTen, String tieuDe, String noiDung) {
+        try {
+            String htmlContent = buildAnnouncementEmailHtml(hoVaTen, tieuDe, noiDung);
+            sendHtmlEmail(to, tieuDe, htmlContent);
+            log.info("Email thông báo đã gửi cho: {}", to);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi email thông báo đến " + to + ": ", e);
+        }
+    }
+
+    private String buildAnnouncementEmailHtml(String hoVaTen, String tieuDe, String noiDung) {
+        StringBuilder html = new StringBuilder();
+        html.append("<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif;'>");
+        html.append("<div style='max-width: 600px; margin: 0 auto; background-color: #f5f5f5; padding: 20px;'>");
+
+        // Header
+        html.append("<div style='background-color: #D4564E; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;'>");
+        html.append("<h1 style='margin: 0; font-size: 24px; font-weight: bold;'>ZESTIA FASHION</h1>");
+        html.append("</div>");
+
+        // Content
+        html.append("<div style='background-color: white; padding: 20px; border-radius: 0 0 5px 5px;'>");
+        html.append("<p>Xin chào <strong>").append(hoVaTen).append("</strong>,</p>");
+        html.append("<h2 style='color: #D4564E; margin-top: 20px; font-size: 18px;'>").append(tieuDe).append("</h2>");
+        html.append("<div style='line-height: 1.6; font-size: 14px; white-space: pre-wrap; margin-top: 15px; color: #333;'>");
+        html.append(noiDung);
+        html.append("</div>");
+
+        // CTA
+        html.append("<div style='text-align: center; margin: 30px 0;'>");
+        html.append("<a href='").append(frontendUrl).append("' style='background-color: #D4564E; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Ghé thăm cửa hàng Zestia</a>");
+        html.append("</div>");
+
+        // Footer
+        html.append("<div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; text-align: center;'>");
+        html.append("<p>Nếu bạn có câu hỏi, vui lòng liên hệ với chúng tôi:</p>");
+        html.append("<p>Email: support@zestia.vn | Hotline: 0123 456 789</p>");
+        html.append("<p>Cảm ơn bạn đã đồng hành cùng ZESTIA!</p>");
+        html.append("</div>");
+
+        html.append("</div></div></body></html>");
+        return html.toString();
+    }
 }

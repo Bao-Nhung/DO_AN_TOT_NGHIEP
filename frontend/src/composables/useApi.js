@@ -76,6 +76,10 @@ export function api() {
       method: 'PUT',
       body: JSON.stringify({ ghiChu: ghiChu || null })
     }),
+    cancelGuestOrder: (id, maHoaDon, soDienThoai, ghiChu) => request(`/hoa-don/${id}/cancel-guest`, {
+      method: 'PUT',
+      body: JSON.stringify({ maHoaDon, soDienThoai, ghiChu: ghiChu || null })
+    }),
       
     // ====== API MỚI CHO TRACKING ======
     searchOrder: (params) => {

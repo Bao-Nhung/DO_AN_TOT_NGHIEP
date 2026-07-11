@@ -146,14 +146,23 @@ body.cursor-hover #lm-cursor-ring { width: 48px; height: 48px; border-color: var
   border-radius: var(--z-radius);
 }
 .lm-btn-primary::before {
-  content: ''; position: absolute; inset: 0;
-  background: var(--z-accent);
-  transform: translateX(-101%);
-  transition: transform 0.4s cubic-bezier(0.76, 0, 0.24, 1);
+  content: none;
 }
-.lm-btn-primary:hover::before { transform: translateX(0); }
-.lm-btn-primary:hover         { border-color: var(--z-accent); color: var(--z-white); }
-.lm-btn-primary span          { position: relative; z-index: 1; color: inherit; }
+.lm-btn-primary:hover:not(:disabled) {
+  background: var(--z-accent);
+  border-color: var(--z-accent);
+  color: var(--z-white);
+}
+.lm-btn-primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.lm-btn-primary > * {
+  position: relative;
+  z-index: 1;
+  color: inherit;
+}
+.lm-btn-primary span { color: inherit; }
 
 .z-danger-action-btn {
   display: inline-flex;

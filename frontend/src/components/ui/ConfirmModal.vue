@@ -111,8 +111,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   background: #dc2626;
   border-color: #dc2626;
 }
-.z-confirm-accept.danger::before {
+.z-confirm-accept.danger:hover:not(:disabled) {
   background: #b91c1c;
+  border-color: #b91c1c;
+  color: #ffffff;
 }
 .z-confirm-fade-enter-active,
 .z-confirm-fade-leave-active {

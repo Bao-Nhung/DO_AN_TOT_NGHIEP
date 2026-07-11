@@ -26,10 +26,6 @@ public class HoaDon {
     private KhachHang khachHang;
 
     @ManyToOne
-    @JoinColumn(name = "id_khuyen_mai")
-    private KhuyenMai khuyenMai;
-
-    @ManyToOne
     @JoinColumn(name = "id_giam_gia")
     private GiamGia giamGia;
 
@@ -46,8 +42,8 @@ public class HoaDon {
     @Column(name = "phi_van_chuyen")
     private BigDecimal phiVanChuyen;
 
-    @Column(name = "giam_gia_khuyen_mai")
-    private BigDecimal giamGiaKhuyenMai;
+    @Column(name = "giam_gia_voucher")
+    private BigDecimal giamGiaVoucher;
 
     @Column(name = "hinh_thuc_nhan_hang")
     private Byte hinhThucNhanHang;

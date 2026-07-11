@@ -2,14 +2,10 @@ package com.zestia.datn.zestia.service;
 
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.HoaDonAuditLog;
-import com.zestia.datn.zestia.entity.HoaDonChiTiet;
 import com.zestia.datn.zestia.entity.LichSuTracking;
-import com.zestia.datn.zestia.entity.VayChiTiet;
 import com.zestia.datn.zestia.repository.HoaDonAuditLogRepository;
-import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
-import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,14 +21,13 @@ public class OrderReservationService {
 
     private static final byte STATUS_PENDING = 0;
     private static final byte STATUS_PAYMENT_FAILED = 7;
-    private static final List<String> ONLINE_PAYMENT_METHODS = List.of("MOMO", "ZALOPAY", "VNPAY");
+    private static final List<String> ONLINE_PAYMENT_METHODS = List.of("MOMO", "ZALOPAY");
 
     private final HoaDonRepository hoaDonRepo;
-    private final HoaDonChiTietRepository hoaDonCtRepo;
-    private final VayChiTietRepository vayCtRepo;
     private final LichSuTrackingRepository trackingRepo;
     private final HoaDonAuditLogRepository auditLogRepo;
     private final EmailService emailService;
+    private final OrderInventoryService orderInventoryService;
 
     @Value("${app.online-payment-reservation-minutes:30}")
     private long reservationMinutes;
@@ -48,7 +43,7 @@ public class OrderReservationService {
         );
 
         for (HoaDon order : expiredOrders) {
-            restoreStock(order);
+            orderInventoryService.restoreReservation(order);
             order.setTrangThai(STATUS_PAYMENT_FAILED);
             order.setDaThanhToan(false);
             order.setPhuongThucThanhToanOnline("FAILED");
@@ -73,17 +68,6 @@ public class OrderReservationService {
                     .ngayTao(LocalDateTime.now())
                     .build());
             emailService.sendOrderStatusUpdateEmail(order, "Thanh toán thất bại", note);
-        }
-    }
-
-    private void restoreStock(HoaDon order) {
-        List<HoaDonChiTiet> details = hoaDonCtRepo.findByHoaDonId(order.getId());
-        for (HoaDonChiTiet detail : details) {
-            VayChiTiet variant = detail.getVayChiTiet();
-            if (variant == null || detail.getSoLuong() == null) continue;
-            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
-            variant.setSoLuong(currentStock + detail.getSoLuong());
-            vayCtRepo.save(variant);
         }
     }
 }

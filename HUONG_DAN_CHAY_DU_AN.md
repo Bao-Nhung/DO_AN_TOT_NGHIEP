@@ -153,7 +153,22 @@ cd frontend
 npm install
 ```
 
-### Bước 3: Chạy frontend
+### Bước 3: Cấu hình VietQR nếu muốn đổi tài khoản nhận tiền
+
+Frontend đã có sẵn tài khoản nhận tiền demo trong code để cả nhóm clone về chạy ngay. Nếu muốn đổi tài khoản trên máy local, tạo file `frontend/.env.local` và đặt các biến:
+
+```properties
+VITE_VIETQR_BANK_ID=VCB
+VITE_VIETQR_ACCOUNT_NO=9869167207
+VITE_VIETQR_ACCOUNT_NAME=NGUYEN TIEN THANH
+VITE_MOMO_ACCOUNT=0869167207
+VITE_ZALOPAY_ACCOUNT=0869167207
+VITE_PAYMENT_ACCOUNT_NAME=NGUYEN TIEN THANH
+```
+
+Nếu không tạo `frontend/.env.local`, website sẽ dùng các giá trị mặc định ở trên.
+
+### Bước 4: Chạy frontend
 
 ```
 npm run dev

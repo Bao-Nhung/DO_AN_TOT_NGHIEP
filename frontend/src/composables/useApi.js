@@ -179,14 +179,12 @@ export function api() {
     // Payment
     createOrder: (data) =>
       request('/payment/create-order', { method: 'POST', body: JSON.stringify(data) }),
-    createVNPayUrl: (orderId) =>
-      request('/payment/vnpay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
     confirmPayment: (orderId, method, maHoaDon) =>
       request('/payment/confirm', { method: 'POST', body: JSON.stringify({ orderId, method, maHoaDon }) }),
-    createMomoPayment: (orderId) =>
-      request('/payment/momo/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
-    createZaloPayment: (orderId) =>
-      request('/payment/zalopay/create', { method: 'POST', body: JSON.stringify({ orderId }) }),
+    createMomoPayment: (orderId, maHoaDon, soDienThoai) =>
+      request('/payment/momo/create', { method: 'POST', body: JSON.stringify({ orderId, maHoaDon, soDienThoai }) }),
+    createZaloPayment: (orderId, maHoaDon, soDienThoai) =>
+      request('/payment/zalopay/create', { method: 'POST', body: JSON.stringify({ orderId, maHoaDon, soDienThoai }) }),
     momoQr: (amount) =>
       request('/payment/momo/qr', { method: 'POST', body: JSON.stringify({ amount }) }),
     zaloQr: (amount) =>
@@ -198,20 +196,12 @@ export function api() {
     updateProfile: (data) =>
       request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
 
-    // Promotions
-    getKhuyenMai: () => request('/khuyen-mai'),
-    getGiamGia: () => request('/khuyen-mai/giam-gia'),
-    getAllKhuyenMai: () => request('/khuyen-mai/all'),
+    getVouchers: () => request('/voucher'),
 
     // Voucher CRUD
-    addGiamGia: (data) => request('/khuyen-mai/giam-gia', { method: 'POST', body: JSON.stringify(data) }),
-    updateGiamGia: (id, data) => request(`/khuyen-mai/giam-gia/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    deleteGiamGia: (id) => request(`/khuyen-mai/giam-gia/${id}`, { method: 'DELETE' }),
-
-    // Promotion CRUD
-    addKhuyenMai: (data) => request('/khuyen-mai', { method: 'POST', body: JSON.stringify(data) }),
-    updateKhuyenMai: (id, data) => request(`/khuyen-mai/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    deleteKhuyenMai: (id) => request(`/khuyen-mai/${id}`, { method: 'DELETE' }),
+    addVoucher: (data) => request('/voucher', { method: 'POST', body: JSON.stringify(data) }),
+    updateVoucher: (id, data) => request(`/voucher/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deleteVoucher: (id) => request(`/voucher/${id}`, { method: 'DELETE' }),
 
     getProfileAddress: () => request('/auth/profile/address'),
     updateProfileAddress: (data) =>

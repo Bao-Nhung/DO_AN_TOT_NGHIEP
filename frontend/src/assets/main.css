@@ -17,6 +17,7 @@
   --z-accent:      #D4564E;
   --z-accent-soft: #FBEAE9;
   --z-accent-dark: #B8403A;
+  --z-danger:      #DC2626;
   --z-warm:        #C49A6C;
   --z-warm-light:  #F5EDE3;
 
@@ -153,6 +154,33 @@ body.cursor-hover #lm-cursor-ring { width: 48px; height: 48px; border-color: var
 .lm-btn-primary:hover::before { transform: translateX(0); }
 .lm-btn-primary:hover         { border-color: var(--z-accent); color: var(--z-white); }
 .lm-btn-primary span          { position: relative; z-index: 1; color: inherit; }
+
+.z-danger-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 1px solid #DC2626 !important;
+  border-radius: var(--z-radius);
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--z-font-body);
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-danger-action-btn:hover {
+  background: #B91C1C !important;
+  border-color: #B91C1C !important;
+  color: #FFFFFF !important;
+}
+.z-danger-action-btn span {
+  color: #FFFFFF !important;
+}
 
 .lm-btn-outline-light {
   display: inline-flex; align-items: center; gap: 10px;

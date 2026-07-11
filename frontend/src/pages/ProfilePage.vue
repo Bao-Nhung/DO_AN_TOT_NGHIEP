@@ -220,7 +220,7 @@
           <div class="mb-3 p-3 bg-light rounded" style="font-size:13px; color:var(--z-gray)">
              <div class="d-flex justify-content-between mb-2">
                 <span>Tổng tiền hàng:</span>
-                <span style="font-weight: 500; color: var(--z-dark);">{{ fmtMoney(detailOrder.tongTien + (detailOrder.giamGiaKhuyenMai || 0) - (detailOrder.phiVanChuyen || 0)) }}</span>
+                <span style="font-weight: 500; color: var(--z-dark);">{{ fmtMoney(detailOrder.tongTien + (detailOrder.giamGiaVoucher || 0) - (detailOrder.phiVanChuyen || 0)) }}</span>
              </div>
              
              <div class="d-flex justify-content-between mb-2">
@@ -231,16 +231,12 @@
              </div>
              
              <div class="d-flex justify-content-between mb-2">
-                <span>Giảm giá / Khuyến mãi:</span>
+                <span>Voucher giảm giá:</span>
                 <span class="text-danger font-weight-bold">
-                  {{ detailOrder.giamGiaKhuyenMai > 0 ? '- ' + fmtMoney(detailOrder.giamGiaKhuyenMai) : '0đ' }}
+                  {{ detailOrder.giamGiaVoucher > 0 ? '- ' + fmtMoney(detailOrder.giamGiaVoucher) : '0đ' }}
                 </span>
              </div>
 
-             <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailOrder.khuyenMai">
-                <div style="font-size:13px;color:var(--z-gray)">Chương trình Khuyến mãi</div>
-                <div style="font-size:13px;font-weight:500;color:var(--z-success)">{{ detailOrder.khuyenMai }}</div>
-             </div>
              <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailOrder.giamGia">
                 <div style="font-size:13px;color:var(--z-gray)">Voucher</div>
                 <div style="font-size:13px;font-weight:500;color:var(--z-success)">{{ detailOrder.giamGia }}</div>
@@ -293,7 +289,9 @@
 
         <div class="d-flex gap-3">
           <button class="lm-btn-secondary flex-fill" style="height:44px;" @click="showCancelModal = false">Đóng</button>
-          <button class="lm-btn-primary flex-fill" style="height:44px; background:var(--z-danger); border-color:var(--z-danger)" @click="submitCancelOrder">Xác nhận huỷ</button>
+          <button class="z-danger-action-btn flex-fill" style="height:44px;" @click="submitCancelOrder">
+            <span>Xác nhận huỷ</span>
+          </button>
         </div>
       </div>
     </div>

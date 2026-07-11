@@ -31,10 +31,6 @@ public class VayChiTiet {
     @JoinColumn(name = "id_kich_thuoc")
     private KichThuoc kichThuoc;
 
-    @ManyToOne
-    @JoinColumn(name = "id_khuyen_mai")
-    private KhuyenMai khuyenMai;
-
     @Column(name = "ma_vay_chi_tiet")
     private String maVayChiTiet;
 

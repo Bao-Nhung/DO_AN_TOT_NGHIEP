@@ -144,7 +144,7 @@
           <div class="p-3 bg-light rounded" style="font-size:13px; color:var(--z-gray)">
              <div class="d-flex justify-content-between mb-2">
                 <span>Tổng tiền hàng:</span>
-                <span style="font-weight: 500; color: var(--z-dark);">{{ formatMoney(currentOrder.tongTien + (currentOrder.giamGiaKhuyenMai || 0) - (currentOrder.phiVanChuyen || 0)) }}</span>
+                <span style="font-weight: 500; color: var(--z-dark);">{{ formatMoney(currentOrder.tongTien + (currentOrder.giamGiaVoucher || 0) - (currentOrder.phiVanChuyen || 0)) }}</span>
              </div>
              
              <div class="d-flex justify-content-between mb-2">
@@ -155,9 +155,9 @@
              </div>
              
              <div class="d-flex justify-content-between mb-2">
-                <span>Giảm giá / Khuyến mãi:</span>
+                <span>Voucher giảm giá:</span>
                 <span class="text-danger font-weight-bold">
-                  {{ currentOrder.giamGiaKhuyenMai > 0 ? '- ' + formatMoney(currentOrder.giamGiaKhuyenMai) : '0đ' }}
+                  {{ currentOrder.giamGiaVoucher > 0 ? '- ' + formatMoney(currentOrder.giamGiaVoucher) : '0đ' }}
                 </span>
              </div>
              
@@ -193,8 +193,8 @@
               <span style="font-size:14px;color:var(--z-dark)">Thời gian giao hàng quá lâu</span>
             </label>
             <label class="d-flex align-items-center gap-2" style="cursor:pointer">
-              <input type="radio" v-model="cancelReason" value="Muốn nhập lại mã giảm giá / khuyến mãi khác">
-              <span style="font-size:14px;color:var(--z-dark)">Muốn nhập lại mã giảm giá / khuyến mãi khác</span>
+              <input type="radio" v-model="cancelReason" value="Muốn nhập lại voucher khác">
+              <span style="font-size:14px;color:var(--z-dark)">Muốn nhập lại voucher khác</span>
             </label>
             <label class="d-flex align-items-center gap-2" style="cursor:pointer">
               <input type="radio" v-model="cancelReason" value="Khác">
@@ -212,7 +212,9 @@
 
           <div class="d-flex justify-content-end gap-2">
             <button class="lm-btn-secondary py-2 px-4" style="height:auto; font-size: 13px;" @click="showCancelModal = false">Đóng</button>
-            <button class="lm-btn-primary py-2 px-4" style="height:auto; font-size: 13px;" @click="submitCancelOrder">Xác nhận huỷ</button>
+            <button class="z-danger-action-btn py-2 px-4" style="height:auto; font-size: 13px;" @click="submitCancelOrder">
+              <span>Xác nhận huỷ</span>
+            </button>
           </div>
         </div>
       </div>
@@ -279,9 +281,9 @@ async function repayOrder(order) {
   try {
     let res = null
     if (order.hinhThucThanhToan === 'MOMO') {
-      res = await api().createMomoPayment(order.id)
+      res = await api().createMomoPayment(order.id, order.maHoaDon, order.soDienThoai)
     } else if (order.hinhThucThanhToan === 'ZALOPAY') {
-      res = await api().createZaloPayment(order.id)
+      res = await api().createZaloPayment(order.id, order.maHoaDon, order.soDienThoai)
     }
     if (res && res.payUrl) {
       window.location.href = res.payUrl

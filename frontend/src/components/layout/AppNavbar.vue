@@ -285,7 +285,7 @@ function viewNotif(n) {
 function getLabelClass(type) {
   const classes = {
     HeThong: 'info',
-    KhuyenMai: 'success',
+    Voucher: 'success',
     DonHang: 'warning'
   }
   return classes[type] || 'info'
@@ -294,7 +294,7 @@ function getLabelClass(type) {
 function getTypeName(type) {
   const names = {
     HeThong: 'Hệ thống',
-    KhuyenMai: 'Khuyến mãi',
+    Voucher: 'Voucher',
     DonHang: 'Đơn hàng'
   }
   return names[type] || type
@@ -365,5 +365,24 @@ function formatDateTime(val) {
 .z-notif-time {
   font-size: 10px;
   color: var(--z-gray-light);
+}
+
+.z-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(17, 17, 20, 0.48);
+  backdrop-filter: blur(3px);
+  box-sizing: border-box;
+}
+
+.z-modal {
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(80vh, 640px);
+  overflow-y: auto;
 }
 </style>

@@ -17,10 +17,10 @@ public class NotificationService {
     private final ThongBaoRepository thongBaoRepo;
 
     /**
-     * Tạo thông báo mới (hệ thống, khuyến mãi, v.v.)
+     * Tạo thông báo mới (hệ thống, voucher, v.v.)
      * @param tieuDe Tiêu đề thông báo
      * @param noiDung Nội dung chi tiết
-     * @param loai Loại thông báo (HeThong, KhuyenMai, DonHang, etc.)
+     * @param loai Loại thông báo (HeThong, Voucher, DonHang, etc.)
      * @param trangThai Trạng thái (1: Hiển thị, 0: Nháp)
      * @return Đối tượng ThongBao đã lưu
      */

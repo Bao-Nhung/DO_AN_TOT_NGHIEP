@@ -43,7 +43,7 @@ Luồng tồn kho hiện tại:
 |---|---|
 | Thêm vào giỏ | Chưa trừ |
 | Checkout COD online | Trừ ngay khi bấm đặt hàng, API `/api/payment/create-order` chạy |
-| Checkout Momo/ZaloPay/VNPay | Trừ ngay khi tạo đơn trước khi chuyển sang cổng thanh toán |
+| Checkout MoMo/ZaloPay | Trừ ngay khi tạo đơn trước khi chuyển sang cổng thanh toán |
 | Thanh toán online thành công | Không trừ thêm lần nữa |
 | Thanh toán online thất bại | Hoàn kho |
 | Bỏ thanh toán quá hạn | Sau khoảng 30 phút, job tự chuyển `Thanh toán thất bại` và hoàn kho |
@@ -81,15 +81,15 @@ DO_AN_TOT_NGHIEP
 │     │  │              │  ├─ DataInitializer.java
 │     │  │              │  ├─ JwtAuthFilter.java
 │     │  │              │  ├─ JwtUtil.java
-│     │  │              │  ├─ SecurityConfig.java
-│     │  │              │  └─ VNPayConfig.java
+│     │  │              │  ├─ ApiExceptionHandler.java
+│     │  │              │  └─ SecurityConfig.java
 │     │  │              ├─ controller
 │     │  │              │  ├─ AuthController.java
 │     │  │              │  ├─ DashboardController.java
 │     │  │              │  ├─ GatewayPaymentController.java
 │     │  │              │  ├─ HoaDonController.java
 │     │  │              │  ├─ KhachHangController.java
-│     │  │              │  ├─ KhuyenMaiController.java
+│     │  │              │  ├─ VoucherController.java
 │     │  │              │  ├─ PaymentController.java
 │     │  │              │  ├─ ThongKeController.java
 │     │  │              │  ├─ ThuocTinhController.java
@@ -117,7 +117,7 @@ DO_AN_TOT_NGHIEP
 │     │  │              │  ├─ HoaDon.java
 │     │  │              │  ├─ HoaDonChiTiet.java
 │     │  │              │  ├─ KhachHang.java
-│     │  │              │  ├─ KhuyenMai.java
+│     │  │              │  ├─ NewsletterSubscriber.java
 │     │  │              │  ├─ KichThuoc.java
 │     │  │              │  ├─ LichSuThanhToan.java
 │     │  │              │  ├─ LichSuXem.java
@@ -141,7 +141,7 @@ DO_AN_TOT_NGHIEP
 │     │  │                 ├─ HoaDonChiTietRepository.java
 │     │  │                 ├─ HoaDonRepository.java
 │     │  │                 ├─ KhachHangRepository.java
-│     │  │                 ├─ KhuyenMaiRepository.java
+│     │  │                 ├─ NewsletterSubscriberRepository.java
 │     │  │                 ├─ KichThuocRepository.java
 │     │  │                 ├─ LichSuThanhToanRepository.java
 │     │  │                 ├─ LoaiVayRepository.java
@@ -164,10 +164,7 @@ DO_AN_TOT_NGHIEP
 │        └─ resources
 │           └─ application.properties
 ├─ database
-│  ├─ add_products.sql
-│  ├─ export-db.ps1
 │  ├─ fashion_shop.sql
-│  ├─ fashion_shop_full.sql
 │  └─ README.md
 ├─ frontend
 │  ├─ index.html

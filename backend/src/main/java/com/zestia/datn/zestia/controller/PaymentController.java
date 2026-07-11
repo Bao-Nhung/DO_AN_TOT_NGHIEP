@@ -1,21 +1,17 @@
 package com.zestia.datn.zestia.controller;
 
 import com.zestia.datn.zestia.config.JwtUtil;
-import com.zestia.datn.zestia.config.VNPayConfig;
 import com.zestia.datn.zestia.entity.*;
 import com.zestia.datn.zestia.repository.*;
 import com.zestia.datn.zestia.service.EmailService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.zestia.datn.zestia.service.OrderInventoryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -39,11 +35,9 @@ public class PaymentController {
     private final LichSuThanhToanRepository lichSuRepo;
     private final GiamGiaRepository giamGiaRepo;
     private final NhanVienRepository nhanVienRepo;
-    private final VNPayConfig vnPayConfig;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
-    @Value("${app.payment-result-url:http://localhost:5173/#/payment-result}")
-    private String paymentResultUrl;
+    private final OrderInventoryService orderInventoryService;
 
     @PostMapping("/create-order")
     @Transactional
@@ -131,7 +125,7 @@ public class PaymentController {
 
             VayChiTiet selectedById = null;
             if (variantId != null) {
-                selectedById = vayCtRepo.findById(variantId).orElse(null);
+                selectedById = vayCtRepo.findByIdForUpdate(variantId).orElse(null);
                 if (!isOrderableVariant(selectedById)) {
                     return ResponseEntity.badRequest().body(Map.of("error", "Bien the san pham khong ton tai hoac da ngung ban"));
                 }
@@ -144,7 +138,7 @@ public class PaymentController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Thieu thong tin san pham"));
             }
 
-            var variants = vayCtRepo.findByVayId(productId).stream()
+            var variants = vayCtRepo.findByVayIdForUpdate(productId).stream()
                     .filter(PaymentController::isOrderableVariant)
                     .toList();
             if (variants.isEmpty()) {
@@ -240,7 +234,7 @@ public class PaymentController {
         BigDecimal giamGia = BigDecimal.ZERO;
         String maGiamGia = (String) body.get("maGiamGia");
         if (maGiamGia != null && !maGiamGia.isBlank()) {
-            var vr = validateVoucher(maGiamGia.trim(), tamTinh);
+            var vr = validateVoucher(maGiamGia.trim(), tamTinh, true);
             if (vr.valid) {
                 voucher = vr.giamGia;
                 giamGia = vr.discount;
@@ -274,7 +268,7 @@ public class PaymentController {
                 .giamGia(voucher)
                 .tongTien(tongTien)
                 .phiVanChuyen(phiVanChuyen)
-                .giamGiaKhuyenMai(giamGia)
+                .giamGiaVoucher(giamGia)
                 .hinhThucNhanHang(hinhThucNhanHang)
                 .diaChiGiaoHang(diaChi != null ? diaChi : "")
                 .hinhThucThanhToan(hinhThuc != null ? hinhThuc : "COD")
@@ -414,8 +408,14 @@ public class PaymentController {
     }
 
     private VoucherResult validateVoucher(String ma, BigDecimal tamTinh) {
+        return validateVoucher(ma, tamTinh, false);
+    }
+
+    private VoucherResult validateVoucher(String ma, BigDecimal tamTinh, boolean lockForUpdate) {
         VoucherResult r = new VoucherResult();
-        var opt = giamGiaRepo.findByMaGiamGiaIgnoreCase(ma);
+        var opt = lockForUpdate
+                ? giamGiaRepo.findByMaGiamGiaIgnoreCaseForUpdate(ma)
+                : giamGiaRepo.findByMaGiamGiaIgnoreCase(ma);
         if (opt.isEmpty()) {
             r.message = "Mã giảm giá không tồn tại";
             return r;
@@ -459,122 +459,6 @@ public class PaymentController {
         r.discount = discount;
         r.message = "Áp dụng mã thành công";
         return r;
-    }
-
-    @PostMapping("/vnpay/create")
-    public ResponseEntity<?> createVNPayUrl(@RequestBody Map<String, Object> body,
-                                            HttpServletRequest request) {
-        Integer orderId = toInt(body.get("orderId"));
-        if (orderId == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Thiếu orderId"));
-        }
-
-        Optional<HoaDon> opt = hoaDonRepo.findById(orderId);
-        if (opt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng không tồn tại"));
-        }
-
-        HoaDon hd = opt.get();
-        long amount = hd.getTongTien().longValue();
-        String orderInfo = "Thanh toan don hang " + hd.getMaHoaDon();
-        String ipAddr = request.getRemoteAddr();
-
-        if (vnPayConfig.isDemoMode()) {
-            String demoReturnUrl = vnPayConfig.getReturnUrl()
-                    + "?vnp_TxnRef=" + hd.getMaHoaDon()
-                    + "&vnp_Amount=" + (amount * 100)
-                    + "&vnp_ResponseCode=00"
-                    + "&vnp_TransactionNo=DEMO" + System.currentTimeMillis()
-                    + "&vnp_OrderInfo=" + java.net.URLEncoder.encode(orderInfo, java.nio.charset.StandardCharsets.UTF_8)
-                    + "&vnp_SecureHash=DEMO_MODE";
-
-            return ResponseEntity.ok(Map.of("paymentUrl", demoReturnUrl));
-        }
-
-        String paymentUrl = vnPayConfig.createPaymentUrl(amount, hd.getMaHoaDon(), orderInfo, ipAddr);
-        return ResponseEntity.ok(Map.of("paymentUrl", paymentUrl));
-    }
-
-    @GetMapping("/vnpay/return")
-    public void vnpayReturn(@RequestParam Map<String, String> params,
-                            HttpServletResponse response) throws IOException {
-        String txnRef = params.get("vnp_TxnRef");
-        String responseCode = params.get("vnp_ResponseCode");
-        String transactionNo = params.get("vnp_TransactionNo");
-        String amountStr = params.get("vnp_Amount");
-
-        boolean isDemo = "DEMO_MODE".equals(params.get("vnp_SecureHash"));
-        boolean validSignature = isDemo || vnPayConfig.validateSignature(params);
-
-        String frontendBase = paymentResultUrl;
-
-        if (!validSignature) {
-            response.sendRedirect(frontendBase + "?status=error&code=INVALID_SIGNATURE");
-            return;
-        }
-
-        Optional<HoaDon> opt = hoaDonRepo.findByMaHoaDon(txnRef);
-        if (opt.isEmpty()) {
-            response.sendRedirect(frontendBase + "?status=error&code=ORDER_NOT_FOUND");
-            return;
-        }
-
-        HoaDon hd = opt.get();
-        boolean success = "00".equals(responseCode);
-
-        if (success) {
-            hd.setTrangThai(STATUS_CONFIRMED);
-            hd.setDaThanhToan(true);
-            hd.setPhuongThucThanhToanOnline("VNPAY");
-            hoaDonRepo.save(hd);
-            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_CONFIRMED),
-                    "Thanh toán VNPay thành công. Đơn hàng đã được xác nhận.");
-
-            BigDecimal soTien = BigDecimal.ZERO;
-            if (amountStr != null) {
-                soTien = new BigDecimal(amountStr).divide(BigDecimal.valueOf(100));
-            }
-
-            LichSuThanhToan ls = LichSuThanhToan.builder()
-                    .hoaDon(hd)
-                    .soTien(soTien)
-                    .phuongThuc("VNPAY")
-                    .maGiaoDich(transactionNo)
-                    .trangThai("SUCCESS")
-                    .noiDung("Thanh toán VNPay thành công - " + txnRef)
-                    .ngayTao(LocalDateTime.now())
-                    .build();
-            lichSuRepo.save(ls);
-        } else {
-            // Thanh toán VNPay thất bại, không lưu là Đã Hủy (5) nữa mà đổi về Giao Thất Bại (6) hoặc giữ Chờ Xử Lý (0)
-            if (!"FAILED".equalsIgnoreCase(hd.getPhuongThucThanhToanOnline())) {
-                restoreStock(hd);
-            }
-            hd.setTrangThai(STATUS_PAYMENT_FAILED);
-            hd.setDaThanhToan(false);
-            hd.setPhuongThucThanhToanOnline("FAILED");
-            hd.setTrangThaiTracking("payment_failed");
-            hoaDonRepo.save(hd);
-            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_PAYMENT_FAILED),
-                    "Thanh toán VNPay thất bại. Đơn hàng không được xử lý tiếp.");
-
-            LichSuThanhToan ls = LichSuThanhToan.builder()
-                    .hoaDon(hd)
-                    .soTien(BigDecimal.ZERO)
-                    .phuongThuc("VNPAY")
-                    .maGiaoDich(transactionNo)
-                    .trangThai("FAILED")
-                    .noiDung("Thanh toán VNPay thất bại - mã lỗi: " + responseCode)
-                    .ngayTao(LocalDateTime.now())
-                    .build();
-            lichSuRepo.save(ls);
-        }
-
-        response.sendRedirect(frontendBase
-                + "?status=" + (success ? "success" : "failed")
-                + "&orderId=" + hd.getMaHoaDon()
-                + "&amount=" + hd.getTongTien()
-                + "&txn=" + (transactionNo != null ? transactionNo : ""));
     }
 
     @GetMapping("/order/{id}")
@@ -730,13 +614,6 @@ public class PaymentController {
     }
 
     private void restoreStock(HoaDon hoaDon) {
-        List<HoaDonChiTiet> items = hoaDonCtRepo.findByHoaDonId(hoaDon.getId());
-        for (HoaDonChiTiet ct : items) {
-            VayChiTiet variant = ct.getVayChiTiet();
-            if (variant == null || ct.getSoLuong() == null) continue;
-            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
-            variant.setSoLuong(currentStock + ct.getSoLuong());
-            vayCtRepo.save(variant);
-        }
+        orderInventoryService.restoreReservation(hoaDon);
     }
 }

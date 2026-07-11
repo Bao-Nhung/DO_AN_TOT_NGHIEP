@@ -119,7 +119,7 @@
                 </div>
                 
                 <!-- CTA buttons based on type -->
-                <div v-if="n.loai === 'KhuyenMai'" class="d-flex gap-2 mt-3 justify-content-end">
+                <div v-if="n.loai === 'Voucher'" class="d-flex gap-2 mt-3 justify-content-end">
                   <button class="lm-btn-primary py-2 px-4" style="height:auto; font-size:12px;" @click.stop="$router.push('/collections')">
                     <span>Mua Sắm Ngay</span>
                   </button>
@@ -175,7 +175,7 @@ const readIds = ref(JSON.parse(localStorage.getItem('read_notif_ids') || '[]'))
 
 const filterTabs = [
   { label: 'Tất cả', value: 'all' },
-  { label: 'Khuyến mãi & Deal', value: 'KhuyenMai' },
+  { label: 'Voucher & ưu đãi', value: 'Voucher' },
   { label: 'Hệ thống', value: 'HeThong' },
   { label: 'Đơn hàng', value: 'DonHang' }
 ]
@@ -268,7 +268,7 @@ function markAllRead() {
 function getIconClass(type) {
   const icons = {
     HeThong: 'bi bi-cpu',
-    KhuyenMai: 'bi bi-gift',
+    Voucher: 'bi bi-ticket-perforated',
     DonHang: 'bi bi-box-seam'
   }
   return icons[type] || 'bi bi-bell'
@@ -277,7 +277,7 @@ function getIconClass(type) {
 function getTypeName(type) {
   const names = {
     HeThong: 'Hệ thống',
-    KhuyenMai: 'Khuyến mãi',
+    Voucher: 'Voucher',
     DonHang: 'Đơn hàng'
   }
   return names[type] || type
@@ -375,7 +375,7 @@ function formatDateTime(val) {
   background: #e0f2fe;
   color: #0284c7;
 }
-.z-icon-wrapper.KhuyenMai {
+.z-icon-wrapper.Voucher {
   background: #fef3c7;
   color: #d97706;
 }
@@ -397,7 +397,7 @@ function formatDateTime(val) {
   background: #e0f2fe;
   color: #0284c7;
 }
-.badge-type.KhuyenMai {
+.badge-type.Voucher {
   background: #fef3c7;
   color: #d97706;
 }

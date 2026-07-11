@@ -2,6 +2,7 @@ package com.zestia.datn.zestia.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.HoaDonChiTiet;
 import com.zestia.datn.zestia.entity.LichSuThanhToan;
@@ -13,6 +14,7 @@ import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
 import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import com.zestia.datn.zestia.service.EmailService;
+import com.zestia.datn.zestia.service.OrderInventoryService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +48,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class GatewayPaymentController {
     private static final byte STATUS_CONFIRMED = 1;
+    private static final byte STATUS_CANCELLED = 5;
     private static final byte STATUS_PAYMENT_FAILED = 7;
 
     private final HoaDonRepository hoaDonRepo;
@@ -54,6 +57,8 @@ public class GatewayPaymentController {
     private final LichSuThanhToanRepository lichSuRepo;
     private final LichSuTrackingRepository trackingRepo;
     private final EmailService emailService;
+    private final JwtUtil jwtUtil;
+    private final OrderInventoryService orderInventoryService;
 
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -85,11 +90,14 @@ public class GatewayPaymentController {
     // ============================ MoMo ============================
 
     @PostMapping("/momo/create")
-    public ResponseEntity<?> createMomo(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> createMomo(@RequestBody Map<String, Object> body,
+                                        @RequestHeader(value = "Authorization", required = false) String authHeader) {
         Integer orderId = toInt(body.get("orderId"));
         Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findById(orderId) : Optional.empty();
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy đơn hàng"));
         HoaDon hd = opt.get();
+        ResponseEntity<?> authError = authorizePaymentStart(hd, body, authHeader);
+        if (authError != null) return authError;
 
         try {
             long amount = hd.getTongTien().longValue();
@@ -100,15 +108,17 @@ public class GatewayPaymentController {
             JsonNode node = momoCreate(amount, momoOrderId, orderInfo, extraData);
             String payUrl = node.path("payUrl").asText(null);
             if (payUrl == null || payUrl.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "MoMo từ chối: " + node.path("message").asText("không rõ"),
-                        "resultCode", node.path("resultCode").asInt(-1)));
+                String message = "MoMo từ chối: " + node.path("message").asText("không rõ");
+                markPaymentStartFailed(hd, "MOMO", message);
+                return paymentStartFailedResponse(hd, message, node.path("resultCode").asInt(-1));
             }
             hd.setHinhThucThanhToan("MOMO");
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", payUrl));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi gọi MoMo: " + e.getMessage()));
+            String message = "Lỗi gọi MoMo: " + e.getMessage();
+            markPaymentStartFailed(hd, "MOMO", message);
+            return ResponseEntity.internalServerError().body(paymentStartFailedBody(hd, message, -1));
         }
     }
 
@@ -184,7 +194,7 @@ public class GatewayPaymentController {
             maHoaDon = t > 0 ? oid.substring(0, t) : oid;
         }
         boolean success = valid && "0".equals(q.get("resultCode"));
-        finishOnline(maHoaDon, "MOMO", q.get("amount"), q.get("transId"), success);
+        success = finishOnline(maHoaDon, "MOMO", q.get("amount"), q.get("transId"), success);
         response.sendRedirect(paymentResultUrl + "?status=" + (success ? "success" : "failed")
                 + "&orderId=" + enc(maHoaDon) + "&amount=" + enc(q.getOrDefault("amount", ""))
                 + "&method=MOMO&txn=" + enc(q.getOrDefault("transId", "")));
@@ -193,7 +203,19 @@ public class GatewayPaymentController {
     @PostMapping("/momo/ipn")
     public ResponseEntity<?> momoIpn(@RequestBody(required = false) Map<String, String> body) {
         // IPN không tới được localhost; để đầy đủ vẫn trả 200.
-        return ResponseEntity.ok(Map.of("RspCode", "00", "Message", "Success"));
+        if (body == null || body.isEmpty()) {
+            return ResponseEntity.ok(Map.of("RspCode", "99", "Message", "Empty body"));
+        }
+        boolean valid = verifyMomo(body);
+        String maHoaDon = decodeBase64(body.get("extraData"));
+        if (maHoaDon == null || maHoaDon.isBlank()) {
+            String oid = body.getOrDefault("orderId", "");
+            int t = oid.lastIndexOf('T');
+            maHoaDon = t > 0 ? oid.substring(0, t) : oid;
+        }
+        boolean success = valid && "0".equals(body.get("resultCode"));
+        finishOnline(maHoaDon, "MOMO", body.get("amount"), body.get("transId"), success);
+        return ResponseEntity.ok(Map.of("RspCode", valid ? "00" : "97", "Message", valid ? "Success" : "Invalid signature"));
     }
 
     private boolean verifyMomo(Map<String, String> q) {
@@ -219,11 +241,14 @@ public class GatewayPaymentController {
     // ============================ ZaloPay ============================
 
     @PostMapping("/zalopay/create")
-    public ResponseEntity<?> createZalo(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> createZalo(@RequestBody Map<String, Object> body,
+                                        @RequestHeader(value = "Authorization", required = false) String authHeader) {
         Integer orderId = toInt(body.get("orderId"));
         Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findById(orderId) : Optional.empty();
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy đơn hàng"));
         HoaDon hd = opt.get();
+        ResponseEntity<?> authError = authorizePaymentStart(hd, body, authHeader);
+        if (authError != null) return authError;
 
         try {
             long appTime = System.currentTimeMillis();
@@ -232,16 +257,18 @@ public class GatewayPaymentController {
             JsonNode node = zaloCreate(amount, appTransId, appTime, "Thanh toan don hang " + hd.getMaHoaDon());
             String orderUrl = node.path("order_url").asText(null);
             if (orderUrl == null || orderUrl.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "ZaloPay từ chối: " + node.path("return_message").asText("không rõ")
-                                + " " + node.path("sub_return_message").asText(""),
-                        "return_code", node.path("return_code").asInt(-1)));
+                String message = "ZaloPay từ chối: " + node.path("return_message").asText("không rõ")
+                        + " " + node.path("sub_return_message").asText("");
+                markPaymentStartFailed(hd, "ZALOPAY", message);
+                return paymentStartFailedResponse(hd, message, node.path("return_code").asInt(-1));
             }
             hd.setHinhThucThanhToan("ZALOPAY");
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", orderUrl));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi gọi ZaloPay: " + e.getMessage()));
+            String message = "Lỗi gọi ZaloPay: " + e.getMessage();
+            markPaymentStartFailed(hd, "ZALOPAY", message);
+            return ResponseEntity.internalServerError().body(paymentStartFailedBody(hd, message, -1));
         }
     }
 
@@ -318,7 +345,7 @@ public class GatewayPaymentController {
             Optional<HoaDon> opt = hoaDonRepo.findById(hoaDonId);
             if (opt.isPresent()) {
                 maHoaDon = opt.get().getMaHoaDon();
-                applyResult(opt.get(), "ZALOPAY", new BigDecimal(n(q.getOrDefault("amount", "0"))),
+                success = applyResult(opt.get(), "ZALOPAY", parseAmount(q.getOrDefault("amount", "0")),
                         appTransId, success);
             }
         }
@@ -335,6 +362,18 @@ public class GatewayPaymentController {
             String data = node.path("data").asText("");
             String mac = node.path("mac").asText("");
             boolean ok = !isBlank(zaloKey2) && hmacHex("HmacSHA256", zaloKey2, data).equals(mac);
+            if (ok) {
+                JsonNode dataNode = mapper.readTree(data);
+                String appTransId = dataNode.path("app_trans_id").asText("");
+                Integer hoaDonId = extractHoaDonIdFromZaloTransId(appTransId);
+                if (hoaDonId != null) {
+                    hoaDonRepo.findById(hoaDonId).ifPresent(order ->
+                            applyResult(order, "ZALOPAY",
+                                    new BigDecimal(dataNode.path("amount").asText("0")),
+                                    dataNode.path("zp_trans_id").asText(appTransId),
+                                    true));
+                }
+            }
             return ResponseEntity.ok(Map.of("return_code", ok ? 1 : -1,
                     "return_message", ok ? "success" : "mac not equal"));
         } catch (Exception e) {
@@ -344,16 +383,22 @@ public class GatewayPaymentController {
 
     // ============================ Helpers ============================
 
-    private void finishOnline(String maHoaDon, String method, String amountStr, String txn, boolean success) {
-        if (maHoaDon == null || maHoaDon.isBlank()) return;
+    private boolean finishOnline(String maHoaDon, String method, String amountStr, String txn, boolean success) {
+        if (maHoaDon == null || maHoaDon.isBlank()) return false;
+        final boolean[] result = {false};
         hoaDonRepo.findByMaHoaDon(maHoaDon).ifPresent(hd -> {
-            BigDecimal amt = hd.getTongTien();
-            applyResult(hd, method, amt, txn, success);
+            BigDecimal amt = parseAmount(amountStr);
+            result[0] = applyResult(hd, method, amt, txn, success);
         });
+        return result[0];
     }
 
-    private void applyResult(HoaDon hd, String method, BigDecimal amount, String txn, boolean success) {
-        if (success) {
+    private boolean applyResult(HoaDon hd, String method, BigDecimal amount, String txn, boolean success) {
+        if (Boolean.TRUE.equals(hd.getDaThanhToan()) || (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_PAYMENT_FAILED)) {
+            return Boolean.TRUE.equals(hd.getDaThanhToan());
+        }
+        boolean finalSuccess = success && amountMatches(amount, hd.getTongTien());
+        if (finalSuccess) {
             hd.setTrangThai((byte) 1);       // Đã xác nhận
             hd.setDaThanhToan(true);
             hd.setPhuongThucThanhToanOnline(method);
@@ -390,17 +435,95 @@ public class GatewayPaymentController {
                     .noiDung("Thanh toán " + method + " thất bại - " + hd.getMaHoaDon())
                     .ngayTao(LocalDateTime.now()).build());
         }
+        return finalSuccess;
     }
 
     private void restoreStock(HoaDon hoaDon) {
-        List<HoaDonChiTiet> items = hoaDonChiTietRepo.findByHoaDonId(hoaDon.getId());
-        for (HoaDonChiTiet ct : items) {
-            VayChiTiet variant = ct.getVayChiTiet();
-            if (variant == null || ct.getSoLuong() == null) continue;
-            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
-            variant.setSoLuong(currentStock + ct.getSoLuong());
-            vayChiTietRepo.save(variant);
+        orderInventoryService.restoreReservation(hoaDon);
+    }
+
+    private ResponseEntity<?> authorizePaymentStart(HoaDon hd, Map<String, Object> body, String authHeader) {
+        if (hd.getTrangThai() != null && (hd.getTrangThai() == STATUS_CANCELLED || hd.getTrangThai() == STATUS_PAYMENT_FAILED)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Don hang khong the tao thanh toan"));
         }
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7);
+                if (!jwtUtil.isValid(token)) {
+                    return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+                }
+                var claims = jwtUtil.extractClaims(token);
+                String role = claims.get("role", String.class);
+                Integer userId = toInt(claims.get("userId"));
+                if (isStaffRole(role)) return null;
+                if ("KhachHang".equalsIgnoreCase(role)
+                        && hd.getKhachHang() != null
+                        && Objects.equals(hd.getKhachHang().getId(), userId)) {
+                    return null;
+                }
+                return ResponseEntity.status(403).body(Map.of("error", "Khong co quyen thanh toan don hang nay"));
+            } catch (Exception e) {
+                return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+            }
+        }
+        if (matchesGuestPaymentProof(hd, body)) return null;
+        return ResponseEntity.status(403).body(Map.of("error", "Can xac thuc don hang bang ma hoa don va so dien thoai"));
+    }
+
+    private boolean matchesGuestPaymentProof(HoaDon hd, Map<String, Object> body) {
+        String maHoaDon = cleanString(body.get("maHoaDon"));
+        String phone = cleanString(body.get("soDienThoai"));
+        if (maHoaDon == null || phone == null || hd.getMaHoaDon() == null) return false;
+        if (!maHoaDon.equalsIgnoreCase(hd.getMaHoaDon())) return false;
+        String orderPhone = hd.getSoDienThoai();
+        if ((orderPhone == null || orderPhone.isBlank()) && hd.getKhachHang() != null) {
+            orderPhone = hd.getKhachHang().getSoDienThoai();
+        }
+        return orderPhone != null && normalizePhone(phone).equals(normalizePhone(orderPhone));
+    }
+
+    private Integer extractHoaDonIdFromZaloTransId(String appTransId) {
+        if (appTransId == null || appTransId.isBlank()) return null;
+        String[] parts = appTransId.split("_");
+        if (parts.length < 2) return null;
+        try {
+            return Integer.parseInt(parts[1]);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static BigDecimal parseAmount(String amountStr) {
+        if (amountStr == null || amountStr.isBlank()) return BigDecimal.ZERO;
+        try {
+            return new BigDecimal(amountStr);
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private static boolean amountMatches(BigDecimal actual, BigDecimal expected) {
+        if (actual == null || expected == null) return false;
+        return actual.setScale(0, java.math.RoundingMode.HALF_UP)
+                .compareTo(expected.setScale(0, java.math.RoundingMode.HALF_UP)) == 0;
+    }
+
+    private static String cleanString(Object obj) {
+        if (obj == null) return null;
+        String value = String.valueOf(obj).trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    private static String normalizePhone(String phone) {
+        if (phone == null) return "";
+        String cleaned = phone.replaceAll("[^0-9+]", "");
+        return cleaned.startsWith("+84") ? "0" + cleaned.substring(3) : cleaned;
+    }
+
+    private static boolean isStaffRole(String role) {
+        return "Admin".equalsIgnoreCase(role)
+                || "NhanVien".equalsIgnoreCase(role)
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
     }
 
     private JsonNode postJson(String url, String json) throws Exception {
@@ -446,6 +569,26 @@ public class GatewayPaymentController {
     }
 
     private static String n(String s) { return s == null ? "" : s; }
+
+    private void markPaymentStartFailed(HoaDon hd, String method, String reason) {
+        hd.setHinhThucThanhToan(method);
+        applyResult(hd, method, BigDecimal.ZERO, "CREATE_FAILED", false);
+    }
+
+    private ResponseEntity<Map<String, Object>> paymentStartFailedResponse(HoaDon hd, String message, int code) {
+        return ResponseEntity.badRequest().body(paymentStartFailedBody(hd, message, code));
+    }
+
+    private Map<String, Object> paymentStartFailedBody(HoaDon hd, String message, int code) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", message);
+        body.put("paymentFailed", true);
+        body.put("orderId", hd.getId());
+        body.put("maHoaDon", hd.getMaHoaDon());
+        body.put("amount", hd.getTongTien());
+        body.put("resultCode", code);
+        return body;
+    }
 
     private static Integer toInt(Object obj) {
         if (obj == null) return null;

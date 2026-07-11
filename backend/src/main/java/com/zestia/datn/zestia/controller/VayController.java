@@ -474,8 +474,8 @@ public class VayController {
             if (giaBanGoc == null || giaBanGoc.compareTo(BigDecimal.ZERO) < 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co gia goc hop le"));
             }
-            if (giaBanGoc.compareTo(giaBan) >= 0) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + ": gia goc phai thap hon gia ban"));
+            if (giaBanGoc.compareTo(giaBan) < 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + ": gia goc khong duoc nho hon gia ban"));
             }
             if (soLuong == null || soLuong < 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co so luong hop le"));

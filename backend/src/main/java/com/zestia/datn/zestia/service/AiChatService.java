@@ -24,10 +24,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -150,13 +153,15 @@ public class AiChatService {
         List<Vay> activeProducts = vayRepository.findByTrangThai((byte) 1).stream()
                 .sorted(Comparator.comparing(Vay::getNgayTao, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
-        Map<Integer, List<VayChiTiet>> variantsByProduct = activeProducts.stream()
-                .collect(Collectors.toMap(
-                        Vay::getId,
-                        v -> vayChiTietRepository.findByVayId(v.getId()).stream()
-                                .filter(this::activeVariant)
-                                .toList()
-                ));
+        List<Integer> productIds = activeProducts.stream()
+                .map(Vay::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Integer, List<VayChiTiet>> variantsByProduct = productIds.isEmpty()
+                ? Map.of()
+                : vayChiTietRepository.findByVayIdIn(productIds).stream()
+                        .filter(this::activeVariant)
+                        .collect(Collectors.groupingBy(v -> v.getVay().getId()));
         List<VayChiTiet> activeVariants = variantsByProduct.values().stream()
                 .flatMap(List::stream)
                 .toList();
@@ -184,15 +189,16 @@ public class AiChatService {
         sb.append("- So size khac nhau trong bien the: ").append(sizeCount).append("\n");
         sb.append("- Luu y: mau vay/san pham chinh khac voi mau sac va bien the mau-size.\n");
 
-        sb.append("\nSan pham dang ban de tu van (toi da 30 san pham moi nhat, khong dung so dong nay lam tong so):\n");
+        List<Vay> prioritizedProducts = prioritizeProducts(activeProducts, variantsByProduct, message);
+        sb.append("\nSan pham dang ban de tu van (toi da 30 san pham phu hop hoac moi nhat, khong dung so dong nay lam tong so):\n");
         if (activeProducts.isEmpty()) {
             sb.append("- Hien chua co san pham dang ban.\n");
         } else {
-            activeProducts.stream()
+            prioritizedProducts.stream()
                     .limit(30)
                     .forEach(v -> sb.append("- ").append(productSummary(v, variantsByProduct.getOrDefault(v.getId(), List.of()))).append("\n"));
-            if (activeProducts.size() > 30) {
-                sb.append("- ... con ").append(activeProducts.size() - 30).append(" san pham khac trong database.\n");
+            if (prioritizedProducts.size() > 30) {
+                sb.append("- ... con ").append(prioritizedProducts.size() - 30).append(" san pham khac trong database.\n");
             }
         }
 
@@ -225,10 +231,56 @@ public class AiChatService {
         return sb.toString();
     }
 
-    private String productSummary(Vay vay) {
-        return productSummary(vay, vayChiTietRepository.findByVayId(vay.getId()).stream()
-                .filter(this::activeVariant)
-                .toList());
+    private List<Vay> prioritizeProducts(List<Vay> products, Map<Integer, List<VayChiTiet>> variantsByProduct, String message) {
+        String query = normalizeForSearch(message);
+        if (query.isBlank()) return products;
+
+        List<Vay> matched = products.stream()
+                .filter(v -> productMatches(v, variantsByProduct.getOrDefault(v.getId(), List.of()), query))
+                .toList();
+        if (matched.isEmpty()) return products;
+
+        Set<Integer> seen = new LinkedHashSet<>();
+        List<Vay> result = new ArrayList<>();
+        for (Vay product : matched) {
+            if (seen.add(product.getId())) result.add(product);
+        }
+        for (Vay product : products) {
+            if (seen.add(product.getId())) result.add(product);
+        }
+        return result;
+    }
+
+    private boolean productMatches(Vay product, List<VayChiTiet> variants, String query) {
+        List<String> fields = new ArrayList<>();
+        fields.add(product.getTenVay());
+        fields.add(product.getMaVay());
+        fields.add(product.getMoTa());
+        if (product.getLoaiVay() != null) fields.add(product.getLoaiVay().getTenLoaiVay());
+        if (product.getChatLieu() != null) fields.add(product.getChatLieu().getTenChatLieu());
+        variants.forEach(v -> {
+            if (v.getMauSac() != null) fields.add("mau " + v.getMauSac().getTenMauSac());
+            if (v.getKichThuoc() != null) fields.add("size " + v.getKichThuoc().getTenKichThuoc());
+            if (v.getGiaBan() != null) fields.add(v.getGiaBan().toPlainString());
+        });
+        String haystack = normalizeForSearch(String.join(" ", fields.stream().filter(Objects::nonNull).toList()));
+        return queryTokens(query).stream().anyMatch(haystack::contains);
+    }
+
+    private List<String> queryTokens(String query) {
+        return Pattern.compile("[\\p{L}\\p{N}]+")
+                .matcher(query)
+                .results()
+                .map(match -> match.group())
+                .filter(token -> token.length() >= 2)
+                .toList();
+    }
+
+    private String normalizeForSearch(String value) {
+        if (value == null) return "";
+        return java.text.Normalizer.normalize(value.toLowerCase(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replace('đ', 'd');
     }
 
     private String productSummary(Vay vay, List<VayChiTiet> variants) {

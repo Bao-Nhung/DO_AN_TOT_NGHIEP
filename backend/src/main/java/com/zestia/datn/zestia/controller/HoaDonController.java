@@ -16,6 +16,7 @@ import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
 import com.zestia.datn.zestia.repository.HoaDonAuditLogRepository;
 import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import com.zestia.datn.zestia.service.EmailService;
+import com.zestia.datn.zestia.service.OrderInventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,6 +45,7 @@ public class HoaDonController {
     private final KhachHangRepository khachHangRepo;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
+    private final OrderInventoryService orderInventoryService;
 
     @GetMapping
     public List<Map<String, Object>> getAll() {
@@ -487,12 +489,11 @@ public class HoaDonController {
         
         map.put("tongTien", hd.getTongTien() != null ? hd.getTongTien() : BigDecimal.ZERO);
         map.put("phiVanChuyen", hd.getPhiVanChuyen() != null ? hd.getPhiVanChuyen() : BigDecimal.ZERO);
-        map.put("giamGiaKhuyenMai", hd.getGiamGiaKhuyenMai() != null ? hd.getGiamGiaKhuyenMai() : BigDecimal.ZERO);
+        map.put("giamGiaVoucher", hd.getGiamGiaVoucher() != null ? hd.getGiamGiaVoucher() : BigDecimal.ZERO);
         
         map.put("nhanVien", hd.getNhanVien() != null ? hd.getNhanVien().getHoVaTen() : null);
         map.put("nhanVienId", hd.getNhanVien() != null ? hd.getNhanVien().getId() : null);
         map.put("nguoiTaoDon", hd.getNhanVien() != null ? hd.getNhanVien().getHoVaTen() : "Khách hàng tự đặt");
-        map.put("khuyenMai", hd.getKhuyenMai() != null ? hd.getKhuyenMai().getTenKhuyenMai() : null);
         map.put("giamGia", hd.getGiamGia() != null ? hd.getGiamGia().getTenGiamGia() : null);
         map.put("hinhThucThanhToan", hd.getHinhThucThanhToan());
         map.put("phuongThucThanhToanOnline", hd.getPhuongThucThanhToanOnline());
@@ -629,14 +630,7 @@ public class HoaDonController {
     }
 
     private void restoreStock(HoaDon hd) {
-        List<HoaDonChiTiet> items = hoaDonCtRepo.findByHoaDonId(hd.getId());
-        for (HoaDonChiTiet ct : items) {
-            VayChiTiet variant = ct.getVayChiTiet();
-            if (variant == null || ct.getSoLuong() == null) continue;
-            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
-            variant.setSoLuong(currentStock + ct.getSoLuong());
-            vayCtRepo.save(variant);
-        }
+        orderInventoryService.restoreReservation(hd);
     }
 
     private String appendNote(String current, String note) {

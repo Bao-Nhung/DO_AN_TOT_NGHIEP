@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h2 style="font-size:24px;font-weight:700;margin:0" class="z-gradient-text">Quản lý Thông báo</h2>
-        <div style="font-size:13px;color:var(--z-gray)">Tạo và gửi thông báo hệ thống, khuyến mãi đến toàn bộ khách hàng</div>
+        <div style="font-size:13px;color:var(--z-gray)">Tạo và gửi thông báo hệ thống, voucher đến toàn bộ khách hàng</div>
       </div>
       <button class="lm-btn-primary" @click="openAdd">
         <i class="bi bi-plus-lg"></i>
@@ -21,7 +21,7 @@
           <select v-model="filterType" class="lm-input">
             <option value="">Tất cả loại thông báo</option>
             <option value="HeThong">Hệ thống</option>
-            <option value="KhuyenMai">Khuyến mãi</option>
+            <option value="Voucher">Voucher</option>
             <option value="DonHang">Đơn hàng</option>
           </select>
         </div>
@@ -147,7 +147,7 @@
         <div class="d-flex flex-column gap-3">
           <div>
             <label class="z-label">Tiêu đề thông báo *</label>
-            <input v-model="form.tieuDe" type="text" class="lm-input" placeholder="VD: Khuyến mãi tết dương lịch 2026">
+            <input v-model="form.tieuDe" type="text" class="lm-input" placeholder="VD: Voucher thành viên tháng 7">
           </div>
 
           <div class="row g-3">
@@ -155,7 +155,7 @@
               <label class="z-label">Loại thông báo</label>
               <select v-model="form.loai" class="lm-input">
                 <option value="HeThong">Hệ thống</option>
-                <option value="KhuyenMai">Khuyến mãi</option>
+                <option value="Voucher">Voucher</option>
                 <option value="DonHang">Đơn hàng</option>
               </select>
             </div>
@@ -416,7 +416,7 @@ async function deleteItem(id) {
 function getLabelClass(type) {
   const classes = {
     HeThong: 'info',
-    KhuyenMai: 'success',
+    Voucher: 'success',
     DonHang: 'warning'
   }
   return classes[type] || 'info'
@@ -425,7 +425,7 @@ function getLabelClass(type) {
 function getTypeName(type) {
   const names = {
     HeThong: 'Hệ thống',
-    KhuyenMai: 'Khuyến mãi',
+    Voucher: 'Voucher',
     DonHang: 'Đơn hàng'
   }
   return names[type] || type

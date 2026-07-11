@@ -171,8 +171,6 @@
                 <i class="bi" :class="appliedVoucher ? 'bi-check-circle' : 'bi-exclamation-circle'"></i>
                 {{ voucherMsg }}
               </div>
-              <div class="z-voucher-hint">Mã thử: <strong>ZESTIA10</strong>, <strong>SUMMER20</strong></div>
-
               <!-- Active Vouchers List -->
               <div v-if="activeVouchers.length" class="mt-3">
                 <div style="font-size:12px; font-weight:600; color:var(--z-dark); margin-bottom:8px">Voucher khả dụng:</div>
@@ -244,7 +242,9 @@
         <p style="font-size:14px; color:var(--z-gray); margin-bottom:24px">Bạn có chắc chắn muốn thanh toán đơn hàng này?</p>
         <div class="d-flex gap-3">
           <button class="lm-btn-secondary flex-fill" style="height:40px;" @click="showConfirmModal = false">Hủy</button>
-          <button class="lm-btn-primary flex-fill" style="height:40px;" @click="confirmAndPlaceOrder">Xác nhận</button>
+          <button class="lm-btn-primary flex-fill" style="height:40px;" @click="confirmAndPlaceOrder" :disabled="loading">
+            {{ loading ? 'Đang xử lý...' : 'Xác nhận' }}
+          </button>
         </div>
       </div>
     </div>
@@ -371,6 +371,7 @@ const activeVouchers = computed(() => {
 const showConfirmModal = ref(false)
 
 function handlePlaceOrder() {
+  if (loading.value) return
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
   if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
   if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
@@ -383,6 +384,7 @@ function handlePlaceOrder() {
 }
 
 function confirmAndPlaceOrder() {
+  if (loading.value) return
   showConfirmModal.value = false
   placeOrder()
 }
@@ -427,7 +429,7 @@ onMounted(async () => {
 
   // Load active vouchers
   try {
-    const list = await api().getGiamGia()
+    const list = await api().getVouchers()
     vouchersList.value = Array.isArray(list) ? list : []
   } catch (e) {
     console.error("Lỗi khi tải vouchers:", e)
@@ -435,6 +437,7 @@ onMounted(async () => {
 })
 
 async function placeOrder() {
+  if (loading.value) return
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
   if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
   if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
@@ -486,8 +489,8 @@ async function placeOrder() {
     // MoMo / ZaloPay: gọi cổng sandbox thật -> chuyển sang trang thanh toán của cổng
     if (form.value.hinhThuc === 'MOMO' || form.value.hinhThuc === 'ZALOPAY') {
       const res = form.value.hinhThuc === 'MOMO'
-        ? await api().createMomoPayment(order.orderId)
-        : await api().createZaloPayment(order.orderId)
+        ? await api().createMomoPayment(order.orderId, order.maHoaDon, form.value.soDienThoai)
+        : await api().createZaloPayment(order.orderId, order.maHoaDon, form.value.soDienThoai)
       if (res && res.payUrl) {
         clearCart()
         window.location.href = res.payUrl
@@ -497,6 +500,19 @@ async function placeOrder() {
       return
     }
   } catch (err) {
+    if (err.paymentFailed && (err.maHoaDon || err.orderId)) {
+      clearCart()
+      router.push({
+        path: '/payment-result',
+        query: {
+          status: 'failed',
+          orderId: err.maHoaDon || err.orderId,
+          amount: err.amount || finalTotal.value,
+          method: form.value.hinhThuc
+        }
+      })
+      return
+    }
     showToast(err.error || 'Đã xảy ra lỗi khi đặt hàng')
   } finally {
     loading.value = false

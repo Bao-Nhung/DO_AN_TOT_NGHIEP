@@ -259,9 +259,9 @@ watch(filteredVouchers, () => {
 async function loadData() {
   currentPage.value = 1
   try {
-    const data = await api().getAllKhuyenMai()
-    if (data.giamGia) {
-      vouchers.value = data.giamGia.map(g => ({
+    const data = await api().getVouchers()
+    if (Array.isArray(data)) {
+      vouchers.value = data.map(g => ({
         id: g.id, code: g.maGiamGia || '', name: g.tenGiamGia || '',
         discount: g.phanTramGiam ? g.phanTramGiam + '%' : (g.gioTriGiam ? Number(g.gioTriGiam).toLocaleString('vi-VN') + 'đ' : ''),
         minOrder: g.giaTriDonToiThieu ? Number(g.giaTriDonToiThieu).toLocaleString('vi-VN') + 'đ' : '0đ',
@@ -319,10 +319,10 @@ async function saveVoucher() {
   saving.value = true
   try {
     if (vForm.value.id) {
-      await api().updateGiamGia(vForm.value.id, vForm.value)
+      await api().updateVoucher(vForm.value.id, vForm.value)
       showToast('Cập nhật voucher thành công!')
     } else {
-      await api().addGiamGia(vForm.value)
+      await api().addVoucher(vForm.value)
       showToast('Thêm voucher thành công!')
     }
     showVoucherModal.value = false
@@ -339,7 +339,7 @@ async function deleteVoucher(v) {
     variant: 'danger'
   })) return
   try {
-    await api().deleteGiamGia(v.id)
+    await api().deleteVoucher(v.id)
     showToast('Đã xóa voucher!')
     await loadData()
   } catch (e) { showToast('Lỗi khi xóa') }

@@ -10,6 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import com.zestia.datn.zestia.repository.NhanVienRepository;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final NhanVienRepository nhanVienRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -28,7 +30,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (jwtUtil.isValid(token)) {
                 String username = jwtUtil.extractUsername(token);
-                String role = jwtUtil.extractClaims(token).get("role", String.class);
+                var claims = jwtUtil.extractClaims(token);
+                String role = claims.get("role", String.class);
+                Integer userId = toInt(claims.get("userId"));
+                if (isStaffRole(role) && !activeStaff(userId)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 var auth = new UsernamePasswordAuthenticationToken(
                     username, null,
                     List.of(new SimpleGrantedAuthority("ROLE_" + role))
@@ -37,5 +45,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private boolean activeStaff(Integer userId) {
+        if (userId == null) return false;
+        return nhanVienRepository.findById(userId)
+                .map(nv -> nv.getTinhTrangLamViec() == null || nv.getTinhTrangLamViec() == 1)
+                .orElse(false);
+    }
+
+    private static boolean isStaffRole(String role) {
+        return "Admin".equalsIgnoreCase(role)
+                || "NhanVien".equalsIgnoreCase(role)
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+    }
+
+    private static Integer toInt(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Integer i) return i;
+        if (obj instanceof Number n) return n.intValue();
+        try {
+            return Integer.parseInt(obj.toString());
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

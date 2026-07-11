@@ -310,19 +310,15 @@
                   <div class="mb-3 p-3 bg-light rounded" style="font-size:13px; color:var(--z-gray)">
                     <div class="d-flex justify-content-between mb-2">
                       <span>Tổng tiền hàng:</span>
-                      <span style="font-weight: 500; color: var(--z-dark);">{{ fmtPrice(detailData.tongTien + (detailData.giamGiaKhuyenMai || 0) - (detailData.phiVanChuyen || 0)) }}</span>
+                      <span style="font-weight: 500; color: var(--z-dark);">{{ fmtPrice(detailData.tongTien + (detailData.giamGiaVoucher || 0) - (detailData.phiVanChuyen || 0)) }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2" v-if="detailData.phiVanChuyen > 0">
                       <span>Phí vận chuyển:</span>
                       <span style="font-weight: 500; color: var(--z-dark);">+ {{ fmtPrice(detailData.phiVanChuyen) }}</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-2" v-if="detailData.giamGiaKhuyenMai > 0">
-                      <span>Giảm giá / Khuyến mãi:</span>
-                      <span class="text-danger font-weight-bold">- {{ fmtPrice(detailData.giamGiaKhuyenMai) }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailData.khuyenMai">
-                      <div style="font-size:13px;color:var(--z-gray)">Chương trình KM</div>
-                      <div style="font-size:13px;font-weight:500;color:var(--z-success)">{{ detailData.khuyenMai }}</div>
+                    <div class="d-flex justify-content-between mb-2" v-if="detailData.giamGiaVoucher > 0">
+                      <span>Voucher giảm giá:</span>
+                      <span class="text-danger font-weight-bold">- {{ fmtPrice(detailData.giamGiaVoucher) }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2" v-if="detailData.giamGia">
                       <div style="font-size:13px;color:var(--z-gray)">Voucher</div>

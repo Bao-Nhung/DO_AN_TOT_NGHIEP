@@ -100,7 +100,7 @@
             <div class="mb-3">
               <label class="z-label">Mã giảm giá</label>
               <div class="d-flex gap-2">
-                <input v-model="voucherCode" class="lm-input" placeholder="VD: ZESTIA10" style="font-size:13px;padding:8px 12px;text-transform:uppercase"
+                <input v-model="voucherCode" class="lm-input" placeholder="Nhập mã voucher" style="font-size:13px;padding:8px 12px;text-transform:uppercase"
                        :disabled="!!appliedVoucher" @keyup.enter="applyVoucher">
                 <button v-if="!appliedVoucher" class="z-pm-btn" style="flex:0 0 auto;background:var(--z-dark);color:#fff;border-color:var(--z-dark)" @click="applyVoucher">Áp dụng</button>
                 <button v-else class="z-pm-btn" style="flex:0 0 auto" @click="removeVoucher">Bỏ</button>
@@ -263,6 +263,7 @@ import { api, useAuth } from '@/composables/useApi'
 import { mapProduct, fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { createVietQrUrl, isVietQrConfigured } from '@/config/paymentConfig'
 
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
@@ -369,8 +370,7 @@ const finalTotal = computed(() => Math.max(0, cartTotal.value - discount.value))
 const change = computed(() => (Number(tienKhachDua.value) || 0) - finalTotal.value)
 
 const vietqrUrl = computed(() => {
-  const desc = encodeURIComponent('ZESTIA POS')
-  return `https://img.vietqr.io/image/VCB-9869167207-compact2.png?amount=${finalTotal.value}&addInfo=${desc}&accountName=NGUYEN%20TIEN%20THANH`
+  return createVietQrUrl(finalTotal.value, 'ZESTIA POS')
 })
 
 const transferHint = computed(() => {
@@ -386,7 +386,15 @@ function qrImage(content) {
 let qrReqId = 0
 async function refreshTransferQr() {
   if (paymentMethod.value !== 'transfer' || finalTotal.value < 1000) { transferQrSrc.value = ''; return }
-  if (transferMethod.value === 'vietqr') { transferQrSrc.value = vietqrUrl.value; return }
+  if (transferMethod.value === 'vietqr') {
+    if (!isVietQrConfigured()) {
+      transferQrSrc.value = ''
+      showToast('Chưa cấu hình VietQR trong frontend/.env.local')
+      return
+    }
+    transferQrSrc.value = vietqrUrl.value
+    return
+  }
   // MoMo / ZaloPay: gọi cổng thật lấy nội dung QR
   const myReq = ++qrReqId
   loadingQr.value = true

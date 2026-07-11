@@ -13,7 +13,7 @@
             <template v-if="method === 'COD'">
               Đơn hàng sẽ được giao đến bạn sớm nhất. Vui lòng thanh toán khi nhận hàng.
             </template>
-            <template v-else-if="method === 'MOMO' || method === 'ZALOPAY' || method === 'VNPAY'">
+            <template v-else-if="method === 'MOMO' || method === 'ZALOPAY'">
               Thanh toán thành công! Đơn hàng của bạn đã được <strong>xác nhận</strong> và sẽ sớm được giao.
             </template>
             <template v-else>
@@ -103,7 +103,6 @@ const formatAmount = computed(() => {
 
 const methodLabel = computed(() => {
   const map = {
-    VNPAY: 'Thẻ / VNPay',
     MOMO: 'Ví MoMo',
     ZALOPAY: 'Ví ZaloPay',
     COD: 'Thanh toán khi nhận hàng'

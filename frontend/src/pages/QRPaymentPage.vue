@@ -26,10 +26,12 @@
         <!-- Payment Body -->
         <div class="z-qr-body">
           <div class="z-qr-image-wrap">
-            <img :src="qrUrl" alt="QR Code thanh toán" class="z-qr-image" @error="qrError = true" />
-            <div v-if="qrError" class="z-qr-fallback">
+            <img v-if="qrUrl" :src="qrUrl" alt="QR Code thanh toán" class="z-qr-image" @error="qrError = true" />
+            <div v-if="qrError || !qrUrl" class="z-qr-fallback">
               <i class="bi bi-qr-code" style="font-size:80px;color:var(--z-gray-border)"></i>
-              <p style="color:var(--z-gray);font-size:13px;margin-top:8px">Không tải được mã QR</p>
+              <p style="color:var(--z-gray);font-size:13px;margin-top:8px">
+                {{ qrUrl ? 'Không tải được mã QR' : 'Chưa cấu hình VietQR' }}
+              </p>
             </div>
           </div>
           <p class="z-qr-instruction">
@@ -104,6 +106,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useConfirm } from '@/composables/useConfirm'
+import { createVietQrUrl, paymentConfig } from '@/config/paymentConfig'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 const route = useRoute()
@@ -124,12 +127,14 @@ const methodConfig = {
   MOMO: {
     label: 'Ví MoMo (test)', appName: 'MoMo', short: 'MoMo', color: '#AE2070',
     gradient: 'linear-gradient(135deg, #AE2070, #8C1A5A)',
-    account: '0869167207', holder: 'NGUYEN TIEN THANH',
+    account: paymentConfig.momo.account || 'Chưa cấu hình',
+    holder: paymentConfig.momo.holder || 'Chưa cấu hình',
   },
   ZALOPAY: {
     label: 'Ví ZaloPay (sandbox)', appName: 'ZaloPay', short: 'Zalo', color: '#0068FF',
     gradient: 'linear-gradient(135deg, #0068FF, #0049B7)',
-    account: '0869167207', holder: 'NGUYEN TIEN THANH',
+    account: paymentConfig.zalopay.account || 'Chưa cấu hình',
+    holder: paymentConfig.zalopay.holder || 'Chưa cấu hình',
   },
 }
 const cfg = computed(() => methodConfig[method.value] || methodConfig.MOMO)
@@ -143,8 +148,7 @@ function copyText(text) {
 const transferContent = computed(() => 'ZESTIA ' + maHoaDon.value)
 
 const qrUrl = computed(() => {
-  const desc = encodeURIComponent(transferContent.value)
-  return `https://img.vietqr.io/image/VCB-9869167207-compact2.png?amount=${amount.value}&addInfo=${desc}&accountName=NGUYEN%20TIEN%20THANH`
+  return createVietQrUrl(amount.value, transferContent.value)
 })
 
 const timerDisplay = computed(() => {
@@ -226,6 +230,7 @@ onUnmounted(() => {
   text-align: center;
   margin-bottom: 20px;
   position: relative;
+  min-height: 240px;
 }
 .z-qr-image {
   width: 240px;

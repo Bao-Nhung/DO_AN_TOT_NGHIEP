@@ -311,7 +311,7 @@
           <div class="p-3 bg-light rounded" style="font-size:13px; color:var(--z-gray)">
              <div class="d-flex justify-content-between mb-2">
                 <span>Tổng tiền hàng:</span>
-                <span style="font-weight: 500; color: var(--z-dark);">{{ formatMoney(detailOrder.tongTien + (detailOrder.giamGiaKhuyenMai || 0) - (detailOrder.phiVanChuyen || 0)) }}</span>
+                <span style="font-weight: 500; color: var(--z-dark);">{{ formatMoney(detailOrder.tongTien + (detailOrder.giamGiaVoucher || 0) - (detailOrder.phiVanChuyen || 0)) }}</span>
              </div>
              
              <div class="d-flex justify-content-between mb-2">
@@ -322,9 +322,9 @@
              </div>
              
              <div class="d-flex justify-content-between mb-2">
-                <span>Giảm giá / Khuyến mãi:</span>
+                <span>Voucher giảm giá:</span>
                 <span class="text-danger font-weight-bold">
-                  {{ detailOrder.giamGiaKhuyenMai > 0 ? '- ' + formatMoney(detailOrder.giamGiaKhuyenMai) : '0đ' }}
+                  {{ detailOrder.giamGiaVoucher > 0 ? '- ' + formatMoney(detailOrder.giamGiaVoucher) : '0đ' }}
                 </span>
              </div>
              
@@ -377,7 +377,9 @@
 
         <div class="d-flex gap-3">
           <button class="lm-btn-secondary flex-fill" style="height:44px;" @click="showCancelModal = false">Đóng</button>
-          <button class="lm-btn-primary flex-fill" style="height:44px; background:var(--z-danger); border-color:var(--z-danger)" @click="submitCancelOrder">Xác nhận huỷ</button>
+          <button class="z-danger-action-btn flex-fill" style="height:44px;" @click="submitCancelOrder">
+            <span>Xác nhận huỷ</span>
+          </button>
         </div>
       </div>
     </div>
@@ -624,9 +626,9 @@ async function repayOrder(order) {
   try {
     let res = null
     if (order.hinhThucThanhToan === 'MOMO') {
-      res = await api().createMomoPayment(order.id)
+      res = await api().createMomoPayment(order.id, order.maHoaDon, order.soDienThoai)
     } else if (order.hinhThucThanhToan === 'ZALOPAY') {
-      res = await api().createZaloPayment(order.id)
+      res = await api().createZaloPayment(order.id, order.maHoaDon, order.soDienThoai)
     }
     if (res && res.payUrl) {
       window.location.href = res.payUrl

@@ -653,8 +653,8 @@ async function doSave() {
       showToast(`Biến thể số ${idx + 1} chưa nhập giá gốc hợp lệ!`, 'error')
       return
     }
-    if (Number(v.giaBanGoc) >= Number(v.giaBan)) {
-      showToast(`Biến thể số ${idx + 1}: Giá gốc phải nhỏ hơn Giá bán!`, 'error')
+    if (Number(v.giaBanGoc) < Number(v.giaBan)) {
+      showToast(`Biến thể số ${idx + 1}: Giá gốc không được nhỏ hơn Giá bán!`, 'error')
       return
     }
   }

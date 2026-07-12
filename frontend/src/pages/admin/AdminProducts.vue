@@ -19,20 +19,32 @@
 
     <!-- Filters -->
     <div class="z-admin-card mb-3" style="padding:14px 20px">
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width:320px">
-          <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
-          <input v-model="search" class="lm-input" placeholder="Tìm kiếm sản phẩm..." style="border:none;padding:8px 0;box-shadow:none">
+      <div class="d-flex flex-column gap-3">
+        <!-- Row 1: Search & Status -->
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width:320px; border-bottom: 1px solid var(--z-gray-border); padding-bottom: 4px;">
+            <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
+            <input v-model="search" class="lm-input" placeholder="Tìm kiếm sản phẩm..." style="border:none;padding:8px 0;box-shadow:none">
+          </div>
+          <div class="ms-auto">
+            <select v-model="filterStatus" class="lm-input" style="width:auto;padding:8px 16px;font-size:13px">
+              <option value="">Tất cả trạng thái</option>
+              <option value="1">Đang bán</option>
+              <option value="0">Ngừng bán</option>
+            </select>
+          </div>
         </div>
-        <select v-model="filterCategory" class="lm-input" style="width:auto;padding:8px 16px;font-size:13px">
-          <option value="">Tất cả loại</option>
-          <option v-for="cat in categories" :key="cat">{{ cat }}</option>
-        </select>
-        <select v-model="filterStatus" class="lm-input" style="width:auto;padding:8px 16px;font-size:13px">
-          <option value="">Tất cả trạng thái</option>
-          <option value="1">Đang bán</option>
-          <option value="0">Ngừng bán</option>
-        </select>
+
+        <!-- Row 2: Categories (phân loại sản phẩm theo mục giống trang khách hàng) -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span style="font-size:13px;font-weight:600;color:var(--z-gray);flex-shrink:0">Mục:</span>
+          <div class="d-flex gap-2 flex-wrap">
+            <button v-for="f in filters" :key="f"
+                    class="lm-filter-tag" :class="{ active: activeFilter === f }"
+                    style="padding: 4px 12px; font-size: 12px;"
+                    @click="activeFilter = f">{{ f }}</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -80,7 +92,11 @@
               <div class="d-flex gap-1">
                 <button class="z-icon-btn" title="Sửa" @click="openEdit(p)"><i class="bi bi-pencil"></i></button>
                 <button class="z-icon-btn" title="Chi tiết" @click="openProductDetail(p)"><i class="bi bi-eye"></i></button>
-                <button class="z-icon-btn" title="Xóa" style="color:var(--z-accent)" @click="doDelete(p)"><i class="bi bi-trash"></i></button>
+                <button class="z-icon-btn" :title="p.active ? 'Khóa' : 'Mở khóa'"
+                        :style="{ color: p.active ? 'var(--z-accent)' : '#16a34a' }"
+                        @click="toggleLock(p)">
+                  <i class="bi" :class="p.active ? 'bi-lock' : 'bi-unlock'"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -439,7 +455,8 @@ import { useConfirm } from '@/composables/useConfirm'
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
 const search = ref('')
-const filterCategory = ref('')
+const filters = ['Tất cả', 'Váy truyền thống', 'Váy cách tân', 'Váy dạ hội', 'Váy công sở', 'Váy cưới', 'Sale']
+const activeFilter = ref('Tất cả')
 const filterStatus = ref('')
 const showModal = ref(false)
 const saving = ref(false)
@@ -550,7 +567,16 @@ async function loadProducts() {
 const filteredProducts = computed(() => {
   return allProducts.value.filter(p => {
     const matchSearch = !search.value || p.name.toLowerCase().includes(search.value.toLowerCase()) || (p.code || '').toLowerCase().includes(search.value.toLowerCase())
-    const matchCat = !filterCategory.value || p.category === filterCategory.value
+    
+    let matchCat = true
+    if (activeFilter.value !== 'Tất cả') {
+      if (activeFilter.value === 'Sale') {
+        matchCat = !!p.salePrice
+      } else {
+        matchCat = p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
+      }
+    }
+    
     const matchStatus = !filterStatus.value || (filterStatus.value === '1' ? p.active : !p.active)
     return matchSearch && matchCat && matchStatus
   })
@@ -566,7 +592,7 @@ const paginatedProducts = computed(() => {
   return filteredProducts.value.slice(start, start + itemsPerPage)
 })
 
-watch([search, filterCategory, filterStatus], () => {
+watch([search, activeFilter, filterStatus], () => {
   currentPage.value = 1
 })
 
@@ -747,13 +773,24 @@ async function deleteSupplier(s) {
   try { await api().deleteNhaCungCap(s.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
 }
 
-async function doDelete(p) {
-  if (!await confirmDialog({ title: 'Xóa sản phẩm', message: `Bạn có chắc muốn xóa "${p.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
+async function toggleLock(p) {
+  const newStatus = p.active ? 0 : 1
+  const actionText = p.active ? 'khóa' : 'mở khóa'
+  
+  if (!await confirmDialog({
+    title: `${p.active ? 'Khóa' : 'Mở khóa'} sản phẩm`,
+    message: `Bạn có chắc muốn ${actionText} sản phẩm "${p.name}"?`,
+    confirmText: p.active ? 'Khóa' : 'Mở khóa',
+    variant: p.active ? 'danger' : 'success'
+  })) return
+
   try {
-    await api().deleteVay(p.rawId || p.id)
-    showToast('Đã xóa sản phẩm!')
+    await api().updateVay(p.rawId || p.id, { trangThai: newStatus })
+    showToast(`Đã ${actionText} sản phẩm thành công!`)
     await loadProducts()
-  } catch (e) { showToast('Lỗi khi xóa: ' + (e.message || '')) }
+  } catch (e) {
+    showToast(`Lỗi khi ${actionText}: ` + (e.message || ''))
+  }
 }
 </script>
 

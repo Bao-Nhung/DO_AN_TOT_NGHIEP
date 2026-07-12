@@ -378,10 +378,11 @@ public class VayController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Integer id) {
-        List<VayChiTiet> variants = vayCtRepo.findByVayId(id);
-        vayCtRepo.deleteAll(variants);
-        vayRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return vayRepo.findById(id).map(v -> {
+            v.setTrangThai((byte) 0);
+            vayRepo.save(v);
+            return ResponseEntity.ok().build();
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     // ===== Quản lý ảnh sản phẩm =====

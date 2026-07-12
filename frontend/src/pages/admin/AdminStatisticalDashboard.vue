@@ -3,15 +3,29 @@
     <h1 class="title">Thống kê bán hàng</h1>
 
     <div class="filter-box">
-      <div>
-        <label>Từ ngày</label>
-        <input type="datetime-local" v-model="filter.startDate" />
-      </div>
+      <template v-if="filter.timeType === 'ngay'">
+        <div>
+          <label>Từ ngày</label>
+          <input type="date" v-model="filter.startDate" />
+        </div>
 
-      <div>
-        <label>Đến ngày</label>
-        <input type="datetime-local" v-model="filter.endDate" />
-      </div>
+        <div>
+          <label>Đến ngày</label>
+          <input type="date" v-model="filter.endDate" />
+        </div>
+      </template>
+
+      <template v-else-if="filter.timeType === 'thang'">
+        <div>
+          <label>Từ tháng</label>
+          <input type="month" v-model="filter.startMonth" />
+        </div>
+
+        <div>
+          <label>Đến tháng</label>
+          <input type="month" v-model="filter.endMonth" />
+        </div>
+      </template>
 
       <div>
         <label>Kiểu thống kê</label>
@@ -113,16 +127,15 @@ import PieChartUI from "@/components/charts/PieChartUI.vue";
 // 1. TỰ ĐỘNG TÍNH NGÀY ĐẦU THÁNG ĐẾN HIỆN TẠI
 const initDates = () => {
   const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0);
-
-  const formatISO = (date) => {
-    const offsetMs = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
-  };
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const date = String(now.getDate()).padStart(2, "0");
 
   return {
-    startDate: formatISO(firstDay),
-    endDate: formatISO(now),
+    startDate: `${year}-${month}-01`,
+    endDate: `${year}-${month}-${date}`,
+    startMonth: `${year}-${month}`,
+    endMonth: `${year}-${month}`,
     timeType: "ngay",
   };
 };
@@ -152,7 +165,31 @@ const defaultColors = [
 // 4. LOAD API
 async function loadThongKe() {
   try {
-    const data = await api().getThongKeTongHop(filter.value);
+    const payload = {
+      timeType: filter.value.timeType,
+    };
+
+    if (filter.value.timeType === "ngay") {
+      if (!filter.value.startDate || !filter.value.endDate) {
+        alert("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc");
+        return;
+      }
+      payload.startDate = `${filter.value.startDate}T00:00`;
+      payload.endDate = `${filter.value.endDate}T23:59`;
+    } else {
+      if (!filter.value.startMonth || !filter.value.endMonth) {
+        alert("Vui lòng chọn đầy đủ tháng bắt đầu và tháng kết thúc");
+        return;
+      }
+      payload.startDate = `${filter.value.startMonth}-01T00:00`;
+
+      const [year, month] = filter.value.endMonth.split("-").map(Number);
+      const lastDayDate = new Date(year, month, 0);
+      const lastDayStr = String(lastDayDate.getDate()).padStart(2, "0");
+      payload.endDate = `${filter.value.endMonth}-${lastDayStr}T23:59`;
+    }
+
+    const data = await api().getThongKeTongHop(payload);
 
     // CARD
     const t = data.tongQuan;

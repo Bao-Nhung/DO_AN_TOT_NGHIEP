@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <AdminLayout>
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
@@ -11,13 +11,22 @@
       <!-- Product list -->
       <div class="col-lg-7">
         <div class="z-admin-card mb-3" style="padding:14px 20px">
-          <div class="d-flex align-items-center gap-2">
+          <div class="d-flex align-items-center gap-2 mb-2" style="border-bottom: 1px solid var(--z-gray-border); padding-bottom: 8px;">
             <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
             <input v-model="search" class="lm-input" placeholder="Tìm sản phẩm theo tên hoặc mã..." style="border:none;padding:8px 0;box-shadow:none">
           </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span style="font-size:12px;font-weight:600;color:var(--z-gray);flex-shrink:0">Mục:</span>
+            <div class="d-flex gap-2 flex-wrap">
+              <button v-for="f in filters" :key="f"
+                      class="lm-filter-tag" :class="{ active: activeFilter === f }"
+                      style="padding: 4px 12px; font-size: 12px;"
+                      @click="activeFilter = f">{{ f }}</button>
+            </div>
+          </div>
         </div>
 
-        <div class="z-admin-card" style="padding:0;overflow:hidden;max-height:calc(100vh - 280px);overflow-y:auto">
+        <div class="z-admin-card" style="padding:0;overflow:hidden;max-height:calc(100vh - 320px);overflow-y:auto">
           <div v-for="p in paginatedProducts" :key="p.id"
                class="d-flex align-items-center gap-3 z-pos-item" @click="addToCart(p)">
             <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
@@ -96,7 +105,6 @@
               <input v-model="customerPhone" class="lm-input" placeholder="Số điện thoại" style="font-size:13px;padding:8px 12px">
             </div>
 
-            <!-- Voucher -->
             <div class="mb-3">
               <label class="z-label">Mã giảm giá</label>
               <div class="d-flex gap-2">
@@ -105,6 +113,23 @@
                 <button v-if="!appliedVoucher" class="z-pm-btn" style="flex:0 0 auto;background:var(--z-dark);color:#fff;border-color:var(--z-dark)" @click="applyVoucher">Áp dụng</button>
                 <button v-else class="z-pm-btn" style="flex:0 0 auto" @click="removeVoucher">Bỏ</button>
               </div>
+
+              <!-- Eligible vouchers list -->
+              <div v-if="!appliedVoucher && eligibleVouchers.length" class="mt-2">
+                <span style="font-size:11px;color:var(--z-gray)">Chọn nhanh mã đủ điều kiện:</span>
+                <div class="d-flex flex-wrap gap-2 mt-1">
+                  <button v-for="v in eligibleVouchers" :key="v.id"
+                          class="z-quick-cash" 
+                          style="font-size: 11px; padding: 4px 8px; border-color: #16a34a; color: #16a34a; background: #f0fdf4;"
+                          @click="selectVoucher(v)">
+                    <strong>{{ v.maGiamGia }}</strong> (-{{ fmtVoucherDiscount(v) }})
+                  </button>
+                </div>
+              </div>
+              <div v-else-if="!appliedVoucher && cart.length > 0" class="mt-1" style="font-size:11px;color:var(--z-gray)">
+                Không có mã giảm giá nào đủ điều kiện
+              </div>
+
               <div v-if="voucherMsg" :style="{ fontSize:'12px', marginTop:'6px', color: appliedVoucher ? '#2E7D32' : '#C62828' }">{{ voucherMsg }}</div>
             </div>
 
@@ -270,7 +295,10 @@ const { confirmDialog } = useConfirm()
 const { getUser } = useAuth()
 
 const search = ref('')
+const filters = ['Tất cả', 'Váy truyền thống', 'Váy cách tân', 'Váy dạ hội', 'Váy công sở', 'Váy cưới', 'Sale']
+const activeFilter = ref('Tất cả')
 const allProducts = ref([])
+const vouchersList = ref([])
 const cart = ref([])
 const customerName = ref('')
 const customerPhone = ref('')
@@ -343,14 +371,34 @@ onMounted(async () => {
       return { ...m, priceDisplay: fmtPrice(m.salePrice || m.price), rawId: p.id }
     })
   } catch (e) { console.error(e) }
+
+  try {
+    const vData = await api().getVouchers()
+    vouchersList.value = vData || []
+  } catch (e) { console.error('Failed to load vouchers:', e) }
 })
 
 const filteredProducts = computed(() => {
-  if (!search.value) return allProducts.value
-  const q = search.value.toLowerCase()
-  return allProducts.value.filter(p =>
-    p.name.toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q)
-  )
+  let result = [...allProducts.value]
+
+  if (activeFilter.value !== 'Tất cả') {
+    if (activeFilter.value === 'Sale') {
+      result = result.filter(p => p.salePrice)
+    } else {
+      result = result.filter(p => 
+        p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
+      )
+    }
+  }
+
+  if (search.value) {
+    const q = search.value.toLowerCase()
+    result = result.filter(p =>
+      p.name.toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q)
+    )
+  }
+
+  return result
 })
 
 const currentPage = ref(1)
@@ -361,7 +409,7 @@ const paginatedProducts = computed(() => {
   return filteredProducts.value.slice(start, start + itemsPerPage)
 })
 
-watch(search, () => {
+watch([search, activeFilter], () => {
   currentPage.value = 1
 })
 
@@ -493,6 +541,45 @@ function confirmAddVariant() {
 
 function removeFromCart(index) {
   cart.value.splice(index, 1)
+}
+
+const eligibleVouchers = computed(() => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  return vouchersList.value.filter(v => {
+    if (v.trangThai !== 1) return false
+    if (v.soLuong !== null && v.soLuong <= 0) return false
+    if (v.ngayBatDau) {
+      const startDate = new Date(v.ngayBatDau)
+      startDate.setHours(0, 0, 0, 0)
+      if (today < startDate) return false
+    }
+    if (v.ngayKetThuc) {
+      const endDate = new Date(v.ngayKetThuc)
+      endDate.setHours(0, 0, 0, 0)
+      if (today > endDate) return false
+    }
+    if (v.giaTriDonToiThieu !== null && cartTotal.value < Number(v.giaTriDonToiThieu)) {
+      return false
+    }
+    return true
+  })
+})
+
+function selectVoucher(v) {
+  voucherCode.value = v.maGiamGia
+  applyVoucher()
+}
+
+function fmtVoucherDiscount(v) {
+  if (v.phanTramGiam && Number(v.phanTramGiam) > 0) {
+    return Number(v.phanTramGiam) + '%'
+  }
+  if (v.gioTriGiam && Number(v.gioTriGiam) > 0) {
+    return fmtPrice(v.gioTriGiam)
+  }
+  return '0đ'
 }
 
 async function applyVoucher() {

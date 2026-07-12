@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- ZESTIA DATABASE fashion_shop
 -- File SQL chinh de cai dat du lieu demo hoan chinh cho du an.
 -- Cach dung: mo file nay trong SSMS/sqlcmd va Execute 1 lan.
@@ -12,6 +12,14 @@
 IF DB_ID('fashion_shop') IS NULL CREATE DATABASE [fashion_shop];
 GO
 USE [fashion_shop];
+GO
+SET ANSI_NULLS ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET ARITHABORT ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET NUMERIC_ROUNDABORT OFF;
+SET QUOTED_IDENTIFIER ON;
 GO
 
 -- ===== Vai_tro =====
@@ -1843,6 +1851,35 @@ WHEN NOT MATCHED THEN
     INSERT (ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao)
     VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, DATEADD(DAY, -7, GETDATE()), DATEADD(DAY, 120, GETDATE()), 1, GETDATE());
 
+-- July 2026 Vouchers
+MERGE dbo.Giam_gia AS target
+USING (VALUES
+    (N'JULY15', N'Giảm 15% cho đơn từ 400K', 400000.00, NULL, 15.00, 80000.00, 100, '2026-07-01', '2026-07-30'),
+    (N'JULY30', N'Giảm 30K cho đơn từ 600K', 600000.00, 30000.00, NULL, NULL, 150, '2026-07-01', '2026-07-30'),
+    (N'JULY50', N'Giảm 50K cho đơn từ 1.2M', 1200000.00, 50000.00, NULL, NULL, 200, '2026-07-01', '2026-07-30'),
+    (N'JULYVIP', N'Giảm 15% cho đơn từ 2M', 2000000.00, NULL, 15.00, 400000.00, 50, '2026-07-01', '2026-07-30'),
+    (N'LUADO', N'Giảm 100K cho đơn từ 1.5M', 1500000.00, 100000.00, NULL, NULL, 80, '2026-07-01', '2026-07-30'),
+    (N'GAMVIP', N'Giảm 300K cho đơn từ 3M', 3000000.00, 300000.00, NULL, NULL, 30, '2026-07-01', '2026-07-30'),
+    (N'VOANXINH', N'Giảm 15K cho đơn từ 200K', 200000.00, 15000.00, NULL, NULL, 120, '2026-07-01', '2026-07-30'),
+    (N'ZESTIAPOS', N'Giảm 10K cho đơn hàng tại quầy', 0.00, 10000.00, NULL, NULL, 500, '2026-07-01', '2026-07-30'),
+    (N'HAPPYWEEK', N'Giảm 10% cho đơn từ 800K', 800000.00, NULL, 10.00, 120000.00, 100, '2026-07-01', '2026-07-30')
+) AS src(ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc)
+ON target.ma_giam_gia = src.ma_giam_gia
+WHEN MATCHED THEN
+    UPDATE SET
+        ten_giam_gia = src.ten_giam_gia,
+        gia_tri_don_toi_thieu = src.gia_tri_don_toi_thieu,
+        gio_tri_giam = src.gio_tri_giam,
+        phan_tram_giam = src.phan_tram_giam,
+        giam_toi_da = src.giam_toi_da,
+        so_luong = src.so_luong,
+        ngay_bat_dau = src.ngay_bat_dau,
+        ngay_ket_thuc = src.ngay_ket_thuc,
+        trang_thai = 1
+WHEN NOT MATCHED THEN
+    INSERT (ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao)
+    VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, src.ngay_bat_dau, src.ngay_ket_thuc, 1, GETDATE());
+
 UPDATE dbo.Vay_chi_tiet
 SET gia_ban_goc = ROUND(gia_ban * 1.15, 0)
 WHERE gia_ban IS NOT NULL
@@ -1927,4 +1964,279 @@ GO
 PRINT N'Zestia demo data refresh completed.';
 GO
 
+-- ============================================================
+-- GENERATE SAMPLE ORDERS FOR CUSTOMERS (10 to 30 orders per customer)
+-- Date range: 01/06/2026 to 12/07/2026
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM dbo.Hoa_don WHERE ma_hoa_don LIKE 'HDS%')
+BEGIN
+    PRINT N'Generating sample orders for customers...';
 
+    -- Declare variables
+    DECLARE @customer_id INT;
+    DECLARE @order_count INT;
+    DECLARE @order_index INT;
+    DECLARE @ngay_tao DATETIME2(7);
+    DECLARE @days_range INT = DATEDIFF(DAY, '2026-06-01', '2026-07-12');
+    DECLARE @random_days INT;
+    DECLARE @random_hours INT;
+    DECLARE @random_minutes INT;
+    DECLARE @random_seconds INT;
+    DECLARE @ma_hoa_don NVARCHAR(80);
+    DECLARE @tong_tien DECIMAL(15,2);
+    DECLARE @phi_van_chuyen DECIMAL(15,2);
+    DECLARE @hinh_thuc_nhan_hang TINYINT;
+    DECLARE @dia_chi_giao_hang NVARCHAR(500);
+    DECLARE @trang_thai TINYINT;
+    DECLARE @hinh_thuc_thanh_toan NVARCHAR(50);
+    DECLARE @da_thanh_toan BIT;
+    DECLARE @ten_khach_hang NVARCHAR(150);
+    DECLARE @so_dien_thoai NVARCHAR(20);
+    DECLARE @email_khach_hang NVARCHAR(150);
+    DECLARE @new_hoa_don_id INT;
+
+    -- Cursor to loop through all customers
+    DECLARE customer_cursor CURSOR FOR 
+    SELECT id, ho_va_ten, so_dien_thoai, email FROM dbo.Khach_hang;
+
+    OPEN customer_cursor;
+    FETCH NEXT FROM customer_cursor INTO @customer_id, @ten_khach_hang, @so_dien_thoai, @email_khach_hang;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Determine random order count between 10 and 30 for this customer
+        -- Seeded by RAND() or using CHECKSUM(NEWID())
+        SET @order_count = ABS(CHECKSUM(NEWID())) % 21 + 10;
+        SET @order_index = 1;
+
+        WHILE @order_index <= @order_count
+        BEGIN
+            -- Generate random datetime in date range [2026-06-01, 2026-07-12]
+            SET @random_days = ABS(CHECKSUM(NEWID())) % (@days_range + 1);
+            SET @random_hours = ABS(CHECKSUM(NEWID())) % 24;
+            SET @random_minutes = ABS(CHECKSUM(NEWID())) % 60;
+            SET @random_seconds = ABS(CHECKSUM(NEWID())) % 60;
+            
+            SET @ngay_tao = DATEADD(SECOND, @random_seconds, 
+                                DATEADD(MINUTE, @random_minutes, 
+                                    DATEADD(HOUR, @random_hours, 
+                                        DATEADD(DAY, @random_days, '2026-06-01 00:00:00'))));
+
+            -- Generate unique invoice code starting with HDS
+            SET @ma_hoa_don = 'HDS' 
+                + REPLACE(CONVERT(VARCHAR(10), @ngay_tao, 120), '-', '') 
+                + RIGHT('00' + CAST(@customer_id AS VARCHAR), 2) 
+                + RIGHT('00' + CAST(@order_index AS VARCHAR), 2)
+                + RIGHT('000' + CAST(ABS(CHECKSUM(NEWID())) % 1000 AS VARCHAR), 3);
+
+            -- Random state distribution:
+            -- 3 (Completed): 80%
+            -- 4 (Cancelled): 10%
+            -- 0, 1, 2 (Pending/Confirmed/Shipping): 10%
+            DECLARE @rand_status INT = ABS(CHECKSUM(NEWID())) % 100;
+            IF @rand_status < 80
+                SET @trang_thai = 3; -- Hoàn thành
+            ELSE IF @rand_status < 90
+                SET @trang_thai = 4; -- Đã hủy
+            ELSE
+                SET @trang_thai = ABS(CHECKSUM(NEWID())) % 3; -- 0, 1, 2
+
+            -- Paid flag
+            IF @trang_thai = 3
+                SET @da_thanh_toan = 1;
+            ELSE IF @trang_thai = 4
+                SET @da_thanh_toan = 0;
+            ELSE
+                SET @da_thanh_toan = CASE WHEN ABS(CHECKSUM(NEWID())) % 2 = 0 THEN 1 ELSE 0 END;
+
+            -- Shipping type: 0 (Direct at store), 1 (Delivery)
+            DECLARE @rand_receive INT = ABS(CHECKSUM(NEWID())) % 100;
+            IF @rand_receive < 30
+            BEGIN
+                SET @hinh_thuc_nhan_hang = 0;
+                SET @dia_chi_giao_hang = N'Mua trực tiếp tại cửa hàng';
+                SET @phi_van_chuyen = 0;
+            END
+            ELSE
+            BEGIN
+                SET @hinh_thuc_nhan_hang = 1;
+                SET @phi_van_chuyen = CASE WHEN ABS(CHECKSUM(NEWID())) % 2 = 0 THEN 30000 ELSE 0 END;
+                
+                -- Get customer's default address if exists, otherwise generate a random one
+                SET @dia_chi_giao_hang = NULL;
+                SELECT TOP 1 @dia_chi_giao_hang = CONCAT(duong, N', ', xa_phuong, N', ', quan_huyen, N', ', tinh_thanh_pho)
+                FROM dbo.Dia_chi 
+                WHERE id_khach_hang = @customer_id AND mac_dinh = 1;
+
+                IF @dia_chi_giao_hang IS NULL
+                BEGIN
+                    -- Generate realistic Vietnamese address
+                    DECLARE @rand_addr INT = ABS(CHECKSUM(NEWID())) % 5;
+                    IF @rand_addr = 0
+                        SET @dia_chi_giao_hang = N'Số ' + CAST(ABS(CHECKSUM(NEWID())) % 150 + 1 AS VARCHAR) + N' Cầu Giấy, Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội';
+                    ELSE IF @rand_addr = 1
+                        SET @dia_chi_giao_hang = N'Số ' + CAST(ABS(CHECKSUM(NEWID())) % 200 + 1 AS VARCHAR) + N' Nguyễn Trãi, Phường Thanh Xuân Trung, Quận Thanh Xuân, Hà Nội';
+                    ELSE IF @rand_addr = 2
+                        SET @dia_chi_giao_hang = N'Hẻm ' + CAST(ABS(CHECKSUM(NEWID())) % 100 + 1 AS VARCHAR) + N' Điện Biên Phủ, Phường 15, Quận Bình Thạnh, TP. Hồ Chí Minh';
+                    ELSE IF @rand_addr = 3
+                        SET @dia_chi_giao_hang = N'Số ' + CAST(ABS(CHECKSUM(NEWID())) % 80 + 1 AS VARCHAR) + N' Lê Lợi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh';
+                    ELSE
+                        SET @dia_chi_giao_hang = N'12 Bạch Đằng, Phường Thạch Thang, Quận Hải Châu, Đà Nẵng';
+                END
+            END
+
+            -- Payment method
+            IF @hinh_thuc_nhan_hang = 0
+                SET @hinh_thuc_thanh_toan = CASE WHEN ABS(CHECKSUM(NEWID())) % 2 = 0 THEN N'Tiền mặt' ELSE N'MOMO' END;
+            ELSE
+                SET @hinh_thuc_thanh_toan = CASE WHEN ABS(CHECKSUM(NEWID())) % 3 = 0 THEN N'COD' 
+                                                WHEN ABS(CHECKSUM(NEWID())) % 3 = 1 THEN N'MOMO' 
+                                                ELSE N'ZALOPAY' END;
+
+            -- Insert order
+            INSERT INTO dbo.Hoa_don 
+                (id_khach_hang, id_giam_gia, id_nhan_vien, ma_hoa_don, tong_tien, phi_van_chuyen, giam_gia_voucher, hinh_thuc_nhan_hang, dia_chi_giao_hang, trang_thai, hinh_thuc_thanh_toan, phuong_thuc_thanh_toan_online, ghi_chu, ngay_tao, da_thanh_toan, ten_khach_hang, so_dien_thoai, email_khach_hang)
+            VALUES
+                (@customer_id, NULL, CASE WHEN @hinh_thuc_nhan_hang = 0 THEN 2 ELSE NULL END, @ma_hoa_don, 0, @phi_van_chuyen, 0, @hinh_thuc_nhan_hang, @dia_chi_giao_hang, @trang_thai, @hinh_thuc_thanh_toan, CASE WHEN @hinh_thuc_thanh_toan <> N'COD' AND @hinh_thuc_thanh_toan <> N'Tiền mặt' THEN @hinh_thuc_thanh_toan ELSE NULL END, N'Đơn hàng mẫu sinh tự động', @ngay_tao, @da_thanh_toan, @ten_khach_hang, @so_dien_thoai, @email_khach_hang);
+
+            SET @new_hoa_don_id = SCOPE_IDENTITY();
+
+            -- Insert order details (1 to 3 items)
+            DECLARE @item_count INT = ABS(CHECKSUM(NEWID())) % 3 + 1;
+            DECLARE @item_index INT = 1;
+            DECLARE @variant_id INT;
+            DECLARE @gia_ban DECIMAL(15,2);
+            DECLARE @gia_nhap DECIMAL(18,2);
+            DECLARE @so_luong INT;
+            DECLARE @thanh_tien DECIMAL(15,2);
+            DECLARE @subtotal DECIMAL(15,2) = 0;
+
+            WHILE @item_index <= @item_count
+            BEGIN
+                -- Get random variant
+                SELECT TOP 1 @variant_id = id, @gia_ban = gia_ban, @gia_nhap = gia_nhap
+                FROM dbo.Vay_chi_tiet
+                ORDER BY NEWID();
+
+                SET @so_luong = ABS(CHECKSUM(NEWID())) % 2 + 1; -- 1 or 2
+                SET @thanh_tien = @so_luong * @gia_ban;
+                SET @subtotal = @subtotal + @thanh_tien;
+
+                INSERT INTO dbo.Hoa_don_chi_tiet
+                    (id_hoa_don, id_vay_chi_tiet, so_luong, don_gia, phan_tram_giam, thanh_tien, gia_nhap)
+                VALUES
+                    (@new_hoa_don_id, @variant_id, @so_luong, @gia_ban, 0, @thanh_tien, @gia_nhap);
+
+                SET @item_index = @item_index + 1;
+            END
+
+            -- Update order total
+            UPDATE dbo.Hoa_don 
+            SET tong_tien = @subtotal + @phi_van_chuyen
+            WHERE id = @new_hoa_don_id;
+
+            -- If paid, insert payment history
+            IF @da_thanh_toan = 1
+            BEGIN
+                INSERT INTO dbo.Lich_su_thanh_toan
+                    (id_hoa_don, so_tien, phuong_thuc, ma_giao_dich, trang_thai, noi_dung, ngay_tao)
+                VALUES
+                    (@new_hoa_don_id, @subtotal + @phi_van_chuyen, @hinh_thuc_thanh_toan, 'TXN' + CAST(ABS(CHECKSUM(NEWID())) AS VARCHAR), 'success', N'Thanh toán đơn hàng mẫu', @ngay_tao);
+            END
+
+            SET @order_index = @order_index + 1;
+        END
+
+        FETCH NEXT FROM customer_cursor INTO @customer_id, @ten_khach_hang, @so_dien_thoai, @email_khach_hang;
+    END
+
+    CLOSE customer_cursor;
+    DEALLOCATE customer_cursor;
+
+    PRINT N'Sample orders generated successfully.';
+END
+GO
+
+-- ============================================================
+-- GENERATE EMPLOYEES AND WORK SHIFTS (06/07/2026 to 31/07/2026)
+-- ============================================================
+IF NOT EXISTS (SELECT 1 FROM dbo.Nhan_vien WHERE ma_nhan_vien = N'NV005')
+BEGIN
+    PRINT N'Creating new employees and work schedule...';
+    
+    -- Insert new employees
+    INSERT INTO dbo.Nhan_vien (id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung, mat_khau, tinh_trang_lam_viec, ngay_tao)
+    VALUES (2, N'NV005', N'Nguyễn Văn Hùng', 1, '1999-05-12', N'0988777666', N'Cầu Giấy, Hà Nội', N'hungnv@zestia.vn', N'hungnv', N'123456', 1, GETDATE());
+
+    INSERT INTO dbo.Nhan_vien (id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung, mat_khau, tinh_trang_lam_viec, ngay_tao)
+    VALUES (2, N'NV006', N'Phạm Thanh Hương', 0, '2001-08-25', N'0977666555', N'Thanh Xuân, Hà Nội', N'huongnv@zestia.vn', N'huongnv', N'123456', 1, GETDATE());
+
+    INSERT INTO dbo.Nhan_vien (id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung, mat_khau, tinh_trang_lam_viec, ngay_tao)
+    VALUES (3, N'NV007', N'Đỗ Gia Bảo', 1, '1995-12-03', N'0966555444', N'Đống Đa, Hà Nội', N'baokho@zestia.vn', N'baokho', N'123456', 1, GETDATE());
+
+    -- Create schedules from 2026-07-06 to 2026-07-31
+    SET DATEFIRST 7;
+
+    DECLARE @start_date DATE = '2026-07-06';
+    DECLARE @end_date DATE = '2026-07-31';
+    DECLARE @curr_date DATE = @start_date;
+
+    DECLARE @admin_id INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = 'NV001');
+    DECLARE @emp2 INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = 'NV002');
+    DECLARE @wh_emp3 INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = 'NV003');
+    DECLARE @emp4 INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = 'NV004');
+    DECLARE @emp5 INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = 'NV005');
+    DECLARE @emp6 INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = 'NV006');
+    DECLARE @wh_emp7 INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = 'NV007');
+
+    WHILE @curr_date <= @end_date
+    BEGIN
+        DECLARE @wday INT = DATEPART(WEEKDAY, @curr_date);
+        DECLARE @day_num INT = DATEPART(DAY, @curr_date);
+
+        -- Admin works Mon-Fri
+        IF @wday BETWEEN 2 AND 6
+        BEGIN
+            IF @admin_id IS NOT NULL
+                INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao)
+                VALUES (@admin_id, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Trực quản trị cửa hàng', 1, GETDATE());
+        END
+
+        -- Warehouse staff
+        DECLARE @selected_wh INT = CASE WHEN @day_num % 2 = 0 THEN @wh_emp3 ELSE @wh_emp7 END;
+        IF @selected_wh IS NOT NULL
+            INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao)
+            VALUES (@selected_wh, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Kiểm tra hàng tồn kho và nhập xuất', 1, GETDATE());
+
+        -- Sales staff
+        IF @day_num % 2 = 0
+        BEGIN
+            IF @emp2 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp2, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1, GETDATE());
+            IF @emp5 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp5, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1, GETDATE());
+            IF @emp4 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp4, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Bán hàng tại quầy', 1, GETDATE());
+            IF @emp6 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp6, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn trực tuyến', 1, GETDATE());
+        END
+        ELSE
+        BEGIN
+            IF @emp4 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp4, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1, GETDATE());
+            IF @emp6 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp6, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực tuyến', 1, GETDATE());
+            IF @emp2 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp2, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Bán hàng tại quầy', 1, GETDATE());
+            IF @emp5 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@emp5, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn trực quầy', 1, GETDATE());
+        END
+
+        -- Weekend Ca tối for sales
+        IF @wday IN (1, 6, 7)
+        BEGIN
+            DECLARE @night_emp1 INT = CASE WHEN @day_num % 3 = 0 THEN @emp2 WHEN @day_num % 3 = 1 THEN @emp4 ELSE @emp5 END;
+            DECLARE @night_emp2 INT = CASE WHEN @day_num % 3 = 0 THEN @emp6 WHEN @day_num % 3 = 1 THEN @emp5 ELSE @emp4 END;
+
+            IF @night_emp1 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@night_emp1, @curr_date, N'Ca tối', '18:00:00', '22:00:00', N'Bán hàng ca tối cuối tuần', 1, GETDATE());
+            IF @night_emp2 IS NOT NULL INSERT INTO dbo.Lich_lam_viec (id_nhan_vien, ngay_lam, ca_lam, gio_bat_dau, gio_ket_thuc, ghi_chu, trang_thai, ngay_tao) VALUES (@night_emp2, @curr_date, N'Ca tối', '18:00:00', '22:00:00', N'Bán hàng ca tối cuối tuần', 1, GETDATE());
+        END
+
+        SET @curr_date = DATEADD(DAY, 1, @curr_date);
+    END
+
+    PRINT N'Employees and shifts generated successfully.';
+END
+GO

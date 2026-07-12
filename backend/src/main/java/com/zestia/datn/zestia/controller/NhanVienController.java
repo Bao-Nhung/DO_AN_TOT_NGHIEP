@@ -78,11 +78,11 @@ public class NhanVienController {
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Map<String, String> body) {
-        String hoVaTen = trim(body.get("hoVaTen"));
-        String tenNguoiDung = trim(body.get("tenNguoiDung"));
-        String email = trim(body.get("email"));
-        String matKhau = body.get("matKhau");
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        String hoVaTen = trim(toStringVal(body.get("hoVaTen")));
+        String tenNguoiDung = trim(toStringVal(body.get("tenNguoiDung")));
+        String email = trim(toStringVal(body.get("email")));
+        String matKhau = toStringVal(body.get("matKhau"));
 
         if (isBlank(hoVaTen) || isBlank(tenNguoiDung) || isBlank(email) || isBlank(matKhau)) {
             return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng nhập họ tên, tên đăng nhập, email và mật khẩu"));
@@ -108,11 +108,11 @@ public class NhanVienController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         return nhanVienRepo.findById(id).map(existing -> {
-            String tenNguoiDung = trim(body.get("tenNguoiDung"));
-            String email = trim(body.get("email"));
-            String matKhau = body.get("matKhau");
+            String tenNguoiDung = trim(toStringVal(body.get("tenNguoiDung")));
+            String email = trim(toStringVal(body.get("email")));
+            String matKhau = toStringVal(body.get("matKhau"));
 
             if (!isBlank(tenNguoiDung) && nhanVienRepo.findByTenNguoiDung(tenNguoiDung)
                     .filter(nv -> !nv.getId().equals(id)).isPresent()) {
@@ -135,9 +135,9 @@ public class NhanVienController {
     }
 
     @PutMapping("/{id}/trang-thai")
-    public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         return nhanVienRepo.findById(id).map(existing -> {
-            existing.setTinhTrangLamViec(parseByte(body.get("tinhTrangLamViec"), existing.getTinhTrangLamViec()));
+            existing.setTinhTrangLamViec(parseByte(toStringVal(body.get("tinhTrangLamViec")), existing.getTinhTrangLamViec()));
             return ResponseEntity.ok(toMap(nhanVienRepo.save(existing)));
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -150,23 +150,27 @@ public class NhanVienController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    private void applyFields(NhanVien nv, Map<String, String> body, boolean create) {
-        if (create || body.containsKey("hoVaTen")) nv.setHoVaTen(trim(body.get("hoVaTen")));
-        if (create || body.containsKey("tenNguoiDung")) nv.setTenNguoiDung(trim(body.get("tenNguoiDung")));
-        if (create || body.containsKey("email")) nv.setEmail(trim(body.get("email")));
-        if (body.containsKey("soDienThoai")) nv.setSoDienThoai(trim(body.get("soDienThoai")));
-        if (body.containsKey("diaChi")) nv.setDiaChi(trim(body.get("diaChi")));
-        if (body.containsKey("ngaySinh")) nv.setNgaySinh(isBlank(body.get("ngaySinh")) ? null : java.time.LocalDate.parse(body.get("ngaySinh")));
-        if (body.containsKey("gioiTinh")) nv.setGioiTinh(parseByte(body.get("gioiTinh"), null));
-        if (body.containsKey("tinhTrangLamViec")) nv.setTinhTrangLamViec(parseByte(body.get("tinhTrangLamViec"), (byte) 1));
+    private void applyFields(NhanVien nv, Map<String, Object> body, boolean create) {
+        if (create || body.containsKey("hoVaTen")) nv.setHoVaTen(trim(toStringVal(body.get("hoVaTen"))));
+        if (create || body.containsKey("tenNguoiDung")) nv.setTenNguoiDung(trim(toStringVal(body.get("tenNguoiDung"))));
+        if (create || body.containsKey("email")) nv.setEmail(trim(toStringVal(body.get("email"))));
+        if (body.containsKey("soDienThoai")) nv.setSoDienThoai(trim(toStringVal(body.get("soDienThoai"))));
+        if (body.containsKey("diaChi")) nv.setDiaChi(trim(toStringVal(body.get("diaChi"))));
+        if (body.containsKey("ngaySinh")) nv.setNgaySinh(isBlank(toStringVal(body.get("ngaySinh"))) ? null : java.time.LocalDate.parse(toStringVal(body.get("ngaySinh"))));
+        if (body.containsKey("gioiTinh")) nv.setGioiTinh(parseByte(toStringVal(body.get("gioiTinh")), null));
+        if (body.containsKey("tinhTrangLamViec")) nv.setTinhTrangLamViec(parseByte(toStringVal(body.get("tinhTrangLamViec")), (byte) 1));
 
-        Integer vaiTroId = parseInteger(body.get("vaiTroId"));
+        Integer vaiTroId = parseInteger(toStringVal(body.get("vaiTroId")));
         if (vaiTroId != null) {
             vaiTroRepo.findById(vaiTroId).ifPresent(nv::setVaiTro);
         } else if (create) {
             VaiTro defaultRole = vaiTroRepo.findByTenVaiTro("Nhân viên").orElse(null);
             nv.setVaiTro(defaultRole);
         }
+    }
+
+    private String toStringVal(Object value) {
+        return value == null ? null : value.toString();
     }
 
     private Map<String, Object> toMap(NhanVien nv) {

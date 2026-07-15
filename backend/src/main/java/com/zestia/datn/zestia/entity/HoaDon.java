@@ -9,7 +9,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "Hoa_don")
+@Table(
+        name = "Hoa_don",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "UQ_Hoa_don_ma", columnNames = "ma_hoa_don")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,8 +38,14 @@ public class HoaDon {
     @JoinColumn(name = "id_nhan_vien")
     private NhanVien nhanVien;
 
-    @Column(name = "ma_hoa_don")
+    @Column(name = "ma_hoa_don", nullable = false, length = 80)
     private String maHoaDon;
+
+    @Column(name = "ma_yeu_cau", length = 100)
+    private String maYeuCau;
+
+    @Column(name = "ma_giao_dich_cong", length = 120)
+    private String maGiaoDichCong;
 
     @Column(name = "tong_tien")
     private BigDecimal tongTien;
@@ -76,6 +87,10 @@ public class HoaDon {
     @Column(name = "da_thanh_toan")
     private Boolean daThanhToan;
 
+    @Builder.Default
+    @Column(name = "da_hoan_ton_kho", nullable = false)
+    private Boolean daHoanTonKho = false;
+
     @Column(name = "ten_khach_hang")
     private String tenKhachHang;
 
@@ -85,7 +100,27 @@ public class HoaDon {
     @Column(name = "email_khach_hang")
     private String emailKhachHang;
 
+    @JsonIgnore
+    @Column(name = "huy_don_otp_hash", length = 100)
+    private String huyDonOtpHash;
+
+    @JsonIgnore
+    @Column(name = "huy_don_otp_het_han")
+    private LocalDateTime huyDonOtpHetHan;
+
+    @JsonIgnore
+    @Column(name = "huy_don_otp_so_lan_sai")
+    private Integer huyDonOtpSoLanSai;
+
+    @JsonIgnore
+    @Column(name = "huy_don_otp_gui_luc")
+    private LocalDateTime huyDonOtpGuiLuc;
+
+    @Column(name = "ghi_chu")
     private String ghiChu;
+
+    @Column(name = "thong_tin_hoan_tien", length = 500)
+    private String thongTinHoanTien;
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;

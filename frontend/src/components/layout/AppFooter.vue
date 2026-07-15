@@ -1,7 +1,7 @@
 <template>
   <footer class="lm-footer py-5">
     <div class="container">
-      <div class="row g-5 mb-5">
+      <div class="row gx-3 gy-5 mb-5">
 
         <div class="col-lg-4">
           <div class="lm-footer-logo mb-3">Zest<span class="lm-gold-text">ia</span></div>
@@ -18,11 +18,11 @@
         <div class="col-6 col-lg-2">
           <h4 class="lm-footer-heading mb-4">Sản Phẩm</h4>
           <ul class="list-unstyled d-flex flex-column gap-2">
-            <li><RouterLink class="lm-footer-link" to="/collections">Váy truyền thống</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/collections">Váy cách tân</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/collections">Váy dạ hội</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/collections">Váy công sở</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/collections">Voucher</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections?sort=newest">Sản phẩm mới</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections?sort=bestseller">Bán chạy</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections?occasion=party">Váy dự tiệc</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections?occasion=work">Váy công sở</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/lookbook">Lookbook theo dịp</RouterLink></li>
           </ul>
         </div>
 
@@ -30,10 +30,10 @@
           <h4 class="lm-footer-heading mb-4">Hỗ Trợ</h4>
           <ul class="list-unstyled d-flex flex-column gap-2">
             <li><RouterLink class="lm-footer-link" to="/about">Về chúng tôi</RouterLink></li>
-            <li><a class="lm-footer-link" href="#/checkout">Hướng dẫn mua hàng</a></li>
-            <li><a class="lm-footer-link">Chính sách đổi trả</a></li>
-            <li><a class="lm-footer-link">Vận chuyển</a></li>
-            <li><RouterLink class="lm-footer-link" to="/profile">Theo dõi đơn hàng</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/checkout">Hướng dẫn mua hàng</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/policies#policy-RETURN">Chính sách đổi trả</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/policies#policy-SHIPPING">Vận chuyển</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/tracking">Theo dõi đơn hàng</RouterLink></li>
           </ul>
         </div>
 
@@ -65,7 +65,7 @@
       </div>
 
       <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <p class="mb-0" style="font-size:13px;color:var(--z-gray-light)">&copy; 2025 Zestia. All rights reserved.</p>
+        <p class="mb-0" style="font-size:13px;color:var(--z-gray-light)">&copy; 2026 Zestia. All rights reserved.</p>
         <p class="mb-0" style="font-size:13px;color:var(--z-gray-light)">Đồ án tốt nghiệp — FPT Polytechnic</p>
       </div>
     </div>

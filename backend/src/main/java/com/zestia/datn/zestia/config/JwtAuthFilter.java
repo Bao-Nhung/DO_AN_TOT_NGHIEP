@@ -57,7 +57,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static boolean isStaffRole(String role) {
         return "Admin".equalsIgnoreCase(role)
                 || "NhanVien".equalsIgnoreCase(role)
-                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role)
+                || "QuanLyKho".equalsIgnoreCase(role)
+                || "Qu\u1EA3n l\u00FD kho".equalsIgnoreCase(role);
     }
 
     private static Integer toInt(Object obj) {

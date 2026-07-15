@@ -1,5 +1,5 @@
 ﻿import { createApp } from 'vue'
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
 // Bootstrap
 import 'bootstrap/dist/css/bootstrap.min.css'
@@ -26,6 +26,9 @@ const QRPaymentPage = () => import('@/pages/QRPaymentPage.vue')
 const NotificationsPage = () => import('@/pages/NotificationsPage.vue')
 const MyOrdersPage = () => import('@/pages/MyOrdersPage.vue')
 const OrderTrackingPage = () => import('@/pages/OrderTrackingPage.vue')
+const LookbookPage = () => import('@/pages/LookbookPage.vue')
+const PoliciesPage = () => import('@/pages/PoliciesPage.vue')
+const ReviewsPage = () => import('@/pages/ReviewsPage.vue')
 
 const AdminDashboard = () => import('@/pages/admin/AdminDashboard.vue')
 const AdminProducts = () => import('@/pages/admin/AdminProducts.vue')
@@ -38,10 +41,13 @@ const AdminPOS = () => import('@/pages/admin/AdminPOS.vue')
 const AdminSchedule = () => import('@/pages/admin/AdminSchedule.vue')
 const AdminStatisticalDashboard = () => import('@/pages/admin/AdminStatisticalDashboard.vue')
 const AdminNotifications = () => import('@/pages/admin/AdminNotifications.vue')
+const AdminSupportChat = () => import('@/pages/admin/AdminSupportChat.vue')
+const AdminPromotions = () => import('@/pages/admin/AdminPromotions.vue')
+const AdminReturns = () => import('@/pages/admin/AdminReturns.vue')
 
 const routes = [
   { path: '/',               component: HomePage,       name: 'home' },
-  { path: '/collections',    component: ProductsPage,   name: 'products' },
+  { path: '/collections',    alias: '/products', component: ProductsPage, name: 'products' },
   { path: '/product/:id',    component: ProductDetail,  name: 'product-detail' },
   { path: '/wishlist',       component: WishlistPage,   name: 'wishlist' },
   { path: '/profile',        component: ProfilePage,    name: 'profile' },
@@ -52,6 +58,9 @@ const routes = [
   { path: '/qr-payment',    component: QRPaymentPage,     name: 'qr-payment' },
   { path: '/notifications',  component: NotificationsPage, name: 'notifications' },
   { path: '/my-orders',      component: MyOrdersPage,      name: 'my-orders' },
+  { path: '/lookbook',       component: LookbookPage,      name: 'lookbook' },
+  { path: '/policies',       component: PoliciesPage,      name: 'policies' },
+  { path: '/reviews',        component: ReviewsPage,       name: 'reviews' },
 
   { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
   { path: '/admin/thong-ke',  component: AdminStatisticalDashboard, name: 'admin-thong-ke' },
@@ -61,26 +70,30 @@ const routes = [
   { path: '/admin/employees', component: AdminEmployees, name: 'admin-employees' },
   { path: '/admin/schedule',  component: AdminSchedule,  name: 'admin-schedule' },
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
+  { path: '/admin/promotions', component: AdminPromotions, name: 'admin-promotions' },
+  { path: '/admin/returns', component: AdminReturns, name: 'admin-returns' },
   { path: '/admin/notifications', component: AdminNotifications, name: 'admin-notifications' },
+  { path: '/admin/support-chat', component: AdminSupportChat, name: 'admin-support-chat' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },
   { path: '/tracking', name: 'Tracking', component: OrderTrackingPage },
+  { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(),
   routes,
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to) => to.hash ? { el: to.hash, behavior: 'smooth' } : { top: 0 },
 })
 
-import { useAuth } from '@/composables/useApi'
+import { api, useAuth } from '@/composables/useApi'
 
 const adminOnlyRouteNames = new Set([
   'admin-thong-ke',
-  'admin-products',
   'admin-customers',
   'admin-employees',
   'admin-vouchers',
+  'admin-promotions',
   'admin-notifications',
   'admin-settings',
 ])
@@ -90,20 +103,32 @@ function isAdminRole(role) {
 }
 
 function isStaffRole(role) {
-  return isAdminRole(role) || role === 'NhanVien' || role === 'Nhân viên'
+  return isAdminRole(role) || role === 'NhanVien' || role === 'Nhân viên' || isInventoryRole(role)
 }
 
-router.beforeEach((to, from, next) => {
+function isInventoryRole(role) {
+  return role === 'QuanLyKho' || role === 'Quản lý kho'
+}
+
+function isEmployeeRole(role) {
+  return role === 'NhanVien' || role === 'Nhân viên'
+}
+
+router.beforeEach(async (to, from, next) => {
   const { isLoggedIn, getUser } = useAuth()
   const isAdminRoute = to.path.startsWith('/admin')
   const isProfileRoute = to.path.startsWith('/profile') || to.path.startsWith('/my-orders')
-  const requiresLogin = to.name === 'home' || isAdminRoute || isProfileRoute
+  const requiresLogin = isAdminRoute || isProfileRoute
+  const user = isLoggedIn() ? getUser() : null
+
+  if (user && isStaffRole(user.role) && !isAdminRoute && (to.name === 'home' || to.name === 'login')) {
+    return next({ name: 'admin-dashboard' })
+  }
 
   if (requiresLogin) {
     if (!isLoggedIn()) {
       return next({ name: 'login', query: { redirect: to.fullPath } })
     }
-    const user = getUser()
     if (!user) {
       return next({ name: 'login', query: { redirect: to.fullPath } })
     }
@@ -111,8 +136,22 @@ router.beforeEach((to, from, next) => {
       if (!isStaffRole(user.role)) {
         return next({ name: 'home' })
       }
+      if (isEmployeeRole(user.role) && !['admin-dashboard', 'admin-schedule'].includes(to.name)) {
+        try {
+          const shiftStatus = await api().getWorkShiftStatus()
+          if (!shiftStatus?.canOperate) return next({ name: 'admin-schedule' })
+        } catch (e) {
+          return next({ name: 'admin-schedule' })
+        }
+      }
       if (!isAdminRole(user.role) && adminOnlyRouteNames.has(to.name)) {
+        return next({ name: isInventoryRole(user.role) ? 'admin-products' : 'admin-pos' })
+      }
+      if (!isAdminRole(user.role) && !isInventoryRole(user.role) && to.name === 'admin-products') {
         return next({ name: 'admin-pos' })
+      }
+      if (isInventoryRole(user.role) && !['admin-dashboard', 'admin-products'].includes(to.name)) {
+        return next({ name: 'admin-products' })
       }
     }
   }

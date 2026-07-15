@@ -1,8 +1,11 @@
 package com.zestia.datn.zestia.repository;
 
 import com.zestia.datn.zestia.entity.KhachHang;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,13 +18,34 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
 
     Optional<KhachHang> findByEmail(String email);
 
+    Optional<KhachHang> findByEmailIgnoreCase(String email);
+
     Optional<KhachHang> findBySoDienThoai(String soDienThoai);
+
+    @Query("""
+            SELECT kh FROM KhachHang kh
+            WHERE (:keyword IS NULL
+                   OR LOWER(kh.hoVaTen) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(kh.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR kh.soDienThoai LIKE CONCAT('%', :keyword, '%')
+                   OR LOWER(kh.maKhachHang) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            ORDER BY kh.ngayTao DESC, kh.id DESC
+            """)
+    List<KhachHang> searchForPos(@Param("keyword") String keyword,
+                                 org.springframework.data.domain.Pageable pageable);
+
+    Optional<KhachHang> findByGoogleSubject(String googleSubject);
 
     boolean existsByEmail(String email);
 
     boolean existsBySoDienThoai(String soDienThoai);
 
     boolean existsByMaKhachHang(String maKhachHang);
+
+    boolean existsByGoogleSubject(String googleSubject);
+
+    @Query("SELECT kh FROM KhachHang kh WHERE kh.matKhau IS NOT NULL AND kh.matKhau NOT LIKE '$2%'")
+    List<KhachHang> findAccountsWithLegacyPassword();
 
     @Query("""
             SELECT kh.id AS id,
@@ -32,13 +56,50 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    kh.gioiTinh AS gioiTinh,
                    kh.ngayTao AS ngayTao,
                    COUNT(h.id) AS tongDon,
-                   COALESCE(SUM(h.tongTien), 0) AS tongChiTieu
+                   COALESCE(SUM(CASE
+                       WHEN h.daThanhToan = true AND h.trangThai NOT IN (5, 7, 9) THEN h.tongTien
+                       ELSE 0
+                   END), 0) AS tongChiTieu
             FROM KhachHang kh
             LEFT JOIN HoaDon h ON h.khachHang.id = kh.id
             GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.ngayTao
             ORDER BY kh.ngayTao DESC
             """)
     List<KhachHangSummary> findCustomerSummaries();
+
+    @Query(value = """
+            SELECT kh.id AS id,
+                   kh.maKhachHang AS maKhachHang,
+                   kh.hoVaTen AS hoVaTen,
+                   kh.soDienThoai AS soDienThoai,
+                   kh.email AS email,
+                   kh.gioiTinh AS gioiTinh,
+                   kh.ngayTao AS ngayTao,
+                   COUNT(h.id) AS tongDon,
+                   COALESCE(SUM(CASE
+                       WHEN h.daThanhToan = true AND h.trangThai NOT IN (5, 7, 9) THEN h.tongTien
+                       ELSE 0
+                   END), 0) AS tongChiTieu
+            FROM KhachHang kh
+            LEFT JOIN HoaDon h ON h.khachHang.id = kh.id
+            WHERE (:keyword IS NULL
+                   OR LOWER(kh.hoVaTen) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(kh.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR kh.soDienThoai LIKE CONCAT('%', :keyword, '%')
+                   OR LOWER(kh.maKhachHang) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.ngayTao
+            ORDER BY kh.ngayTao DESC
+            """,
+            countQuery = """
+            SELECT COUNT(kh) FROM KhachHang kh
+            WHERE (:keyword IS NULL
+                   OR LOWER(kh.hoVaTen) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(kh.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR kh.soDienThoai LIKE CONCAT('%', :keyword, '%')
+                   OR LOWER(kh.maKhachHang) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            """)
+    Page<KhachHangSummary> findCustomerSummaries(@org.springframework.data.repository.query.Param("keyword") String keyword,
+                                                  Pageable pageable);
 
     interface KhachHangSummary {
         Integer getId();

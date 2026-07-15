@@ -6,6 +6,7 @@ import com.zestia.datn.zestia.entity.HoaDonChiTiet;
 import com.zestia.datn.zestia.entity.VayChiTiet;
 import com.zestia.datn.zestia.repository.GiamGiaRepository;
 import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
+import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,14 +19,18 @@ import java.util.List;
 public class OrderInventoryService {
 
     private final HoaDonChiTietRepository hoaDonChiTietRepo;
+    private final HoaDonRepository hoaDonRepo;
     private final VayChiTietRepository vayChiTietRepo;
     private final GiamGiaRepository giamGiaRepo;
 
     @Transactional
     public void restoreReservation(HoaDon order) {
         if (order == null || order.getId() == null) return;
+        if (Boolean.TRUE.equals(order.getDaHoanTonKho())) return;
         restoreStock(order);
         restoreVoucher(order);
+        order.setDaHoanTonKho(true);
+        hoaDonRepo.save(order);
     }
 
     private void restoreStock(HoaDon order) {

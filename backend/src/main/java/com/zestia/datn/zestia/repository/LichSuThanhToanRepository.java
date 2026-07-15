@@ -11,4 +11,6 @@ public interface LichSuThanhToanRepository extends JpaRepository<LichSuThanhToan
     List<LichSuThanhToan> findByHoaDonId(Integer hoaDonId);
 
     Optional<LichSuThanhToan> findByMaGiaoDich(String maGiaoDich);
+
+    boolean existsByMaGiaoDichAndPhuongThucAndTrangThai(String maGiaoDich, String phuongThuc, String trangThai);
 }

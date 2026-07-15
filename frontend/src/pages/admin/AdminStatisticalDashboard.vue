@@ -160,7 +160,21 @@ const defaultColors = [
   "#9333ea",
   "#dc2626",
   "#0891b2",
+  "#64748b",
+  "#e11d48",
+  "#0f766e",
+  "#7c3aed",
 ];
+
+function addDays(dateValue, days) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+function firstDayOfNextMonth(monthValue) {
+  const [year, month] = monthValue.split("-").map(Number);
+  return new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
+}
 
 // 4. LOAD API
 async function loadThongKe() {
@@ -174,19 +188,23 @@ async function loadThongKe() {
         alert("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc");
         return;
       }
+      if (filter.value.startDate > filter.value.endDate) {
+        alert("Ngày bắt đầu không được sau ngày kết thúc");
+        return;
+      }
       payload.startDate = `${filter.value.startDate}T00:00`;
-      payload.endDate = `${filter.value.endDate}T23:59`;
+      payload.endDate = `${addDays(filter.value.endDate, 1)}T00:00`;
     } else {
       if (!filter.value.startMonth || !filter.value.endMonth) {
         alert("Vui lòng chọn đầy đủ tháng bắt đầu và tháng kết thúc");
         return;
       }
+      if (filter.value.startMonth > filter.value.endMonth) {
+        alert("Tháng bắt đầu không được sau tháng kết thúc");
+        return;
+      }
       payload.startDate = `${filter.value.startMonth}-01T00:00`;
-
-      const [year, month] = filter.value.endMonth.split("-").map(Number);
-      const lastDayDate = new Date(year, month, 0);
-      const lastDayStr = String(lastDayDate.getDate()).padStart(2, "0");
-      payload.endDate = `${filter.value.endMonth}-${lastDayStr}T23:59`;
+      payload.endDate = `${firstDayOfNextMonth(filter.value.endMonth)}T00:00`;
     }
 
     const data = await api().getThongKeTongHop(payload);

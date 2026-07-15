@@ -12,15 +12,15 @@ const bgs = [
 ]
 
 export function mapProduct(p, i) {
-  const hasDiscount = p.giaBanGoc && Number(p.giaBanGoc) > Number(p.giaBan)
   return {
     id: p.id,
     code: p.maVay,
     name: p.tenVay,
     category: p.loaiVay || '',
-    price: hasDiscount ? Number(p.giaBanGoc) : Number(p.giaBan),
-    salePrice: hasDiscount ? Number(p.giaBan) : null,
-    badge: hasDiscount ? 'Sale' : null,
+    price: Number(p.giaBan),
+    promotionActive: Boolean(p.coKhuyenMai),
+    badge: p.coKhuyenMai ? 'Ưu đãi' : null,
+    campaign: p.dotKhuyenMai || null,
     stock: p.tonKho || 0,
     active: p.trangThai === 1 || p.trangThai === true,
     image: p.anhUrl || null,

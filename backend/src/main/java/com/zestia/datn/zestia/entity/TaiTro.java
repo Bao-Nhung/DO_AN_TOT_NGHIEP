@@ -24,7 +24,7 @@ public class TaiTro {
     @Column(name = "trang_thai")
     private Byte trangThai;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "mo_ta", columnDefinition = "NVARCHAR(MAX)")
     private String moTa;
 
     @Column(name = "ngay_tao")

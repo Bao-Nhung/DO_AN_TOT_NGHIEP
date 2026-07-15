@@ -3,10 +3,12 @@ package com.zestia.datn.zestia.controller;
 import java.time.LocalDateTime;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.zestia.datn.zestia.dto.ThongKeResponse;
 import com.zestia.datn.zestia.repository.ThongKeRepository;
@@ -24,8 +26,15 @@ public class ThongKeController {
     public ThongKeResponse getThongKeTongHop(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime endDate,
-            @RequestParam(defaultValue = "ngay") String timeType // Truyền "ngay" hoặc "thang"
+            @RequestParam(defaultValue = "ngay") String timeType
     ) {
+        if (!endDate.isAfter(startDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thời gian kết thúc phải sau thời gian bắt đầu");
+        }
+        if (!"ngay".equalsIgnoreCase(timeType) && !"thang".equalsIgnoreCase(timeType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Kiểu thống kê chỉ nhận 'ngay' hoặc 'thang'");
+        }
+
         ThongKeResponse response = new ThongKeResponse();
 
         // 1. Dữ liệu tổng quan chung (Thẻ số lượng)

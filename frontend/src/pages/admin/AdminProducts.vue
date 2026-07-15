@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Quản lý sản phẩm</h1>
-        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ filteredProducts.length }} sản phẩm</p>
+        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ totalItems }} sản phẩm</p>
       </div>
       <div class="d-flex gap-2">
         <button class="lm-btn-secondary" @click="showAttrModal = true">
@@ -50,7 +50,8 @@
 
     <!-- Table -->
     <div class="z-admin-card" style="padding:0;overflow:hidden">
-      <table class="z-table">
+      <div class="table-responsive">
+      <table class="z-table" style="min-width:900px">
         <thead>
           <tr>
             <th style="width:50px"><input type="checkbox"></th>
@@ -102,21 +103,22 @@
           </tr>
         </tbody>
       </table>
-      <div v-if="filteredProducts.length === 0" class="text-center py-5">
+      </div>
+      <div v-if="totalItems === 0" class="text-center py-5">
         <i class="bi bi-inbox" style="font-size:36px;color:var(--z-gray-border)"></i>
         <p style="color:var(--z-gray);font-size:14px;margin-top:8px">Không có sản phẩm nào</p>
       </div>
 
       <!-- Pagination Controls -->
-      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
         <span style="font-size: 13px; color: var(--z-gray)">
-          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredProducts.length) }} trong tổng số {{ filteredProducts.length }} sản phẩm
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} sản phẩm
         </span>
         <div class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
-          <button v-for="page in totalPages" :key="page" 
+          <button v-for="page in pageNumbers" :key="page"
                   class="lm-btn-secondary" 
                   :style="{
                     padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
@@ -170,8 +172,7 @@
               <div class="row g-2 mb-3">
                 <div class="col-6"><span style="font-size:12px;color:var(--z-gray)">Chất liệu:</span> <strong style="font-size:13px">{{ productDetail.chatLieu || 'N/A' }}</strong></div>
                 <div class="col-6"><span style="font-size:12px;color:var(--z-gray)">Tồn kho:</span> <strong style="font-size:13px">{{ productDetail.tonKho }}</strong></div>
-                <div class="col-6"><span style="font-size:12px;color:var(--z-gray)">Giá bán:</span> <strong style="font-size:13px;color:var(--z-accent)">{{ fmtPrice(productDetail.giaBan) }}</strong></div>
-                <div class="col-6"><span style="font-size:12px;color:var(--z-gray)">Giá gốc:</span> <strong style="font-size:13px">{{ fmtPrice(productDetail.giaBanGoc) }}</strong></div>
+                <div class="col-6"><span style="font-size:12px;color:var(--z-gray)">Giá bán:</span> <strong style="font-size:13px;color:var(--z-accent)">{{ fmtPrice(productDetail.giaBanCoSo ?? productDetail.giaBan) }}</strong></div>
               </div>
               <div v-if="productDetail.moTa" style="font-size:13px;color:var(--z-gray);line-height:1.6">{{ productDetail.moTa }}</div>
             </div>
@@ -187,7 +188,6 @@
                   <th>Màu sắc</th>
                   <th>Kích thước</th>
                   <th>Giá bán</th>
-                  <th>Giá gốc</th>
                   <th>Số lượng</th>
                   <th>Trạng thái</th>
                 </tr>
@@ -202,8 +202,7 @@
                     </span>
                   </td>
                   <td>{{ bt.kichThuoc || 'N/A' }}</td>
-                  <td style="font-weight:500">{{ fmtPrice(bt.giaBan) }}</td>
-                  <td style="color:var(--z-gray)">{{ fmtPrice(bt.giaBanGoc) }}</td>
+                  <td style="font-weight:500">{{ fmtPrice(bt.giaBanCoSo ?? bt.giaBan) }}</td>
                   <td :style="{ color: bt.soLuong < 5 ? 'var(--z-accent)' : '', fontWeight: bt.soLuong < 5 ? 600 : 400 }">{{ bt.soLuong }}</td>
                   <td><span class="z-status" :class="bt.trangThai === 1 ? 'success' : 'pending'" style="font-size:10px;padding:2px 8px">{{ bt.trangThai === 1 ? 'Bán' : 'Ngừng' }}</span></td>
                 </tr>
@@ -384,6 +383,24 @@
             <label class="z-label">Mô tả</label>
             <textarea v-model="form.moTa" class="lm-input" rows="2" placeholder="Mô tả sản phẩm..."></textarea>
           </div>
+          <div class="row g-3">
+            <div class="col-4">
+              <label class="z-label">Chiều cao người mẫu (cm)</label>
+              <input v-model.number="form.chieuCaoNguoiMau" type="number" min="120" max="210" class="lm-input" />
+            </div>
+            <div class="col-4">
+              <label class="z-label">Cân nặng người mẫu (kg)</label>
+              <input v-model.number="form.canNangNguoiMau" type="number" min="30" max="150" class="lm-input" />
+            </div>
+            <div class="col-4">
+              <label class="z-label">Size người mẫu mặc</label>
+              <input v-model.trim="form.sizeNguoiMau" class="lm-input" placeholder="S / M / L" />
+            </div>
+            <div class="col-12">
+              <label class="z-label">Mô tả phom</label>
+              <textarea v-model="form.moTaPhom" class="lm-input" rows="2" placeholder="Phom ôm, phom rộng; cách chọn khi ở giữa hai size..."></textarea>
+            </div>
+          </div>
         </div>
 
         <!-- Variants -->
@@ -399,8 +416,7 @@
               <option :value="null">Kích thước</option>
               <option v-for="kt in kichThuocList" :key="kt.id" :value="kt.id">{{ kt.tenKichThuoc }}</option>
             </select>
-            <input v-model.number="v.giaBan" type="number" class="lm-input" placeholder="Giá bán" style="padding:6px 10px;font-size:12px;flex:1">
-            <input v-model.number="v.giaBanGoc" type="number" class="lm-input" placeholder="Giá gốc" style="padding:6px 10px;font-size:12px;flex:1">
+            <input :value="formatPriceInput(v.giaBan)" type="text" inputmode="numeric" class="lm-input" placeholder="Giá bán" style="padding:6px 10px;font-size:12px;flex:1" @input="updateVariantPrice(v, 'giaBan', $event)">
             <input v-model.number="v.soLuong" type="number" class="lm-input" placeholder="SL" style="padding:6px 10px;font-size:12px;width:70px">
             <button class="z-icon-btn" style="color:var(--z-accent);flex-shrink:0" @click="form.variants.splice(i, 1)">
               <i class="bi bi-trash"></i>
@@ -410,6 +426,25 @@
         <button class="lm-btn-secondary mb-4" @click="addVariant" style="font-size:13px">
           <i class="bi bi-plus-circle me-1"></i> Thêm biến thể
         </button>
+
+        <template v-if="variantColors.length">
+          <h4 style="font-size:13px;font-weight:600;color:var(--z-accent);margin-bottom:12px">ẢNH THEO MÀU SẮC</h4>
+          <div class="z-color-image-grid mb-4">
+            <label v-for="color in variantColors" :key="color.id" class="z-color-image-item">
+              <div class="z-color-image-preview">
+                <img v-if="colorImagePreviews[color.id] || color.existingImage" :src="colorImagePreviews[color.id] || color.existingImage" :alt="color.name">
+                <i v-else class="bi bi-image"></i>
+              </div>
+              <div>
+                <strong>{{ color.name }}</strong>
+                <span>{{ colorImageFiles[color.id] ? 'Đã chọn ảnh mới' : color.existingImage ? 'Đang có ảnh riêng' : 'Chọn ảnh cho màu này' }}</span>
+              </div>
+              <i class="bi bi-upload z-color-upload-icon"></i>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" hidden @change="onPickColorImage(color.id, $event)">
+            </label>
+          </div>
+          <div class="z-color-image-note">Một ảnh màu sẽ được dùng cho mọi kích cỡ cùng màu. Khi khách đổi màu, ảnh chính và ảnh trong giỏ hàng cũng đổi theo.</div>
+        </template>
 
         <!-- Images -->
         <h4 style="font-size:13px;font-weight:600;color:var(--z-accent);margin-bottom:12px">HÌNH ẢNH SẢN PHẨM</h4>
@@ -455,15 +490,14 @@ import { useConfirm } from '@/composables/useConfirm'
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
 const search = ref('')
-const filters = ['Tất cả', 'Váy truyền thống', 'Váy cách tân', 'Váy dạ hội', 'Váy công sở', 'Váy cưới', 'Sale']
 const activeFilter = ref('Tất cả')
 const filterStatus = ref('')
 const showModal = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
 const allProducts = ref([])
-const rawProducts = ref([])
 const categories = ref([])
+const filters = computed(() => ['Tất cả', ...categories.value])
 const loaiVayList = ref([])
 const chatLieuList = ref([])
 const mauSacList = ref([])
@@ -486,7 +520,12 @@ const newMaterial = ref('')
 const newCategory = ref('')
 const newSupplier = ref({ tenNhaCungCap: '', diaChi: '', soDienThoai: '', email: '' })
 
-const defaultForm = { tenVay: '', maVay: '', moTa: '', trangThai: 1, idLoaiVay: null, idChatLieu: null, idNhaCungCap: null, variants: [] }
+const defaultForm = {
+  tenVay: '', maVay: '', moTa: '', trangThai: 1,
+  idLoaiVay: null, idChatLieu: null, idNhaCungCap: null,
+  chieuCaoNguoiMau: null, canNangNguoiMau: null, sizeNguoiMau: '', moTaPhom: '',
+  variants: []
+}
 const form = ref({ ...defaultForm, variants: [] })
 
 // Ảnh sản phẩm
@@ -494,12 +533,50 @@ const existingImages = ref([])   // ảnh đã có (khi sửa): { id, url }
 const newImageFiles = ref([])    // File[] mới chọn
 const newImagePreviews = ref([]) // data URL xem trước
 const deletedImageIds = ref([])  // id ảnh cũ bị xoá
+const colorImageFiles = ref({})
+const colorImagePreviews = ref({})
+const variantColors = computed(() => {
+  const colors = new Map()
+  for (const variant of form.value.variants || []) {
+    const colorId = Number(variant.idMauSac)
+    if (!colorId || colors.has(colorId)) continue
+    const color = mauSacList.value.find(item => Number(item.id) === colorId)
+    colors.set(colorId, {
+      id: colorId,
+      name: color?.tenMauSac || `Màu #${colorId}`,
+      existingImage: variant.anhUrl || null
+    })
+  }
+  return [...colors.values()]
+})
 
 function resetImages() {
   existingImages.value = []
   newImageFiles.value = []
   newImagePreviews.value = []
   deletedImageIds.value = []
+  colorImageFiles.value = {}
+  colorImagePreviews.value = {}
+}
+
+function onPickColorImage(colorId, event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(file.type)) {
+    showToast('Ảnh màu chỉ hỗ trợ JPG, PNG, WebP hoặc AVIF')
+    return
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('Ảnh màu không được vượt quá 10MB')
+    return
+  }
+  colorImageFiles.value = { ...colorImageFiles.value, [colorId]: file }
+  const reader = new FileReader()
+  reader.onload = e => {
+    colorImagePreviews.value = { ...colorImagePreviews.value, [colorId]: e.target.result }
+  }
+  reader.readAsDataURL(file)
 }
 
 function onPickImages(e) {
@@ -525,8 +602,8 @@ function removeExistingImage(img) {
 }
 
 onMounted(async () => {
-  await loadProducts()
   await loadAttrs()
+  await loadProducts()
 })
 
 async function loadAttrs() {
@@ -537,6 +614,7 @@ async function loadAttrs() {
     mauSacList.value = attrs.mauSac || []
     kichThuocList.value = attrs.kichThuoc || []
     nhaCungCapList.value = attrs.nhaCungCap || []
+    categories.value = (attrs.loaiVay || []).map(category => category.tenLoaiVay).filter(Boolean)
     attrColors.value = (attrs.mauSac || []).map(c => ({ id: c.id, name: c.tenMauSac, hex: c.maHex || '#ccc' }))
     attrSizes.value = (attrs.kichThuoc || []).map(s => ({ id: s.id, name: s.tenKichThuoc }))
     attrMaterials.value = (attrs.chatLieu || []).map(m => ({ id: m.id, name: m.tenChatLieu }))
@@ -549,60 +627,67 @@ async function loadAttrs() {
 
 async function loadProducts() {
   try {
-    const data = await api().getVay()
-    const sortedData = [...data].sort((a, b) => {
-      const da = a.ngayTao ? new Date(a.ngayTao).getTime() : Number(a.id || 0)
-      const db = b.ngayTao ? new Date(b.ngayTao).getTime() : Number(b.id || 0)
-      return db - da
+    const category = activeFilter.value !== 'Tất cả' ? activeFilter.value : null
+    const data = await api().getVayPage({
+      page: currentPage.value - 1,
+      size: itemsPerPage,
+      q: search.value.trim() || null,
+      status: filterStatus.value || null,
+      category
     })
-    rawProducts.value = sortedData
-    allProducts.value = sortedData.map((p, i) => {
+    allProducts.value = (data.content || []).map((p, i) => {
       const m = mapProduct(p, i)
-      return { ...m, priceDisplay: fmtPrice(m.salePrice || m.price), rawId: p.id, raw: p }
+      return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id, raw: p }
     })
-    categories.value = [...new Set(allProducts.value.map(p => p.category).filter(Boolean))]
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Number(data.totalPages || 0)
   } catch (e) { console.error('Không thể tải sản phẩm:', e) }
 }
 
-const filteredProducts = computed(() => {
-  return allProducts.value.filter(p => {
-    const matchSearch = !search.value || p.name.toLowerCase().includes(search.value.toLowerCase()) || (p.code || '').toLowerCase().includes(search.value.toLowerCase())
-    
-    let matchCat = true
-    if (activeFilter.value !== 'Tất cả') {
-      if (activeFilter.value === 'Sale') {
-        matchCat = !!p.salePrice
-      } else {
-        matchCat = p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
-      }
-    }
-    
-    const matchStatus = !filterStatus.value || (filterStatus.value === '1' ? p.active : !p.active)
-    return matchSearch && matchCat && matchStatus
-  })
-})
-
 const currentPage = ref(1)
 const itemsPerPage = 10
-
-const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage))
-
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredProducts.value.slice(start, start + itemsPerPage)
+const totalItems = ref(0)
+const totalPages = ref(0)
+const filteredProducts = computed(() => allProducts.value)
+const paginatedProducts = computed(() => allProducts.value)
+const pageNumbers = computed(() => {
+  const start = Math.max(1, Math.min(currentPage.value - 2, totalPages.value - 4))
+  const end = Math.min(totalPages.value, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
 })
 
-watch([search, activeFilter, filterStatus], () => {
-  currentPage.value = 1
+let productSearchTimer
+watch(search, () => {
+  clearTimeout(productSearchTimer)
+  productSearchTimer = setTimeout(() => resetProductPage(), 300)
 })
+watch([activeFilter, filterStatus], resetProductPage)
+watch(currentPage, loadProducts)
+
+function resetProductPage() {
+  if (currentPage.value === 1) loadProducts()
+  else currentPage.value = 1
+}
 
 function addVariant() {
-  form.value.variants.push({ idMauSac: null, idKichThuoc: null, giaBan: null, giaBanGoc: null, soLuong: 0 })
+  form.value.variants.push({ idMauSac: null, idKichThuoc: null, giaBan: null, soLuong: 0, anhUrl: null })
+}
+
+function formatPriceInput(value) {
+  if (value === null || value === undefined || value === '') return ''
+  const amount = Number(String(value).replace(/\D/g, ''))
+  return Number.isFinite(amount) ? amount.toLocaleString('vi-VN') : ''
+}
+
+function updateVariantPrice(variant, field, event) {
+  const digits = String(event.target.value || '').replace(/\D/g, '').slice(0, 15)
+  variant[field] = digits ? Number(digits) : null
+  event.target.value = formatPriceInput(variant[field])
 }
 
 function openAdd() {
   editingId.value = null
-  form.value = { ...defaultForm, variants: [{ idMauSac: null, idKichThuoc: null, giaBan: null, giaBanGoc: null, soLuong: 0 }] }
+  form.value = { ...defaultForm, variants: [{ idMauSac: null, idKichThuoc: null, giaBan: null, soLuong: 0, anhUrl: null }] }
   resetImages()
   showModal.value = true
 }
@@ -618,24 +703,32 @@ async function openEdit(p) {
     idLoaiVay: p.raw?.idLoaiVay || null,
     idChatLieu: p.raw?.idChatLieu || null,
     idNhaCungCap: p.raw?.idNhaCungCap || null,
+    chieuCaoNguoiMau: p.raw?.chieuCaoNguoiMau || null,
+    canNangNguoiMau: p.raw?.canNangNguoiMau || null,
+    sizeNguoiMau: p.raw?.sizeNguoiMau || '',
+    moTaPhom: p.raw?.moTaPhom || '',
     variants: [],
   }
   try {
     const detail = await api().getVayById(p.rawId || p.id)
+    form.value.chieuCaoNguoiMau = detail.chieuCaoNguoiMau || null
+    form.value.canNangNguoiMau = detail.canNangNguoiMau || null
+    form.value.sizeNguoiMau = detail.sizeNguoiMau || ''
+    form.value.moTaPhom = detail.moTaPhom || ''
     existingImages.value = detail.anhList || []
     if (detail.bienThe && detail.bienThe.length > 0) {
       form.value.variants = detail.bienThe.map(bt => ({
         idMauSac: bt.idMauSac || mauSacList.value.find(m => m.tenMauSac === bt.mauSac)?.id || null,
         idKichThuoc: bt.idKichThuoc || kichThuocList.value.find(k => k.tenKichThuoc === bt.kichThuoc)?.id || null,
-        giaBan: bt.giaBan ? Number(bt.giaBan) : null,
-        giaBanGoc: bt.giaBanGoc ? Number(bt.giaBanGoc) : null,
+        giaBan: Number(bt.giaBanCoSo ?? bt.giaBan) || null,
         soLuong: bt.soLuong || 0,
+        anhUrl: bt.anhUrl || null,
       }))
     } else {
-      form.value.variants = [{ idMauSac: null, idKichThuoc: null, giaBan: p.salePrice || p.price || 0, giaBanGoc: p.price || 0, soLuong: p.stock || 0 }]
+      form.value.variants = [{ idMauSac: null, idKichThuoc: null, giaBan: p.price || 0, soLuong: p.stock || 0, anhUrl: null }]
     }
   } catch (e) {
-    form.value.variants = [{ idMauSac: null, idKichThuoc: null, giaBan: p.salePrice || p.price || 0, giaBanGoc: p.price || 0, soLuong: p.stock || 0 }]
+    form.value.variants = [{ idMauSac: null, idKichThuoc: null, giaBan: p.price || 0, soLuong: p.stock || 0, anhUrl: null }]
   }
   showModal.value = true
 }
@@ -675,14 +768,6 @@ async function doSave() {
       showToast(`Biến thể số ${idx + 1} chưa nhập giá bán hợp lệ!`, 'error')
       return
     }
-    if (v.giaBanGoc === null || v.giaBanGoc === undefined || v.giaBanGoc < 0) {
-      showToast(`Biến thể số ${idx + 1} chưa nhập giá gốc hợp lệ!`, 'error')
-      return
-    }
-    if (Number(v.giaBanGoc) < Number(v.giaBan)) {
-      showToast(`Biến thể số ${idx + 1}: Giá gốc không được nhỏ hơn Giá bán!`, 'error')
-      return
-    }
   }
 
   saving.value = true
@@ -695,15 +780,18 @@ async function doSave() {
       idLoaiVay: form.value.idLoaiVay,
       idChatLieu: form.value.idChatLieu,
       idNhaCungCap: form.value.idNhaCungCap,
+      chieuCaoNguoiMau: form.value.chieuCaoNguoiMau,
+      canNangNguoiMau: form.value.canNangNguoiMau,
+      sizeNguoiMau: form.value.sizeNguoiMau,
+      moTaPhom: form.value.moTaPhom,
       giaBan: firstVariant.giaBan,
-      giaBanGoc: firstVariant.giaBanGoc,
       soLuong: firstVariant.soLuong || 0,
       variants: form.value.variants.map(v => ({
         idMauSac: v.idMauSac,
         idKichThuoc: v.idKichThuoc,
         giaBan: v.giaBan,
-        giaBanGoc: v.giaBanGoc,
-        soLuong: v.soLuong || 0
+        soLuong: v.soLuong || 0,
+        anhUrl: v.anhUrl || existingColorImage(v.idMauSac)
       }))
     }
     let result
@@ -724,12 +812,24 @@ async function doSave() {
       for (const f of newImageFiles.value) {
         try { await api().uploadVayAnh(pid, f) } catch (e) { showToast('Lỗi upload ảnh: ' + (e.error || e.message || '')) }
       }
+      for (const [colorId, file] of Object.entries(colorImageFiles.value)) {
+        try {
+          await api().uploadVayColorImage(pid, colorId, file)
+        } catch (e) {
+          showToast(`Lỗi upload ảnh màu: ${e.error || e.message || ''}`)
+        }
+      }
     }
 
     showModal.value = false
     await loadProducts()
   } catch (e) { showToast('Lỗi: ' + (e.message || 'Không thể lưu')) }
   finally { saving.value = false }
+}
+
+function existingColorImage(colorId) {
+  if (!colorId) return null
+  return form.value.variants.find(variant => Number(variant.idMauSac) === Number(colorId) && variant.anhUrl)?.anhUrl || null
 }
 
 async function addColor() {
@@ -837,6 +937,16 @@ async function toggleLock(p) {
   cursor: pointer; color: var(--z-gray); transition: all 0.2s; flex-shrink: 0;
 }
 .z-img-add:hover { border-color: var(--z-accent); color: var(--z-accent); }
+.z-color-image-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.z-color-image-item { min-height: 72px; padding: 9px; border: 1px solid var(--z-gray-border); display: grid; grid-template-columns: 46px 1fr 20px; align-items: center; gap: 10px; cursor: pointer; background: var(--z-white); }
+.z-color-image-item:hover { border-color: var(--z-accent); background: var(--z-accent-soft); }
+.z-color-image-preview { width: 46px; height: 54px; display: grid; place-items: center; overflow: hidden; background: var(--z-bg-alt); color: var(--z-gray-light); }
+.z-color-image-preview img { width: 100%; height: 100%; object-fit: cover; }
+.z-color-image-item strong, .z-color-image-item span { display: block; }
+.z-color-image-item strong { color: var(--z-dark); font-size: 12px; }
+.z-color-image-item span { margin-top: 4px; color: var(--z-gray); font-size: 10px; }
+.z-color-upload-icon { color: var(--z-gray); font-size: 14px; }
+.z-color-image-note { margin: -8px 0 18px; color: var(--z-gray); font-size: 11px; line-height: 1.5; }
 .z-attr-section {
   padding: 16px; background: var(--z-bg-alt); border-radius: var(--z-radius-lg);
 }
@@ -860,4 +970,5 @@ async function toggleLock(p) {
   cursor: pointer; color: var(--z-gray); font-size: 14px;
 }
 .z-icon-btn-sm:hover { background: #fee2e2; color: #dc2626; }
+@media (max-width: 640px) { .z-color-image-grid { grid-template-columns: 1fr; } }
 </style>

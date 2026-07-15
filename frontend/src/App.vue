@@ -28,18 +28,24 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppNavbar        from '@/components/layout/AppNavbar.vue'
 import CartDrawer       from '@/components/layout/CartDrawer.vue'
 import CustomerChatWidget from '@/components/layout/CustomerChatWidget.vue'
 import ToastNotification from '@/components/layout/ToastNotification.vue'
 import ConfirmModal      from '@/components/ui/ConfirmModal.vue'
+import { api, useAuth } from '@/composables/useApi'
+import { useCart } from '@/composables/useCart'
+import { useWishlist } from '@/composables/useWishlist'
 
 const route = useRoute()
 const isLoginPage = computed(() => route.name === 'login')
 const isAdminPage = computed(() => route.path.startsWith('/admin'))
 const transitionClass = ref('')
+const { getUser } = useAuth()
+const { hydrateCart, resetCartForGuest } = useCart()
+const { hydrateWishlist, resetWishlistForGuest } = useWishlist()
 
 watch(isAdminPage, (val) => {
   document.body.classList.toggle('z-admin-active', val)
@@ -55,6 +61,8 @@ function onAfterEnter() {
 
 // ── Custom Cursor ──
 onMounted(() => {
+  hydrateAccountData(true)
+  window.addEventListener('zestia-auth-changed', onAuthChanged)
   const cursor = document.getElementById('lm-cursor')
   const ring   = document.getElementById('lm-cursor-ring')
   if (!cursor || !ring) return
@@ -80,6 +88,30 @@ onMounted(() => {
     if (e.target.closest(targets)) document.body.classList.remove('cursor-hover')
   })
 })
+
+onUnmounted(() => window.removeEventListener('zestia-auth-changed', onAuthChanged))
+
+function onAuthChanged() {
+  hydrateAccountData(false)
+}
+
+async function hydrateAccountData(initialLoad) {
+  const user = getUser()
+  if (!user || user.role !== 'KhachHang') {
+    if (!initialLoad) {
+      resetCartForGuest()
+      resetWishlistForGuest()
+    }
+    return
+  }
+  try {
+    const data = await api().getCustomerData()
+    await hydrateCart(data?.cart || [], user.userId)
+    hydrateWishlist(data?.wishlistIds || [], user.userId)
+  } catch (error) {
+    console.warn('Không thể tải dữ liệu mua sắm của tài khoản', error)
+  }
+}
 </script>
 
 <style>

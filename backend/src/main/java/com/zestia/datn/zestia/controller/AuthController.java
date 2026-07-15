@@ -12,6 +12,8 @@ import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
 import com.zestia.datn.zestia.repository.PasswordResetTokenRepository;
 import com.zestia.datn.zestia.service.EmailService;
+import com.zestia.datn.zestia.service.GoogleAuthService;
+import com.zestia.datn.zestia.service.CustomerIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -33,6 +37,8 @@ public class AuthController {
     private static final String ACCOUNT_NHAN_VIEN = "NHAN_VIEN";
     private static final String ACCOUNT_KHACH_HANG = "KHACH_HANG";
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PHONE_PATTERN = Pattern.compile("0[35789]\\d{8}");
 
     private final NhanVienRepository nhanVienRepo;
     private final KhachHangRepository khachHangRepo;
@@ -41,6 +47,8 @@ public class AuthController {
     private final DiaChiRepository diaChiRepo;
     private final EmailService emailService;
     private final PasswordResetTokenRepository passwordResetTokenRepo;
+    private final GoogleAuthService googleAuthService;
+    private final CustomerIdentityService customerIdentityService;
 
     @Value("${app.password-reset-token-minutes:30}")
     private long passwordResetTokenMinutes;
@@ -98,34 +106,53 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> req) {
-        String hoVaTen = req.get("hoVaTen");
-        String email = req.get("email");
-        String soDienThoai = req.get("soDienThoai");
+        String hoVaTen = clean(req.get("hoVaTen"));
+        String email = customerIdentityService.normalizeEmail(req.get("email"));
+        String soDienThoai = customerIdentityService.normalizePhone(req.get("soDienThoai"));
         String matKhau = req.get("matKhau");
 
-        if (hoVaTen == null || email == null || matKhau == null) {
+        if (hoVaTen == null || email == null || soDienThoai == null || matKhau == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ thông tin"));
         }
-
-        if (khachHangRepo.existsByEmail(email)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email đã được sử dụng"));
+        if (hoVaTen.length() < 2 || hoVaTen.length() > 150) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Họ tên không hợp lệ"));
+        }
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email không hợp lệ"));
+        }
+        if (!PHONE_PATTERN.matcher(soDienThoai).matches()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Số điện thoại không hợp lệ"));
+        }
+        if (matKhau.length() < 6 || matKhau.length() > 100) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu phải có từ 6 đến 100 ký tự"));
         }
 
-        if (soDienThoai != null && khachHangRepo.existsBySoDienThoai(soDienThoai)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Số điện thoại đã được sử dụng"));
+        Optional<KhachHang> byEmail = khachHangRepo.findByEmailIgnoreCase(email);
+        Optional<KhachHang> byPhone = khachHangRepo.findBySoDienThoai(soDienThoai);
+        if (byEmail.isPresent() && byPhone.isPresent()
+                && !Objects.equals(byEmail.get().getId(), byPhone.get().getId())) {
+            return ResponseEntity.status(409).body(Map.of("error", "Email và số điện thoại đang thuộc hai hồ sơ khác nhau"));
+        }
+        KhachHang existing = byEmail.or(() -> byPhone).orElse(null);
+        if (existing != null && existing.getMatKhau() != null && !existing.getMatKhau().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email hoặc số điện thoại đã được sử dụng"));
+        }
+        if (existing != null && existing.getEmail() != null
+                && !existing.getEmail().equalsIgnoreCase(email)) {
+            return ResponseEntity.status(409).body(Map.of("error", "Số điện thoại đã gắn với một email khác"));
         }
 
-        long count = khachHangRepo.count();
-        KhachHang kh = KhachHang.builder()
-                .maKhachHang("KH" + String.format("%05d", count + 1))
-                .hoVaTen(hoVaTen)
-                .email(email)
-                .soDienThoai(soDienThoai)
-                .matKhau(passwordEncoder.encode(matKhau))
-                .ngayTao(LocalDateTime.now())
-                .build();
-
-        khachHangRepo.save(kh);
+        KhachHang kh;
+        try {
+            kh = customerIdentityService.resolveForOrder(null, hoVaTen, soDienThoai, email);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        }
+        kh.setHoVaTen(hoVaTen);
+        kh.setEmail(email);
+        kh.setSoDienThoai(soDienThoai);
+        kh.setMatKhau(passwordEncoder.encode(matKhau));
+        kh = khachHangRepo.save(kh);
 
         String token = jwtUtil.generateToken(kh.getEmail(), "KhachHang", kh.getId());
         return ResponseEntity.ok(LoginResponse.builder()
@@ -159,6 +186,28 @@ public class AuthController {
         khOpt.ifPresent(this::issuePasswordResetForCustomer);
 
         return passwordResetAccepted();
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> req) {
+        try {
+            KhachHang kh = googleAuthService.authenticate(req.get("credential"));
+            String token = jwtUtil.generateToken(kh.getEmail(), "KhachHang", kh.getId());
+            return ResponseEntity.ok(LoginResponse.builder()
+                    .token(token)
+                    .username(kh.getEmail())
+                    .hoVaTen(kh.getHoVaTen())
+                    .email(kh.getEmail())
+                    .soDienThoai(kh.getSoDienThoai())
+                    .role("KhachHang")
+                    .userId(kh.getId())
+                    .gioiTinh(kh.getGioiTinh())
+                    .build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/reset-password")
@@ -258,6 +307,10 @@ public class AuthController {
             if (value != null && !value.isBlank()) return value.trim();
         }
         return null;
+    }
+
+    private String clean(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private String displayName(String primary, String fallback) {

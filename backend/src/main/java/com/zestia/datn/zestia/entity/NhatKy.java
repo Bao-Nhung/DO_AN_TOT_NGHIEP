@@ -31,7 +31,7 @@ public class NhatKy {
     @Column(name = "id_ban_ghi")
     private Integer idBanGhi;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "chi_tiet", columnDefinition = "NVARCHAR(MAX)")
     private String chiTiet;
 
     @Column(name = "dia_chi_ip")

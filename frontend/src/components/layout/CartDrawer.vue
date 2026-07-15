@@ -48,9 +48,7 @@
                 <span class="lm-qty-num">{{ item.qty }}</span>
                 <button class="lm-qty-btn" @click="cart.changeQty(item.id, 1)">+</button>
               </div>
-              <div style="font-family:var(--lm-font-display);font-size:18px;font-weight:400">
-                {{ cart.formatPrice(item.price) }}
-              </div>
+              <div class="lm-cart-item-price">{{ cart.formatPrice(Number(item.price)) }}</div>
             </div>
           </div>
         </div>
@@ -78,6 +76,30 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue'
 import { useCart } from '@/composables/useCart'
+import { api } from '@/composables/useApi'
+
 const cart = useCart()
+
+onMounted(() => {
+  cart.refreshItems(productId => api().getVayById(productId))
+})
 </script>
+
+<style scoped>
+.lm-cart-item-price {
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.lm-cart-item-price {
+  color: var(--lm-black);
+  font-family: var(--lm-font-display);
+  font-size: 18px;
+  font-weight: 400;
+}
+</style>

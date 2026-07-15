@@ -28,26 +28,24 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void migrateNhanVienPasswords() {
-        List<NhanVien> nhanViens = nhanVienRepo.findAll();
+        List<NhanVien> nhanViens = nhanVienRepo.findAccountsWithLegacyPassword();
         for (NhanVien nv : nhanViens) {
-            String password = nv.getMatKhau();
-            if (password != null && !password.startsWith("$2")) {
-                nv.setMatKhau(encoder.encode(password));
-                nhanVienRepo.save(nv);
-                log.info("Migrated BCrypt password for employee: {}", nv.getTenNguoiDung());
-            }
+            nv.setMatKhau(encoder.encode(nv.getMatKhau()));
         }
+        if (!nhanViens.isEmpty()) nhanVienRepo.saveAll(nhanViens);
+        logMigration("employee", nhanViens.size());
     }
 
     private void migrateKhachHangPasswords() {
-        List<KhachHang> khachHangs = khachHangRepo.findAll();
+        List<KhachHang> khachHangs = khachHangRepo.findAccountsWithLegacyPassword();
         for (KhachHang kh : khachHangs) {
-            String password = kh.getMatKhau();
-            if (password != null && !password.startsWith("$2")) {
-                kh.setMatKhau(encoder.encode(password));
-                khachHangRepo.save(kh);
-                log.info("Migrated BCrypt password for customer: {}", kh.getEmail());
-            }
+            kh.setMatKhau(encoder.encode(kh.getMatKhau()));
         }
+        if (!khachHangs.isEmpty()) khachHangRepo.saveAll(khachHangs);
+        logMigration("customer", khachHangs.size());
+    }
+
+    private void logMigration(String accountType, int count) {
+        if (count > 0) log.info("Migrated {} legacy {} passwords to BCrypt", count, accountType);
     }
 }

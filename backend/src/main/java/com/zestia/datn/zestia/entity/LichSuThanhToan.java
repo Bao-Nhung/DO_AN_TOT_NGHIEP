@@ -35,7 +35,7 @@ public class LichSuThanhToan {
     @Column(name = "trang_thai")
     private String trangThai;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "noi_dung", columnDefinition = "NVARCHAR(MAX)")
     private String noiDung;
 
     @Column(name = "ngay_tao")

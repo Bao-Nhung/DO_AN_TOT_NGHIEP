@@ -5,7 +5,34 @@
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Lịch làm việc</h1>
         <p style="font-size:14px;color:var(--z-gray);margin:0">Sắp ca và theo dõi lịch làm việc của nhân viên</p>
       </div>
-      <button v-if="isAdmin" class="lm-btn-primary" @click="openAdd"><span>Thêm ca làm</span></button>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="lm-btn-secondary" :disabled="exporting" @click="exportHistory">
+          <i class="bi bi-file-earmark-excel me-1"></i>{{ exporting ? 'Đang xuất...' : 'Xuất Excel' }}
+        </button>
+        <button v-if="isAdmin" class="lm-btn-primary" @click="openAdd"><span>Thêm ca làm</span></button>
+      </div>
+    </div>
+
+    <div v-if="!isAdmin" class="z-admin-card z-my-shift-card mb-4">
+      <div>
+        <div class="z-my-shift-eyebrow">TRẠNG THÁI LÀM VIỆC</div>
+        <h2>{{ workStatus.canOperate ? 'Bạn đang trong ca làm việc' : (workStatus.reason || 'Đang kiểm tra ca làm') }}</h2>
+        <p v-if="currentShift">
+          {{ formatDate(currentShift.ngayLam) }} · {{ currentShift.caLam || shiftName(currentShift.gioBatDau) }} ·
+          {{ shortTime(currentShift.gioBatDau) }} - {{ shortTime(currentShift.gioKetThuc) }}
+        </p>
+        <p v-else>Hãy theo dõi lịch để xác nhận ca trước khi đến cửa hàng.</p>
+      </div>
+      <div v-if="currentShift" class="d-flex gap-2 flex-wrap justify-content-end">
+        <button v-if="Number(currentShift.trangThai) === 0" class="lm-btn-primary" @click="confirmOwnShift(currentShift)">
+          <span>Xác nhận ca</span>
+        </button>
+        <button v-if="[0, 1].includes(Number(currentShift.trangThai)) && !currentShift.gioCheckIn" class="lm-btn-secondary" @click="openUnavailable(currentShift)">
+          Báo bận
+        </button>
+        <button v-if="currentShift.canCheckIn" class="lm-btn-primary" @click="checkIn(currentShift)"><span>Check-in</span></button>
+        <button v-if="currentShift.canCheckOut" class="lm-btn-secondary" @click="checkOut(currentShift)">Check-out</button>
+      </div>
     </div>
 
     <div class="row g-3 mb-4">
@@ -143,18 +170,18 @@
             <th>Thời gian</th>
             <th>Ghi chú</th>
             <th>Trạng thái</th>
-            <th v-if="isAdmin" style="width:90px">Thao tác</th>
+            <th style="min-width:150px">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td :colspan="isAdmin ? 7 : 6" class="text-center py-4" style="color:var(--z-gray)">Đang tải lịch làm việc...</td>
+            <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Đang tải lịch làm việc...</td>
           </tr>
           <tr v-else-if="filteredSchedules.length === 0">
-            <td :colspan="isAdmin ? 7 : 6" class="text-center py-4" style="color:var(--z-gray)">Chưa có ca làm phù hợp</td>
+            <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Chưa có ca làm phù hợp</td>
           </tr>
           <tr v-for="item in paginatedSchedules" v-else :key="item.id">
-            <td v-if="isAdmin">
+            <td>
               <div style="font-weight:600;color:var(--z-dark)">{{ formatDate(item.ngayLam) }}</div>
               <div style="font-size:12px;color:var(--z-gray)">{{ weekdayLabel(item.ngayLam) }}</div>
             </td>
@@ -170,11 +197,23 @@
             <td><span class="z-shift-pill">{{ item.caLam || shiftName(item.gioBatDau) }}</span></td>
             <td style="font-weight:500">{{ shortTime(item.gioBatDau) }} - {{ shortTime(item.gioKetThuc) }}</td>
             <td style="color:var(--z-gray);max-width:240px">{{ item.ghiChu || '—' }}</td>
-            <td><span class="z-status" :class="statusClass(item.trangThai)">{{ statusText(item.trangThai) }}</span></td>
             <td>
-              <div class="d-flex gap-1">
+              <span class="z-status" :class="statusClass(item.trangThai)">{{ statusText(item.trangThai) }}</span>
+              <div v-if="item.gioCheckIn" class="z-attendance-line">In {{ formatClock(item.gioCheckIn) }}<span v-if="item.gioCheckOut"> · Out {{ formatClock(item.gioCheckOut) }}</span></div>
+              <div v-if="item.lyDoBaoBan" class="z-busy-reason" :title="item.lyDoBaoBan">{{ item.lyDoBaoBan }}</div>
+            </td>
+            <td>
+              <div v-if="isAdmin" class="d-flex gap-1 flex-wrap">
+                <button v-if="Number(item.trangThai) === 3" class="z-icon-btn z-approve-btn" title="Duyệt báo bận" @click="approveUnavailable(item)"><i class="bi bi-check-lg"></i></button>
+                <button v-if="Number(item.trangThai) === 3" class="z-icon-btn z-reject-btn" title="Từ chối báo bận" @click="openRejectUnavailable(item)"><i class="bi bi-x-lg"></i></button>
                 <button class="z-icon-btn" title="Sửa" @click="openEdit(item)"><i class="bi bi-pencil"></i></button>
                 <button class="z-icon-btn" title="Xóa" style="color:var(--z-accent)" @click="deleteSchedule(item)"><i class="bi bi-trash"></i></button>
+              </div>
+              <div v-else class="d-flex gap-1 flex-wrap">
+                <button v-if="Number(item.trangThai) === 0" class="z-row-action" @click="confirmOwnShift(item)">Xác nhận</button>
+                <button v-if="[0, 1].includes(Number(item.trangThai)) && !item.gioCheckIn" class="z-row-action secondary" @click="openUnavailable(item)">Báo bận</button>
+                <button v-if="item.canCheckIn" class="z-row-action" @click="checkIn(item)">Check-in</button>
+                <button v-if="item.canCheckOut" class="z-row-action secondary" @click="checkOut(item)">Check-out</button>
               </div>
             </td>
           </tr>
@@ -205,6 +244,85 @@
             Sau
           </button>
         </div>
+      </div>
+    </div>
+
+    <div class="z-admin-card mt-4" style="padding:0;overflow:hidden">
+      <div class="z-history-header">
+        <div>
+          <h3 class="z-admin-card-title mb-1">Lịch sử hoạt động và bàn giao ca</h3>
+          <p>Doanh thu được lấy từ đơn POS của đúng nhân viên trong thời gian ca làm.</p>
+        </div>
+        <div class="z-cash-total">
+          <span>Tổng tiền mặt cần bàn giao</span>
+          <strong>{{ formatMoney(totalCashHandover) }}</strong>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="z-table">
+          <thead>
+            <tr>
+              <th>Ca làm</th>
+              <th>Nhân viên</th>
+              <th>Chấm công</th>
+              <th>Đơn POS</th>
+              <th>Doanh thu</th>
+              <th>Chuyển khoản</th>
+              <th>Tiền mặt bàn giao</th>
+              <th style="width:70px">Chi tiết</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="historyLoading"><td colspan="8" class="text-center py-4" style="color:var(--z-gray)">Đang tổng hợp hoạt động ca...</td></tr>
+            <tr v-else-if="visibleShiftHistory.length === 0"><td colspan="8" class="text-center py-4" style="color:var(--z-gray)">Chưa có ca đã check-in trong khoảng ngày này</td></tr>
+            <tr v-for="history in visibleShiftHistory" v-else :key="history.id">
+              <td>
+                <strong>{{ formatDate(history.ngayLam) }}</strong>
+                <div class="z-history-sub">{{ history.caLam || shiftName(history.gioBatDau) }} · {{ shortTime(history.gioBatDau) }}-{{ shortTime(history.gioKetThuc) }}</div>
+              </td>
+              <td>{{ history.tenNhanVien }}<div class="z-history-sub">{{ history.maNhanVien }}</div></td>
+              <td>
+                <span>{{ history.gioCheckIn ? formatClock(history.gioCheckIn) : 'Chưa check-in' }}</span>
+                <div class="z-history-sub">{{ history.gioCheckOut ? `Out ${formatClock(history.gioCheckOut)}` : formatWorkedTime(history.soPhutLamViec) }}</div>
+              </td>
+              <td><strong>{{ history.soDon || 0 }}</strong></td>
+              <td>{{ formatMoney(history.doanhThu) }}</td>
+              <td>{{ formatMoney(history.tienChuyenKhoan) }}</td>
+              <td><strong class="z-cash-value">{{ formatMoney(history.tienMatBanGiao) }}</strong></td>
+              <td>
+                <button class="z-icon-btn" title="Xem lịch sử hoạt động" @click="openActivityHistory(history)">
+                  <i class="bi bi-clock-history"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="activityShift" class="z-modal-overlay" @click.self="activityShift = null">
+      <div class="z-modal" style="max-width:560px">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h3 style="font-size:18px;font-weight:600;margin:0">Hoạt động trong ca</h3>
+            <p class="z-activity-caption">{{ activityShift.tenNhanVien }} · {{ formatDate(activityShift.ngayLam) }} · {{ activityShift.caLam }}</p>
+          </div>
+          <button class="z-icon-btn" @click="activityShift = null"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="z-activity-summary">
+          <div><span>Doanh thu</span><strong>{{ formatMoney(activityShift.doanhThu) }}</strong></div>
+          <div><span>Tiền mặt bàn giao</span><strong>{{ formatMoney(activityShift.tienMatBanGiao) }}</strong></div>
+        </div>
+        <div v-if="activityShift.hoatDong?.length" class="z-activity-timeline">
+          <div v-for="(activity, index) in activityShift.hoatDong" :key="`${activity.thoiGian}-${index}`" class="z-activity-row">
+            <span class="z-activity-dot"></span>
+            <div>
+              <strong>{{ activityTitle(activity.loai) }} · {{ formatClock(activity.thoiGian) }}</strong>
+              <p>{{ activity.noiDung }}</p>
+            </div>
+          </div>
+        </div>
+        <div v-else class="text-center py-4" style="color:var(--z-gray);font-size:13px">Ca chưa phát sinh hoạt động.</div>
       </div>
     </div>
 
@@ -255,8 +373,8 @@
             <div class="col-5">
               <label class="z-label">Trạng thái</label>
               <select v-model.number="form.trangThai" class="lm-input">
-                <option :value="1">Đã xác nhận</option>
                 <option :value="0">Chờ xác nhận</option>
+                <option :value="1">Đã xác nhận</option>
                 <option :value="2">Nghỉ phép</option>
               </select>
             </div>
@@ -272,6 +390,23 @@
           <button class="lm-btn-primary" :disabled="saving" @click="saveSchedule">
             <span>{{ saving ? 'Đang lưu...' : (editingId ? 'Cập nhật' : 'Thêm mới') }}</span>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showReasonModal" class="z-modal-overlay" @click.self="closeReasonModal">
+      <div class="z-modal" style="max-width:500px">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 style="font-size:18px;font-weight:600;margin:0">{{ reasonModalMode === 'reject' ? 'Từ chối yêu cầu báo bận' : 'Báo bận ca làm' }}</h3>
+          <button class="z-icon-btn" @click="closeReasonModal"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <p style="font-size:13px;color:var(--z-gray)">
+          {{ reasonModalMode === 'reject' ? 'Nhập lý do để nhân viên biết vì sao yêu cầu chưa được chấp nhận.' : 'Trình bày rõ lý do không thể tham gia ca. Ca đã xác nhận sẽ chờ admin duyệt.' }}
+        </p>
+        <textarea v-model="actionReason" class="lm-input" rows="4" maxlength="500" :placeholder="reasonModalMode === 'reject' ? 'Lý do từ chối...' : 'Lý do báo bận...'"></textarea>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button class="lm-btn-secondary" @click="closeReasonModal">Đóng</button>
+          <button class="lm-btn-primary" :disabled="actionSaving" @click="submitReasonAction"><span>{{ actionSaving ? 'Đang gửi...' : 'Xác nhận' }}</span></button>
         </div>
       </div>
     </div>
@@ -297,6 +432,19 @@ const editingId = ref(null)
 const search = ref('')
 const staff = ref([])
 const schedules = ref([])
+const shiftHistory = ref([])
+const historyLoading = ref(false)
+const exporting = ref(false)
+const activityShift = ref(null)
+const workStatus = ref({ canOperate: false, reason: '', relevantShift: null, activeShift: null })
+const showReasonModal = ref(false)
+const reasonModalMode = ref('unavailable')
+const actionShift = ref(null)
+const actionReason = ref('')
+const actionSaving = ref(false)
+const currentShift = computed(() => workStatus.value.activeShift || workStatus.value.relevantShift || null)
+const visibleShiftHistory = computed(() => shiftHistory.value.filter(item => item.gioCheckIn || item.gioCheckOut || Number(item.soDon || 0) > 0))
+const totalCashHandover = computed(() => visibleShiftHistory.value.reduce((sum, item) => sum + Number(item.tienMatBanGiao || 0), 0))
 
 const filters = ref({
   startDate: toInputDate(startOfWeek(new Date())),
@@ -314,7 +462,7 @@ onMounted(async () => {
   if (isAdmin.value) {
     await Promise.all([loadStaff(), loadSchedules()])
   } else {
-    await loadSchedules()
+    await Promise.all([loadSchedules(), loadWorkStatus()])
   }
 })
 
@@ -378,17 +526,136 @@ async function loadStaff() {
 
 async function loadSchedules() {
   loading.value = true
+  historyLoading.value = true
   try {
-    schedules.value = await api().getLichLamViec({
+    const params = {
       startDate: filters.value.startDate,
       endDate: filters.value.endDate,
       nhanVienId: filters.value.nhanVienId
-    })
+    }
+    const [scheduleData, historyData] = await Promise.all([
+      api().getLichLamViec(params),
+      api().getShiftHistory(params)
+    ])
+    schedules.value = scheduleData
+    shiftHistory.value = historyData
   } catch (e) {
     showToast('Không thể tải lịch làm việc')
   } finally {
     loading.value = false
+    historyLoading.value = false
   }
+}
+
+async function exportHistory() {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    await api().exportShiftHistory({
+      startDate: filters.value.startDate,
+      endDate: filters.value.endDate,
+      nhanVienId: filters.value.nhanVienId
+    })
+    showToast('Đã xuất file Excel ca làm')
+  } catch (error) {
+    showToast(error.error || 'Không thể xuất file Excel')
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function loadWorkStatus() {
+  if (isAdmin.value) return
+  try {
+    workStatus.value = await api().getWorkShiftStatus()
+  } catch (e) {
+    workStatus.value = { canOperate: false, reason: e.error || 'Không thể kiểm tra trạng thái ca làm' }
+  }
+}
+
+async function refreshShiftData() {
+  await Promise.all([loadSchedules(), loadWorkStatus()])
+  window.dispatchEvent(new Event('zestia-shift-changed'))
+}
+
+async function confirmOwnShift(item) {
+  if (!await confirmDialog({ title: 'Xác nhận ca làm', message: `Xác nhận tham gia ca ${item.caLam || ''} ngày ${formatDate(item.ngayLam)}?`, confirmText: 'Xác nhận' })) return
+  try {
+    await api().confirmShift(item.id)
+    showToast('Đã xác nhận ca làm')
+    await refreshShiftData()
+  } catch (e) { showToast(e.error || 'Không thể xác nhận ca làm') }
+}
+
+function openUnavailable(item) {
+  reasonModalMode.value = 'unavailable'
+  actionShift.value = item
+  actionReason.value = ''
+  showReasonModal.value = true
+}
+
+function openRejectUnavailable(item) {
+  reasonModalMode.value = 'reject'
+  actionShift.value = item
+  actionReason.value = ''
+  showReasonModal.value = true
+}
+
+function closeReasonModal() {
+  if (actionSaving.value) return
+  showReasonModal.value = false
+  actionShift.value = null
+  actionReason.value = ''
+}
+
+async function submitReasonAction() {
+  const reason = actionReason.value.trim()
+  const minimum = reasonModalMode.value === 'reject' ? 5 : 10
+  if (reason.length < minimum) return showToast(`Vui lòng nhập lý do ít nhất ${minimum} ký tự`)
+  actionSaving.value = true
+  let succeeded = false
+  try {
+    if (reasonModalMode.value === 'reject') {
+      await api().reviewShiftUnavailable(actionShift.value.id, false, reason)
+      showToast('Đã từ chối yêu cầu báo bận')
+    } else {
+      const result = await api().reportShiftUnavailable(actionShift.value.id, reason)
+      showToast(Number(result.trangThai) === 3 ? 'Yêu cầu đã gửi và đang chờ admin duyệt' : 'Đã ghi nhận báo bận')
+    }
+    succeeded = true
+    await refreshShiftData()
+  } catch (e) { showToast(e.error || 'Không thể cập nhật ca làm') }
+  finally {
+    actionSaving.value = false
+    if (succeeded) closeReasonModal()
+  }
+}
+
+async function approveUnavailable(item) {
+  if (!await confirmDialog({ title: 'Duyệt báo bận', message: `Chấp nhận báo bận của ${item.tenNhanVien || 'nhân viên'}?`, confirmText: 'Duyệt' })) return
+  try {
+    await api().reviewShiftUnavailable(item.id, true, 'Admin đã chấp nhận yêu cầu')
+    showToast('Đã duyệt yêu cầu báo bận')
+    await loadSchedules()
+  } catch (e) { showToast(e.error || 'Không thể duyệt yêu cầu') }
+}
+
+async function checkIn(item) {
+  if (!await confirmDialog({ title: 'Check-in', message: `Bắt đầu ca ${item.caLam || ''} ngay bây giờ?`, confirmText: 'Check-in' })) return
+  try {
+    await api().checkInShift(item.id)
+    showToast('Check-in thành công')
+    await refreshShiftData()
+  } catch (e) { showToast(e.error || 'Không thể check-in') }
+}
+
+async function checkOut(item) {
+  if (!await confirmDialog({ title: 'Check-out', message: 'Kết thúc ca làm hiện tại?', confirmText: 'Check-out' })) return
+  try {
+    await api().checkOutShift(item.id)
+    showToast('Check-out thành công')
+    await refreshShiftData()
+  } catch (e) { showToast(e.error || 'Không thể check-out') }
 }
 
 function openAdd() {
@@ -511,7 +778,7 @@ function defaultForm() {
     caLam: 'Ca sáng',
     gioBatDau: '08:00',
     gioKetThuc: '12:00',
-    trangThai: 1,
+    trangThai: 0,
     ghiChu: ''
   }
 }
@@ -588,7 +855,8 @@ function cellSchedules(day, shift) {
 function statusText(status) {
   const value = Number(status)
   if (value === 1) return 'Đã xác nhận'
-  if (value === 2) return 'Nghỉ phép'
+  if (value === 2) return 'Đã báo bận'
+  if (value === 3) return 'Chờ duyệt báo bận'
   return 'Chờ xác nhận'
 }
 
@@ -596,7 +864,35 @@ function statusClass(status) {
   const value = Number(status)
   if (value === 1) return 'success'
   if (value === 2) return 'danger'
+  if (value === 3) return 'warning'
   return 'pending'
+}
+
+function formatClock(value) {
+  return value ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''
+}
+
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString('vi-VN') + 'đ'
+}
+
+function formatWorkedTime(minutes) {
+  const total = Number(minutes || 0)
+  if (!total) return 'Chưa có giờ thực tế'
+  const hours = Math.floor(total / 60)
+  const remain = total % 60
+  return `${hours}h${remain ? ` ${remain}p` : ''}`
+}
+
+function openActivityHistory(history) {
+  activityShift.value = history
+}
+
+function activityTitle(type) {
+  if (type === 'CHECK_IN') return 'Check-in'
+  if (type === 'CHECK_OUT') return 'Check-out'
+  if (type === 'POS_SALE') return 'Bán hàng POS'
+  return 'Hoạt động'
 }
 
 function diffHours(start, end) {
@@ -736,4 +1032,38 @@ function diffHours(start, end) {
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 }
 .z-label { display: block; font-size: 13px; font-weight: 500; color: var(--z-dark); margin-bottom: 6px; }
+.z-my-shift-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; border-left: 4px solid var(--z-accent); }
+.z-my-shift-eyebrow { color: var(--z-accent); font-size: 10px; font-weight: 700; margin-bottom: 5px; }
+.z-my-shift-card h2 { margin: 0 0 5px; color: var(--z-dark); font-size: 18px; font-weight: 650; }
+.z-my-shift-card p { margin: 0; color: var(--z-gray); font-size: 13px; }
+.z-attendance-line { margin-top: 5px; color: #166534; font-size: 10px; font-weight: 600; }
+.z-busy-reason { max-width: 220px; margin-top: 5px; overflow: hidden; color: var(--z-gray); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.z-row-action { border: none; border-radius: var(--z-radius); background: var(--z-dark); color: var(--z-white); padding: 5px 8px; font-size: 10px; font-weight: 600; }
+.z-row-action.secondary { border: 1px solid var(--z-gray-border); background: var(--z-white); color: var(--z-dark); }
+.z-approve-btn { color: #166534; background: #dcfce7; }
+.z-reject-btn { color: #991b1b; background: #fee2e2; }
+.z-history-header { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--z-gray-border); }
+.z-history-header p { margin: 3px 0 0; color: var(--z-gray); font-size: 12px; }
+.z-cash-total { min-width: 220px; padding-left: 20px; border-left: 1px solid var(--z-gray-border); text-align: right; }
+.z-cash-total span { display: block; color: var(--z-gray); font-size: 10px; text-transform: uppercase; }
+.z-cash-total strong { display: block; margin-top: 4px; color: var(--z-dark); font-size: 20px; }
+.z-history-sub { margin-top: 3px; color: var(--z-gray); font-size: 10px; }
+.z-cash-value { color: #166534; }
+.z-activity-caption { margin: 5px 0 0; color: var(--z-gray); font-size: 12px; }
+.z-activity-summary { margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.z-activity-summary div { padding: 12px; border: 1px solid var(--z-gray-border); background: var(--z-bg-alt); }
+.z-activity-summary span, .z-activity-summary strong { display: block; }
+.z-activity-summary span { color: var(--z-gray); font-size: 10px; }
+.z-activity-summary strong { margin-top: 4px; color: var(--z-dark); font-size: 14px; }
+.z-activity-timeline { max-height: 430px; overflow-y: auto; }
+.z-activity-row { position: relative; min-height: 58px; padding: 0 0 18px 28px; border-left: 1px solid var(--z-gray-border); }
+.z-activity-row:last-child { border-left-color: transparent; }
+.z-activity-dot { position: absolute; top: 2px; left: -5px; width: 9px; height: 9px; border-radius: 50%; background: var(--z-accent); }
+.z-activity-row strong { color: var(--z-dark); font-size: 12px; }
+.z-activity-row p { margin: 4px 0 0; color: var(--z-gray); font-size: 12px; }
+@media (max-width: 760px) { .z-my-shift-card { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 760px) {
+  .z-history-header { align-items: flex-start; flex-direction: column; }
+  .z-cash-total { width: 100%; padding: 12px 0 0; border-top: 1px solid var(--z-gray-border); border-left: 0; text-align: left; }
+}
 </style>

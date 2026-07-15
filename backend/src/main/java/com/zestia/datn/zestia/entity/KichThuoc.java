@@ -21,7 +21,7 @@ public class KichThuoc {
     @Column(name = "ten_kich_thuoc", nullable = false, length = 50)
     private String tenKichThuoc;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "mo_ta", columnDefinition = "NVARCHAR(MAX)")
     private String moTa;
 
     @Column(name = "trang_thai")

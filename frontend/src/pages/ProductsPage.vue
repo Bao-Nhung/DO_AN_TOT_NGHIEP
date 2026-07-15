@@ -32,6 +32,7 @@
               <span style="font-size:13px;color:var(--z-gray);white-space:nowrap">Sắp xếp:</span>
               <select v-model="sortBy" class="lm-input" style="width:auto;padding:8px 12px;font-size:13px">
                 <option value="newest">Mới nhất</option>
+                <option value="bestseller">Bán chạy</option>
                 <option value="price-asc">Giá tăng dần</option>
                 <option value="price-desc">Giá giảm dần</option>
                 <option value="name">Tên A-Z</option>
@@ -92,17 +93,55 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import ProductCard from '@/components/ui/ProductCard.vue'
 import AppFooter   from '@/components/layout/AppFooter.vue'
 import { products, loadProducts } from '@/composables/useProducts'
+import { api } from '@/composables/useApi'
 
-onMounted(() => loadProducts())
+const route = useRoute()
+const bestsellerRank = ref(new Map())
 
-const filters = ['Tất cả', 'Váy truyền thống', 'Váy cách tân', 'Váy dạ hội', 'Váy công sở', 'Váy cưới', 'Sale']
+onMounted(async () => {
+  await loadProducts()
+  try {
+    const summary = await api().getStorefrontSummary()
+    bestsellerRank.value = new Map((summary?.bestsellers || []).map((item, index) => [Number(item.productId), index]))
+  } catch (error) {
+    console.warn('Không tải được thứ tự bán chạy', error)
+  }
+  applyRouteQuery()
+})
+watch(() => route.query, applyRouteQuery, { deep: true })
+
+const filters = computed(() => [
+  'Tất cả',
+  ...new Set(products.value.map(p => p.category).filter(Boolean)),
+  'Ưu đãi'
+])
 const activeFilter = ref('Tất cả')
 const priceRange = ref('all')
 const sortBy = ref('newest')
+
+function applyRouteQuery() {
+  const requestedSort = String(route.query.sort || '')
+  if (['newest', 'bestseller', 'price-asc', 'price-desc', 'name'].includes(requestedSort)) {
+    sortBy.value = requestedSort
+  }
+  const category = String(route.query.category || '').trim().toLowerCase()
+  const occasion = String(route.query.occasion || '').trim().toLowerCase()
+  const keywords = {
+    work: ['công sở'],
+    party: ['dạ hội', 'dự tiệc'],
+    wedding: ['cưới'],
+    date: ['cách tân', 'lụa']
+  }[occasion] || (category ? [category] : [])
+  if (keywords.length) {
+    const match = filters.value.find(filter => keywords.some(keyword => filter.toLowerCase().includes(keyword)))
+    activeFilter.value = match || 'Tất cả'
+  }
+}
 
 const priceLabels = {
   'under2m': 'Dưới 2 triệu',
@@ -114,18 +153,18 @@ const filteredProducts = computed(() => {
   let result = [...products.value]
 
   if (activeFilter.value !== 'Tất cả') {
-    if (activeFilter.value === 'Sale') {
-      result = result.filter(p => p.salePrice)
+    if (activeFilter.value === 'Ưu đãi') {
+      result = result.filter(p => p.promotionActive)
     } else {
       result = result.filter(p => {
-        return p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
+        return p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
       })
     }
   }
 
   if (priceRange.value !== 'all') {
     result = result.filter(p => {
-      const price = p.salePrice || p.price
+      const price = p.price
       if (priceRange.value === 'under2m') return price < 2000000
       if (priceRange.value === '2m-5m') return price >= 2000000 && price <= 5000000
       if (priceRange.value === 'over5m') return price > 5000000
@@ -138,9 +177,14 @@ const filteredProducts = computed(() => {
 
 const sortedProducts = computed(() => {
   const arr = [...filteredProducts.value]
-  if (sortBy.value === 'price-asc') arr.sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price))
-  if (sortBy.value === 'price-desc') arr.sort((a, b) => (b.salePrice || b.price) - (a.salePrice || a.price))
+  if (sortBy.value === 'price-asc') arr.sort((a, b) => a.price - b.price)
+  if (sortBy.value === 'price-desc') arr.sort((a, b) => b.price - a.price)
   if (sortBy.value === 'name') arr.sort((a, b) => a.name.localeCompare(b.name))
+  if (sortBy.value === 'bestseller') arr.sort((a, b) =>
+    (bestsellerRank.value.get(Number(a.id)) ?? Number.MAX_SAFE_INTEGER)
+    - (bestsellerRank.value.get(Number(b.id)) ?? Number.MAX_SAFE_INTEGER)
+  )
+  if (sortBy.value === 'newest') arr.sort((a, b) => Number(b.id) - Number(a.id))
   return arr
 })
 </script>

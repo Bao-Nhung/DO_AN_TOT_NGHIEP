@@ -320,8 +320,6 @@ body.cursor-hover #lm-cursor-ring { width: 48px; height: 48px; border-color: var
   margin-bottom: 6px;
 }
 .lm-product-price { font-size: 15px; font-weight: 600; color: var(--z-dark); }
-.lm-price-old     { color: var(--z-gray-light); text-decoration: line-through; font-weight: 400; font-size: 13px; }
-.lm-price-sale    { color: var(--z-accent); }
 
 /* ── Marquee ── */
 .lm-marquee-strip {

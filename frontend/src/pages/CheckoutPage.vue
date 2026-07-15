@@ -23,6 +23,25 @@
               <i class="bi bi-geo-alt"></i> Thông tin giao hàng
             </h3>
 
+            <div v-if="savedAddresses.length" class="z-saved-addresses mb-4">
+              <div class="z-label mb-2">Địa chỉ đã lưu</div>
+              <div class="z-saved-address-list">
+                <button
+                  v-for="address in savedAddresses"
+                  :key="address.id"
+                  type="button"
+                  class="z-saved-address"
+                  :class="{ active: selectedSavedAddressId === address.id }"
+                  :aria-pressed="selectedSavedAddressId === address.id"
+                  @click="applySavedAddress(address)"
+                >
+                  <i class="bi" :class="selectedSavedAddressId === address.id ? 'bi-check-circle-fill' : 'bi-geo-alt'"></i>
+                  <span>{{ formatSavedAddress(address) }}</span>
+                  <small>{{ selectedSavedAddressId === address.id ? 'Đang dùng' : (address.macDinh ? 'Mặc định' : 'Chọn') }}</small>
+                </button>
+              </div>
+            </div>
+
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="z-label">Họ và tên *</label>
@@ -30,11 +49,28 @@
               </div>
               <div class="col-md-6">
                 <label class="z-label">Số điện thoại *</label>
-                <input v-model="form.soDienThoai" class="lm-input" placeholder="0901234567" />
+                <input
+                  v-model="form.soDienThoai"
+                  class="lm-input"
+                  :class="{ 'z-input-invalid': phoneTouched && phoneError }"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="tel"
+                  maxlength="10"
+                  pattern="0[35789][0-9]{8}"
+                  placeholder="0901234567"
+                  aria-describedby="checkout-phone-help"
+                  @input="onPhoneInput"
+                  @blur="phoneTouched = true"
+                />
+                <small id="checkout-phone-help" class="z-field-help" :class="{ error: phoneTouched && phoneError }">
+                  {{ phoneTouched && phoneError ? phoneError : 'Nhập 10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09' }}
+                </small>
               </div>
               <div class="col-12">
                 <label class="z-label">Email *</label>
-                <input v-model="form.email" type="email" class="lm-input" placeholder="email@example.com" />
+                <input v-model="form.email" type="email" class="lm-input" placeholder="email@example.com"
+                       autocomplete="email" required />
               </div>
               
               <div class="col-md-4">
@@ -55,7 +91,7 @@
 
               <div class="col-md-4">
                 <label class="z-label">Phường / Xã *</label>
-                <select v-model="selectedWard" class="lm-input" :disabled="!selectedDistrict">
+                <select v-model="selectedWard" class="lm-input" :disabled="!selectedDistrict" @change="clearSavedAddressSelection">
                   <option value="">Chọn Phường/Xã</option>
                   <option v-for="w in availableWards" :key="w.code" :value="w.code">{{ w.name }}</option>
                 </select>
@@ -63,7 +99,7 @@
 
               <div class="col-12">
                 <label class="z-label">Địa chỉ cụ thể *</label>
-                <input v-model="specificAddress" class="lm-input" placeholder="Số nhà, tên đường, ngõ ngách..." />
+                <input v-model="specificAddress" class="lm-input" placeholder="Số nhà, tên đường, ngõ ngách..." @input="clearSavedAddressSelection" />
               </div>
 
               <div class="col-12">
@@ -139,8 +175,9 @@
 
             <div class="z-order-items">
               <div v-for="item in state.items" :key="item.id" class="z-order-item">
-                <div class="z-order-item-img" :style="{ background: item.bg }">
-                  {{ item.letter }}
+                <div class="z-order-item-img" :style="!item.image ? { background: item.bg } : null">
+                  <img v-if="item.image" :src="item.image" :alt="item.name" />
+                  <span v-else>{{ item.letter }}</span>
                 </div>
                 <div class="z-order-item-info">
                   <div class="z-order-item-name">{{ item.name }}</div>
@@ -152,7 +189,7 @@
                   <div class="z-order-item-qty">x{{ item.qty }}</div>
                 </div>
                 <div class="z-order-item-price">
-                  {{ formatPrice(item.price * item.qty) }}
+                  <span>{{ formatPrice(Number(item.price) * item.qty) }}</span>
                 </div>
               </div>
             </div>
@@ -173,17 +210,20 @@
               </div>
               <!-- Active Vouchers List -->
               <div v-if="activeVouchers.length" class="mt-3">
-                <div style="font-size:12px; font-weight:600; color:var(--z-dark); margin-bottom:8px">Voucher khả dụng:</div>
-                <div class="d-flex flex-wrap gap-2">
-                  <div v-for="v in activeVouchers" :key="v.id" 
-                       class="z-voucher-tag" 
-                       @click="if (!appliedVoucher) { voucherCode = v.maGiamGia; applyVoucher(); }"
-                       style="cursor:pointer; padding:6px 12px; background:var(--z-accent-soft); border:1px dashed var(--z-accent); border-radius:6px; font-size:11px; display:inline-block">
+                <div style="font-size:12px; font-weight:600; color:var(--z-dark); margin-bottom:8px">Voucher hiện có:</div>
+                <div class="z-voucher-list">
+                  <button v-for="v in activeVouchers" :key="v.id"
+                       type="button"
+                       class="z-voucher-tag"
+                       :class="{ disabled: !voucherEligible(v), selected: appliedVoucher === v.maGiamGia }"
+                       :disabled="!voucherEligible(v) || !!appliedVoucher"
+                       @click="selectVoucher(v)">
                     <strong style="color:var(--z-accent)">{{ v.maGiamGia }}</strong>:
                     <span v-if="v.phanTramGiam > 0"> Giảm {{ v.phanTramGiam }}%</span>
                     <span v-else-if="v.gioTriGiam > 0"> Giảm {{ formatPrice(v.gioTriGiam) }}</span>
-                    <div style="font-size:9px; color:var(--z-gray); margin-top:2px">Đơn tối thiểu: {{ formatPrice(v.giaTriDonToiThieu || 0) }}</div>
-                  </div>
+                    <span v-if="bestVoucherCode === v.maGiamGia" class="z-best-voucher">Tốt nhất</span>
+                    <div style="font-size:9px; color:var(--z-gray); margin-top:2px">{{ voucherEligibilityText(v) }}</div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -252,7 +292,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
@@ -260,7 +300,7 @@ import { api, useAuth } from '@/composables/useApi'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 const router = useRouter()
-const { state, totalCount, subtotal, formatPrice, clearCart } = useCart()
+const { state, totalCount, subtotal, formatPrice, clearCart, refreshItems } = useCart()
 const { showToast } = useToast()
 const { getUser } = useAuth()
 
@@ -273,9 +313,30 @@ const form = ref({
   ghiChu: '',
   hinhThuc: 'MOMO'
 })
+const phoneTouched = ref(false)
+const phoneError = computed(() => {
+  const phone = form.value.soDienThoai
+  if (!phone) return 'Vui lòng nhập số điện thoại'
+  if (phone.length !== 10) return 'Số điện thoại phải có đúng 10 chữ số'
+  if (!/^0[35789]\d{8}$/.test(phone)) return 'Đầu số điện thoại không hợp lệ'
+  return ''
+})
 
-// Variables cho Form Địa Chỉ (Sử dụng API provinces.open-api.vn)
+function normalizeVietnamPhoneInput(value) {
+  let digits = String(value || '').replace(/\D/g, '')
+  if (digits.startsWith('84') && digits.length >= 11) digits = `0${digits.slice(2)}`
+  return digits.slice(0, 10)
+}
+
+function onPhoneInput(event) {
+  phoneTouched.value = true
+  form.value.soDienThoai = normalizeVietnamPhoneInput(event.target.value)
+}
+
+// Province data is bundled locally so checkout keeps working without internet.
 const addressData = ref([])
+const savedAddresses = ref([])
+const selectedSavedAddressId = ref(null)
 const selectedCity = ref('')
 const selectedDistrict = ref('')
 const selectedWard = ref('')
@@ -294,27 +355,71 @@ const availableWards = computed(() => {
 function onCityChange() {
   selectedDistrict.value = ''
   selectedWard.value = ''
+  clearSavedAddressSelection()
 }
 
 function onDistrictChange() {
   selectedWard.value = ''
+  clearSavedAddressSelection()
+}
+
+function clearSavedAddressSelection() {
+  selectedSavedAddressId.value = null
+}
+
+function normalizeAdministrativeName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/đ/g, 'd')
+    .replace(/^(thanh pho|tp|tinh|quan|q|huyen|thi xa|phuong|p|xa|thi tran)\.?\s*/i, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function findAdministrativeUnit(units, savedName) {
+  const normalizedName = normalizeAdministrativeName(savedName)
+  return (units || []).find(unit => normalizeAdministrativeName(unit.name) === normalizedName)
+}
+
+function applySavedAddress(address) {
+  if (!address) return
+  const city = findAdministrativeUnit(addressData.value, address.tinhThanhPho)
+  const district = findAdministrativeUnit(city?.districts, address.quanHuyen)
+  const ward = findAdministrativeUnit(district?.wards, address.xaPhuong)
+
+  if (!city || !district || !ward) {
+    showToast('Địa chỉ đã lưu chưa khớp dữ liệu địa giới hiện tại. Vui lòng cập nhật lại địa chỉ này.', 'warning')
+    return
+  }
+
+  selectedCity.value = city.code
+  selectedDistrict.value = district.code
+  selectedWard.value = ward.code
+  specificAddress.value = address.duong || ''
+  selectedSavedAddressId.value = address.id
+}
+
+function formatSavedAddress(address) {
+  return [address.duong, address.xaPhuong, address.quanHuyen, address.tinhThanhPho]
+    .filter(Boolean)
+    .join(', ')
 }
 
 // CẬP NHẬT LOGIC TÍNH PHÍ VẬN CHUYỂN DỰA THEO ĐỊA CHỈ
 const shippingFee = computed(() => {
-  // Nếu chưa chọn đủ Tỉnh/Quận thì mặc định là 0 để người dùng không bị rối
-  if (!selectedCity.value || !selectedDistrict.value) return 0;
+  if (!selectedCity.value || !selectedDistrict.value) return 0
+  if (subtotal.value >= 1000000) return 0
 
   // Mã 01 là Hà Nội, Mã 005 là Cầu Giấy (theo chuẩn API open-api.vn)
   if (selectedCity.value === 1 || selectedCity.value === '01' || selectedCity.value === '1') {
     if (selectedDistrict.value === 5 || selectedDistrict.value === '005' || selectedDistrict.value === '5') {
-      return 0; // Trung tâm Cầu Giấy -> Miễn phí
+      return 0
     }
-    return 30000; // Các quận huyện khác thuộc Hà Nội -> 30k
+    return 30000
   }
-  
-  // Nếu không phải Hà Nội -> Các tỉnh khác -> 50k
-  return 50000; 
+  return 50000
 })
 
 // Voucher
@@ -323,12 +428,16 @@ const appliedVoucher = ref('')
 const discount = ref(0)
 const voucherMsg = ref('')
 const applyingVoucher = ref(false)
+const bestVoucherCode = ref('')
+const autoVoucherDisabled = ref(false)
+let bestVoucherRequestId = 0
 
 // Cập nhật finalTotal cộng thêm phí vận chuyển
 const finalTotal = computed(() => Math.max(0, subtotal.value + shippingFee.value - discount.value))
 
 async function applyVoucher() {
   if (!voucherCode.value.trim()) return showToast('Vui lòng nhập mã giảm giá')
+  autoVoucherDisabled.value = true
   applyingVoucher.value = true
   voucherMsg.value = ''
   try {
@@ -350,6 +459,7 @@ async function applyVoucher() {
 }
 
 function removeVoucher() {
+  autoVoucherDisabled.value = true
   appliedVoucher.value = ''
   discount.value = 0
   voucherCode.value = ''
@@ -368,12 +478,56 @@ const activeVouchers = computed(() => {
   })
 })
 
+function voucherEligible(voucher) {
+  return subtotal.value >= Number(voucher.giaTriDonToiThieu || 0)
+}
+
+function voucherEligibilityText(voucher) {
+  const minimum = Number(voucher.giaTriDonToiThieu || 0)
+  if (subtotal.value < minimum) return `Cần thêm ${formatPrice(minimum - subtotal.value)}`
+  return `Đơn tối thiểu: ${formatPrice(minimum)}`
+}
+
+function selectVoucher(voucher) {
+  if (!voucherEligible(voucher) || appliedVoucher.value) return
+  voucherCode.value = voucher.maGiamGia
+  applyVoucher()
+}
+
+async function applyBestVoucher(force = false) {
+  if ((!force && autoVoucherDisabled.value) || subtotal.value <= 0) return
+  const requestId = ++bestVoucherRequestId
+  try {
+    const res = await api().getBestVoucher(subtotal.value)
+    if (requestId !== bestVoucherRequestId || autoVoucherDisabled.value) return
+    if (!res?.valid) {
+      bestVoucherCode.value = ''
+      voucherCode.value = ''
+      appliedVoucher.value = ''
+      discount.value = 0
+      voucherMsg.value = ''
+      return
+    }
+    bestVoucherCode.value = res.maGiamGia
+    voucherCode.value = res.maGiamGia
+    appliedVoucher.value = res.maGiamGia
+    discount.value = Number(res.giamGia) || 0
+    voucherMsg.value = `${res.tenGiamGia} — tự động giảm ${formatPrice(discount.value)}`
+  } catch (e) {
+    console.error('Không thể tự chọn voucher:', e)
+  }
+}
+
+watch(subtotal, () => applyBestVoucher())
+
 const showConfirmModal = ref(false)
+const checkoutRequestId = ref('')
 
 function handlePlaceOrder() {
   if (loading.value) return
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
-  if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
+  phoneTouched.value = true
+  if (phoneError.value) return showToast(phoneError.value)
   if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
   
   if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
@@ -390,38 +544,29 @@ function confirmAndPlaceOrder() {
 }
 
 onMounted(async () => {
+  await refreshItems(productId => api().getVayById(productId))
+
   const { isLoggedIn } = useAuth()
   if (isLoggedIn()) {
     const user = getUser()
     if (user) {
       form.value.hoTen = user.hoVaTen || ''
-      form.value.soDienThoai = user.soDienThoai || ''
+      form.value.soDienThoai = normalizeVietnamPhoneInput(user.soDienThoai)
       form.value.email = user.email || ''
     }
   }
 
-  // Tự động load dữ liệu Tỉnh thành VN khi mở trang
+  // Load the checked-in province snapshot instead of a runtime third-party API.
   try {
-    const res = await fetch('https://provinces.open-api.vn/api/?depth=3')
+    const res = await fetch('/data/vietnam-provinces.json')
+    if (!res.ok) throw new Error('Không đọc được dữ liệu địa chỉ')
     addressData.value = await res.json()
     
     if (isLoggedIn()) {
-      const addr = await api().getProfileAddress()
-      if (addr && addr.tinhThanhPho) {
-        const city = addressData.value.find(c => c.name === addr.tinhThanhPho)
-        if (city) {
-          selectedCity.value = city.code
-          const dist = city.districts.find(d => d.name === addr.quanHuyen)
-          if (dist) {
-            selectedDistrict.value = dist.code
-            const ward = dist.wards.find(w => w.name === addr.xaPhuong)
-            if (ward) {
-              selectedWard.value = ward.code
-            }
-          }
-        }
-        specificAddress.value = addr.duong || ''
-      }
+      const addresses = await api().getProfileAddresses()
+      savedAddresses.value = Array.isArray(addresses) ? addresses : []
+      const preferred = savedAddresses.value.find(address => address.macDinh) || savedAddresses.value[0]
+      if (preferred) applySavedAddress(preferred)
     }
   } catch(e) {
     console.error("Lỗi khi tải danh sách tỉnh thành", e)
@@ -431,6 +576,7 @@ onMounted(async () => {
   try {
     const list = await api().getVouchers()
     vouchersList.value = Array.isArray(list) ? list : []
+    await applyBestVoucher(true)
   } catch (e) {
     console.error("Lỗi khi tải vouchers:", e)
   }
@@ -439,7 +585,8 @@ onMounted(async () => {
 async function placeOrder() {
   if (loading.value) return
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
-  if (!form.value.soDienThoai.trim()) return showToast('Vui lòng nhập số điện thoại')
+  phoneTouched.value = true
+  if (phoneError.value) return showToast(phoneError.value)
   if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
   
   // Validate địa chỉ mới
@@ -456,6 +603,24 @@ async function placeOrder() {
     
     // Nối thành chuỗi địa chỉ để Backend nhận y như cũ
     const fullAddress = `${specificAddress.value.trim()}, ${wardName}, ${districtName}, ${cityName}`
+    const fingerprint = JSON.stringify({
+      items: state.items.map(i => [Number(i.variantId), Number(i.qty)]).sort((a, b) => a[0] - b[0]),
+      method: form.value.hinhThuc,
+      phone: form.value.soDienThoai.trim(),
+      address: fullAddress,
+      voucher: appliedVoucher.value || ''
+    })
+    const savedRequest = JSON.parse(sessionStorage.getItem('zestia_checkout_request') || 'null')
+    if (!savedRequest || savedRequest.fingerprint !== fingerprint) {
+      checkoutRequestId.value = window.crypto?.randomUUID?.()
+        || `checkout-${Date.now()}-${Math.random().toString(16).slice(2)}`
+      sessionStorage.setItem('zestia_checkout_request', JSON.stringify({
+        id: checkoutRequestId.value,
+        fingerprint
+      }))
+    } else {
+      checkoutRequestId.value = savedRequest.id
+    }
 
     const orderData = {
       hoTen: form.value.hoTen,
@@ -465,7 +630,13 @@ async function placeOrder() {
       ghiChu: form.value.ghiChu,
       hinhThucThanhToan: form.value.hinhThuc,
       maGiamGia: appliedVoucher.value || null,
-      phiVanChuyen: shippingFee.value, // CẬP NHẬT GỬI PHÍ SHIP LÊN BACKEND
+      checkoutRequestId: checkoutRequestId.value,
+      tinhThanhCode: selectedCity.value,
+      quanHuyenCode: selectedDistrict.value,
+      tinhThanhPho: cityName,
+      quanHuyen: districtName,
+      xaPhuong: wardName,
+      duong: specificAddress.value.trim(),
       items: state.items.map(i => ({ 
         productId: i.productId || parseInt(i.id), // Lấy đúng ID gốc của váy
         variantId: i.variantId || null,
@@ -479,6 +650,7 @@ async function placeOrder() {
 
     if (form.value.hinhThuc === 'COD') {
       clearCart()
+      sessionStorage.removeItem('zestia_checkout_request')
       router.push({
         path: '/payment-result',
         query: { status: 'success', orderId: order.maHoaDon, amount: order.tongTien, method: 'COD' }
@@ -492,7 +664,12 @@ async function placeOrder() {
         ? await api().createMomoPayment(order.orderId, order.maHoaDon, form.value.soDienThoai)
         : await api().createZaloPayment(order.orderId, order.maHoaDon, form.value.soDienThoai)
       if (res && res.payUrl) {
-        clearCart()
+        sessionStorage.setItem('zestia_pending_payment', JSON.stringify({
+          orderId: order.orderId,
+          orderCode: order.maHoaDon,
+          method: form.value.hinhThuc,
+          amount: order.tongTien
+        }))
         window.location.href = res.payUrl
         return
       }
@@ -501,7 +678,6 @@ async function placeOrder() {
     }
   } catch (err) {
     if (err.paymentFailed && (err.maHoaDon || err.orderId)) {
-      clearCart()
       router.push({
         path: '/payment-result',
         query: {
@@ -549,6 +725,16 @@ function isValidEmail(value) {
   color: var(--z-dark);
   margin-bottom: 6px;
 }
+.z-input-invalid { border-color: #c62828 !important; }
+.z-field-help {
+  display: block;
+  min-height: 16px;
+  margin-top: 5px;
+  color: var(--z-gray);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.z-field-help.error { color: #c62828; }
 
 .z-payment-options { display: flex; flex-direction: column; gap: 12px; }
 .z-payment-option {
@@ -599,7 +785,7 @@ function isValidEmail(value) {
 .z-order-item:last-child { border-bottom: none; }
 .z-order-item-img {
   width: 56px;
-  height: 56px;
+  height: 64px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -608,7 +794,9 @@ function isValidEmail(value) {
   font-size: 20px;
   color: rgba(0,0,0,0.15);
   flex-shrink: 0;
+  overflow: hidden;
 }
+.z-order-item-img img { width: 100%; height: 100%; object-fit: cover; }
 .z-order-item-info { flex: 1; min-width: 0; }
 .z-order-item-name {
   font-size: 13px;
@@ -619,7 +807,24 @@ function isValidEmail(value) {
 }
 .z-order-item-variant { font-size: 12px; color: var(--z-gray); }
 .z-order-item-qty { font-size: 12px; color: var(--z-gray); }
-.z-order-item-price { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.z-order-item-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.z-saved-address-list { display: grid; gap: 8px; }
+.z-saved-address {
+  width: 100%; display: grid; grid-template-columns: 18px 1fr auto; gap: 8px;
+  align-items: start; padding: 11px 12px; border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius); background: var(--z-white); color: var(--z-dark);
+  text-align: left; font-size: 12px; cursor: pointer;
+}
+.z-saved-address:hover, .z-saved-address.active { border-color: var(--z-accent); background: var(--z-accent-soft); }
+.z-saved-address i { color: var(--z-accent); }
+.z-saved-address small { color: #166534; font-weight: 600; white-space: nowrap; }
 
 .z-voucher-box {
   border-top: 1px solid var(--z-gray-border);
@@ -668,6 +873,28 @@ function isValidEmail(value) {
 .z-voucher-msg.err { color: #C62828; }
 .z-voucher-hint { font-size: 11px; color: var(--z-gray); margin-top: 6px; }
 .z-voucher-hint strong { color: var(--z-accent); }
+.z-voucher-list {
+  display: grid;
+  gap: 8px;
+  max-height: 210px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.z-voucher-tag {
+  position: relative;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px dashed var(--z-accent);
+  border-radius: 6px;
+  background: var(--z-accent-soft);
+  color: var(--z-dark);
+  text-align: left;
+  font-size: 11px;
+  cursor: pointer;
+}
+.z-voucher-tag.disabled { border-color: var(--z-gray-border); background: var(--z-bg-alt); opacity: .65; cursor: not-allowed; }
+.z-voucher-tag.selected { border-style: solid; box-shadow: inset 0 0 0 1px var(--z-accent); }
+.z-best-voucher { float: right; border-radius: 10px; background: #dcfce7; color: #166534; padding: 2px 7px; font-size: 9px; font-weight: 700; }
 
 .z-order-totals { border-top: 1px solid var(--z-gray-border); padding-top: 16px; margin-top: 16px; }
 .z-order-row {

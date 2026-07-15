@@ -24,11 +24,7 @@
             </div>
             <div class="lm-product-cat">{{ item.category }}</div>
             <div class="lm-product-name">{{ item.name }}</div>
-            <div class="lm-product-price">
-              <span :class="item.salePrice ? 'lm-price-sale' : ''">
-                {{ formatPrice(item.salePrice || item.price) }}
-              </span>
-            </div>
+            <div class="lm-product-price">{{ formatPrice(item.price) }}</div>
           </div>
         </div>
 

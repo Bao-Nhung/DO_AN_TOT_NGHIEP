@@ -6,7 +6,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Danh_gia")
+@Table(
+        name = "Danh_gia",
+        uniqueConstraints = @UniqueConstraint(
+                name = "UQ_Danh_gia_Khach_Vay_HoaDon",
+                columnNames = {"id_khach_hang", "id_vay", "id_hoa_don"}
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,16 +33,16 @@ public class DanhGia {
     private Vay vay;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_hoa_don")
+    @JoinColumn(name = "id_hoa_don", nullable = false)
     private HoaDon hoaDon;
 
-    @Column(name = "so_sao")
+    @Column(name = "so_sao", nullable = false)
     private Byte soSao;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "noi_dung", columnDefinition = "NVARCHAR(MAX)")
     private String noiDung;
 
-    @Column(name = "anh_danh_gia")
+    @Column(name = "anh_danh_gia", columnDefinition = "NVARCHAR(MAX)")
     private String anhDanhGia;
 
     @Column(name = "trang_thai")

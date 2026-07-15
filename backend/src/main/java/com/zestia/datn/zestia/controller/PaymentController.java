@@ -4,7 +4,10 @@ import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.*;
 import com.zestia.datn.zestia.repository.*;
 import com.zestia.datn.zestia.service.EmailService;
-import com.zestia.datn.zestia.service.OrderInventoryService;
+import com.zestia.datn.zestia.service.CustomerAddressService;
+import com.zestia.datn.zestia.service.CustomerIdentityService;
+import com.zestia.datn.zestia.service.ShippingFeeService;
+import com.zestia.datn.zestia.service.PromotionPricingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,10 +26,10 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class PaymentController {
     private static final byte STATUS_PENDING = 0;
-    private static final byte STATUS_CONFIRMED = 1;
-    private static final byte STATUS_CANCELLED = 5;
-    private static final byte STATUS_PAYMENT_FAILED = 7;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PHONE_PATTERN = Pattern.compile("0[35789]\\d{8}");
+    private static final int MAX_ORDER_LINES = 50;
+    private static final int MAX_QUANTITY_PER_LINE = 100;
 
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
@@ -37,27 +40,37 @@ public class PaymentController {
     private final NhanVienRepository nhanVienRepo;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
-    private final OrderInventoryService orderInventoryService;
+    private final ShippingFeeService shippingFeeService;
+    private final CustomerIdentityService customerIdentityService;
+    private final CustomerAddressService customerAddressService;
+    private final PromotionPricingService promotionPricingService;
 
     @PostMapping("/create-order")
     @Transactional
     public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> body,
                                          @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        String hoTen = (String) body.get("hoTen");
+        String hoTen = cleanString(body.get("hoTen"));
         if (hoTen == null) {
-            hoTen = (String) body.get("tenKhachHang");
+            hoTen = cleanString(body.get("tenKhachHang"));
         }
-        String soDienThoai = (String) body.get("soDienThoai");
+        String soDienThoai = cleanString(body.get("soDienThoai"));
         String emailKhachHang = cleanString(body.get("email"));
-        String diaChi = (String) body.get("diaChi");
-        String ghiChu = (String) body.get("ghiChu");
-        String hinhThuc = (String) body.get("hinhThucThanhToan");
+        String diaChi = cleanString(body.get("diaChi"));
+        String ghiChu = cleanString(body.get("ghiChu"));
+        String hinhThuc = cleanString(body.get("hinhThucThanhToan"));
+        String checkoutRequestId = cleanString(body.get("checkoutRequestId"));
+        if (checkoutRequestId != null && checkoutRequestId.length() > 100) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mã yêu cầu thanh toán không hợp lệ"));
+        }
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) body.get("items");
         if (items == null || items.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Giỏ hàng trống"));
+        }
+        if (items.size() > MAX_ORDER_LINES) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mỗi đơn hàng chỉ được tối đa 50 dòng sản phẩm"));
         }
 
         KhachHang kh = null;
@@ -81,7 +94,9 @@ public class PaymentController {
                 } else if (isStaffRole(tokenRole) && tokenUserId != null) {
                     nv = nhanVienRepo.findById(tokenUserId).orElse(null);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
+            }
         }
 
         Integer requestedShippingType = toInt(body.get("hinhThucNhanHang"));
@@ -92,6 +107,30 @@ public class PaymentController {
             return ResponseEntity.status(403).body(Map.of("error", "Chi nhan vien hoac admin moi duoc tao don ban tai quay"));
         }
         boolean staffDirectSale = nv != null && (requestedOffline || requestedPaid);
+        if (nv != null && nv.getTinhTrangLamViec() != null && nv.getTinhTrangLamViec() != 1) {
+            return ResponseEntity.status(403).body(Map.of("error", "Tài khoản nhân viên đang bị tạm khóa"));
+        }
+
+        Integer nhanVienId = toInt(body.get("nhanVienId"));
+        if (staffDirectSale && nhanVienId != null && !Objects.equals(nhanVienId, tokenUserId)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Nhan vien khong khop voi token dang nhap"));
+        }
+
+        if (hoTen == null || hoTen.length() < 2 || hoTen.length() > 150) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập họ tên hợp lệ"));
+        }
+        if (soDienThoai != null) {
+            soDienThoai = normalizePhone(soDienThoai);
+        }
+        if (!PHONE_PATTERN.matcher(Objects.toString(soDienThoai, "")).matches()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập số điện thoại Việt Nam hợp lệ"));
+        }
+        if (!staffDirectSale && (diaChi == null || diaChi.length() < 5 || diaChi.length() > 500)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ địa chỉ giao hàng"));
+        }
+        if (ghiChu != null && ghiChu.length() > 2000) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Ghi chú không được vượt quá 2000 ký tự"));
+        }
 
         if (emailKhachHang == null && kh != null && kh.getEmail() != null && !kh.getEmail().isBlank()) {
             emailKhachHang = kh.getEmail().trim();
@@ -104,8 +143,23 @@ public class PaymentController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email khach hang khong hop le"));
         }
 
-        String maHoaDon = "HD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"))
-                          + String.format("%04d", new Random().nextInt(10000));
+        String paymentMethod = normalizePaymentMethod(hinhThuc, staffDirectSale);
+        if (paymentMethod == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Phương thức thanh toán không hợp lệ"));
+        }
+
+        if (checkoutRequestId != null) {
+            Optional<HoaDon> existing = hoaDonRepo.findByMaYeuCau(checkoutRequestId);
+            if (existing.isPresent()) {
+                HoaDon order = existing.get();
+                if (!matchesExistingOrderOwner(order, kh, soDienThoai, emailKhachHang, nv)) {
+                    return ResponseEntity.status(409).body(Map.of("error", "Mã yêu cầu đã được dùng cho giao dịch khác"));
+                }
+                return ResponseEntity.ok(orderResponse(order, BigDecimal.ZERO));
+            }
+        }
+
+        String maHoaDon = generateOrderCode();
 
         BigDecimal tamTinh = BigDecimal.ZERO;
         List<HoaDonChiTiet> chiTietList = new ArrayList<>();
@@ -113,13 +167,12 @@ public class PaymentController {
         Map<Integer, Integer> stockDeductions = new LinkedHashMap<>();
 
         for (Map<String, Object> item : items) {
-            // === THÊM 1 DÒNG ĐỂ ĐỌC ĐƯỢC CẢ "productId" HOẶC "id" TỪ FRONTEND GỬI LÊN ===
             Integer productId = firstInt(item, "productId", "idVay", "vayId");
-            if (productId == null) productId = toInt(item.get("id")); // Dòng này là "cứu tinh"
+            if (productId == null) productId = toInt(item.get("id"));
             
             Integer variantId = firstInt(item, "variantId", "vayChiTietId", "idVayChiTiet");
             Integer qty = firstInt(item, "qty", "quantity", "soLuong");
-            if (qty == null || qty <= 0) {
+            if (qty == null || qty <= 0 || qty > MAX_QUANTITY_PER_LINE) {
                 return ResponseEntity.badRequest().body(Map.of("error", "So luong san pham khong hop le"));
             }
 
@@ -145,10 +198,7 @@ public class PaymentController {
                 return ResponseEntity.badRequest().body(Map.of("error", "San pham khong co bien the dang ban"));
             }
 
-            // ==========================================
-            // TÌM CHÍNH XÁC BIẾN THỂ (KÍCH THƯỚC & MÀU SẮC)
-            // ==========================================
-            VayChiTiet variant = variants.get(0); // Lấy mặc định nếu không khớp
+            VayChiTiet variant;
             String size = cleanString(item.get("size"));
             String color = cleanString(item.get("color"));
             variant = selectedById;
@@ -171,9 +221,6 @@ public class PaymentController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Bien the mau/size khong ton tai hoac da ngung ban"));
             }
 
-            // ==========================================
-            // KIỂM TRA VÀ TRỪ TỒN KHO THỰC TẾ
-            // ==========================================
             int soLuongKho = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
             int plannedQty = stockDeductions.getOrDefault(variant.getId(), 0) + qty;
             if (soLuongKho < plannedQty) {
@@ -183,21 +230,15 @@ public class PaymentController {
                     tenSp + thongTinBT + " không đủ số lượng. Chỉ còn " + soLuongKho + " sản phẩm."));
             }
             
-            // Tiến hành trừ kho ngay khi đặt hàng
             plannedVariants.put(variant.getId(), variant);
             stockDeductions.put(variant.getId(), plannedQty);
-            // ==========================================
 
-            BigDecimal price = variant.getGiaBan();
+            PromotionPricingService.PriceQuote priceQuote = promotionPricingService.quote(variant);
+            BigDecimal price = priceQuote.effectivePrice();
             BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(qty));
             tamTinh = tamTinh.add(lineTotal);
 
-            BigDecimal phanTramGiam = BigDecimal.ZERO;
-            if (variant.getGiaBanGoc() != null && variant.getGiaBanGoc().compareTo(variant.getGiaBan()) > 0) {
-                phanTramGiam = BigDecimal.ONE.subtract(
-                    variant.getGiaBan().divide(variant.getGiaBanGoc(), 4, java.math.RoundingMode.HALF_UP)
-                ).multiply(BigDecimal.valueOf(100));
-            }
+            BigDecimal phanTramGiam = priceQuote.discountPercent();
 
             BigDecimal giaNhap = variant.getGiaNhap() != null
                     ? variant.getGiaNhap()
@@ -216,17 +257,16 @@ public class PaymentController {
             return ResponseEntity.badRequest().body(Map.of("error", "Không có sản phẩm hợp lệ"));
         }
 
-        // Lấy phí vận chuyển từ Frontend gửi lên (Mặc định là 0 nếu không có)
-        for (Map.Entry<Integer, Integer> entry : stockDeductions.entrySet()) {
-            VayChiTiet variant = plannedVariants.get(entry.getKey());
-            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
-            variant.setSoLuong(currentStock - entry.getValue());
-            vayCtRepo.save(variant);
-        }
-
-        BigDecimal phiVanChuyen = BigDecimal.ZERO;
-        if (body.get("phiVanChuyen") != null) {
-            phiVanChuyen = new BigDecimal(body.get("phiVanChuyen").toString());
+        BigDecimal phiVanChuyen;
+        try {
+            phiVanChuyen = shippingFeeService.calculate(
+                    staffDirectSale,
+                    tamTinh,
+                    body.get("tinhThanhCode"),
+                    body.get("quanHuyenCode")
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
 
         // Áp dụng voucher (mã giảm giá) nếu có
@@ -235,26 +275,36 @@ public class PaymentController {
         String maGiamGia = (String) body.get("maGiamGia");
         if (maGiamGia != null && !maGiamGia.isBlank()) {
             var vr = validateVoucher(maGiamGia.trim(), tamTinh, true);
-            if (vr.valid) {
-                voucher = vr.giamGia;
-                giamGia = vr.discount;
+            if (!vr.valid) {
+                return ResponseEntity.badRequest().body(Map.of("error", vr.message));
             }
+            voucher = vr.giamGia;
+            giamGia = vr.discount;
         }
 
         // CẬP NHẬT TÍNH TỔNG TIỀN: Tiền hàng + Phí Ship - Giảm giá
         BigDecimal tongTien = tamTinh.add(phiVanChuyen).subtract(giamGia);
         if (tongTien.compareTo(BigDecimal.ZERO) < 0) tongTien = BigDecimal.ZERO;
 
+        // Online, khách vãng lai và POS đều dùng chung một hồ sơ khách hàng. Điều này
+        // giúp lịch sử mua tại quầy và trên website không bị tách thành hai người.
+        try {
+            kh = customerIdentityService.resolveForOrder(kh, hoTen, soDienThoai, emailKhachHang);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        }
+
+        for (Map.Entry<Integer, Integer> entry : stockDeductions.entrySet()) {
+            VayChiTiet variant = plannedVariants.get(entry.getKey());
+            int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
+            variant.setSoLuong(currentStock - entry.getValue());
+            vayCtRepo.save(variant);
+        }
+
         // Trạng thái: mặc định 0 (Chờ xử lý). POS gửi trangThai=4 (Hoàn thành - cập nhật theo luồng mới).
         byte trangThai = staffDirectSale ? (byte) 4 : STATUS_PENDING;
         if (staffDirectSale && requestedStatus != null && requestedStatus >= 0 && requestedStatus <= 4) {
             trangThai = requestedStatus.byteValue();
-        }
-
-        // Nhân viên (đơn bán tại quầy)
-        Integer nhanVienId = toInt(body.get("nhanVienId"));
-        if (staffDirectSale && nhanVienId != null && !Objects.equals(nhanVienId, tokenUserId)) {
-            return ResponseEntity.status(403).body(Map.of("error", "Nhan vien khong khop voi token dang nhap"));
         }
 
         // Đã thanh toán: POS = true; nếu body chỉ định thì theo body
@@ -263,6 +313,7 @@ public class PaymentController {
 
         HoaDon hoaDon = HoaDon.builder()
                 .maHoaDon(maHoaDon)
+                .maYeuCau(checkoutRequestId)
                 .khachHang(kh)
                 .nhanVien(nv)
                 .giamGia(voucher)
@@ -270,10 +321,11 @@ public class PaymentController {
                 .phiVanChuyen(phiVanChuyen)
                 .giamGiaVoucher(giamGia)
                 .hinhThucNhanHang(hinhThucNhanHang)
-                .diaChiGiaoHang(diaChi != null ? diaChi : "")
-                .hinhThucThanhToan(hinhThuc != null ? hinhThuc : "COD")
+                .diaChiGiaoHang(staffDirectSale ? "Mua trực tiếp tại cửa hàng" : diaChi)
+                .hinhThucThanhToan(paymentMethod)
                 .trangThai(trangThai)
                 .daThanhToan(daThanhToan)
+                .daHoanTonKho(false)
                 .ghiChu(ghiChu)
                 .ngayTao(LocalDateTime.now())
                 .tenKhachHang(hoTen)
@@ -282,6 +334,10 @@ public class PaymentController {
                 .build();
 
         hoaDon = hoaDonRepo.save(hoaDon);
+
+        if (!staffDirectSale) {
+            customerAddressService.saveCheckoutAddress(kh, body);
+        }
 
         for (HoaDonChiTiet ct : chiTietList) {
             ct.setHoaDon(hoaDon);
@@ -307,7 +363,9 @@ public class PaymentController {
                     .build());
         }
 
-        sendOrderConfirmationAfterCommit(hoaDon);
+        if (staffDirectSale || "COD".equalsIgnoreCase(paymentMethod)) {
+            sendOrderConfirmationAfterCommit(hoaDon);
+        }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("orderId", hoaDon.getId());
@@ -328,8 +386,10 @@ public class PaymentController {
     @PostMapping("/apply-voucher")
     public ResponseEntity<?> applyVoucher(@RequestBody Map<String, Object> body) {
         String ma = (String) body.get("maGiamGia");
-        BigDecimal tamTinh = body.get("tongTien") != null
-                ? new BigDecimal(body.get("tongTien").toString()) : BigDecimal.ZERO;
+        BigDecimal tamTinh = parseMoney(body.get("tongTien"));
+        if (tamTinh == null || tamTinh.compareTo(BigDecimal.ZERO) < 0) {
+            return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Tổng tiền không hợp lệ"));
+        }
         if (ma == null || ma.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Vui lòng nhập mã giảm giá"));
         }
@@ -346,57 +406,32 @@ public class PaymentController {
         return ResponseEntity.ok(res);
     }
 
-    /** Staff-only manual confirmation for sandbox/demo payment flows. */
-    @PostMapping("/confirm")
-    public ResponseEntity<?> confirmPayment(@RequestBody Map<String, Object> body) {
-        if (body == null || body.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Thieu thong tin xac nhan thanh toan"));
-        }
-        Integer orderId = toInt(body.get("orderId"));
-        String maHoaDon = (String) body.get("maHoaDon");
-        String method = (String) body.get("method");
-        if (orderId == null && (maHoaDon == null || maHoaDon.isBlank())) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Thieu orderId hoac maHoaDon"));
+    @PostMapping("/best-voucher")
+    public ResponseEntity<?> findBestVoucher(@RequestBody Map<String, Object> body) {
+        BigDecimal tamTinh = parseMoney(body.get("tongTien"));
+        if (tamTinh == null || tamTinh.compareTo(BigDecimal.ZERO) <= 0) {
+            return ResponseEntity.ok(Map.of("valid", false, "message", "Chưa có voucher phù hợp"));
         }
 
-        Optional<HoaDon> opt = orderId != null
-                ? hoaDonRepo.findById(orderId)
-                : (maHoaDon != null ? hoaDonRepo.findByMaHoaDon(maHoaDon) : Optional.empty());
-        if (opt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy đơn hàng"));
+        VoucherResult best = giamGiaRepo.findAll().stream()
+                .map(voucher -> evaluateVoucher(voucher, tamTinh))
+                .filter(result -> result.valid
+                        && result.discount.compareTo(BigDecimal.ZERO) > 0
+                        && result.giamGia.getMaGiamGia() != null
+                        && !result.giamGia.getMaGiamGia().isBlank())
+                .max(Comparator.comparing((VoucherResult result) -> result.discount))
+                .orElse(null);
+        if (best == null) {
+            return ResponseEntity.ok(Map.of("valid", false, "message", "Chưa có voucher phù hợp"));
         }
 
-        HoaDon hd = opt.get();
-        if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_PAYMENT_FAILED) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Don hang thanh toan that bai, khong the xac nhan lai"));
-        }
-        if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_CANCELLED) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Don hang da huy, khong the xac nhan thanh toan"));
-        }
-        String paymentMethod = method != null && !method.isBlank() ? method : hd.getHinhThucThanhToan();
-
-        hd.setTrangThai(STATUS_CONFIRMED);
-        hd.setDaThanhToan(true);
-        hd.setPhuongThucThanhToanOnline(paymentMethod);
-        hoaDonRepo.save(hd);
-        emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_CONFIRMED),
-                "Thanh toán " + paymentMethod + " đã được xác nhận. Đơn hàng đang chờ xử lý tiếp.");
-
-        lichSuRepo.save(LichSuThanhToan.builder()
-                .hoaDon(hd)
-                .soTien(hd.getTongTien())
-                .phuongThuc(paymentMethod)
-                .maGiaoDich((paymentMethod != null ? paymentMethod : "PAY") + System.currentTimeMillis())
-                .trangThai("SUCCESS")
-                .noiDung("Xac nhan thanh toan sandbox - " + hd.getMaHoaDon())
-                .ngayTao(LocalDateTime.now())
-                .build());
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("orderId", hd.getId());
-        result.put("maHoaDon", hd.getMaHoaDon());
-        result.put("trangThai", hd.getTrangThai());
-        return ResponseEntity.ok(result);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("valid", true);
+        response.put("maGiamGia", best.giamGia.getMaGiamGia());
+        response.put("tenGiamGia", best.giamGia.getTenGiamGia());
+        response.put("giamGia", best.discount);
+        response.put("message", "Đã tự động chọn voucher tiết kiệm nhất");
+        return ResponseEntity.ok(response);
     }
 
     /** Kết quả kiểm tra voucher. */
@@ -420,7 +455,12 @@ public class PaymentController {
             r.message = "Mã giảm giá không tồn tại";
             return r;
         }
-        GiamGia gg = opt.get();
+        return evaluateVoucher(opt.get(), tamTinh);
+    }
+
+    private VoucherResult evaluateVoucher(GiamGia gg, BigDecimal tamTinh) {
+        VoucherResult r = new VoucherResult();
+        r.giamGia = gg;
         if (gg.getTrangThai() != null && gg.getTrangThai() == 0) {
             r.message = "Mã giảm giá đã ngừng hoạt động";
             return r;
@@ -459,6 +499,15 @@ public class PaymentController {
         r.discount = discount;
         r.message = "Áp dụng mã thành công";
         return r;
+    }
+
+    private BigDecimal parseMoney(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @GetMapping("/order/{id}")
@@ -537,6 +586,71 @@ public class PaymentController {
                 && (variant.getVay().getTrangThai() == null || variant.getVay().getTrangThai() == 1);
     }
 
+    private String generateOrderCode() {
+        String code;
+        do {
+            String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(Locale.ROOT);
+            code = "HD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss")) + suffix;
+        } while (hoaDonRepo.existsByMaHoaDon(code));
+        return code;
+    }
+
+    private String normalizePaymentMethod(String method, boolean staffDirectSale) {
+        String value = cleanString(method);
+        if (value == null) return staffDirectSale ? "Tiền mặt" : "COD";
+        String normalized = value.toUpperCase(Locale.ROOT);
+        if (staffDirectSale) {
+            return switch (normalized) {
+                case "TIỀN MẶT" -> "Tiền mặt";
+                case "CHUYỂN KHOẢN (VIETQR)" -> "Chuyển khoản (VietQR)";
+                case "CHUYỂN KHOẢN (MOMO)", "MOMO" -> "Chuyển khoản (MoMo)";
+                case "CHUYỂN KHOẢN (ZALOPAY)", "ZALOPAY" -> "Chuyển khoản (ZaloPay)";
+                default -> null;
+            };
+        }
+        return Set.of("COD", "MOMO", "ZALOPAY").contains(normalized) ? normalized : null;
+    }
+
+    private boolean matchesExistingOrderOwner(HoaDon order, KhachHang customer, String phone,
+                                              String email, NhanVien employee) {
+        if (employee != null && order.getNhanVien() != null
+                && Objects.equals(employee.getId(), order.getNhanVien().getId())) return true;
+        if (customer != null && order.getKhachHang() != null
+                && Objects.equals(customer.getId(), order.getKhachHang().getId())) return true;
+        return normalizePhone(phone).equals(normalizePhone(order.getSoDienThoai()))
+                && email != null
+                && order.getEmailKhachHang() != null
+                && email.equalsIgnoreCase(order.getEmailKhachHang());
+    }
+
+    private Map<String, Object> orderResponse(HoaDon order, BigDecimal fallbackSubtotal) {
+        BigDecimal shipping = Optional.ofNullable(order.getPhiVanChuyen()).orElse(BigDecimal.ZERO);
+        BigDecimal discount = Optional.ofNullable(order.getGiamGiaVoucher()).orElse(BigDecimal.ZERO);
+        BigDecimal total = Optional.ofNullable(order.getTongTien()).orElse(BigDecimal.ZERO);
+        BigDecimal subtotal = total.subtract(shipping).add(discount);
+        if (subtotal.compareTo(BigDecimal.ZERO) < 0) subtotal = fallbackSubtotal;
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderId", order.getId());
+        result.put("maHoaDon", order.getMaHoaDon());
+        result.put("tamTinh", subtotal);
+        result.put("giamGia", discount);
+        result.put("phiVanChuyen", shipping);
+        result.put("tongTien", total);
+        result.put("hinhThucThanhToan", order.getHinhThucThanhToan());
+        result.put("hinhThucNhanHang", order.getHinhThucNhanHang());
+        result.put("trangThai", order.getTrangThai());
+        result.put("emailKhachHang", order.getEmailKhachHang());
+        result.put("idempotent", true);
+        return result;
+    }
+
+    private static String normalizePhone(String phone) {
+        if (phone == null) return "";
+        String cleaned = phone.replaceAll("[^0-9+]", "");
+        return cleaned.startsWith("+84") ? "0" + cleaned.substring(3) : cleaned;
+    }
+
     private static Integer toInt(Object obj) {
         if (obj == null) return null;
         if (obj instanceof Integer i) return i;
@@ -573,22 +687,6 @@ public class PaymentController {
         emailService.sendOrderConfirmationEmail(hoaDon);
     }
 
-    private static String statusLabel(byte status) {
-        return switch (status) {
-            case 0 -> "Chờ xử lý";
-            case 1 -> "Đã xác nhận";
-            case 2 -> "Đang chuẩn bị";
-            case 3 -> "Đang giao hàng";
-            case 4 -> "Giao hàng thành công";
-            case 5 -> "Đã hủy";
-            case 6 -> "Giao hàng thất bại";
-            case 7 -> "Thanh toán thất bại";
-            case 8 -> "Yêu cầu đổi/trả";
-            case 9 -> "Đã hoàn tiền/hoàn tất";
-            default -> "Cập nhật trạng thái";
-        };
-    }
-
     private ResponseEntity<?> authorizeOrderAccess(HoaDon hd, String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
@@ -613,7 +711,4 @@ public class PaymentController {
         }
     }
 
-    private void restoreStock(HoaDon hoaDon) {
-        orderInventoryService.restoreReservation(hoaDon);
-    }
 }

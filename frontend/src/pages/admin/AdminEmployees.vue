@@ -169,40 +169,46 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="z-label">Họ và tên *</label>
-              <input v-model="form.hoVaTen" class="lm-input" placeholder="VD: Nguyễn Minh Anh">
+              <input v-model="form.hoVaTen" class="lm-input" :class="{ 'is-invalid': formErrors.hoVaTen }" maxlength="150" placeholder="VD: Nguyễn Minh Anh" @input="clearFieldError('hoVaTen')">
+              <div v-if="formErrors.hoVaTen" class="z-field-error">{{ formErrors.hoVaTen }}</div>
             </div>
             <div class="col-md-6">
               <label class="z-label">Vai trò</label>
-              <select v-model="form.vaiTroId" class="lm-input">
+              <select v-model="form.vaiTroId" class="lm-input" :class="{ 'is-invalid': formErrors.vaiTroId }" @change="clearFieldError('vaiTroId')">
                 <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.tenVaiTro }}</option>
               </select>
+              <div v-if="formErrors.vaiTroId" class="z-field-error">{{ formErrors.vaiTroId }}</div>
             </div>
           </div>
 
           <div class="row g-3">
             <div class="col-md-6">
               <label class="z-label">Tên đăng nhập *</label>
-              <input v-model="form.tenNguoiDung" class="lm-input" placeholder="VD: minhanh">
+              <input v-model="form.tenNguoiDung" class="lm-input" :class="{ 'is-invalid': formErrors.tenNguoiDung }" maxlength="50" autocomplete="off" placeholder="VD: minhanh" @input="normalizeUsername">
+              <div v-if="formErrors.tenNguoiDung" class="z-field-error">{{ formErrors.tenNguoiDung }}</div>
             </div>
             <div class="col-md-6">
               <label class="z-label">Mật khẩu {{ editingId ? '(để trống nếu không đổi)' : '*' }}</label>
               <div class="position-relative">
-                <input v-model="form.matKhau" class="lm-input" :type="showPassword ? 'text' : 'password'" placeholder="Tối thiểu 6 ký tự">
-                <button class="z-password-toggle" @click="showPassword = !showPassword">
+                <input v-model="form.matKhau" class="lm-input" :class="{ 'is-invalid': formErrors.matKhau }" :type="showPassword ? 'text' : 'password'" maxlength="72" autocomplete="new-password" placeholder="8-72 ký tự, gồm chữ và số" @input="clearFieldError('matKhau')">
+                <button type="button" class="z-password-toggle" @click="showPassword = !showPassword">
                   <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                 </button>
               </div>
+              <div v-if="formErrors.matKhau" class="z-field-error">{{ formErrors.matKhau }}</div>
             </div>
           </div>
 
           <div class="row g-3">
             <div class="col-md-6">
               <label class="z-label">Email *</label>
-              <input v-model="form.email" type="email" class="lm-input" placeholder="email@zestia.vn">
+              <input v-model="form.email" type="email" class="lm-input" :class="{ 'is-invalid': formErrors.email }" maxlength="150" placeholder="email@zestia.vn" @input="clearFieldError('email')">
+              <div v-if="formErrors.email" class="z-field-error">{{ formErrors.email }}</div>
             </div>
             <div class="col-md-6">
               <label class="z-label">Số điện thoại</label>
-              <input v-model="form.soDienThoai" class="lm-input" placeholder="0901234567">
+              <input v-model="form.soDienThoai" inputmode="tel" class="lm-input" :class="{ 'is-invalid': formErrors.soDienThoai }" maxlength="16" placeholder="0901234567 hoặc +84901234567" @input="normalizeEmployeePhone">
+              <div v-if="formErrors.soDienThoai" class="z-field-error">{{ formErrors.soDienThoai }}</div>
             </div>
           </div>
 
@@ -217,7 +223,8 @@
             </div>
             <div class="col-md-4">
               <label class="z-label">Ngày sinh</label>
-              <input v-model="form.ngaySinh" type="date" class="lm-input">
+              <input v-model="form.ngaySinh" type="date" class="lm-input" :class="{ 'is-invalid': formErrors.ngaySinh }" :max="adultMaximumDate" @change="clearFieldError('ngaySinh')">
+              <div v-if="formErrors.ngaySinh" class="z-field-error">{{ formErrors.ngaySinh }}</div>
             </div>
             <div class="col-md-4">
               <label class="z-label">Trạng thái</label>
@@ -230,7 +237,8 @@
 
           <div>
             <label class="z-label">Địa chỉ</label>
-            <input v-model="form.diaChi" class="lm-input" placeholder="Địa chỉ liên hệ">
+            <input v-model="form.diaChi" class="lm-input" :class="{ 'is-invalid': formErrors.diaChi }" maxlength="255" placeholder="Địa chỉ liên hệ" @input="clearFieldError('diaChi')">
+            <div v-if="formErrors.diaChi" class="z-field-error">{{ formErrors.diaChi }}</div>
             </div>
             
             <div class="d-flex justify-content-end gap-2 mt-4">
@@ -316,6 +324,12 @@ const filterStatus = ref('')
 const employees = ref([])
 const roles = ref([])
 const form = ref(defaultForm())
+const formErrors = ref({})
+const adultMaximumDate = computed(() => {
+  const date = new Date()
+  date.setFullYear(date.getFullYear() - 18)
+  return date.toISOString().slice(0, 10)
+})
 
 onMounted(async () => {
   await Promise.all([loadEmployees(), loadRoles()])
@@ -398,6 +412,7 @@ function openAdd() {
   perfStats.value = null
   showPassword.value = false
   form.value = defaultForm()
+  formErrors.value = {}
   if (roles.value.length) {
     const staffRole = roles.value.find(r => r.tenVaiTro === 'Nhân viên') || roles.value[0]
     form.value.vaiTroId = staffRole.id
@@ -408,6 +423,7 @@ function openAdd() {
 function openEdit(nv) {
   editingId.value = nv.id
   showPassword.value = false
+  formErrors.value = {}
   form.value = {
     hoVaTen: nv.hoVaTen || '',
     vaiTroId: nv.vaiTroId || '',
@@ -425,22 +441,18 @@ function openEdit(nv) {
 }
 
 async function saveEmployee() {
-  if (!form.value.hoVaTen || !form.value.tenNguoiDung || !form.value.email) {
-    showToast('Vui lòng nhập họ tên, tên đăng nhập và email')
-    return
-  }
-  if (!editingId.value && !form.value.matKhau) {
-    showToast('Vui lòng nhập mật khẩu cho nhân viên mới')
-    return
-  }
-  if (form.value.matKhau && form.value.matKhau.length < 6) {
-    showToast('Mật khẩu phải có tối thiểu 6 ký tự')
-    return
-  }
+  if (!validateEmployeeForm()) return
 
   saving.value = true
   try {
-    const payload = { ...form.value }
+    const payload = {
+      ...form.value,
+      hoVaTen: form.value.hoVaTen.trim().replace(/\s+/g, ' '),
+      tenNguoiDung: form.value.tenNguoiDung.trim(),
+      email: form.value.email.trim().toLowerCase(),
+      soDienThoai: form.value.soDienThoai.trim(),
+      diaChi: form.value.diaChi.trim()
+    }
     if (editingId.value && !payload.matKhau) delete payload.matKhau
 
     if (editingId.value) {
@@ -490,6 +502,61 @@ async function deleteEmployee(nv) {
   } catch (e) {
     showToast('Không thể tạm khoá nhân viên')
   }
+}
+
+function validateEmployeeForm() {
+  const errors = {}
+  const name = form.value.hoVaTen.trim().replace(/\s+/g, ' ')
+  const username = form.value.tenNguoiDung.trim()
+  const email = form.value.email.trim()
+  const password = form.value.matKhau || ''
+  const phone = form.value.soDienThoai.trim()
+  const namePattern = /^[\p{L}][\p{L} .'-]{1,149}$/u
+  const emailPattern = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/
+
+  if (!namePattern.test(name)) errors.hoVaTen = 'Họ tên từ 2-150 ký tự, không chứa số.'
+  if (!/^[A-Za-z0-9._-]{4,50}$/.test(username)) errors.tenNguoiDung = 'Dùng 4-50 chữ không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang.'
+  if (!emailPattern.test(email) || email.length > 150) errors.email = 'Email không đúng định dạng.'
+  if (!editingId.value || password) {
+    if (password.length < 8 || password.length > 72 || !/\p{L}/u.test(password) || !/\d/.test(password)) {
+      errors.matKhau = 'Mật khẩu 8-72 ký tự và phải có cả chữ lẫn số.'
+    }
+  }
+  if (phone && !/^(?:0\d{9,10}|\+[1-9]\d{7,14})$/.test(phone)) {
+    errors.soDienThoai = 'Nhập 10-11 số hoặc mã quốc gia, ví dụ +84901234567.'
+  }
+  if (!form.value.vaiTroId) errors.vaiTroId = 'Vui lòng chọn vai trò.'
+  if (form.value.ngaySinh) {
+    const birth = new Date(`${form.value.ngaySinh}T00:00:00`)
+    const oldest = new Date('1900-01-01T00:00:00')
+    const adultDate = new Date(`${adultMaximumDate.value}T23:59:59`)
+    if (Number.isNaN(birth.getTime()) || birth < oldest || birth > adultDate) errors.ngaySinh = 'Nhân viên phải đủ 18 tuổi và ngày sinh hợp lệ.'
+  }
+  if (form.value.diaChi.length > 255) errors.diaChi = 'Địa chỉ tối đa 255 ký tự.'
+
+  formErrors.value = errors
+  const firstError = Object.values(errors)[0]
+  if (firstError) showToast(firstError)
+  return !firstError
+}
+
+function clearFieldError(field) {
+  if (!formErrors.value[field]) return
+  const next = { ...formErrors.value }
+  delete next[field]
+  formErrors.value = next
+}
+
+function normalizeUsername(event) {
+  form.value.tenNguoiDung = String(event.target.value || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 50)
+  clearFieldError('tenNguoiDung')
+}
+
+function normalizeEmployeePhone(event) {
+  let value = String(event.target.value || '').replace(/[^\d+]/g, '')
+  value = (value.startsWith('+') ? '+' + value.slice(1).replace(/\+/g, '') : value.replace(/\+/g, '')).slice(0, 16)
+  form.value.soDienThoai = value
+  clearFieldError('soDienThoai')
 }
 
 function defaultForm() {
@@ -558,4 +625,6 @@ function formatDate(value) {
   border: none; background: none; color: var(--z-gray-light);
   cursor: pointer; padding: 4px;
 }
+.lm-input.is-invalid { border-color: #dc2626; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.08); }
+.z-field-error { margin-top: 5px; color: #b91c1c; font-size: 11px; line-height: 1.35; }
 </style>

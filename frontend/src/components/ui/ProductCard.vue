@@ -23,12 +23,7 @@
 
     <div class="lm-product-cat">{{ product.category }}</div>
     <div class="lm-product-name">{{ product.name }}</div>
-    <div class="lm-product-price d-flex align-items-center gap-2">
-      <span :class="product.salePrice ? 'lm-price-sale' : ''">
-        {{ formatPrice(product.salePrice || product.price) }}
-      </span>
-      <span v-if="product.salePrice" class="lm-price-old">{{ formatPrice(product.price) }}</span>
-    </div>
+    <div class="lm-product-price">{{ formatPrice(product.price) }}</div>
   </div>
 </template>
 

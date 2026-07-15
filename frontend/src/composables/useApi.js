@@ -18,10 +18,61 @@ async function request(path, options = {}) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
+    if (res.status === 401 && getToken()) {
+      clearAuthStorage()
+      window.dispatchEvent(new Event('zestia-auth-changed'))
+    }
     throw { status: res.status, ...err }
   }
   const text = await res.text()
   return text ? JSON.parse(text) : null
+}
+
+async function downloadFile(path, fallbackName) {
+  const headers = {}
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(`${API_BASE}${path}`, { headers })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Không thể tải file' }))
+    throw { status: res.status, ...error }
+  }
+  const disposition = res.headers.get('Content-Disposition') || ''
+  const matchedName = disposition.match(/filename="?([^";]+)"?/i)?.[1]
+  const url = URL.createObjectURL(await res.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = matchedName || fallbackName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+function clearAuthStorage() {
+  localStorage.removeItem('zestia_token')
+  localStorage.removeItem('zestia_user')
+}
+
+function toQuery(params = {}) {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.append(key, String(value))
+  })
+  const encoded = query.toString()
+  return encoded ? `?${encoded}` : ''
+}
+
+function tokenIsCurrent(token) {
+  if (!token) return false
+  try {
+    const segment = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = segment.padEnd(Math.ceil(segment.length / 4) * 4, '=')
+    const payload = JSON.parse(atob(padded))
+    return !payload.exp || payload.exp * 1000 > Date.now()
+  } catch {
+    return false
+  }
 }
 
 export function api() {
@@ -32,6 +83,8 @@ export function api() {
         method: 'POST',
         body: JSON.stringify({ username, password })
       }),
+    googleLogin: (credential) =>
+      request('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }),
     me: () => request('/auth/me'),
     register: (data) =>
       request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
@@ -50,6 +103,7 @@ export function api() {
 
     // Products
     getVay: () => request('/vay'),
+    getVayPage: (params) => request(`/vay/paged${toQuery(params)}`),
     getVayById: (id) => request(`/vay/${id}`),
     searchVay: (q) => request(`/vay/search?q=${encodeURIComponent(q)}`),
     createVay: (data) => request('/vay', { method: 'POST', body: JSON.stringify(data) }),
@@ -66,33 +120,77 @@ export function api() {
       if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload thất bại' }))
       return res.json()
     },
+    uploadVayColorImage: async (id, colorId, file) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      const headers = {}
+      const token = getToken()
+      if (token) headers.Authorization = `Bearer ${token}`
+      const res = await fetch(`${API_BASE}/vay/${id}/mau/${colorId}/anh`, { method: 'POST', headers, body: fd })
+      if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload ảnh màu thất bại' }))
+      return res.json()
+    },
     deleteVayAnh: (anhId) => request(`/vay/anh/${anhId}`, { method: 'DELETE' }),
 
     // Orders & Tracking
     getHoaDon: () => request('/hoa-don'),
+    getHoaDonPage: (params) => request(`/hoa-don/paged${toQuery(params)}`),
     getHoaDonById: (id) => request(`/hoa-don/${id}`),
-    updateOrderStatus: (id, trangThai, ghiChu, daThanhToan) =>
+    updateOrderStatus: (id, trangThai, ghiChu) =>
       request(`/hoa-don/${id}/trang-thai`, {
         method: 'PUT',
         body: JSON.stringify({
           trangThai,
-          ghiChu: ghiChu || null,
-          ...(daThanhToan !== undefined ? { daThanhToan } : {})
+          ghiChu: ghiChu || null
         })
       }),
       
-    // --- BỔ SUNG HÀM NÀY CHO KHÁCH HÀNG TỰ HỦY ĐƠN ---
     cancelMyOrder: (id, ghiChu) => request(`/hoa-don/${id}/cancel`, {
       method: 'PUT',
       body: JSON.stringify({ ghiChu: ghiChu || null })
     }),
-    cancelGuestOrder: (id, maHoaDon, soDienThoai, ghiChu) => request(`/hoa-don/${id}/cancel-guest`, {
-      method: 'PUT',
-      body: JSON.stringify({ maHoaDon, soDienThoai, ghiChu: ghiChu || null })
+    requestGuestCancelOtp: (id, maHoaDon, soDienThoai) => request(`/hoa-don/${id}/cancel-guest/request-otp`, {
+      method: 'POST',
+      body: JSON.stringify({ maHoaDon, soDienThoai })
     }),
-    requestReturnOrder: (id, lyDo) => request(`/hoa-don/${id}/return-request`, {
+    cancelGuestOrder: (id, maHoaDon, soDienThoai, otp, ghiChu) => request(`/hoa-don/${id}/cancel-guest`, {
       method: 'PUT',
-      body: JSON.stringify({ lyDo: lyDo || null })
+      body: JSON.stringify({ maHoaDon, soDienThoai, otp, ghiChu: ghiChu || null })
+    }),
+    createOnlineReturnRequest: async (data) => {
+      const form = new FormData()
+      form.append('orderId', data.orderId)
+      form.append('orderDetailId', data.orderDetailId)
+      form.append('type', data.type)
+      form.append('quantity', data.quantity)
+      form.append('reason', data.reason)
+      form.append('condition', data.condition)
+      if (data.refundInfo) form.append('refundInfo', data.refundInfo)
+      if (data.replacementVariantId) form.append('replacementVariantId', data.replacementVariantId)
+      ;(data.images || []).forEach(file => form.append('images', file))
+      const headers = {}
+      const token = getToken()
+      if (token) headers.Authorization = `Bearer ${token}`
+      const res = await fetch(`${API_BASE}/returns/online`, { method: 'POST', headers, body: form })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Không thể gửi yêu cầu đổi trả' }))
+        throw { status: res.status, ...err }
+      }
+      return res.json()
+    },
+    getMyReturnRequests: () => request('/returns/mine'),
+    getReturnRequests: (params = {}) => request(`/returns${toQuery(params)}`),
+    createOfflineReturnRequest: (data) => request('/returns/offline', {
+      method: 'POST', body: JSON.stringify(data)
+    }),
+    reviewReturnRequest: (id, approved, reason) => request(`/returns/${id}/review`, {
+      method: 'PUT', body: JSON.stringify({ approved, reason: reason || null })
+    }),
+    receiveReturnRequest: (id, accepted, reason) => request(`/returns/${id}/receive`, {
+      method: 'PUT', body: JSON.stringify({ accepted, reason: reason || null })
+    }),
+    completeReturnRequest: (id, note) => request(`/returns/${id}/complete`, {
+      method: 'PUT', body: JSON.stringify({ note: note || null })
     }),
     getOrderAuditLog: (id) => request(`/hoa-don/${id}/audit-log`),
       
@@ -110,6 +208,13 @@ export function api() {
 
     // Customers
     getKhachHang: () => request('/khach-hang'),
+    getKhachHangPage: (params) => request(`/khach-hang/paged${toQuery(params)}`),
+    getKhachHangAddresses: (id) => request(`/khach-hang/${id}/addresses`),
+    getKhachHangHistory: (id) => request(`/khach-hang/${id}/history`),
+    searchKhachHang: (q) => request(`/khach-hang/search?q=${encodeURIComponent(q)}`),
+    quickCreateKhachHang: (data) => request('/khach-hang/quick', {
+      method: 'POST', body: JSON.stringify(data)
+    }),
 
     // Employees
     getNhanVien: () => request('/nhan-vien'),
@@ -131,12 +236,42 @@ export function api() {
       return request(`/lich-lam-viec${query ? '?' + query : ''}`)
     },
     getNhanVienLamViec: () => request('/lich-lam-viec/nhan-vien'),
+    getWorkShiftStatus: () => request('/lich-lam-viec/work-status'),
+    getShiftHistory: (params = {}) => request(`/lich-lam-viec/history${toQuery(params)}`),
+    exportShiftHistory: (params = {}) =>
+      downloadFile(`/lich-lam-viec/history/export${toQuery(params)}`, 'lich-su-ca-lam.xlsx'),
     addLichLamViec: (data) => request('/lich-lam-viec', { method: 'POST', body: JSON.stringify(data) }),
     updateLichLamViec: (id, data) => request(`/lich-lam-viec/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteLichLamViec: (id) => request(`/lich-lam-viec/${id}`, { method: 'DELETE' }),
+    confirmShift: (id) => request(`/lich-lam-viec/${id}/confirm`, { method: 'POST' }),
+    reportShiftUnavailable: (id, lyDo) => request(`/lich-lam-viec/${id}/unavailable`, {
+      method: 'POST', body: JSON.stringify({ lyDo })
+    }),
+    reviewShiftUnavailable: (id, approved, phanHoi) => request(`/lich-lam-viec/${id}/review-unavailable`, {
+      method: 'POST', body: JSON.stringify({ approved, phanHoi: phanHoi || null })
+    }),
+    checkInShift: (id) => request(`/lich-lam-viec/${id}/check-in`, { method: 'POST' }),
+    checkOutShift: (id) => request(`/lich-lam-viec/${id}/check-out`, { method: 'POST' }),
+
+    // Human support handoff
+    requestHumanSupport: (message) => request('/support-chat/customer/request', {
+      method: 'POST', body: JSON.stringify({ message })
+    }),
+    getCustomerSupportChat: (token) => request(`/support-chat/customer/${encodeURIComponent(token)}`),
+    sendCustomerSupportMessage: (token, message) => request(`/support-chat/customer/${encodeURIComponent(token)}/messages`, {
+      method: 'POST', body: JSON.stringify({ message })
+    }),
+    getStaffSupportChats: () => request('/support-chat/staff/conversations'),
+    getStaffSupportChat: (id) => request(`/support-chat/staff/conversations/${id}`),
+    claimStaffSupportChat: (id) => request(`/support-chat/staff/conversations/${id}/claim`, { method: 'POST' }),
+    sendStaffSupportMessage: (id, message) => request(`/support-chat/staff/conversations/${id}/messages`, {
+      method: 'POST', body: JSON.stringify({ message })
+    }),
+    closeStaffSupportChat: (id) => request(`/support-chat/staff/conversations/${id}/close`, { method: 'POST' }),
 
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
+    getInventoryDashboard: () => request('/dashboard/inventory'),
 
     // Thống kê (báo cáo admin)
     getThongKeTongHop: ({ startDate, endDate, timeType = 'ngay' }) => {
@@ -179,8 +314,6 @@ export function api() {
     // Payment
     createOrder: (data) =>
       request('/payment/create-order', { method: 'POST', body: JSON.stringify(data) }),
-    confirmPayment: (orderId, method, maHoaDon) =>
-      request('/payment/confirm', { method: 'POST', body: JSON.stringify({ orderId, method, maHoaDon }) }),
     createMomoPayment: (orderId, maHoaDon, soDienThoai) =>
       request('/payment/momo/create', { method: 'POST', body: JSON.stringify({ orderId, maHoaDon, soDienThoai }) }),
     createZaloPayment: (orderId, maHoaDon, soDienThoai) =>
@@ -191,7 +324,44 @@ export function api() {
       request('/payment/zalopay/qr', { method: 'POST', body: JSON.stringify({ amount }) }),
     applyVoucher: (maGiamGia, tongTien) =>
       request('/payment/apply-voucher', { method: 'POST', body: JSON.stringify({ maGiamGia, tongTien }) }),
+    getBestVoucher: (tongTien) =>
+      request('/payment/best-voucher', { method: 'POST', body: JSON.stringify({ tongTien }) }),
     getOrder: (id) => request(`/payment/order/${id}`),
+
+    // Storefront and verified customer content
+    getStorefrontSummary: () => request('/storefront/summary'),
+    getStorePolicies: () => request('/storefront/policies'),
+    getStoreReviews: (page = 0, size = 9, stars = '') =>
+      request(`/reviews${toQuery({ page, size, stars })}`),
+    getProductReviews: (productId, page = 0, size = 6) =>
+      request(`/reviews/product/${productId}?page=${page}&size=${size}`),
+    getReviewEligibility: (productId) => request(`/reviews/product/${productId}/eligibility`),
+    createProductReview: async (productId, { orderId, stars, content, images = [] }) => {
+      const form = new FormData()
+      form.append('orderId', orderId)
+      form.append('stars', stars)
+      form.append('content', content)
+      images.forEach(image => form.append('images', image))
+      const headers = {}
+      const token = getToken()
+      if (token) headers.Authorization = `Bearer ${token}`
+      const res = await fetch(`${API_BASE}/reviews/product/${productId}`, { method: 'POST', headers, body: form })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Không thể gửi đánh giá' }))
+        throw { status: res.status, ...err }
+      }
+      return res.json()
+    },
+
+    // Account-synchronized cart, wishlist and recently viewed products
+    getCustomerData: () => request('/customer-data'),
+    replaceCustomerCart: (items) => request('/customer-data/cart', {
+      method: 'PUT',
+      body: JSON.stringify({ items })
+    }),
+    addCustomerWishlist: (productId) => request(`/customer-data/wishlist/${productId}`, { method: 'POST' }),
+    removeCustomerWishlist: (productId) => request(`/customer-data/wishlist/${productId}`, { method: 'DELETE' }),
+    recordCustomerView: (productId) => request(`/customer-data/recent/${productId}`, { method: 'POST' }),
     
     updateProfile: (data) =>
       request('/auth/profile', { method: 'PUT', body: JSON.stringify(data) }),
@@ -203,11 +373,25 @@ export function api() {
     updateVoucher: (id, data) => request(`/voucher/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteVoucher: (id) => request(`/voucher/${id}`, { method: 'DELETE' }),
 
+    // Promotion campaigns (product price remains a single base selling price)
+    getPromotions: () => request('/promotions'),
+    getPromotion: (id) => request(`/promotions/${id}`),
+    createPromotion: (data) => request('/promotions', { method: 'POST', body: JSON.stringify(data) }),
+    updatePromotion: (id, data) => request(`/promotions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    deletePromotion: (id) => request(`/promotions/${id}`, { method: 'DELETE' }),
+
     getProfileAddress: () => request('/auth/profile/address'),
     updateProfileAddress: (data) =>
       request('/auth/profile/address', { method: 'PUT', body: JSON.stringify(data) }),
-    updateOrderCustomer: (id, data) =>
-      request(`/hoa-don/${id}/khach-hang`, { method: 'PUT', body: JSON.stringify(data) }),
+    getProfileAddresses: () => request('/auth/profile/addresses'),
+    createProfileAddress: (data) => request('/auth/profile/addresses', {
+      method: 'POST', body: JSON.stringify(data)
+    }),
+    updateProfileAddressById: (id, data) => request(`/auth/profile/addresses/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    }),
+    setDefaultProfileAddress: (id) => request(`/auth/profile/addresses/${id}/default`, { method: 'PUT' }),
+    deleteProfileAddress: (id) => request(`/auth/profile/addresses/${id}`, { method: 'DELETE' }),
     getThongBao: () => request('/thong-bao'),
     getThongBaoActive: () => request('/thong-bao/active'),
     addThongBao: (data) => request('/thong-bao', { method: 'POST', body: JSON.stringify(data) }),
@@ -220,20 +404,32 @@ export function useAuth() {
   function saveLogin(data) {
     localStorage.setItem('zestia_token', data.token)
     localStorage.setItem('zestia_user', JSON.stringify(data))
+    window.dispatchEvent(new Event('zestia-auth-changed'))
   }
 
   function getUser() {
     const raw = localStorage.getItem('zestia_user')
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return null
+    }
   }
 
   function isLoggedIn() {
-    return !!localStorage.getItem('zestia_token')
+    const token = localStorage.getItem('zestia_token')
+    if (tokenIsCurrent(token)) return true
+    if (token) {
+      clearAuthStorage()
+      window.dispatchEvent(new Event('zestia-auth-changed'))
+    }
+    return false
   }
 
   function logout() {
-    localStorage.removeItem('zestia_token')
-    localStorage.removeItem('zestia_user')
+    clearAuthStorage()
+    window.dispatchEvent(new Event('zestia-auth-changed'))
   }
 
   return { saveLogin, getUser, isLoggedIn, logout }

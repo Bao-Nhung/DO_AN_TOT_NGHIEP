@@ -42,6 +42,30 @@ public class LichLamViec {
     @Column(name = "trang_thai")
     private Byte trangThai;
 
+    @Column(name = "ly_do_bao_ban", length = 500)
+    private String lyDoBaoBan;
+
+    @Column(name = "phan_hoi_bao_ban", length = 500)
+    private String phanHoiBaoBan;
+
+    @Column(name = "thoi_gian_xac_nhan")
+    private LocalDateTime thoiGianXacNhan;
+
+    @Column(name = "thoi_gian_bao_ban")
+    private LocalDateTime thoiGianBaoBan;
+
+    @Column(name = "thoi_gian_duyet")
+    private LocalDateTime thoiGianDuyet;
+
+    @Column(name = "nguoi_duyet", length = 150)
+    private String nguoiDuyet;
+
+    @Column(name = "gio_check_in")
+    private LocalDateTime gioCheckIn;
+
+    @Column(name = "gio_check_out")
+    private LocalDateTime gioCheckOut;
+
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
 }

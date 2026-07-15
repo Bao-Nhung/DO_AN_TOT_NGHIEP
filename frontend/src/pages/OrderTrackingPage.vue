@@ -174,12 +174,18 @@
       <div v-if="showCancelModal" class="z-modal-overlay" @click.self="showCancelModal = false" style="z-index: 1060; background: rgba(0,0,0,0.6); position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
         <div class="z-modal bg-white p-4 shadow-lg" style="max-width:500px; width: 90%; border-radius: var(--z-radius-lg)">
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 style="font-size:18px;font-weight:600;margin:0">Lý do huỷ đơn hàng</h3>
+            <h3 style="font-size:18px;font-weight:600;margin:0">
+              {{ cancelStep === 'reason' ? 'Lý do huỷ đơn hàng' : 'Xác nhận mã OTP' }}
+            </h3>
             <button class="z-icon-btn" @click="showCancelModal = false"><i class="bi bi-x-lg"></i></button>
           </div>
-          <p style="font-size:14px;color:var(--z-gray);margin-bottom:20px">Vui lòng cho Zestia biết lý do bạn muốn huỷ đơn hàng này nhé:</p>
+          <p style="font-size:14px;color:var(--z-gray);margin-bottom:20px">
+            {{ cancelStep === 'reason'
+              ? 'Vui lòng cho Zestia biết lý do bạn muốn huỷ đơn hàng này nhé:'
+              : otpMessage }}
+          </p>
           
-          <div class="d-flex flex-column gap-3 mb-4">
+          <div v-if="cancelStep === 'reason'" class="d-flex flex-column gap-3 mb-4">
             <label class="d-flex align-items-center gap-2" style="cursor:pointer">
               <input type="radio" v-model="cancelReason" value="Thay đổi ý định mua">
               <span style="font-size:14px;color:var(--z-dark)">Thay đổi ý định mua</span>
@@ -210,10 +216,48 @@
             ></textarea>
           </div>
 
+          <div v-else class="mb-4">
+            <label class="form-label" style="font-size:13px;font-weight:600">Mã OTP gồm 6 chữ số</label>
+            <input
+              v-model="cancelOtp"
+              class="lm-input text-center"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              placeholder="000000"
+              style="font-size:22px;letter-spacing:8px;font-weight:700"
+              @input="normalizeCancelOtp"
+            />
+            <button
+              type="button"
+              class="btn btn-link p-0 mt-3"
+              style="font-size:13px;color:var(--z-accent);text-decoration:none"
+              :disabled="sendingOtp"
+              @click="requestCancelOtp"
+            >
+              {{ sendingOtp ? 'Đang gửi...' : 'Gửi lại mã OTP' }}
+            </button>
+          </div>
+
           <div class="d-flex justify-content-end gap-2">
             <button class="lm-btn-secondary py-2 px-4" style="height:auto; font-size: 13px;" @click="showCancelModal = false">Đóng</button>
-            <button class="z-danger-action-btn py-2 px-4" style="height:auto; font-size: 13px;" @click="submitCancelOrder">
-              <span>Xác nhận huỷ</span>
+            <button
+              v-if="cancelStep === 'reason'"
+              class="z-danger-action-btn py-2 px-4"
+              style="height:auto; font-size: 13px;"
+              :disabled="sendingOtp"
+              @click="requestCancelOtp"
+            >
+              <span>{{ sendingOtp ? 'Đang gửi...' : 'Gửi mã OTP' }}</span>
+            </button>
+            <button
+              v-else
+              class="z-danger-action-btn py-2 px-4"
+              style="height:auto; font-size: 13px;"
+              :disabled="cancelling || cancelOtp.length !== 6"
+              @click="submitCancelOrder"
+            >
+              <span>{{ cancelling ? 'Đang huỷ...' : 'Xác nhận huỷ' }}</span>
             </button>
           </div>
         </div>
@@ -245,6 +289,11 @@ const form = ref({
 const showCancelModal = ref(false)
 const cancelReason = ref('')
 const otherCancelReason = ref('')
+const cancelStep = ref('reason')
+const cancelOtp = ref('')
+const otpMessage = ref('Mã OTP sẽ được gửi đến email nhận hóa đơn của bạn.')
+const sendingOtp = ref(false)
+const cancelling = ref(false)
 const payingId = ref(null)
 
 onMounted(() => {
@@ -300,26 +349,65 @@ async function repayOrder(order) {
 function openCancel(order) {
   cancelReason.value = ''
   otherCancelReason.value = ''
+  cancelStep.value = 'reason'
+  cancelOtp.value = ''
+  otpMessage.value = 'Mã OTP sẽ được gửi đến email nhận hóa đơn của bạn.'
   showCancelModal.value = true
 }
 
-async function submitCancelOrder() {
+function getCancelReason() {
   if (!cancelReason.value) {
     showToast('Vui lòng chọn lý do hủy!', 'warning')
-    return
+    return null
   }
   const finalReason = cancelReason.value === 'Khác' ? otherCancelReason.value : cancelReason.value
   if (cancelReason.value === 'Khác' && !finalReason.trim()) {
     showToast('Vui lòng nhập lý do cụ thể!', 'warning')
+    return null
+  }
+  return finalReason.trim()
+}
+
+function normalizeCancelOtp() {
+  cancelOtp.value = cancelOtp.value.replace(/\D/g, '').slice(0, 6)
+}
+
+async function requestCancelOtp() {
+  if (!getCancelReason()) return
+
+  sendingOtp.value = true
+  try {
+    const res = await api().requestGuestCancelOtp(
+      currentOrder.value.id,
+      currentOrder.value.maHoaDon,
+      form.value.soDienThoai.trim()
+    )
+    cancelStep.value = 'otp'
+    cancelOtp.value = ''
+    otpMessage.value = res?.message || `Mã OTP đã được gửi tới ${res?.emailMasked || 'email nhận hóa đơn'}.`
+    showToast('Đã gửi mã OTP qua email', 'success')
+  } catch (e) {
+    showToast(e.error || 'Không thể gửi mã OTP', 'error')
+  } finally {
+    sendingOtp.value = false
+  }
+}
+
+async function submitCancelOrder() {
+  const finalReason = getCancelReason()
+  if (!finalReason) return
+  if (!/^\d{6}$/.test(cancelOtp.value)) {
+    showToast('Vui lòng nhập mã OTP gồm 6 chữ số', 'warning')
     return
   }
 
+  cancelling.value = true
   try {
-    // Sử dụng api để gọi cancelGuestOrder
     const res = await api().cancelGuestOrder(
       currentOrder.value.id,
       currentOrder.value.maHoaDon,
-      currentOrder.value.soDienThoai || '',
+      form.value.soDienThoai.trim(),
+      cancelOtp.value,
       finalReason
     )
     if (res && res.error) {
@@ -332,6 +420,8 @@ async function submitCancelOrder() {
     }
   } catch (e) {
     showToast(e.error || 'Lỗi khi hủy đơn hàng', 'error')
+  } finally {
+    cancelling.value = false
   }
 }
 

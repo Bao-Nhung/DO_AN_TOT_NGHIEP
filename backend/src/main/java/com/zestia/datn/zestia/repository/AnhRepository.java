@@ -8,4 +8,5 @@ import java.util.List;
 public interface AnhRepository extends JpaRepository<Anh, Integer> {
     List<Anh> findByVayIdOrderByIdAsc(Integer vayId);
     List<Anh> findByVayIdAndTrangThai(Integer vayId, Byte trangThai);
+    List<Anh> findByVayIdInAndTrangThaiOrderByIdAsc(List<Integer> vayIds, Byte trangThai);
 }

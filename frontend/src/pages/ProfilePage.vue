@@ -85,8 +85,41 @@
           </div>
 
           <div v-if="activeTab === 'address'">
-            <h2 class="z-display mb-4" style="font-size:28px;font-weight:400">Địa chỉ <em style="font-style:italic;color:var(--z-gray)">giao hàng</em></h2>
-            <div class="row g-4 mb-4" style="background:var(--z-white);padding:24px;border-radius:var(--z-radius-lg);border:1px solid var(--z-gray-border)">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+              <h2 class="z-display mb-0" style="font-size:28px;font-weight:400">Địa chỉ <em style="font-style:italic;color:var(--z-gray)">giao hàng</em></h2>
+              <button v-if="!showAddressForm" class="lm-btn-primary" style="height:40px" @click="resetAddressForm">
+                <i class="bi bi-plus-lg"></i><span>Thêm địa chỉ</span>
+              </button>
+            </div>
+
+            <div v-if="addresses.length" class="z-profile-address-list mb-4">
+              <div v-for="address in addresses" :key="address.id" class="z-profile-address-row">
+                <i class="bi bi-geo-alt"></i>
+                <div class="flex-grow-1">
+                  <div style="font-size:14px;font-weight:500;color:var(--z-dark)">{{ formatAddress(address) }}</div>
+                  <span v-if="address.macDinh" class="z-profile-default-badge">Địa chỉ mặc định</span>
+                </div>
+                <div class="d-flex gap-1">
+                  <button v-if="!address.macDinh" class="z-icon-btn" title="Đặt làm mặc định" @click="setDefaultAddress(address)">
+                    <i class="bi bi-star"></i>
+                  </button>
+                  <button class="z-icon-btn" title="Sửa địa chỉ" @click="startAddressEdit(address)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="z-icon-btn" title="Xoá địa chỉ" @click="removeAddress(address)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="!showAddressForm" class="text-center py-5 mb-4" style="border:1px dashed var(--z-gray-border)">
+              <i class="bi bi-geo-alt" style="font-size:36px;color:var(--z-gray-border)"></i>
+              <p style="font-size:13px;color:var(--z-gray);margin:8px 0 0">Bạn chưa lưu địa chỉ giao hàng.</p>
+            </div>
+
+            <div v-if="showAddressForm" class="mb-4">
+              <h3 style="font-size:16px;font-weight:600;margin-bottom:16px">{{ editingAddressId ? 'Sửa địa chỉ' : 'Thêm địa chỉ mới' }}</h3>
+              <div class="row g-4 mb-3" style="background:var(--z-white);padding:24px;border-radius:var(--z-radius-lg);border:1px solid var(--z-gray-border)">
               <div class="col-md-4">
                 <label class="lm-form-label mb-2">Tỉnh / Thành phố *</label>
                 <select v-model="selectedCity" class="lm-input" @change="onCityChange">
@@ -112,10 +145,20 @@
                 <label class="lm-form-label mb-2">Địa chỉ cụ thể *</label>
                 <input class="lm-input" v-model="specificAddress" placeholder="Số nhà, tên đường, ngõ ngách...">
               </div>
+              <div class="col-12">
+                <label class="d-inline-flex align-items-center gap-2" style="font-size:13px;cursor:pointer">
+                  <input v-model="addressIsDefault" type="checkbox">
+                  Dùng làm địa chỉ mặc định
+                </label>
+              </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="lm-btn-primary" @click="saveAddress" :disabled="savingAddress">
+                  <span>{{ savingAddress ? 'Đang lưu...' : (editingAddressId ? 'Lưu thay đổi' : 'Thêm địa chỉ') }}</span>
+                </button>
+                <button class="lm-btn-secondary" @click="cancelAddressForm">Đóng</button>
+              </div>
             </div>
-            <button class="lm-btn-primary" @click="saveAddress" :disabled="savingAddress">
-              <span>{{ savingAddress ? 'Đang lưu...' : 'Lưu địa chỉ' }}</span>
-            </button>
           </div>
         </div>
       </div>
@@ -307,9 +350,11 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 import OrderTrackingCard from '@/components/OrderTrackingCard.vue'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
+import { useConfirm } from '@/composables/useConfirm'
 
 const router = useRouter()
 const { showToast } = useToast()
+const { confirmDialog } = useConfirm()
 const { getUser, isLoggedIn, logout } = useAuth()
 
 const activeTab = ref('orders')
@@ -331,6 +376,10 @@ const profile = ref({
 })
 
 const addressData = ref([])
+const addresses = ref([])
+const editingAddressId = ref(null)
+const showAddressForm = ref(false)
+const addressIsDefault = ref(false)
 const selectedCity = ref('')
 const selectedDistrict = ref('')
 const selectedWard = ref('')
@@ -356,27 +405,52 @@ function onDistrictChange() {
   selectedWard.value = ''
 }
 
-async function loadProfileAddress() {
+async function loadProfileAddresses() {
   try {
-    const addr = await api().getProfileAddress()
-    if (addr && addr.tinhThanhPho) {
-      const city = addressData.value.find(c => c.name === addr.tinhThanhPho)
-      if (city) {
-        selectedCity.value = city.code
-        const dist = city.districts.find(d => d.name === addr.quanHuyen)
-        if (dist) {
-          selectedDistrict.value = dist.code
-          const ward = dist.wards.find(w => w.name === addr.xaPhuong)
-          if (ward) {
-            selectedWard.value = ward.code
-          }
-        }
-      }
-      specificAddress.value = addr.duong || ''
-    }
+    const data = await api().getProfileAddresses()
+    addresses.value = Array.isArray(data) ? data : []
+    if (!addresses.value.length) resetAddressForm()
   } catch (e) {
     console.error("Lỗi khi tải địa chỉ:", e)
   }
+}
+
+function formatAddress(address) {
+  return [address.duong, address.xaPhuong, address.quanHuyen, address.tinhThanhPho]
+    .filter(Boolean)
+    .join(', ')
+}
+
+function fillAddressForm(address) {
+  const city = addressData.value.find(c => c.name === address.tinhThanhPho)
+  selectedCity.value = city?.code || ''
+  const district = city?.districts?.find(d => d.name === address.quanHuyen)
+  selectedDistrict.value = district?.code || ''
+  const ward = district?.wards?.find(w => w.name === address.xaPhuong)
+  selectedWard.value = ward?.code || ''
+  specificAddress.value = address.duong || ''
+  addressIsDefault.value = Boolean(address.macDinh)
+}
+
+function resetAddressForm() {
+  editingAddressId.value = null
+  selectedCity.value = ''
+  selectedDistrict.value = ''
+  selectedWard.value = ''
+  specificAddress.value = ''
+  addressIsDefault.value = addresses.value.length === 0
+  showAddressForm.value = true
+}
+
+function startAddressEdit(address) {
+  editingAddressId.value = address.id
+  fillAddressForm(address)
+  showAddressForm.value = true
+}
+
+function cancelAddressForm() {
+  showAddressForm.value = false
+  editingAddressId.value = null
 }
 
 async function saveAddress() {
@@ -391,17 +465,50 @@ async function saveAddress() {
     const districtName = availableDistricts.value.find(d => d.code === selectedDistrict.value)?.name || ''
     const wardName = availableWards.value.find(w => w.code === selectedWard.value)?.name || ''
     
-    await api().updateProfileAddress({
+    const payload = {
       tinhThanhPho: cityName,
       quanHuyen: districtName,
       xaPhuong: wardName,
-      duong: specificAddress.value.trim()
-    })
+      duong: specificAddress.value.trim(),
+      macDinh: addressIsDefault.value
+    }
+    if (editingAddressId.value) await api().updateProfileAddressById(editingAddressId.value, payload)
+    else await api().createProfileAddress(payload)
+    await loadProfileAddresses()
+    cancelAddressForm()
     showToast('Đã lưu địa chỉ thành công!', 'success')
   } catch (e) {
     showToast(e.error || 'Lỗi khi lưu địa chỉ', 'error')
   } finally {
     savingAddress.value = false
+  }
+}
+
+async function setDefaultAddress(address) {
+  try {
+    await api().setDefaultProfileAddress(address.id)
+    await loadProfileAddresses()
+    showToast('Đã đổi địa chỉ mặc định', 'success')
+  } catch (e) {
+    showToast(e.error || 'Không thể đổi địa chỉ mặc định', 'error')
+  }
+}
+
+async function removeAddress(address) {
+  const accepted = await confirmDialog({
+    title: 'Xoá địa chỉ',
+    message: `Bạn có chắc muốn xoá địa chỉ ${formatAddress(address)}?`,
+    confirmText: 'Xoá địa chỉ',
+    variant: 'danger'
+  })
+  if (!accepted) return
+  try {
+    await api().deleteProfileAddress(address.id)
+    if (editingAddressId.value === address.id) cancelAddressForm()
+    await loadProfileAddresses()
+    showToast('Đã xoá địa chỉ', 'success')
+  } catch (e) {
+    showToast(e.error || 'Không thể xoá địa chỉ', 'error')
   }
 }
 
@@ -451,14 +558,15 @@ function fmtDate(d) {
 
 const stats = computed(() => {
   const total = orders.value.length
-  const spent = orders.value
-    .filter(o => o.trangThai === 4 || o.trangThai === 3)
+  const paidOrders = orders.value
+    .filter(o => o.daThanhToan === true && ![5, 7, 9].includes(Number(o.trangThai)))
+  const spent = paidOrders
     .reduce((s, o) => s + Number(o.tongTien || 0), 0)
   return [
     { num: String(total), label: 'Tổng đơn' },
     { num: fmtMoney(spent), label: 'Đã chi tiêu' },
     { num: String(Math.floor(spent / 10000)), label: 'Điểm tích luỹ' },
-    { num: total >= 10 ? 'Vàng' : total >= 5 ? 'Bạc' : 'Mới', label: 'Hạng thành viên' },
+    { num: paidOrders.length >= 10 ? 'Vàng' : paidOrders.length >= 5 ? 'Bạc' : 'Mới', label: 'Hạng thành viên' },
   ]
 })
 
@@ -541,9 +649,10 @@ onMounted(async () => {
   await loadOrders()
   
   try {
-    const res = await fetch('https://provinces.open-api.vn/api/?depth=3')
+    const res = await fetch('/data/vietnam-provinces.json')
+    if (!res.ok) throw new Error('Không đọc được dữ liệu tỉnh thành')
     addressData.value = await res.json()
-    await loadProfileAddress()
+    await loadProfileAddresses()
   } catch(e) {
     console.error("Lỗi khi tải danh sách tỉnh thành/địa chỉ mặc định", e)
   }
@@ -636,6 +745,17 @@ const navItems = [
 .lm-status-danger { color: #b91c1c; background: #fee2e2; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 
 .lm-form-label { font-size: 13px; font-weight: 500; color: var(--z-dark); }
+.z-profile-address-list { display: grid; gap: 10px; }
+.z-profile-address-row {
+  display: flex; align-items: flex-start; gap: 12px; padding: 16px;
+  border: 1px solid var(--z-gray-border); background: var(--z-white);
+  border-radius: var(--z-radius);
+}
+.z-profile-address-row > i { color: var(--z-accent); margin-top: 2px; }
+.z-profile-default-badge {
+  display: inline-flex; margin-top: 6px; padding: 2px 8px; border-radius: 12px;
+  background: #dcfce7; color: #166534; font-size: 10px; font-weight: 600;
+}
 
 .z-step { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .z-step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--z-gray-border); transition: all 0.2s; }

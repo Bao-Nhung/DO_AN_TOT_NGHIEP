@@ -22,19 +22,19 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
     /* 1. TỔNG QUAN DASHBOARD */
     @Query(value = """
             SELECT
-                COALESCE((SELECT SUM(hd.tong_tien) FROM Hoa_don hd WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate), 0) AS doanhThu,
-                COALESCE((SELECT SUM(hdct.so_luong * hdct.gia_nhap) FROM Hoa_don hd JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate), 0) AS giaVon,
-                COALESCE((SELECT SUM(hd.tong_tien) FROM Hoa_don hd WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate), 0) -
-                COALESCE((SELECT SUM(hdct.so_luong * hdct.gia_nhap) FROM Hoa_don hd JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate), 0) AS loiNhuanGop,
-                (SELECT COUNT(*) FROM Hoa_don hd WHERE hd.ngay_tao BETWEEN :startDate AND :endDate) AS tongDonHang,
-                (SELECT COUNT(*) FROM Hoa_don hd WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate) AS donHangThanhCong,
-                (SELECT COUNT(*) FROM Khach_hang kh WHERE kh.ngay_tao BETWEEN :startDate AND :endDate) AS khachHangMoi
+                COALESCE((SELECT SUM(hd.tong_tien) FROM Hoa_don hd WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate), 0) AS doanhThu,
+                COALESCE((SELECT SUM(hdct.so_luong * COALESCE(hdct.gia_nhap, 0)) FROM Hoa_don hd JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate), 0) AS giaVon,
+                COALESCE((SELECT SUM(hd.tong_tien) FROM Hoa_don hd WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate), 0) -
+                COALESCE((SELECT SUM(hdct.so_luong * COALESCE(hdct.gia_nhap, 0)) FROM Hoa_don hd JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate), 0) AS loiNhuanGop,
+                (SELECT COUNT(*) FROM Hoa_don hd WHERE hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate) AS tongDonHang,
+                (SELECT COUNT(*) FROM Hoa_don hd WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate) AS donHangThanhCong,
+                (SELECT COUNT(*) FROM Khach_hang kh WHERE kh.ngay_tao >= :startDate AND kh.ngay_tao < :endDate) AS khachHangMoi
             """, nativeQuery = true)
     ThongKeTongQuanDTO getTongQuanTheoThoiGian(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     /* 2. TOP SẢN PHẨM BÁN CHẠY (Giới hạn TOP tự động bằng SQL) */
     @Query(value = """
-            SELECT TOP 10
+            SELECT TOP 5
                 v.ten_vay AS ten,
                 SUM(hdct.so_luong) AS tongSoLuong,
                 SUM(hdct.so_luong * hdct.don_gia) AS doanhThu
@@ -42,7 +42,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
             JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
             JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
             JOIN Vay v ON vct.id_vay = v.id
-            WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate
+            WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY v.id, v.ten_vay
             ORDER BY tongSoLuong DESC
             """, nativeQuery = true)
@@ -55,7 +55,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
             JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
             JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
             JOIN Kich_Thuoc kt ON vct.id_kich_thuoc = kt.id
-            WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate
+            WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY kt.id, kt.ten_kich_thuoc
             ORDER BY tongSoLuong DESC
             """, nativeQuery = true)
@@ -68,7 +68,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
             JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
             JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
             JOIN Mau_Sac ms ON vct.id_mau_sac = ms.id
-            WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate
+            WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY ms.id, ms.ten_mau_sac, ms.ma_hex
             ORDER BY tongSoLuong DESC
             """, nativeQuery = true)
@@ -82,7 +82,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
             JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
             JOIN Vay v ON vct.id_vay = v.id
             JOIN Loai_vay lv ON v.id_loai_vay = lv.id
-            WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate
+            WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY lv.id, lv.ten_loai_vay
             """, nativeQuery = true)
     List<ThongKeDoanhThuDTO> getThongKeDoanhThuTheoDanhMuc(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
@@ -93,25 +93,35 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
                 CASE
                     WHEN hd.trang_thai = 0 THEN N'Chờ xử lý'
                     WHEN hd.trang_thai = 1 THEN N'Đã xác nhận'
-                    WHEN hd.trang_thai = 2 THEN N'Đang giao'
-                    WHEN hd.trang_thai = 3 THEN N'Hoàn thành'
-                    WHEN hd.trang_thai = 4 THEN N'Đã huỷ'
+                    WHEN hd.trang_thai = 2 THEN N'Đang chuẩn bị'
+                    WHEN hd.trang_thai = 3 THEN N'Đang giao hàng'
+                    WHEN hd.trang_thai = 4 THEN N'Hoàn thành'
+                    WHEN hd.trang_thai = 5 THEN N'Đã hủy'
+                    WHEN hd.trang_thai = 6 THEN N'Giao hàng thất bại'
+                    WHEN hd.trang_thai = 7 THEN N'Thanh toán thất bại'
+                    WHEN hd.trang_thai = 8 THEN N'Yêu cầu đổi/trả'
+                    WHEN hd.trang_thai = 9 THEN N'Đã hoàn tiền/hoàn tất'
                     ELSE N'Không xác định'
                 END AS tenTrangThai,
                 COUNT(hd.id) AS soLuong
             FROM Hoa_don hd
-            WHERE hd.ngay_tao BETWEEN :startDate AND :endDate
+            WHERE hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY hd.trang_thai
             """, nativeQuery = true)
     List<ThongKeTrangThaiDTO> getTyLeTrangThaiDonHang(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     /* 7. DOANH THU & TĂNG TRƯỞNG THEO NGÀY (Để vẽ Line Chart thời gian ngắn) */
     @Query(value = """
-            SELECT FORMAT(hd.ngay_tao, 'yyyy-MM-dd') AS thoiGian, SUM(hd.tong_tien) AS doanhThu, 
-                   SUM(hd.tong_tien) - SUM(hdct.so_luong * hdct.gia_nhap) AS loiNhuan
+            SELECT FORMAT(hd.ngay_tao, 'yyyy-MM-dd') AS thoiGian,
+                   SUM(hd.tong_tien) AS doanhThu,
+                   SUM(hd.tong_tien) - SUM(COALESCE(cost.giaVon, 0)) AS loiNhuan
             FROM Hoa_don hd
-            JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
-            WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate
+            LEFT JOIN (
+                SELECT id_hoa_don, SUM(so_luong * COALESCE(gia_nhap, 0)) AS giaVon
+                FROM Hoa_don_chi_tiet
+                GROUP BY id_hoa_don
+            ) cost ON hd.id = cost.id_hoa_don
+            WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY FORMAT(hd.ngay_tao, 'yyyy-MM-dd')
             ORDER BY thoiGian
             """, nativeQuery = true)
@@ -120,7 +130,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
     @Query(value = """
             SELECT FORMAT(kh.ngay_tao, 'yyyy-MM-dd') AS thoiGian, COUNT(kh.id) AS soLuongKHMoi
             FROM Khach_hang kh
-            WHERE kh.ngay_tao BETWEEN :startDate AND :endDate
+            WHERE kh.ngay_tao >= :startDate AND kh.ngay_tao < :endDate
             GROUP BY FORMAT(kh.ngay_tao, 'yyyy-MM-dd')
             ORDER BY thoiGian
             """, nativeQuery = true)
@@ -128,11 +138,16 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
 
     /* 8. DOANH THU & TĂNG TRƯỞNG THEO THÁNG (Để vẽ Line Chart thời gian dài) */
     @Query(value = """
-            SELECT FORMAT(hd.ngay_tao, 'yyyy-MM') AS thoiGian, SUM(hd.tong_tien) AS doanhThu, 
-                   SUM(hd.tong_tien) - SUM(hdct.so_luong * hdct.gia_nhap) AS loiNhuan
+            SELECT FORMAT(hd.ngay_tao, 'yyyy-MM') AS thoiGian,
+                   SUM(hd.tong_tien) AS doanhThu,
+                   SUM(hd.tong_tien) - SUM(COALESCE(cost.giaVon, 0)) AS loiNhuan
             FROM Hoa_don hd
-            JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
-            WHERE hd.trang_thai = 3 AND hd.ngay_tao BETWEEN :startDate AND :endDate
+            LEFT JOIN (
+                SELECT id_hoa_don, SUM(so_luong * COALESCE(gia_nhap, 0)) AS giaVon
+                FROM Hoa_don_chi_tiet
+                GROUP BY id_hoa_don
+            ) cost ON hd.id = cost.id_hoa_don
+            WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY FORMAT(hd.ngay_tao, 'yyyy-MM')
             ORDER BY thoiGian
             """, nativeQuery = true)
@@ -141,7 +156,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
     @Query(value = """
             SELECT FORMAT(kh.ngay_tao, 'yyyy-MM') AS thoiGian, COUNT(kh.id) AS soLuongKHMoi
             FROM Khach_hang kh
-            WHERE kh.ngay_tao BETWEEN :startDate AND :endDate
+            WHERE kh.ngay_tao >= :startDate AND kh.ngay_tao < :endDate
             GROUP BY FORMAT(kh.ngay_tao, 'yyyy-MM')
             ORDER BY thoiGian
             """, nativeQuery = true)

@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Quản lý đơn hàng</h1>
-        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ filteredOrders.length }} đơn hàng</p>
+        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ totalItems }} đơn hàng</p>
       </div>
     </div>
 
@@ -58,7 +58,8 @@
     </div>
 
     <div class="z-admin-card" style="padding:0;overflow:hidden">
-      <table class="z-table">
+      <div class="table-responsive">
+      <table class="z-table" style="min-width:1050px">
         <thead>
           <tr>
             <th>Mã đơn</th>
@@ -102,22 +103,23 @@
           </tr>
         </tbody>
       </table>
+      </div>
 
-      <div v-if="filteredOrders.length === 0" class="text-center py-5">
+      <div v-if="totalItems === 0" class="text-center py-5">
         <i class="bi bi-inbox" style="font-size:36px;color:var(--z-gray-border)"></i>
         <p style="color:var(--z-gray);font-size:14px;margin-top:8px">Không có đơn hàng nào</p>
       </div>
 
       <!-- Pagination Controls -->
-      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
         <span style="font-size: 13px; color: var(--z-gray)">
-          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredOrders.length) }} trong tổng số {{ filteredOrders.length }} đơn hàng
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} đơn hàng
         </span>
         <div class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
-          <button v-for="page in totalPages" :key="page" 
+          <button v-for="page in pageNumbers" :key="page"
                   class="lm-btn-secondary" 
                   :style="{
                     padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
@@ -150,7 +152,13 @@
 
         <div v-else-if="detailData">
           <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
-            <template v-if="detailData.trangThai === 7">
+            <template v-if="detailData.hinhThucNhanHang === 0">
+               <span class="z-offline-order-status" :class="offlineOrderStatus(detailData).cls">
+                 <i class="bi" :class="offlineOrderStatus(detailData).icon"></i>
+                 {{ offlineOrderStatus(detailData).label }}
+               </span>
+            </template>
+            <template v-else-if="detailData.trangThai === 7">
                <div class="z-step active">
                   <div class="z-step-dot" style="background: var(--z-danger);"></div>
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Thanh toán thất bại</div>
@@ -189,30 +197,8 @@
                     <div class="col-12">
                       <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Khách hàng</div>
                       <div style="font-size:14px;font-weight:500" class="d-flex align-items-center gap-2">
-                        <template v-if="!editingCustomer">
-                          <span>{{ detailData.tenKhachHang || detailData.khachHang || 'Khách lẻ' }}</span>
-                          <span v-if="detailData.soDienThoai"> - {{ detailData.soDienThoai }}</span>
-                          
-                          <button v-if="detailData.hinhThucNhanHang === 0" 
-                                  class="z-action-btn d-inline-flex align-items-center justify-content-center" 
-                                  style="width:24px; height:24px; font-size:11px;"
-                                  title="Chỉnh sửa thông tin khách" 
-                                  @click="startEditCustomer">
-                            <i class="bi bi-pencil"></i>
-                          </button>
-                        </template>
-                        <template v-else>
-                          <div class="d-flex gap-2 align-items-center flex-wrap">
-                            <input v-model="editCustForm.tenKhachHang" class="lm-input" style="padding:4px 8px; font-size:12px; max-width:140px;" placeholder="Tên khách">
-                            <input v-model="editCustForm.soDienThoai" class="lm-input" style="padding:4px 8px; font-size:12px; max-width:110px;" placeholder="SĐT">
-                            <button class="lm-btn-primary" style="padding:4px 10px; font-size:11px; height:auto; border-radius:4px" @click="saveCustomerInfo" :disabled="savingCustomer">
-                              Lưu
-                            </button>
-                            <button class="lm-btn-secondary" style="padding:4px 10px; font-size:11px; height:auto; border-radius:4px" @click="editingCustomer = false">
-                              Hủy
-                            </button>
-                          </div>
-                        </template>
+                        <span>{{ detailData.tenKhachHang || detailData.khachHang || 'Khách lẻ' }}</span>
+                        <span v-if="detailData.soDienThoai"> - {{ detailData.soDienThoai }}</span>
                       </div>
                       <div style="font-size:13px; color:var(--z-gray);" v-if="detailData.emailKhachHang">{{ detailData.emailKhachHang }}</div>
                     </div>
@@ -261,6 +247,10 @@
 
                   <div v-if="detailData.ghiChu" class="mb-3 p-3" style="background:#fef3cd;border-radius:var(--z-radius);font-size:13px">
                     <strong>Ghi chú:</strong> {{ detailData.ghiChu }}
+                  </div>
+                  <div v-if="detailData.thongTinHoanTien" class="mb-3 p-3 z-refund-info">
+                    <strong>Thông tin nhận tiền hoàn:</strong>
+                    <div class="mt-1">{{ detailData.thongTinHoanTien }}</div>
                   </div>
                   <div v-if="detailData.auditLogs?.length" class="mb-3">
                     <h4 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--z-dark)">Lịch sử thao tác</h4>
@@ -344,17 +334,7 @@
               <i class="bi bi-trash me-1"></i> Huỷ đơn
             </button>
             
-            <button v-if="detailData.trangThai === 4" class="z-btn-action z-btn-secondary"
-                    @click="confirmReturnProcess(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) }, 8)">
-              <i class="bi bi-arrow-counterclockwise me-1"></i> Tiếp nhận đổi/trả
-            </button>
-
-            <button v-if="detailData.trangThai === 8" class="z-btn-action z-btn-primary"
-                    @click="confirmReturnProcess(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) }, 9)">
-              <i class="bi bi-cash-coin me-1"></i> Hoàn tiền/hoàn tất
-            </button>
-
-            <button v-if="canAdvance({ statusValue: detailData.trangThai })" class="z-btn-action z-btn-primary" 
+            <button v-if="detailData.hinhThucNhanHang !== 0 && canAdvance({ statusValue: detailData.trangThai })" class="z-btn-action z-btn-primary"
                     @click="confirmAdvance(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai), isCod: (detailData.hinhThucThanhToan || '').toUpperCase().includes('COD'), paid: detailData.daThanhToan })">
               <i class="bi bi-check-circle me-1"></i> {{ nextStatusLabel({ statusValue: detailData.trangThai }) }}
             </button>
@@ -441,32 +421,10 @@ const loadingDetail = ref(false)
 const orderTypeTab = ref('all') // 'all', 'online', 'offline'
 const currentPage = ref(1)
 const itemsPerPage = 10
-
-const editingCustomer = ref(false)
-const savingCustomer = ref(false)
-const editCustForm = ref({ tenKhachHang: '', soDienThoai: '' })
-
-function startEditCustomer() {
-  editCustForm.value.tenKhachHang = detailData.value.tenKhachHang || detailData.value.khachHang || ''
-  if (editCustForm.value.tenKhachHang === 'Khách lẻ') editCustForm.value.tenKhachHang = ''
-  editCustForm.value.soDienThoai = detailData.value.soDienThoai || ''
-  editingCustomer.value = true
-}
-
-async function saveCustomerInfo() {
-  savingCustomer.value = true
-  try {
-    const updated = await api().updateOrderCustomer(detailData.value.id, editCustForm.value)
-    detailData.value = updated
-    showToast('Cập nhật thông tin khách hàng thành công!')
-    editingCustomer.value = false
-    await loadOrders()
-  } catch (e) {
-    showToast('Lỗi: ' + (e.message || 'Không thể lưu'))
-  } finally {
-    savingCustomer.value = false
-  }
-}
+const totalItems = ref(0)
+const totalPages = ref(0)
+const allStatusesTotal = ref(0)
+const statusCounts = ref({})
 
 const showConfirm = ref(false)
 const confirmTitle = ref('')
@@ -501,34 +459,51 @@ onUnmounted(() => {
 
 async function loadOrdersSilent() {
     try {
-        const data = await api().getHoaDon()
+        const data = await fetchOrderPage()
         processOrderData(data)
     } catch(e) { }
 }
 
 async function loadOrders() {
   try {
-    const data = await api().getHoaDon()
+    const data = await fetchOrderPage()
     processOrderData(data)
   } catch (e) { console.error('Không thể tải đơn hàng:', e) }
 }
 
+function fetchOrderPage() {
+  const orderType = orderTypeTab.value === 'offline' ? 0 : orderTypeTab.value === 'online' ? 1 : null
+  return api().getHoaDonPage({
+    page: currentPage.value - 1,
+    size: itemsPerPage,
+    q: search.value.trim() || null,
+    status: activeStatus.value === 'all' ? null : activeStatus.value,
+    orderType
+  })
+}
+
 function processOrderData(data) {
-    rawOrders.value = data
-    const sorted = [...data].sort((a, b) => {
+    const rows = data.content || []
+    rawOrders.value = rows
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Number(data.totalPages || 0)
+    allStatusesTotal.value = Number(data.allStatusesTotal || 0)
+    statusCounts.value = data.statusCounts || {}
+    const sorted = [...rows].sort((a, b) => {
       const da = a.ngayTao ? new Date(a.ngayTao).getTime() : 0
       const db = b.ngayTao ? new Date(b.ngayTao).getTime() : 0
       return db - da
     })
     allOrders.value = sorted.map(o => {
       const st = statusMap[o.trangThai] || statusMap[0]
+      const displayStatus = Number(o.hinhThucNhanHang) === 0 ? offlineOrderTableStatus(o) : st
       const method = o.hinhThucThanhToan || 'N/A'
       return {
         id: o.maHoaDon, dbId: o.id, customer: o.khachHang || 'Khách lẻ', phone: o.soDienThoai || '',
         items: o.soSanPham || 0, total: fmtPrice(o.tongTien), payment: method,
         paid: o.daThanhToan === true,
         isCod: method.toUpperCase().includes('COD') || method.toUpperCase().includes('TIỀN MẶT') || method.toLowerCase().includes('nhận hàng'),
-        status: st.text, statusClass: st.cls, statusValue: String(o.trangThai ?? 0),
+        status: displayStatus.text, statusClass: displayStatus.cls, statusValue: String(o.trangThai ?? 0),
         date: o.ngayTao ? new Date(o.ngayTao).toLocaleDateString('vi-VN') : '',
         raw: o
       }
@@ -536,41 +511,39 @@ function processOrderData(data) {
 }
 
 const statusTabs = computed(() => [
-  { label: 'Tất cả',        value: 'all',  count: allOrders.value.length },
-  { label: 'Chờ xử lý',     value: '0',    count: allOrders.value.filter(o => o.statusValue === '0').length },
-  { label: 'Đã xác nhận',   value: '1',    count: allOrders.value.filter(o => o.statusValue === '1').length },
-  { label: 'Đang chuẩn bị', value: '2',    count: allOrders.value.filter(o => o.statusValue === '2').length },
-  { label: 'Đang giao',     value: '3',    count: allOrders.value.filter(o => o.statusValue === '3').length },
-  { label: 'Hoàn thành',    value: '4',    count: allOrders.value.filter(o => o.statusValue === '4').length },
-  { label: 'Đã huỷ',        value: '5',    count: allOrders.value.filter(o => o.statusValue === '5').length },
-  { label: 'Giao thất bại', value: '6',    count: allOrders.value.filter(o => o.statusValue === '6').length },
-  { label: 'Thanh toán thất bại', value: '7', count: allOrders.value.filter(o => o.statusValue === '7').length },
-  { label: 'Yêu cầu đổi/trả', value: '8', count: allOrders.value.filter(o => o.statusValue === '8').length },
-  { label: 'Đã hoàn tiền', value: '9', count: allOrders.value.filter(o => o.statusValue === '9').length },
+  { label: 'Tất cả',        value: 'all', count: allStatusesTotal.value },
+  { label: 'Chờ xử lý',     value: '0', count: Number(statusCounts.value['0'] || 0) },
+  { label: 'Đã xác nhận',   value: '1', count: Number(statusCounts.value['1'] || 0) },
+  { label: 'Đang chuẩn bị', value: '2', count: Number(statusCounts.value['2'] || 0) },
+  { label: 'Đang giao',     value: '3', count: Number(statusCounts.value['3'] || 0) },
+  { label: 'Hoàn thành',    value: '4', count: Number(statusCounts.value['4'] || 0) },
+  { label: 'Đã huỷ',        value: '5', count: Number(statusCounts.value['5'] || 0) },
+  { label: 'Giao thất bại', value: '6', count: Number(statusCounts.value['6'] || 0) },
+  { label: 'Thanh toán thất bại', value: '7', count: Number(statusCounts.value['7'] || 0) },
+  { label: 'Yêu cầu đổi/trả', value: '8', count: Number(statusCounts.value['8'] || 0) },
+  { label: 'Đã hoàn tiền', value: '9', count: Number(statusCounts.value['9'] || 0) },
 ])
 
-const filteredOrders = computed(() => {
-  return allOrders.value.filter(o => {
-    const matchSearch = !search.value || o.id.toLowerCase().includes(search.value.toLowerCase()) || o.customer.toLowerCase().includes(search.value.toLowerCase())
-    const matchStatus = activeStatus.value === 'all' || o.statusValue === activeStatus.value
-    
-    const isOffline = o.raw?.hinhThucNhanHang === 0
-    const matchType = orderTypeTab.value === 'all' || (orderTypeTab.value === 'offline' && isOffline) || (orderTypeTab.value === 'online' && !isOffline)
-    
-    return matchSearch && matchStatus && matchType
-  })
+const filteredOrders = computed(() => allOrders.value)
+const paginatedOrders = computed(() => allOrders.value)
+const pageNumbers = computed(() => {
+  const start = Math.max(1, Math.min(currentPage.value - 2, totalPages.value - 4))
+  const end = Math.min(totalPages.value, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
 })
 
-const totalPages = computed(() => Math.ceil(filteredOrders.value.length / itemsPerPage))
-
-const paginatedOrders = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredOrders.value.slice(start, start + itemsPerPage)
+let orderSearchTimer
+watch(search, () => {
+  clearTimeout(orderSearchTimer)
+  orderSearchTimer = setTimeout(resetOrderPage, 300)
 })
+watch([activeStatus, orderTypeTab], resetOrderPage)
+watch(currentPage, loadOrders)
 
-watch([search, activeStatus, orderTypeTab], () => {
-  currentPage.value = 1
-})
+function resetOrderPage() {
+  if (currentPage.value === 1) loadOrders()
+  else currentPage.value = 1
+}
 
 function canAdvance(o) {
   const v = Number(o.statusValue)
@@ -625,18 +598,20 @@ function confirmCancel(o) {
   showConfirm.value = true
 }
 
-function confirmReturnProcess(o, nextStatus) {
-  const isRefund = Number(nextStatus) === 9
-  confirmTitle.value = isRefund ? 'Hoàn tiền/hoàn tất đổi trả' : 'Tiếp nhận yêu cầu đổi/trả'
-  confirmMessage.value = isRefund
-    ? `Xác nhận đã xử lý hoàn tiền/đổi trả cho đơn hàng ${o.id}?`
-    : `Tiếp nhận yêu cầu đổi/trả cho đơn hàng ${o.id}?`
-  confirmType.value = isRefund ? 'refund' : 'return'
-  confirmOrder.value = o
-  confirmNewStatus.value = nextStatus
-  actionNote.value = ''
-  confirmPaid.value = false
-  showConfirm.value = true
+function offlineOrderStatus(order) {
+  if (order.returnRequestStatus === 'DA_HOAN_TIEN') return { label: 'Đã hoàn tiền', cls: 'refunded', icon: 'bi-arrow-counterclockwise' }
+  if (order.returnRequestStatus === 'DA_DOI') return { label: 'Đã đổi hàng', cls: 'paid', icon: 'bi-arrow-left-right' }
+  if (['CHO_DUYET', 'CHO_NHAN_HANG', 'CHO_HOAN_TAT'].includes(order.returnRequestStatus)) return { label: 'Đang xử lý đổi/trả', cls: 'pending', icon: 'bi-arrow-repeat' }
+  if (order.returnRequestStatus === 'TU_CHOI' || order.returnRequestStatus === 'TRA_LAI_KHACH') return { label: 'Đổi/trả không được duyệt', cls: 'cancelled', icon: 'bi-x-circle' }
+  if (Number(order.trangThai) === 5) return { label: 'Đã huỷ', cls: 'cancelled', icon: 'bi-x-circle' }
+  if (order.daThanhToan) return { label: 'Đã thanh toán tại quầy', cls: 'paid', icon: 'bi-check-circle' }
+  return { label: 'Chưa thanh toán tại quầy', cls: 'pending', icon: 'bi-clock' }
+}
+
+function offlineOrderTableStatus(order) {
+  const info = offlineOrderStatus(order)
+  const cls = info.cls === 'paid' ? 'success' : info.cls === 'pending' ? 'warning' : 'danger'
+  return { text: info.label, cls }
 }
 
 async function executeAction() {
@@ -731,6 +706,10 @@ async function openDetail(o) {
 }
 .z-pay-badge.paid { background: #dcfce7; color: #16a34a; }
 .z-pay-badge.unpaid { background: #fef3cd; color: #b45309; }
+.z-offline-order-status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; font-size: 12px; font-weight: 600; }
+.z-offline-order-status.paid { color: #166534; background: #dcfce7; }
+.z-offline-order-status.pending { color: #92400e; background: #fef3c7; }
+.z-offline-order-status.refunded, .z-offline-order-status.cancelled { color: #991b1b; background: #fee2e2; }
 .z-cod-paid {
   background: #fff8e1; border: 1px solid #fde68a; border-radius: var(--z-radius); padding: 12px 14px;
 }
@@ -761,6 +740,15 @@ async function openDetail(o) {
 .z-btn-action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.z-refund-info {
+  border: 1px solid #bfdbfe;
+  border-radius: var(--z-radius);
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 /* Nút Primary (Giống nút Tra cứu) - Màu cam */

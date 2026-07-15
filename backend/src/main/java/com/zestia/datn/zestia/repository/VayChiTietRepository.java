@@ -3,6 +3,7 @@ package com.zestia.datn.zestia.repository;
 import com.zestia.datn.zestia.entity.VayChiTiet;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -34,6 +35,15 @@ public interface VayChiTietRepository extends JpaRepository<VayChiTiet, Integer>
     List<VayChiTiet> findByKichThuocId(Integer kichThuocId);
 
     List<VayChiTiet> findByTrangThai(Byte trangThai);
+
+    @Query("""
+            SELECT v.id, v.vay.id, v.vay.tenVay, v.vay.maVay,
+                   v.mauSac.tenMauSac, v.kichThuoc.tenKichThuoc, COALESCE(v.soLuong, 0)
+            FROM VayChiTiet v
+            WHERE v.trangThai = 1 AND v.vay.trangThai = 1 AND COALESCE(v.soLuong, 0) <= 5
+            ORDER BY COALESCE(v.soLuong, 0), v.id
+            """)
+    List<Object[]> findLowStockSummary(Pageable pageable);
 
     Optional<VayChiTiet> findByMaVayChiTiet(String maVayChiTiet);
 

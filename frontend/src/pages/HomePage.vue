@@ -19,13 +19,13 @@
       </div>
 
       <div class="z-hero-proof">
-        <div><strong>200+</strong><span>Thiết kế tuyển chọn</span></div>
-        <div><strong>4.9/5</strong><span>Đánh giá trải nghiệm</span></div>
-        <div><strong>24h</strong><span>Hỗ trợ đổi size</span></div>
+        <div><strong>{{ storefront.activeProductCount || 0 }}</strong><span>Sản phẩm đang bán</span></div>
+        <div><strong>{{ ratingLabel }}</strong><span>{{ storefront.reviewCount || 0 }} đánh giá đã mua</span></div>
+        <div><strong>{{ sizeExchangeLabel }}</strong><span>Hỗ trợ đổi size</span></div>
       </div>
     </section>
 
-    <MarqueeStrip />
+    <MarqueeStrip :items="marqueeItems" />
 
     <section class="z-service-strip">
       <div v-for="item in serviceHighlights" :key="item.title" class="z-service-item lm-reveal">
@@ -53,14 +53,14 @@
           <div class="col-lg-5 lm-reveal">
             <CollectionCard label="Mới nhất" name="Váy Lụa Truyền Thống" letter="Z"
                             image="/images/banners/banner6.png"
-                            bg="linear-gradient(160deg,#F3E8E6,#D4A99E 40%,#C08B7E)" tall />
+                            bg="linear-gradient(160deg,#F3E8E6,#D4A99E 40%,#C08B7E)" to="/collections?sort=newest" tall />
           </div>
           <div class="col-lg-7">
             <div class="row g-3">
-              <div class="col-6 lm-reveal"><CollectionCard label="Bán chạy" name="Váy Cách Tân" letter="e" image="/images/banners/banner7.png" bg="linear-gradient(160deg,#E8DDD6,#C4A98E)" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Dự tiệc" name="Váy Dạ Hội" letter="s" image="/images/banners/banner8.png" bg="linear-gradient(160deg,#E6E0DA,#A8A49E)" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Cưới hỏi" name="Váy Cưới" letter="t" image="/images/banners/banner9.png" bg="linear-gradient(160deg,#F0E8E0,#D4C0A8)" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Đi làm" name="Váy Công Sở" letter="ia" image="/images/banners/banner2.png" bg="linear-gradient(160deg,#E4DDD2,#C0B49E)" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Bán chạy" name="Váy Cách Tân" letter="e" image="/images/banners/banner7.png" bg="linear-gradient(160deg,#E8DDD6,#C4A98E)" to="/collections?sort=bestseller" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Dự tiệc" name="Váy Dạ Hội" letter="s" image="/images/banners/banner8.png" bg="linear-gradient(160deg,#E6E0DA,#A8A49E)" to="/collections?occasion=party" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Cưới hỏi" name="Váy Cưới" letter="t" image="/images/banners/banner9.png" bg="linear-gradient(160deg,#F0E8E0,#D4C0A8)" to="/collections?occasion=wedding" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Đi làm" name="Váy Công Sở" letter="ia" image="/images/banners/banner2.jpg" bg="linear-gradient(160deg,#E4DDD2,#C0B49E)" to="/collections?occasion=work" /></div>
             </div>
           </div>
         </div>
@@ -83,7 +83,25 @@
           <span>Hẹn hò</span>
           <span>Lookbook</span>
         </div>
-        <RouterLink to="/collections" class="lm-btn-primary align-self-start"><span>Tìm phong cách của tôi</span></RouterLink>
+        <RouterLink to="/lookbook" class="lm-btn-primary align-self-start"><span>Tìm phong cách của tôi</span></RouterLink>
+      </div>
+    </section>
+
+    <section v-if="bestsellers.length" class="lm-section z-bestseller-band">
+      <div class="container">
+        <div class="d-flex justify-content-between align-items-end mb-5 lm-reveal flex-wrap gap-3">
+          <div>
+            <p class="lm-eyebrow mb-2">Từ đơn hàng đã hoàn thành</p>
+            <h2 class="lm-section-title">Được chọn <em>nhiều nhất</em></h2>
+          </div>
+          <RouterLink to="/collections?sort=bestseller" class="lm-btn-secondary">Xem bộ lọc bán chạy</RouterLink>
+        </div>
+        <div class="row g-4">
+          <div v-for="item in bestsellers" :key="item.product.id" class="col-6 col-lg-3 lm-reveal">
+            <ProductCard :product="item.product" />
+            <p class="z-sales-note">{{ item.soldQuantity }} sản phẩm đã giao</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -102,6 +120,47 @@
           <div v-for="(p, i) in newArrivals" :key="p.id"
                class="col-6 col-lg-3 lm-reveal" :style="{ transitionDelay: i * 0.1 + 's' }">
             <ProductCard :product="p" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="recentlyViewed.length" class="lm-section z-recent-band">
+      <div class="container">
+        <div class="d-flex justify-content-between align-items-end mb-5 flex-wrap gap-3">
+          <div>
+            <p class="lm-eyebrow mb-2">Theo tài khoản của bạn</p>
+            <h2 class="lm-section-title">Sản phẩm <em>đã xem</em></h2>
+          </div>
+          <RouterLink to="/profile" class="lm-btn-secondary">Quản lý tài khoản</RouterLink>
+        </div>
+        <div class="row g-4">
+          <div v-for="product in recentlyViewed" :key="product.id" class="col-6 col-lg-3">
+            <ProductCard :product="product" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="storefront.reviewHighlights?.length" class="z-review-band">
+      <div class="container">
+        <div class="d-flex justify-content-between align-items-end mb-5 flex-wrap gap-3">
+          <div>
+            <p class="lm-eyebrow mb-2">Người mua nói gì</p>
+            <h2 class="lm-section-title">Trải nghiệm <em>đã xác minh</em></h2>
+          </div>
+          <RouterLink to="/reviews" class="lm-btn-secondary">Xem tất cả đánh giá <i class="bi bi-arrow-right ms-1"></i></RouterLink>
+        </div>
+        <div class="row g-3">
+          <div v-for="review in storefront.reviewHighlights.slice(0, 3)" :key="review.id" class="col-md-4">
+            <article class="z-review-quote">
+              <div class="z-review-stars" :aria-label="`${review.stars} trên 5 sao`">
+                <i v-for="star in 5" :key="star" class="bi" :class="star <= review.stars ? 'bi-star-fill' : 'bi-star'"></i>
+              </div>
+              <p>“{{ review.content }}”</p>
+              <strong>{{ review.customerName }}</strong>
+              <RouterLink :to="`/product/${review.productId}`">{{ review.productName }}</RouterLink>
+            </article>
           </div>
         </div>
       </div>
@@ -141,7 +200,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import MarqueeStrip from '@/components/ui/MarqueeStrip.vue'
 import ProductCard from '@/components/ui/ProductCard.vue'
 import CollectionCard from '@/components/ui/CollectionCard.vue'
@@ -149,28 +208,74 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 import { useToast } from '@/composables/useToast'
 import { useReveal } from '@/composables/useReveal'
 import { products, loadProducts } from '@/composables/useProducts'
-import { api } from '@/composables/useApi'
+import { api, useAuth } from '@/composables/useApi'
 
 useReveal()
 const { showToast } = useToast()
 const newsletterEmail = ref('')
 const newsletterLoading = ref(false)
+const recentProductIds = ref([])
+const { isLoggedIn, getUser } = useAuth()
+const storefront = reactive({
+  activeProductCount: 0,
+  categoryCount: 0,
+  customerCount: 0,
+  completedOrderCount: 0,
+  averageRating: 0,
+  reviewCount: 0,
+  bestsellers: [],
+  reviewHighlights: [],
+  policies: []
+})
 
 const newArrivals = computed(() => products.value.slice(0, 4))
-const serviceHighlights = [
+const bestsellers = computed(() => (storefront.bestsellers || []).map(sale => ({
+  soldQuantity: Number(sale.soldQuantity || 0),
+  product: products.value.find(product => Number(product.id) === Number(sale.productId))
+})).filter(item => item.product).slice(0, 4))
+const recentlyViewed = computed(() => recentProductIds.value
+  .map(id => products.value.find(product => Number(product.id) === Number(id)))
+  .filter(Boolean)
+  .slice(0, 4))
+const ratingLabel = computed(() => storefront.reviewCount
+  ? `${Number(storefront.averageRating || 0).toFixed(1)}/5`
+  : 'Chưa có')
+const sizeExchangeLabel = computed(() => {
+  const policy = storefront.policies?.find(item => item.code === 'SIZE_EXCHANGE')
+  return policy?.numericValue ? `${policy.numericValue}${policy.unit === 'giờ' ? 'h' : ' ' + policy.unit}` : 'Theo chính sách'
+})
+const marqueeItems = computed(() => [
+  'Bộ Sưu Tập Mới',
+  ...(storefront.policies || []).slice(0, 4).map(policy => policy.title),
+  'Zestia Fashion'
+])
+const serviceHighlights = computed(() => [
   { icon: 'bi-rulers', title: 'Tư vấn chọn size', text: 'Giảm rủi ro đổi trả khi mua váy online.' },
   { icon: 'bi-stars', title: 'Chất liệu chọn lọc', text: 'Ưu tiên bề mặt vải đẹp, dễ mặc và lên dáng.' },
-  { icon: 'bi-arrow-repeat', title: 'Đổi size linh hoạt', text: 'Hỗ trợ đổi size trong 24h cho đơn phù hợp.' },
+  { icon: 'bi-arrow-repeat', title: 'Đổi size linh hoạt', text: `${sizeExchangeLabel.value} cho sản phẩm đủ điều kiện.` },
   { icon: 'bi-gift', title: 'Voucher thành viên', text: 'Hiển thị mã đang hoạt động ngay khi thanh toán.' },
-]
-const stats = [
-  { num: '6', label: 'Dòng sản phẩm' },
-  { num: '200', label: 'Thiết kế' },
-  { num: '10K', label: 'Khách hàng' },
-]
+])
+const stats = computed(() => [
+  { num: storefront.categoryCount || 0, label: 'Dòng sản phẩm' },
+  { num: storefront.activeProductCount || 0, label: 'Sản phẩm đang bán' },
+  { num: storefront.customerCount || 0, label: 'Tài khoản khách hàng' },
+])
 
-onMounted(() => {
-  loadProducts()
+onMounted(async () => {
+  await Promise.all([
+    loadProducts(),
+    api().getStorefrontSummary().then(data => Object.assign(storefront, data || {})).catch(error => {
+      console.warn('Không tải được số liệu trang chủ', error)
+    })
+  ])
+  if (isLoggedIn() && getUser()?.role === 'KhachHang') {
+    try {
+      const data = await api().getCustomerData()
+      recentProductIds.value = data?.recentProductIds || []
+    } catch (error) {
+      console.warn('Không tải được sản phẩm đã xem', error)
+    }
+  }
   window.addEventListener('scroll', onScroll)
 })
 onUnmounted(() => window.removeEventListener('scroll', onScroll))
@@ -311,6 +416,26 @@ async function subscribeNewsletter() {
   font-size: 13px;
   line-height: 1.6;
 }
+.z-bestseller-band { background: var(--z-bg-alt); }
+.z-recent-band { border-top: 1px solid var(--z-gray-border); }
+.z-sales-note {
+  margin: 8px 0 0;
+  color: var(--z-gray);
+  font-size: 12px;
+}
+.z-review-band {
+  padding: 76px 0;
+  background: var(--z-white);
+}
+.z-review-quote {
+  height: 100%;
+  padding: 24px 0;
+  border-top: 1px solid var(--z-dark);
+}
+.z-review-stars { color: var(--z-accent); font-size: 12px; }
+.z-review-quote p { min-height: 76px; margin: 18px 0; color: var(--z-dark); line-height: 1.7; }
+.z-review-quote strong { display: block; font-size: 13px; }
+.z-review-quote a { color: var(--z-gray); font-size: 12px; text-decoration: none; }
 
 .z-style-edit {
   display: grid;

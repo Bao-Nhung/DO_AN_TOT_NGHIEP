@@ -33,6 +33,16 @@
           </p>
         </template>
 
+        <template v-else-if="status === 'pending'">
+          <div class="z-result-icon z-pending">
+            <i class="bi bi-hourglass-split"></i>
+          </div>
+          <h2 class="z-result-title">Đang đối soát thanh toán</h2>
+          <p class="z-result-desc">
+            Zestia chưa nhận được kết quả có chữ ký hợp lệ từ cổng thanh toán. Đơn hàng chưa được xác nhận và giỏ hàng vẫn được giữ nguyên.
+          </p>
+        </template>
+
         <!-- Error -->
         <template v-else>
           <div class="z-result-icon z-failed">
@@ -76,11 +86,13 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import { useCart } from '@/composables/useCart'
 
 const route = useRoute()
+const { clearCart, syncCartNow } = useCart()
 
 const status = computed(() => route.query.status || 'error')
 const orderId = computed(() => route.query.orderId || '')
@@ -91,9 +103,30 @@ const code = computed(() => route.query.code || '')
 
 const errorMsg = computed(() => {
   if (code.value === 'INVALID_SIGNATURE') return 'Chữ ký giao dịch không hợp lệ.'
+  if (code.value === 'UNVERIFIED_RETURN') return 'Chưa xác minh được chữ ký phản hồi của cổng thanh toán.'
+  if (code.value === 'PAYMENT_PENDING') return 'Cổng thanh toán vẫn đang xử lý giao dịch.'
   if (code.value === 'ORDER_NOT_FOUND') return 'Không tìm thấy đơn hàng.'
   return 'Đã có lỗi xảy ra trong quá trình xử lý.'
 })
+
+onMounted(async () => {
+  if (status.value !== 'success') return
+  const pending = readPendingPayment()
+  if (!pending || !orderId.value || pending.orderCode === orderId.value) {
+    clearCart()
+    await syncCartNow()
+    sessionStorage.removeItem('zestia_pending_payment')
+    sessionStorage.removeItem('zestia_checkout_request')
+  }
+})
+
+function readPendingPayment() {
+  try {
+    return JSON.parse(sessionStorage.getItem('zestia_pending_payment') || 'null')
+  } catch {
+    return null
+  }
+}
 
 const formatAmount = computed(() => {
   const n = Number(amount.value)
@@ -133,6 +166,7 @@ const methodLabel = computed(() => {
 }
 .z-success { background: #E8F5E9; color: #2E7D32; }
 .z-failed  { background: #FFEBEE; color: #C62828; }
+.z-pending { background: #FFF7E0; color: #B26A00; }
 
 .z-result-title {
   font-family: var(--z-font-display);

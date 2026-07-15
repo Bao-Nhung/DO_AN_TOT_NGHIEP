@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Quản lý khách hàng</h1>
-        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ customers.length }} khách hàng</p>
+        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ totalItems }} khách hàng</p>
       </div>
     </div>
 
@@ -17,7 +17,8 @@
 
     <!-- Table -->
     <div class="z-admin-card" style="padding:0;overflow:hidden">
-      <table class="z-table">
+      <div class="table-responsive">
+      <table class="z-table" style="min-width:900px">
         <thead>
           <tr>
             <th>Khách hàng</th>
@@ -30,7 +31,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="c in paginatedCustomers" :key="c.id" class="z-clickable-row" @click="openDetail(c)">
+          <tr v-for="c in customers" :key="c.id" class="z-clickable-row" @click="openDetail(c)">
             <td>
               <div class="d-flex align-items-center gap-3">
                 <div :style="{ width:'36px', height:'36px', borderRadius:'50%', background: c.color, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--z-white)', fontWeight:600, fontSize:'13px', flexShrink:0 }">
@@ -53,17 +54,18 @@
           </tr>
         </tbody>
       </table>
+      </div>
 
       <!-- Pagination Controls -->
-      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
         <span style="font-size: 13px; color: var(--z-gray)">
-          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredCustomers.length) }} trong tổng số {{ filteredCustomers.length }} khách hàng
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} khách hàng
         </span>
         <div class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
-          <button v-for="page in totalPages" :key="page" 
+          <button v-for="page in pageNumbers" :key="page"
                   class="lm-btn-secondary" 
                   :style="{
                     padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
@@ -83,7 +85,7 @@
 
     <!-- Customer Detail Modal -->
     <div v-if="showDetail" class="z-modal-overlay" @click.self="showDetail = false">
-      <div class="z-modal" style="max-width:600px">
+      <div class="z-modal" style="max-width:900px">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết khách hàng</h3>
           <button class="z-icon-btn" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
@@ -138,6 +140,58 @@
               </div>
             </div>
           </div>
+          <div class="col-12">
+            <div class="z-info-card z-address-card">
+              <div class="z-info-label">Địa chỉ khách hàng</div>
+              <div v-if="loadingAddresses" class="z-info-value">Đang tải địa chỉ...</div>
+              <div v-else-if="selectedCustomer.addresses?.length" class="d-flex flex-column gap-2">
+                <div v-for="address in selectedCustomer.addresses" :key="address.id" class="z-address-row">
+                  <i class="bi bi-geo-alt"></i>
+                  <span>{{ formatAddress(address) }}</span>
+                  <span v-if="Number(address.macDinh) === 1" class="z-default-address">Mặc định</span>
+                </div>
+              </div>
+              <div v-else class="z-info-value">Khách hàng chưa lưu địa chỉ</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="z-info-card z-address-card">
+              <div class="z-info-label mb-2">Lịch sử mua hàng</div>
+              <div v-if="loadingHistory" class="z-info-value">Đang tải lịch sử mua...</div>
+              <div v-else-if="selectedCustomer.history?.length" class="z-customer-history">
+                <div v-for="order in selectedCustomer.history" :key="order.id" class="z-history-order">
+                  <div class="d-flex justify-content-between gap-3 mb-2">
+                    <div>
+                      <strong style="font-size:13px">{{ order.maHoaDon }}</strong>
+                      <div style="font-size:11px;color:var(--z-gray)">
+                        {{ new Date(order.ngayTao).toLocaleString('vi-VN') }} ·
+                        {{ order.kenhBan === 'OFFLINE' ? 'Mua tại quầy' : 'Mua online' }}
+                        <template v-if="order.nhanVien"> · {{ order.nhanVien }}</template>
+                      </div>
+                    </div>
+                    <div class="text-end">
+                      <strong style="font-size:13px;color:var(--z-accent)">{{ fmtPrice(order.tongTien) }}</strong>
+                      <div style="font-size:10px;color:var(--z-gray)">{{ order.daThanhToan ? 'Đã thanh toán' : 'Chưa thanh toán' }}</div>
+                    </div>
+                  </div>
+                  <div class="z-history-items">
+                    <div v-for="item in order.items" :key="item.id" class="z-history-item">
+                      <img v-if="item.anhUrl" :src="item.anhUrl" :alt="item.tenSanPham">
+                      <div v-else class="z-history-image-empty"><i class="bi bi-image"></i></div>
+                      <div class="flex-grow-1">
+                        <div style="font-size:12px;font-weight:500">{{ item.tenSanPham }}</div>
+                        <div style="font-size:10px;color:var(--z-gray)">
+                          {{ item.maSanPham }} · {{ item.mauSac || 'N/A' }} · {{ item.kichThuoc || 'N/A' }} · x{{ item.soLuong }}
+                        </div>
+                      </div>
+                      <span style="font-size:11px;font-weight:600">{{ fmtPrice(item.donGia) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="z-info-value">Khách hàng chưa có lịch sử mua</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -155,48 +209,80 @@ const search = ref('')
 const customers = ref([])
 const showDetail = ref(false)
 const selectedCustomer = ref(null)
+const loadingAddresses = ref(false)
+const loadingHistory = ref(false)
+let addressRequestId = 0
 
-onMounted(async () => {
+onMounted(loadCustomers)
+
+async function loadCustomers() {
   try {
-    const data = await api().getKhachHang()
-    customers.value = data.map((c, i) => ({
+    const data = await api().getKhachHangPage({
+      page: currentPage.value - 1,
+      size: itemsPerPage,
+      q: search.value.trim() || null
+    })
+    customers.value = (data.content || []).map((c, i) => ({
       id: c.id, code: c.maKhachHang || '', name: c.hoVaTen || '', phone: c.soDienThoai || '',
       email: c.email || '', orders: c.tongDon || 0, spent: fmtPrice(c.tongChiTieu),
       date: c.ngayTao ? new Date(c.ngayTao).toLocaleDateString('vi-VN') : '',
-      color: avatarColors[i % avatarColors.length],
+      color: avatarColors[(Number(c.id || 0) + i) % avatarColors.length],
       gioiTinh: c.gioiTinh,
     }))
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Number(data.totalPages || 0)
   } catch (e) { console.error('Không thể tải khách hàng:', e) }
-})
-
-const filteredCustomers = computed(() => {
-  if (!search.value) return customers.value
-  const q = search.value.toLowerCase()
-  return customers.value.filter(c =>
-    c.name.toLowerCase().includes(q) ||
-    c.email.toLowerCase().includes(q) ||
-    c.phone.includes(q) ||
-    c.code.toLowerCase().includes(q)
-  )
-})
+}
 
 const currentPage = ref(1)
 const itemsPerPage = 10
-
-const totalPages = computed(() => Math.ceil(filteredCustomers.value.length / itemsPerPage))
-
-const paginatedCustomers = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredCustomers.value.slice(start, start + itemsPerPage)
+const totalItems = ref(0)
+const totalPages = ref(0)
+const pageNumbers = computed(() => {
+  const start = Math.max(1, Math.min(currentPage.value - 2, totalPages.value - 4))
+  const end = Math.min(totalPages.value, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
 })
 
+let customerSearchTimer
 watch(search, () => {
-  currentPage.value = 1
+  clearTimeout(customerSearchTimer)
+  customerSearchTimer = setTimeout(() => {
+    if (currentPage.value === 1) loadCustomers()
+    else currentPage.value = 1
+  }, 300)
 })
+watch(currentPage, loadCustomers)
 
-function openDetail(c) {
-  selectedCustomer.value = c
+async function openDetail(c) {
+  const requestId = ++addressRequestId
+  selectedCustomer.value = { ...c, addresses: [], history: [] }
   showDetail.value = true
+  loadingAddresses.value = true
+  loadingHistory.value = true
+  try {
+    const [addresses, history] = await Promise.all([
+      api().getKhachHangAddresses(c.id),
+      api().getKhachHangHistory(c.id)
+    ])
+    if (requestId === addressRequestId && selectedCustomer.value?.id === c.id) {
+      selectedCustomer.value.addresses = Array.isArray(addresses) ? addresses : []
+      selectedCustomer.value.history = Array.isArray(history) ? history : []
+    }
+  } catch (e) {
+    console.error('Không thể tải địa chỉ khách hàng:', e)
+  } finally {
+    if (requestId === addressRequestId) {
+      loadingAddresses.value = false
+      loadingHistory.value = false
+    }
+  }
+}
+
+function formatAddress(address) {
+  return [address.duong, address.xaPhuong, address.quanHuyen, address.tinhThanhPho]
+    .filter(Boolean)
+    .join(', ')
 }
 </script>
 
@@ -223,4 +309,13 @@ function openDetail(c) {
 }
 .z-info-label { font-size: 11px; font-weight: 500; color: var(--z-gray); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
 .z-info-value { font-size: 14px; font-weight: 500; color: var(--z-dark); }
+.z-address-card { text-align: left; }
+.z-address-row { display: flex; align-items: flex-start; gap: 8px; color: var(--z-dark); font-size: 13px; }
+.z-address-row i { color: var(--z-accent); margin-top: 1px; }
+.z-default-address { margin-left: auto; flex-shrink: 0; color: #166534; background: #dcfce7; border-radius: 12px; padding: 2px 8px; font-size: 10px; font-weight: 600; }
+.z-customer-history { display: grid; gap: 10px; max-height: 360px; overflow-y: auto; }
+.z-history-order { border: 1px solid var(--z-gray-border); padding: 12px; }
+.z-history-items { display: grid; gap: 6px; }
+.z-history-item { display: flex; align-items: center; gap: 9px; padding-top: 6px; border-top: 1px dashed var(--z-gray-border); }
+.z-history-item img, .z-history-image-empty { width: 34px; height: 42px; object-fit: cover; background: var(--z-bg-alt); display: grid; place-items: center; flex: 0 0 34px; }
 </style>

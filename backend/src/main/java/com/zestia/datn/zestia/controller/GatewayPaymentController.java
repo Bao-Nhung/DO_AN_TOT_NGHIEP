@@ -4,17 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.HoaDon;
-import com.zestia.datn.zestia.entity.HoaDonChiTiet;
-import com.zestia.datn.zestia.entity.LichSuThanhToan;
-import com.zestia.datn.zestia.entity.LichSuTracking;
-import com.zestia.datn.zestia.entity.VayChiTiet;
-import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
-import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
-import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
-import com.zestia.datn.zestia.repository.VayChiTietRepository;
-import com.zestia.datn.zestia.service.EmailService;
-import com.zestia.datn.zestia.service.OrderInventoryService;
+import com.zestia.datn.zestia.service.GatewayPaymentResultService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +23,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -47,20 +39,16 @@ import java.util.*;
 @RequestMapping("/api/payment")
 @RequiredArgsConstructor
 public class GatewayPaymentController {
-    private static final byte STATUS_CONFIRMED = 1;
     private static final byte STATUS_CANCELLED = 5;
     private static final byte STATUS_PAYMENT_FAILED = 7;
 
     private final HoaDonRepository hoaDonRepo;
-    private final HoaDonChiTietRepository hoaDonChiTietRepo;
-    private final VayChiTietRepository vayChiTietRepo;
-    private final LichSuThanhToanRepository lichSuRepo;
-    private final LichSuTrackingRepository trackingRepo;
-    private final EmailService emailService;
     private final JwtUtil jwtUtil;
-    private final OrderInventoryService orderInventoryService;
+    private final GatewayPaymentResultService paymentResultService;
 
-    private final HttpClient http = HttpClient.newHttpClient();
+    private final HttpClient http = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
     private final ObjectMapper mapper = new ObjectMapper();
 
     // Payment gateway credentials are read from environment-backed properties.
@@ -81,10 +69,12 @@ public class GatewayPaymentController {
     private String zaloKey2;
     @Value("${payment.zalopay.endpoint:https://sb-openapi.zalopay.vn/v2/create}")
     private String zaloEndpoint;
+    @Value("${payment.zalopay.query-endpoint:https://sb-openapi.zalopay.vn/v2/query}")
+    private String zaloQueryEndpoint;
 
     @Value("${app.backend-url:http://localhost:8080}")
     private String backendBaseUrl;
-    @Value("${app.payment-result-url:http://localhost:5173/#/payment-result}")
+    @Value("${app.payment-result-url:http://localhost:5173/payment-result}")
     private String paymentResultUrl;
 
     // ============================ MoMo ============================
@@ -109,15 +99,14 @@ public class GatewayPaymentController {
             String payUrl = node.path("payUrl").asText(null);
             if (payUrl == null || payUrl.isBlank()) {
                 String message = "MoMo từ chối: " + node.path("message").asText("không rõ");
-                markPaymentStartFailed(hd, "MOMO", message);
                 return paymentStartFailedResponse(hd, message, node.path("resultCode").asInt(-1));
             }
             hd.setHinhThucThanhToan("MOMO");
+            hd.setMaGiaoDichCong(momoOrderId);
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", payUrl));
         } catch (Exception e) {
             String message = "Lỗi gọi MoMo: " + e.getMessage();
-            markPaymentStartFailed(hd, "MOMO", message);
             return ResponseEntity.internalServerError().body(paymentStartFailedBody(hd, message, -1));
         }
     }
@@ -193,11 +182,16 @@ public class GatewayPaymentController {
             int t = oid.lastIndexOf('T');
             maHoaDon = t > 0 ? oid.substring(0, t) : oid;
         }
-        boolean success = valid && "0".equals(q.get("resultCode"));
-        success = finishOnline(maHoaDon, "MOMO", q.get("amount"), q.get("transId"), success);
-        response.sendRedirect(paymentResultUrl + "?status=" + (success ? "success" : "failed")
+        GatewayPaymentResultService.PaymentOutcome outcome = null;
+        if (valid) {
+            outcome = paymentResultService.applyByCode(maHoaDon, "MOMO", parseAmount(q.get("amount")),
+                    q.get("transId"), "0".equals(q.get("resultCode")));
+        }
+        String status = !valid ? "pending" : (outcome != null && outcome.success() ? "success" : "failed");
+        response.sendRedirect(paymentResultUrl + "?status=" + status
                 + "&orderId=" + enc(maHoaDon) + "&amount=" + enc(q.getOrDefault("amount", ""))
-                + "&method=MOMO&txn=" + enc(q.getOrDefault("transId", "")));
+                + "&method=MOMO&txn=" + enc(q.getOrDefault("transId", ""))
+                + (!valid ? "&code=UNVERIFIED_RETURN" : ""));
     }
 
     @PostMapping("/momo/ipn")
@@ -213,8 +207,10 @@ public class GatewayPaymentController {
             int t = oid.lastIndexOf('T');
             maHoaDon = t > 0 ? oid.substring(0, t) : oid;
         }
-        boolean success = valid && "0".equals(body.get("resultCode"));
-        finishOnline(maHoaDon, "MOMO", body.get("amount"), body.get("transId"), success);
+        if (valid) {
+            paymentResultService.applyByCode(maHoaDon, "MOMO", parseAmount(body.get("amount")),
+                    body.get("transId"), "0".equals(body.get("resultCode")));
+        }
         return ResponseEntity.ok(Map.of("RspCode", valid ? "00" : "97", "Message", valid ? "Success" : "Invalid signature"));
     }
 
@@ -259,15 +255,14 @@ public class GatewayPaymentController {
             if (orderUrl == null || orderUrl.isBlank()) {
                 String message = "ZaloPay từ chối: " + node.path("return_message").asText("không rõ")
                         + " " + node.path("sub_return_message").asText("");
-                markPaymentStartFailed(hd, "ZALOPAY", message);
                 return paymentStartFailedResponse(hd, message, node.path("return_code").asInt(-1));
             }
             hd.setHinhThucThanhToan("ZALOPAY");
+            hd.setMaGiaoDichCong(appTransId);
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", orderUrl));
         } catch (Exception e) {
             String message = "Lỗi gọi ZaloPay: " + e.getMessage();
-            markPaymentStartFailed(hd, "ZALOPAY", message);
             return ResponseEntity.internalServerError().body(paymentStartFailedBody(hd, message, -1));
         }
     }
@@ -333,25 +328,40 @@ public class GatewayPaymentController {
 
     @GetMapping("/zalopay/return")
     public void zaloReturn(@RequestParam Map<String, String> q, HttpServletResponse response) throws IOException {
-        // apptransid dạng yyMMdd_<idHoaDon>_<time>
         String appTransId = q.getOrDefault("apptransid", "");
-        Integer hoaDonId = null;
-        String[] parts = appTransId.split("_");
-        if (parts.length >= 2) { try { hoaDonId = Integer.parseInt(parts[1]); } catch (Exception ignored) {} }
-
-        boolean success = "1".equals(q.get("status"));
+        Integer hoaDonId = extractHoaDonIdFromZaloTransId(appTransId);
         String maHoaDon = "";
+        String status = "pending";
+        String amount = q.getOrDefault("amount", "");
+        String transactionId = appTransId;
         if (hoaDonId != null) {
             Optional<HoaDon> opt = hoaDonRepo.findById(hoaDonId);
             if (opt.isPresent()) {
                 maHoaDon = opt.get().getMaHoaDon();
-                success = applyResult(opt.get(), "ZALOPAY", parseAmount(q.getOrDefault("amount", "0")),
-                        appTransId, success);
+                try {
+                    JsonNode queryResult = queryZaloOrder(appTransId);
+                    int returnCode = queryResult.path("return_code").asInt(0);
+                    boolean processing = queryResult.path("is_processing").asBoolean(false);
+                    if (returnCode == 1) {
+                        amount = queryResult.path("amount").asText("0");
+                        transactionId = queryResult.path("zp_trans_id").asText(appTransId);
+                        var outcome = paymentResultService.applyById(hoaDonId, "ZALOPAY",
+                                parseAmount(amount), transactionId, true);
+                        status = outcome.success() ? "success" : "failed";
+                    } else if (returnCode == 2 && !processing) {
+                        var outcome = paymentResultService.applyById(hoaDonId, "ZALOPAY",
+                                BigDecimal.ZERO, appTransId, false);
+                        status = outcome.success() ? "success" : "failed";
+                    }
+                } catch (Exception ignored) {
+                    status = "pending";
+                }
             }
         }
-        response.sendRedirect(paymentResultUrl + "?status=" + (success ? "success" : "failed")
-                + "&orderId=" + enc(maHoaDon) + "&amount=" + enc(q.getOrDefault("amount", ""))
-                + "&method=ZALOPAY&txn=" + enc(appTransId));
+        response.sendRedirect(paymentResultUrl + "?status=" + status
+                + "&orderId=" + enc(maHoaDon) + "&amount=" + enc(amount)
+                + "&method=ZALOPAY&txn=" + enc(transactionId)
+                + ("pending".equals(status) ? "&code=PAYMENT_PENDING" : ""));
     }
 
     @PostMapping("/zalopay/callback")
@@ -367,11 +377,9 @@ public class GatewayPaymentController {
                 String appTransId = dataNode.path("app_trans_id").asText("");
                 Integer hoaDonId = extractHoaDonIdFromZaloTransId(appTransId);
                 if (hoaDonId != null) {
-                    hoaDonRepo.findById(hoaDonId).ifPresent(order ->
-                            applyResult(order, "ZALOPAY",
-                                    new BigDecimal(dataNode.path("amount").asText("0")),
-                                    dataNode.path("zp_trans_id").asText(appTransId),
-                                    true));
+                    paymentResultService.applyById(hoaDonId, "ZALOPAY",
+                            new BigDecimal(dataNode.path("amount").asText("0")),
+                            dataNode.path("zp_trans_id").asText(appTransId), true);
                 }
             }
             return ResponseEntity.ok(Map.of("return_code", ok ? 1 : -1,
@@ -383,63 +391,15 @@ public class GatewayPaymentController {
 
     // ============================ Helpers ============================
 
-    private boolean finishOnline(String maHoaDon, String method, String amountStr, String txn, boolean success) {
-        if (maHoaDon == null || maHoaDon.isBlank()) return false;
-        final boolean[] result = {false};
-        hoaDonRepo.findByMaHoaDon(maHoaDon).ifPresent(hd -> {
-            BigDecimal amt = parseAmount(amountStr);
-            result[0] = applyResult(hd, method, amt, txn, success);
-        });
-        return result[0];
-    }
-
-    private boolean applyResult(HoaDon hd, String method, BigDecimal amount, String txn, boolean success) {
-        if (Boolean.TRUE.equals(hd.getDaThanhToan()) || (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_PAYMENT_FAILED)) {
-            return Boolean.TRUE.equals(hd.getDaThanhToan());
-        }
-        boolean finalSuccess = success && amountMatches(amount, hd.getTongTien());
-        if (finalSuccess) {
-            hd.setTrangThai((byte) 1);       // Đã xác nhận
-            hd.setDaThanhToan(true);
-            hd.setPhuongThucThanhToanOnline(method);
-            hoaDonRepo.save(hd);
-            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_CONFIRMED),
-                    "Thanh toán " + method + " thành công. Đơn hàng đã được xác nhận.");
-            lichSuRepo.save(LichSuThanhToan.builder()
-                    .hoaDon(hd).soTien(amount).phuongThuc(method)
-                    .maGiaoDich(txn).trangThai("SUCCESS")
-                    .noiDung("Thanh toán " + method + " thành công - " + hd.getMaHoaDon())
-                    .ngayTao(LocalDateTime.now()).build());
-        } else {
-            if (!"FAILED".equalsIgnoreCase(hd.getPhuongThucThanhToanOnline())) {
-                restoreStock(hd);
-            }
-            hd.setDaThanhToan(false);
-            hd.setPhuongThucThanhToanOnline("FAILED");
-            hd.setTrangThai(STATUS_PAYMENT_FAILED);
-            hd.setTrangThaiTracking("payment_failed");
-            hoaDonRepo.save(hd);
-            emailService.sendOrderStatusUpdateEmail(hd, statusLabel(STATUS_PAYMENT_FAILED),
-                    "Thanh toán online " + method + " thất bại. Đơn hàng không được xử lý tiếp.");
-
-            trackingRepo.save(LichSuTracking.builder()
-                    .hoaDon(hd)
-                    .trangThai("payment_failed")
-                    .moTa("Thanh toan online " + method + " that bai. Don hang khong duoc phep xu ly tiep.")
-                    .ngayCapNhat(LocalDateTime.now())
-                    .build());
-
-            lichSuRepo.save(LichSuThanhToan.builder()
-                    .hoaDon(hd).soTien(BigDecimal.ZERO).phuongThuc(method)
-                    .maGiaoDich(txn).trangThai("FAILED")
-                    .noiDung("Thanh toán " + method + " thất bại - " + hd.getMaHoaDon())
-                    .ngayTao(LocalDateTime.now()).build());
-        }
-        return finalSuccess;
-    }
-
-    private void restoreStock(HoaDon hoaDon) {
-        orderInventoryService.restoreReservation(hoaDon);
+    private JsonNode queryZaloOrder(String appTransId) throws Exception {
+        requireConfigured(String.valueOf(zaloAppId), "ZALOPAY_APP_ID");
+        requireConfigured(zaloKey1, "ZALOPAY_KEY1");
+        String macData = zaloAppId + "|" + appTransId + "|" + zaloKey1;
+        Map<String, String> form = new LinkedHashMap<>();
+        form.put("app_id", String.valueOf(zaloAppId));
+        form.put("app_trans_id", appTransId);
+        form.put("mac", hmacHex("HmacSHA256", zaloKey1, macData));
+        return postForm(zaloQueryEndpoint, form);
     }
 
     private ResponseEntity<?> authorizePaymentStart(HoaDon hd, Map<String, Object> body, String authHeader) {
@@ -502,12 +462,6 @@ public class GatewayPaymentController {
         }
     }
 
-    private static boolean amountMatches(BigDecimal actual, BigDecimal expected) {
-        if (actual == null || expected == null) return false;
-        return actual.setScale(0, java.math.RoundingMode.HALF_UP)
-                .compareTo(expected.setScale(0, java.math.RoundingMode.HALF_UP)) == 0;
-    }
-
     private static String cleanString(Object obj) {
         if (obj == null) return null;
         String value = String.valueOf(obj).trim();
@@ -529,6 +483,7 @@ public class GatewayPaymentController {
     private JsonNode postJson(String url, String json) throws Exception {
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                 .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(20))
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -543,6 +498,7 @@ public class GatewayPaymentController {
         }
         HttpRequest req = HttpRequest.newBuilder(URI.create(url))
                 .header("Content-Type", "application/x-www-form-urlencoded")
+                .timeout(Duration.ofSeconds(20))
                 .POST(HttpRequest.BodyPublishers.ofString(sb.toString(), StandardCharsets.UTF_8))
                 .build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -570,11 +526,6 @@ public class GatewayPaymentController {
 
     private static String n(String s) { return s == null ? "" : s; }
 
-    private void markPaymentStartFailed(HoaDon hd, String method, String reason) {
-        hd.setHinhThucThanhToan(method);
-        applyResult(hd, method, BigDecimal.ZERO, "CREATE_FAILED", false);
-    }
-
     private ResponseEntity<Map<String, Object>> paymentStartFailedResponse(HoaDon hd, String message, int code) {
         return ResponseEntity.badRequest().body(paymentStartFailedBody(hd, message, code));
     }
@@ -582,7 +533,8 @@ public class GatewayPaymentController {
     private Map<String, Object> paymentStartFailedBody(HoaDon hd, String message, int code) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", message);
-        body.put("paymentFailed", true);
+        body.put("paymentFailed", false);
+        body.put("retryable", true);
         body.put("orderId", hd.getId());
         body.put("maHoaDon", hd.getMaHoaDon());
         body.put("amount", hd.getTongTien());
@@ -594,14 +546,6 @@ public class GatewayPaymentController {
         if (obj == null) return null;
         if (obj instanceof Number num) return num.intValue();
         try { return Integer.parseInt(obj.toString()); } catch (Exception e) { return null; }
-    }
-
-    private static String statusLabel(byte status) {
-        return switch (status) {
-            case 1 -> "Đã xác nhận";
-            case 7 -> "Thanh toán thất bại";
-            default -> "Cập nhật trạng thái";
-        };
     }
 
     private static void requireConfigured(String value, String name) {

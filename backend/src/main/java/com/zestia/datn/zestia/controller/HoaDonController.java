@@ -14,15 +14,22 @@ import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
 import com.zestia.datn.zestia.repository.HoaDonAuditLogRepository;
-import com.zestia.datn.zestia.repository.VayChiTietRepository;
+import com.zestia.datn.zestia.repository.YeuCauDoiTraRepository;
 import com.zestia.datn.zestia.service.EmailService;
 import com.zestia.datn.zestia.service.OrderInventoryService;
+import com.zestia.datn.zestia.service.OrderStatusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @RestController
@@ -31,12 +38,15 @@ import java.util.*;
 public class HoaDonController {
     private static final byte STATUS_CANCELLED = 5;
     private static final byte STATUS_PAYMENT_FAILED = 7;
-    private static final byte STATUS_RETURN_REQUESTED = 8;
     private static final byte STATUS_REFUNDED = 9;
+    private static final int CANCEL_OTP_TTL_MINUTES = 5;
+    private static final int CANCEL_OTP_RESEND_SECONDS = 60;
+    private static final int CANCEL_OTP_MAX_ATTEMPTS = 5;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
-    private final VayChiTietRepository vayCtRepo;
+    private final YeuCauDoiTraRepository returnRequestRepo;
     private final AnhRepository anhRepo;
     
     // Khai báo thêm các Repo cần thiết cho Tracking và Xác thực (Đã vá lỗi)
@@ -46,17 +56,54 @@ public class HoaDonController {
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
     private final OrderInventoryService orderInventoryService;
+    private final PasswordEncoder passwordEncoder;
+    private final OrderStatusService orderStatusService;
 
     @GetMapping
     public List<Map<String, Object>> getAll() {
-        return hoaDonRepo.findAll().stream().map(this::toMap).toList();
+        return toMaps(hoaDonRepo.findAllForSummary(Sort.by(Sort.Direction.DESC, "ngayTao", "id")));
+    }
+
+    @GetMapping("/paged")
+    public Map<String, Object> getPage(@RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "10") int size,
+                                       @RequestParam(required = false) String q,
+                                       @RequestParam(required = false) Byte status,
+                                       @RequestParam(required = false) Byte orderType) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        String keyword = q == null || q.isBlank() ? null : q.trim();
+        var result = hoaDonRepo.findAdminPage(
+                keyword,
+                status,
+                orderType,
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "ngayTao", "id"))
+        );
+        Map<String, Long> statusCounts = new LinkedHashMap<>();
+        for (int state = 0; state <= 9; state++) statusCounts.put(String.valueOf(state), 0L);
+        for (Object[] row : hoaDonRepo.countAdminOrdersByStatus(keyword, orderType)) {
+            if (row[0] != null) statusCounts.put(String.valueOf(((Number) row[0]).intValue()), ((Number) row[1]).longValue());
+        }
+        long allStatuses = statusCounts.values().stream().mapToLong(Long::longValue).sum();
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", toMaps(result.getContent()));
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        response.put("allStatusesTotal", allStatuses);
+        response.put("statusCounts", statusCounts);
+        return response;
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Integer id) {
-        return hoaDonRepo.findById(id)
-                .map(hd -> ResponseEntity.ok(toDetailMap(hd)))
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getById(@PathVariable Integer id,
+                                     @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return hoaDonRepo.findById(id).map(hd -> {
+            ResponseEntity<?> authError = authorizeOrderAccess(hd, authHeader);
+            return authError != null ? authError : ResponseEntity.ok(toDetailMap(hd));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}/audit-log")
@@ -69,116 +116,40 @@ public class HoaDonController {
                 .toList());
     }
 
-@PutMapping("/{id}/trang-thai")
+    @PutMapping("/{id}/trang-thai")
     public ResponseEntity<?> updateStatus(@PathVariable Integer id,
                                           @RequestBody Map<String, Object> body,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        return hoaDonRepo.findById(id).map(hd -> {
-            if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_PAYMENT_FAILED) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Don hang thanh toan that bai, khong the xu ly tiep"));
-            }
-            if (hd.getTrangThai() != null && hd.getTrangThai() == 5) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng đã bị hủy, không thể thay đổi trạng thái"));
-            }
-            Byte changedStatus = null;
-            String statusEmailDesc = null;
-            if (body.get("trangThai") != null) {
-                byte oldTrangThai = hd.getTrangThai() != null ? hd.getTrangThai() : 0;
-                byte newTrangThai = ((Number) body.get("trangThai")).byteValue();
-                hd.setTrangThai(newTrangThai);
-                changedStatus = newTrangThai;
-                
-                // ===== ĐỒNG BỘ CHUẨN 7 TRẠNG THÁI (0 đến 6) VỚI FRONTEND =====
-                String trackingStatus = "pending";
-                String trackingDesc = "Đơn hàng đang chờ xử lý.";
-                
-                if (newTrangThai == 1) { 
-                    trackingStatus = "confirmed"; 
-                    trackingDesc = "Đơn hàng đã được xác nhận."; 
-                } else if (newTrangThai == 2) { 
-                    trackingStatus = "processing"; 
-                    trackingDesc = "Đơn hàng đang được chuẩn bị và đóng gói."; 
-                } else if (newTrangThai == 3) { 
-                    trackingStatus = "shipped"; 
-                    trackingDesc = "Đơn hàng đã được bàn giao cho đơn vị vận chuyển."; 
-                } else if (newTrangThai == 4) { 
-                    trackingStatus = "delivered"; 
-                    trackingDesc = "Giao hàng thành công đến tay người nhận."; 
-                    hd.setNgayGiaoHangThucTe(LocalDateTime.now()); 
-                } else if (newTrangThai == 5) { 
-                    trackingStatus = "cancelled"; 
-                    trackingDesc = "Đơn hàng đã bị hủy."; 
-                } else if (newTrangThai == 6) { 
-                    trackingStatus = "failed"; 
-                    trackingDesc = "Giao hàng thất bại."; 
-                } else if (newTrangThai == STATUS_PAYMENT_FAILED) {
-                    trackingStatus = "payment_failed";
-                    trackingDesc = "Thanh toán thất bại. Đơn hàng không được xử lý tiếp.";
-                }
-                
-                if (newTrangThai == STATUS_RETURN_REQUESTED) {
-                    trackingStatus = "return_requested";
-                    trackingDesc = "Khách hàng yêu cầu đổi/trả hàng.";
-                } else if (newTrangThai == STATUS_REFUNDED) {
-                    trackingStatus = "refunded";
-                    trackingDesc = "Đã xử lý đổi/trả và hoàn tiền.";
-                }
-
-                if (shouldRestoreStock(oldTrangThai, newTrangThai)) {
-                    restoreStock(hd);
-                }
-                statusEmailDesc = trackingDesc;
-
-                hd.setTrangThaiTracking(trackingStatus);
-                
-                LichSuTracking tracking = LichSuTracking.builder()
-                        .hoaDon(hd)
-                        .trangThai(trackingStatus)
-                        .moTa(trackingDesc)
-                        .ngayCapNhat(LocalDateTime.now()) // Lưu đúng thời gian bấm nút
-                        .build();
-                lichSuTrackingRepo.save(tracking);
-                saveAuditLog(hd, "CAP_NHAT_TRANG_THAI", oldTrangThai, newTrangThai, authHeader,
-                        body.get("ghiChu") != null ? String.valueOf(body.get("ghiChu")) : trackingDesc);
-                // =============================================================
-            }
-            if (body.get("ghiChu") != null) {
-                hd.setGhiChu((String) body.get("ghiChu"));
-            }
-            if (body.get("daThanhToan") != null) {
-                hd.setDaThanhToan(Boolean.parseBoolean(String.valueOf(body.get("daThanhToan"))));
-            }
-            HoaDon saved = hoaDonRepo.save(hd);
-            if (changedStatus != null) {
-                sendStatusEmail(saved, changedStatus, statusEmailDesc);
-            }
+        Integer parsedStatus = toInt(body.get("trangThai"));
+        if (parsedStatus == null || parsedStatus < 0 || parsedStatus > 9) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Trạng thái đơn hàng không hợp lệ"));
+        }
+        if (parsedStatus == STATUS_PAYMENT_FAILED) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Trạng thái thanh toán thất bại chỉ do cổng thanh toán cập nhật"));
+        }
+        Actor actor = actorFromAuth(authHeader);
+        try {
+            HoaDon saved = orderStatusService.transition(
+                    id,
+                    parsedStatus.byteValue(),
+                    cleanText(body.get("ghiChu")),
+                    actor.name(),
+                    actor.role()
+            );
             return ResponseEntity.ok(toMap(saved));
-        }).orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}/khach-hang")
-    public ResponseEntity<?> updateCustomerInfo(@PathVariable Integer id,
-                                                @RequestBody Map<String, Object> body,
-                                                @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        return hoaDonRepo.findById(id).map(hd -> {
-            if (body.containsKey("tenKhachHang")) {
-                hd.setTenKhachHang((String) body.get("tenKhachHang"));
-            }
-            if (body.containsKey("soDienThoai")) {
-                hd.setSoDienThoai((String) body.get("soDienThoai"));
-            }
-            saveAuditLog(hd, "CAP_NHAT_KHACH_HANG", hd.getTrangThai(), hd.getTrangThai(), authHeader,
-                    "Cap nhat thong tin khach hang tren don.");
-            HoaDon saved = hoaDonRepo.save(hd);
-            return ResponseEntity.ok(toDetailMap(saved));
-        }).orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}/cancel")
+    @Transactional
     public ResponseEntity<?> cancelOrder(@PathVariable Integer id,
                                          @RequestBody Map<String, Object> body,
                                          @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        return hoaDonRepo.findById(id).map(hd -> {
+        return hoaDonRepo.findByIdForUpdate(id).map(hd -> {
             ResponseEntity<?> authError = authorizeCancel(hd, authHeader);
             if (authError != null) return authError;
             if (hd.getTrangThai() == 0) {
@@ -207,38 +178,109 @@ public class HoaDonController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @PostMapping("/{id}/cancel-guest/request-otp")
+    @Transactional
+    public ResponseEntity<?> requestCancelOrderGuestOtp(@PathVariable Integer id,
+                                                        @RequestBody Map<String, Object> body) {
+        return hoaDonRepo.findByIdForUpdate(id).map(hd -> {
+            if (!matchesGuestOrder(hd, body)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Không thể xác minh thông tin đơn hàng"));
+            }
+
+            ResponseEntity<?> statusError = validateGuestCancellationStatus(hd);
+            if (statusError != null) {
+                return statusError;
+            }
+
+            String email = resolveOrderEmail(hd);
+            if (email == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Đơn hàng chưa có email nhận OTP. Vui lòng liên hệ cửa hàng để được hỗ trợ hủy đơn."
+                ));
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+            if (hd.getHuyDonOtpGuiLuc() != null) {
+                LocalDateTime nextAllowedAt = hd.getHuyDonOtpGuiLuc().plusSeconds(CANCEL_OTP_RESEND_SECONDS);
+                if (now.isBefore(nextAllowedAt)) {
+                    long waitSeconds = Math.max(1, ChronoUnit.SECONDS.between(now, nextAllowedAt));
+                    return ResponseEntity.status(429).body(Map.of(
+                            "error", "Vui lòng chờ " + waitSeconds + " giây trước khi gửi lại OTP",
+                            "retryAfterSeconds", waitSeconds
+                    ));
+                }
+            }
+
+            String otp = String.format(Locale.ROOT, "%06d", SECURE_RANDOM.nextInt(1_000_000));
+            LocalDateTime expiresAt = now.plusMinutes(CANCEL_OTP_TTL_MINUTES);
+            hd.setHuyDonOtpHash(passwordEncoder.encode(otp));
+            hd.setHuyDonOtpHetHan(expiresAt);
+            hd.setHuyDonOtpSoLanSai(0);
+            hd.setHuyDonOtpGuiLuc(now);
+            HoaDon saved = hoaDonRepo.save(hd);
+            emailService.sendOrderCancellationOtpEmail(saved, otp, expiresAt);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Mã OTP đã được gửi tới email " + maskEmail(email),
+                    "emailMasked", maskEmail(email),
+                    "expiresInSeconds", CANCEL_OTP_TTL_MINUTES * 60
+            ));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @PutMapping("/{id}/cancel-guest")
+    @Transactional
     public ResponseEntity<?> cancelOrderGuest(@PathVariable Integer id,
                                               @RequestBody Map<String, Object> body) {
-        return hoaDonRepo.findById(id).map(hd -> {
-            String maHoaDon = (String) body.get("maHoaDon");
-            String soDienThoai = (String) body.get("soDienThoai");
-            
-            String phoneClean = soDienThoai != null ? soDienThoai.trim() : "";
-            String orderPhoneClean = hd.getSoDienThoai() != null ? hd.getSoDienThoai().trim() : "";
-            String codeClean = maHoaDon != null ? maHoaDon.trim() : "";
-            String orderCodeClean = hd.getMaHoaDon() != null ? hd.getMaHoaDon().trim() : "";
+        return hoaDonRepo.findByIdForUpdate(id).map(hd -> {
+            if (!matchesGuestOrder(hd, body)) {
+                return ResponseEntity.status(403).body(Map.of("error", "Không thể xác minh thông tin đơn hàng"));
+            }
 
-            // Xác thực xem đúng mã đơn hàng và số điện thoại của hóa đơn này không
-            if (codeClean.isEmpty() || !codeClean.equalsIgnoreCase(orderCodeClean) ||
-                !phoneClean.equals(orderPhoneClean)) {
-                return ResponseEntity.status(403).body(Map.of("error", "Thông tin xác thực đơn hàng không chính xác. Vui lòng nhập đúng Mã đơn hàng và Số điện thoại."));
+            ResponseEntity<?> statusError = validateGuestCancellationStatus(hd);
+            if (statusError != null) {
+                return statusError;
             }
-            
-            if (hd.getTrangThai() == 5) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng này đã được huỷ trước đó."));
+
+            String otp = cleanText(body.get("otp"));
+            if (otp == null || !otp.matches("\\d{6}")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập mã OTP gồm 6 chữ số"));
             }
-            
-            if (hd.getTrangThai() != 0) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng đã được xác nhận hoặc đang vận chuyển, không thể huỷ ở thời điểm này."));
+            if (hd.getHuyDonOtpHash() == null || hd.getHuyDonOtpHetHan() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng yêu cầu gửi mã OTP trước khi hủy đơn"));
             }
-            
-            hd.setTrangThai((byte) 5); // Trạng thái 5 = Đã Hủy
-            
-            String ghiChu = body.get("ghiChu") != null ? (String) body.get("ghiChu") : "Khách hàng hủy qua tra cứu đơn";
+            if (LocalDateTime.now().isAfter(hd.getHuyDonOtpHetHan())) {
+                clearCancellationOtp(hd);
+                hoaDonRepo.save(hd);
+                return ResponseEntity.badRequest().body(Map.of("error", "Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới"));
+            }
+
+            int failedAttempts = Optional.ofNullable(hd.getHuyDonOtpSoLanSai()).orElse(0);
+            if (failedAttempts >= CANCEL_OTP_MAX_ATTEMPTS) {
+                return ResponseEntity.status(429).body(Map.of("error", "Bạn đã nhập sai OTP quá số lần cho phép. Vui lòng yêu cầu mã mới"));
+            }
+            if (!passwordEncoder.matches(otp, hd.getHuyDonOtpHash())) {
+                failedAttempts++;
+                hd.setHuyDonOtpSoLanSai(failedAttempts);
+                hoaDonRepo.save(hd);
+                int remainingAttempts = Math.max(0, CANCEL_OTP_MAX_ATTEMPTS - failedAttempts);
+                return ResponseEntity.status(403).body(Map.of(
+                        "error", remainingAttempts > 0
+                                ? "Mã OTP không chính xác. Bạn còn " + remainingAttempts + " lần thử"
+                                : "Bạn đã nhập sai OTP quá số lần cho phép. Vui lòng yêu cầu mã mới",
+                        "remainingAttempts", remainingAttempts
+                ));
+            }
+
+            byte oldStatus = hd.getTrangThai();
+            clearCancellationOtp(hd);
+            hd.setTrangThai(STATUS_CANCELLED);
+
+            String ghiChu = cleanText(body.get("ghiChu"));
+            if (ghiChu == null) ghiChu = "Khách hàng hủy qua tra cứu đơn";
             hd.setGhiChu(ghiChu);
             hd.setTrangThaiTracking("cancelled");
-            
+
             LichSuTracking tracking = LichSuTracking.builder()
                     .hoaDon(hd)
                     .trangThai("cancelled")
@@ -247,43 +289,12 @@ public class HoaDonController {
                     .build();
             lichSuTrackingRepo.save(tracking);
             restoreStock(hd);
-            saveAuditLogManual(hd, "HUY_DON", (byte) 0, STATUS_CANCELLED,
+            saveAuditLogManual(hd, "HUY_DON", oldStatus, STATUS_CANCELLED,
                     "Khách vãng lai", "Guest", ghiChu);
 
             HoaDon saved = hoaDonRepo.save(hd);
             emailService.sendOrderCancellationEmail(saved, ghiChu);
             return ResponseEntity.ok(toMap(saved));
-        }).orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}/return-request")
-    public ResponseEntity<?> requestReturn(@PathVariable Integer id,
-                                           @RequestBody Map<String, Object> body,
-                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        return hoaDonRepo.findById(id).map(hd -> {
-            ResponseEntity<?> authError = authorizeOrderAccess(hd, authHeader);
-            if (authError != null) return authError;
-            if (hd.getTrangThai() == null || hd.getTrangThai() != 4) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Chỉ đơn hàng đã hoàn thành mới được yêu cầu đổi/trả"));
-            }
-
-            byte oldTrangThai = hd.getTrangThai();
-            String reason = body.get("lyDo") != null ? String.valueOf(body.get("lyDo")) : "Khách hàng yêu cầu đổi/trả hàng";
-            hd.setTrangThai(STATUS_RETURN_REQUESTED);
-            hd.setTrangThaiTracking("return_requested");
-            hd.setGhiChu(appendNote(hd.getGhiChu(), reason));
-
-            LichSuTracking tracking = LichSuTracking.builder()
-                    .hoaDon(hd)
-                    .trangThai("return_requested")
-                    .moTa(reason)
-                    .ngayCapNhat(LocalDateTime.now())
-                    .build();
-            lichSuTrackingRepo.save(tracking);
-            saveAuditLog(hd, "YEU_CAU_DOI_TRA", oldTrangThai, STATUS_RETURN_REQUESTED, authHeader, reason);
-
-            HoaDon saved = hoaDonRepo.save(hd);
-            return ResponseEntity.ok(toDetailMap(saved));
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -415,41 +426,35 @@ public class HoaDonController {
     }
 
     @PutMapping("/{hoaDonId}/tracking/update")
-    public ResponseEntity<?> updateOrderTracking(@PathVariable Integer hoaDonId, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> updateOrderTracking(@PathVariable Integer hoaDonId,
+                                                 @RequestBody Map<String, Object> body,
+                                                 @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        String trackingStatus = cleanText(body.get("trangThaiTracking"));
+        Byte numericStatus = numericStatus(trackingStatus);
+        if (numericStatus == null || numericStatus == STATUS_PAYMENT_FAILED) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Trạng thái tracking không hợp lệ"
+            ));
+        }
+        Actor actor = actorFromAuth(authHeader);
         try {
-            Optional<HoaDon> hoaDon = hoaDonRepo.findById(hoaDonId);
-            if (hoaDon.isEmpty()) {
-                return ResponseEntity.status(404).body(Map.of("success", false, "message", "Không tìm thấy đơn hàng"));
-            }
-
-            HoaDon order = hoaDon.get();
-            String newStatus = (String) body.get("trangThaiTracking");
-            String moTa = (String) body.getOrDefault("moTa", "");
-
-            order.setTrangThaiTracking(newStatus);
-
-            if ("delivered".equalsIgnoreCase(newStatus)) {
-                order.setNgayGiaoHangThucTe(LocalDateTime.now());
-            }
-
-            hoaDonRepo.save(order);
-            emailService.sendOrderStatusUpdateEmail(order, trackingLabel(newStatus), moTa);
-
-            LichSuTracking tracking = LichSuTracking.builder()
-                    .hoaDon(order)
-                    .trangThai(newStatus)
-                    .moTa(moTa)
-                    .ngayCapNhat(LocalDateTime.now())
-                    .build();
-            lichSuTrackingRepo.save(tracking);
-
+            HoaDon order = orderStatusService.transition(
+                    hoaDonId,
+                    numericStatus,
+                    cleanText(body.get("moTa")),
+                    actor.name(),
+                    actor.role()
+            );
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "message", "Cập nhật trạng thái thành công",
                     "data", toDetailMap(order)
             ));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Lỗi: " + e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("success", false, "message", "Không tìm thấy đơn hàng"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
@@ -473,8 +478,29 @@ public class HoaDonController {
     // ===== HELPER METHODS (ĐÃ TÍCH HỢP ĐẦY ĐỦ DỮ LIỆU) =======
     // ========================================================
 
+    private List<Map<String, Object>> toMaps(List<HoaDon> orders) {
+        if (orders.isEmpty()) return List.of();
+        Map<Integer, Long> itemCounts = new HashMap<>();
+        List<Integer> orderIds = orders.stream().map(HoaDon::getId).toList();
+        for (Object[] row : hoaDonCtRepo.countItemsByOrderIds(orderIds)) {
+            itemCounts.put(((Number) row[0]).intValue(), ((Number) row[1]).longValue());
+        }
+        Map<Integer, com.zestia.datn.zestia.entity.YeuCauDoiTra> latestReturns = new HashMap<>();
+        for (var request : returnRequestRepo.findByHoaDonIdInOrderByNgayTaoDesc(orderIds)) {
+            latestReturns.putIfAbsent(request.getHoaDon().getId(), request);
+        }
+        return orders.stream()
+                .map(order -> withReturnStatus(
+                        toMap(order, itemCounts.getOrDefault(order.getId(), 0L)),
+                        latestReturns.get(order.getId())))
+                .toList();
+    }
+
     private Map<String, Object> toMap(HoaDon hd) {
-        long soSanPham = hoaDonCtRepo.countByHoaDonId(hd.getId());
+        return toMap(hd, hoaDonCtRepo.countByHoaDonId(hd.getId()));
+    }
+
+    private Map<String, Object> toMap(HoaDon hd, long soSanPham) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", hd.getId());
         map.put("maHoaDon", hd.getMaHoaDon());
@@ -506,6 +532,7 @@ public class HoaDonController {
         map.put("diaChiGiaoHang", hd.getDiaChiGiaoHang());
         map.put("hinhThucNhanHang", hd.getHinhThucNhanHang()); 
         map.put("ghiChu", hd.getGhiChu());
+        map.put("thongTinHoanTien", hd.getThongTinHoanTien());
         map.put("ngayTao", hd.getNgayTao());
         map.put("ngayGiaoHangDuKien", hd.getNgayGiaoHangDuKien()); 
         
@@ -513,7 +540,8 @@ public class HoaDonController {
     }
 
     private Map<String, Object> toDetailMap(HoaDon hd) {
-        Map<String, Object> map = toMap(hd);
+        Map<String, Object> map = withReturnStatus(toMap(hd),
+                returnRequestRepo.findFirstByHoaDonIdOrderByNgayTaoDesc(hd.getId()).orElse(null));
         map.put("emailKhachHang", hd.getKhachHang() != null ? hd.getKhachHang().getEmail() : hd.getEmailKhachHang());
         
         List<HoaDonChiTiet> chiTiets = hoaDonCtRepo.findByHoaDonId(hd.getId());
@@ -523,6 +551,8 @@ public class HoaDonController {
             item.put("id", ct.getId());
             if (ct.getVayChiTiet() != null) {
                 item.put("variantId", ct.getVayChiTiet().getId());
+                item.put("productId", ct.getVayChiTiet().getVay() != null
+                        ? ct.getVayChiTiet().getVay().getId() : null);
                 item.put("tenVay", ct.getVayChiTiet().getVay() != null 
                         ? ct.getVayChiTiet().getVay().getTenVay() : null);
                 item.put("maSanPham", ct.getVayChiTiet().getVay() != null 
@@ -552,6 +582,13 @@ public class HoaDonController {
         return map;
     }
 
+    private Map<String, Object> withReturnStatus(Map<String, Object> map,
+                                                  com.zestia.datn.zestia.entity.YeuCauDoiTra request) {
+        map.put("returnRequestStatus", request != null ? request.getTrangThai() : null);
+        map.put("returnRequestType", request != null ? request.getLoaiYeuCau() : null);
+        return map;
+    }
+
     private Map<String, Object> trackingToMap(LichSuTracking tracking) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", tracking.getId());
@@ -574,59 +611,21 @@ public class HoaDonController {
         return map;
     }
 
-    private void sendStatusEmail(HoaDon hd, byte status, String description) {
-        String safeDescription = description != null && !description.isBlank()
-                ? description
-                : statusLabel(status);
-        if (status == 4) {
-            emailService.sendDeliveryConfirmationEmail(hd);
-            return;
-        }
-        if (status == STATUS_CANCELLED) {
-            emailService.sendOrderCancellationEmail(hd, safeDescription);
-            return;
-        }
-        emailService.sendOrderStatusUpdateEmail(hd, statusLabel(status), safeDescription);
-    }
-
-    private String statusLabel(byte status) {
-        return switch (status) {
-            case 0 -> "Chờ xử lý";
-            case 1 -> "Đã xác nhận";
-            case 2 -> "Đang chuẩn bị";
-            case 3 -> "Đang giao hàng";
-            case 4 -> "Giao hàng thành công";
-            case 5 -> "Đã hủy";
-            case 6 -> "Giao hàng thất bại";
-            case 7 -> "Thanh toán thất bại";
-            case 8 -> "Yêu cầu đổi/trả";
-            case 9 -> "Đã hoàn tiền/hoàn tất";
-            default -> "Cập nhật trạng thái";
+    private Byte numericStatus(String status) {
+        if (status == null) return null;
+        return switch (status.toLowerCase(Locale.ROOT)) {
+            case "pending" -> 0;
+            case "confirmed" -> 1;
+            case "processing" -> 2;
+            case "shipped" -> 3;
+            case "delivered" -> 4;
+            case "cancelled" -> 5;
+            case "failed" -> 6;
+            case "payment_failed" -> 7;
+            case "return_requested" -> 8;
+            case "refunded" -> 9;
+            default -> null;
         };
-    }
-
-    private String trackingLabel(String status) {
-        if (status == null || status.isBlank()) return "Cập nhật trạng thái";
-        return switch (status) {
-            case "pending" -> "Chờ xử lý";
-            case "confirmed" -> "Đã xác nhận";
-            case "processing" -> "Đang chuẩn bị";
-            case "shipped" -> "Đang giao hàng";
-            case "delivered" -> "Giao hàng thành công";
-            case "cancelled" -> "Đã hủy";
-            case "failed" -> "Giao hàng thất bại";
-            case "payment_failed" -> "Thanh toán thất bại";
-            case "return_requested" -> "Yêu cầu đổi/trả";
-            case "refunded" -> "Đã hoàn tiền/hoàn tất";
-            default -> status;
-        };
-    }
-
-    private boolean shouldRestoreStock(byte oldStatus, byte newStatus) {
-        if (oldStatus == STATUS_CANCELLED || oldStatus == 6 || oldStatus == STATUS_PAYMENT_FAILED || oldStatus == STATUS_REFUNDED) {
-            return false;
-        }
-        return newStatus == STATUS_CANCELLED || newStatus == 6 || newStatus == STATUS_PAYMENT_FAILED || newStatus == STATUS_REFUNDED;
     }
 
     private void restoreStock(HoaDon hd) {
@@ -672,6 +671,60 @@ public class HoaDonController {
         } catch (Exception e) {
             return new Actor("System", "System");
         }
+    }
+
+    private boolean matchesGuestOrder(HoaDon hd, Map<String, Object> body) {
+        String orderCode = cleanText(hd.getMaHoaDon());
+        String orderPhone = cleanText(hd.getSoDienThoai());
+        String providedCode = cleanText(body != null ? body.get("maHoaDon") : null);
+        String providedPhone = cleanText(body != null ? body.get("soDienThoai") : null);
+        return orderCode != null
+                && orderPhone != null
+                && providedCode != null
+                && providedPhone != null
+                && orderCode.equalsIgnoreCase(providedCode)
+                && orderPhone.equals(providedPhone);
+    }
+
+    private ResponseEntity<?> validateGuestCancellationStatus(HoaDon hd) {
+        if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_CANCELLED) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng này đã được hủy trước đó"));
+        }
+        if (hd.getTrangThai() == null || hd.getTrangThai() != 0) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Đơn hàng đã được xác nhận hoặc đang vận chuyển, không thể hủy ở thời điểm này"
+            ));
+        }
+        return null;
+    }
+
+    private String resolveOrderEmail(HoaDon hd) {
+        if (hd.getKhachHang() != null) {
+            String customerEmail = cleanText(hd.getKhachHang().getEmail());
+            if (customerEmail != null) return customerEmail;
+        }
+        return cleanText(hd.getEmailKhachHang());
+    }
+
+    private String maskEmail(String email) {
+        int at = email != null ? email.indexOf('@') : -1;
+        if (at <= 0) return "***";
+        String local = email.substring(0, at);
+        String visible = local.substring(0, Math.min(2, local.length()));
+        return visible + "***" + email.substring(at);
+    }
+
+    private void clearCancellationOtp(HoaDon hd) {
+        hd.setHuyDonOtpHash(null);
+        hd.setHuyDonOtpHetHan(null);
+        hd.setHuyDonOtpSoLanSai(null);
+        hd.setHuyDonOtpGuiLuc(null);
+    }
+
+    private static String cleanText(Object value) {
+        if (value == null) return null;
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
     }
 
     private ResponseEntity<?> authorizeCancel(HoaDon hd, String authHeader) {

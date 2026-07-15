@@ -61,12 +61,32 @@
               <i class="bi bi-search position-absolute" style="left: 18px; top: 50%; transform: translateY(-50%); color: var(--z-gray-light)"></i>
             </div>
             <div style="font-size: 13px; color: var(--z-gray)">
-              Có <strong>{{ filteredOrders.length }}</strong> đơn hàng
+              Có <strong>{{ currentTab === 'return' ? filteredReturnRequests.length : filteredOrders.length }}</strong> {{ currentTab === 'return' ? 'yêu cầu' : 'đơn hàng' }}
+            </div>
+          </div>
+
+          <div v-if="currentTab === 'return'" class="d-flex flex-column gap-3">
+            <div v-if="loading" class="text-center py-5"><div class="spinner-border text-secondary mb-3"></div><p class="text-muted">Đang tải yêu cầu đổi trả...</p></div>
+            <div v-else-if="!filteredReturnRequests.length" class="z-empty-state text-center py-5">
+              <i class="bi bi-arrow-left-right" style="font-size:48px;color:var(--z-gray-light)"></i>
+              <h3 class="lm-display mt-3 mb-2" style="font-size:20px">Chưa có yêu cầu đổi trả</h3>
+              <p class="text-muted" style="font-size:13px">Yêu cầu được tạo theo từng sản phẩm trong đơn đã giao thành công.</p>
+            </div>
+            <div v-for="item in filteredReturnRequests" :key="item.id" class="z-order-card p-4 shadow-sm">
+              <div class="d-flex justify-content-between align-items-start gap-3 pb-3 mb-3 border-bottom">
+                <div><strong>Yêu cầu {{ item.type === 'DOI' ? 'đổi' : 'trả' }} #{{ item.id }}</strong><div class="z-return-muted">{{ item.orderCode }} · {{ formatDateTime(item.createdAt) }}</div></div>
+                <span class="z-return-status" :class="returnStatusInfo(item.status).cls">{{ returnStatusInfo(item.status).label }}</span>
+              </div>
+              <div class="d-flex align-items-center gap-3">
+                <img v-if="item.productImage" :src="item.productImage" class="z-return-product-image" alt="">
+                <div class="flex-grow-1"><strong style="font-size:13px">{{ item.productName }}</strong><div class="z-return-muted">{{ item.productCode }} · {{ item.color }} · Size {{ item.size }} · SL {{ item.quantity }}</div><div v-if="item.replacement" class="z-return-muted mt-1">Đổi sang: {{ item.replacement.color }} · Size {{ item.replacement.size }}</div></div>
+              </div>
+              <div class="z-return-progress-note">{{ returnStatusInfo(item.status).hint }}<span v-if="item.rejectionReason"><br><strong>Lý do:</strong> {{ item.rejectionReason }}</span></div>
             </div>
           </div>
 
           <!-- Loading State -->
-          <div v-if="loading" class="text-center py-5">
+          <div v-else-if="loading" class="text-center py-5">
             <div class="spinner-border text-secondary mb-3"></div>
             <p class="text-muted">Đang tải lịch sử đơn hàng...</p>
           </div>
@@ -155,13 +175,13 @@
                   </button>
 
                   <button
-                    v-if="order.trangThai === 4"
+                    v-if="order.trangThai === 4 && order.hinhThucNhanHang !== 0"
                     class="lm-btn-outline-accent py-2 px-3 d-flex align-items-center gap-2"
                     style="font-size: 12px; height: auto;"
                     @click="openReturn(order)"
                   >
                     <i class="bi bi-arrow-counterclockwise"></i>
-                    <span>Yêu cầu đổi/trả</span>
+                    <span>Đổi / trả hàng</span>
                   </button>
 
                   <!-- View details -->
@@ -179,7 +199,7 @@
           </div>
 
           <!-- Pagination -->
-          <div v-if="totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
+          <div v-if="currentTab !== 'return' && totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
             <button class="lm-pagination-btn" :disabled="currentPage === 1" @click="currentPage--">
               <i class="bi bi-chevron-left"></i>
             </button>
@@ -298,7 +318,17 @@
                   </div>
                 </div>
               </div>
-              <div style="font-size:13px;font-weight:700;color:var(--z-dark)">{{ formatMoney(item.donGia) }}</div>
+              <div class="d-flex flex-column align-items-end gap-2">
+                <div style="font-size:13px;font-weight:700;color:var(--z-dark)">{{ formatMoney(item.donGia) }}</div>
+                <RouterLink
+                  v-if="detailOrder.trangThai === 4 && item.productId"
+                  :to="`/product/${item.productId}#reviews`"
+                  class="z-order-review-link"
+                  @click="showDetail = false"
+                >
+                  <i class="bi bi-star"></i> Đánh giá sản phẩm
+                </RouterLink>
+              </div>
             </div>
           </div>
 
@@ -385,18 +415,47 @@
     </div>
 
     <div v-if="showReturnModal" class="z-modal-overlay" @click.self="showReturnModal = false" style="z-index: 1060; background: rgba(0,0,0,0.6);">
-      <div class="z-modal" style="max-width:500px">
+      <div class="z-modal z-customer-return-modal">
         <div class="d-flex justify-content-between align-items-center mb-4">
-          <h3 style="font-size:18px;font-weight:600;margin:0">Yêu cầu đổi/trả hàng</h3>
+          <div><h3 style="font-size:18px;font-weight:600;margin:0">Yêu cầu đổi hoặc trả hàng</h3><div class="z-return-muted">{{ orderToReturn?.maHoaDon }} · Áp dụng cho đơn giao online</div></div>
           <button class="z-icon-btn" @click="showReturnModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
-        <p style="font-size:14px;color:var(--z-gray);margin-bottom:16px">
-          Vui lòng nhập lý do đổi/trả cho đơn {{ orderToReturn?.maHoaDon }}. Zestia sẽ kiểm tra và phản hồi trong phần trạng thái đơn hàng.
-        </p>
-        <textarea v-model="returnReason" class="lm-input mb-4" rows="4" placeholder="Ví dụ: sai size, lỗi sản phẩm, muốn đổi màu..."></textarea>
-        <div class="d-flex gap-3">
+
+        <div class="z-return-type-switch mb-3">
+          <button :class="{ active: returnType === 'DOI' }" @click="returnType = 'DOI'; loadReturnReplacementOptions()"><i class="bi bi-arrow-left-right"></i> Đổi hàng</button>
+          <button :class="{ active: returnType === 'TRA' }" @click="returnType = 'TRA'; replacementVariantId = null"><i class="bi bi-cash-coin"></i> Trả hàng</button>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label class="z-return-label">Sản phẩm cần {{ returnType === 'DOI' ? 'đổi' : 'trả' }} *</label>
+            <select v-model="selectedReturnDetailId" class="lm-input" @change="onReturnLineChanged">
+              <option :value="null">Chọn sản phẩm trong đơn</option>
+              <option v-for="line in eligibleReturnLines" :key="line.id" :value="line.id">{{ line.maSanPham }} · {{ line.tenVay }} · {{ line.mauSac }} · Size {{ line.kichThuoc }}</option>
+            </select>
+          </div>
+          <div class="col-md-4"><label class="z-return-label">Số lượng *</label><input v-model.number="returnQuantity" class="lm-input" type="number" min="1" :max="selectedReturnLine?.soLuong || 1"></div>
+          <div v-if="returnType === 'DOI'" class="col-12">
+            <label class="z-return-label">Màu / kích cỡ muốn đổi *</label>
+            <select v-model="replacementVariantId" class="lm-input"><option :value="null">Chọn biến thể còn hàng</option><option v-for="variant in returnReplacementOptions" :key="variant.id" :value="variant.id">{{ variant.mauSac }} · Size {{ variant.kichThuoc }} · còn {{ variant.soLuong }}</option></select>
+          </div>
+          <div class="col-12"><label class="z-return-label">Lý do *</label><textarea v-model="returnReason" class="lm-input" rows="3" maxlength="1000" placeholder="Ví dụ: sản phẩm không vừa, giao sai màu..."></textarea></div>
+          <div class="col-12"><label class="z-return-label">Chi tiết tình trạng hàng *</label><textarea v-model="returnCondition" class="lm-input" rows="4" maxlength="2000" placeholder="Mô tả tem mác, bao bì, dấu hiệu đã sử dụng và lỗi nhìn thấy..."></textarea></div>
+          <div v-if="returnType === 'TRA'" class="col-12">
+            <label class="z-return-label">Thông tin nhận tiền hoàn *</label>
+            <textarea v-model="refundReceivingInfo" class="lm-input" rows="3" maxlength="500" placeholder="Tên chủ tài khoản, ngân hàng/ví và số tài khoản/số điện thoại..."></textarea>
+            <div class="z-return-help">Không nhập mật khẩu, mã PIN hoặc OTP thanh toán.</div>
+          </div>
+          <div class="col-12">
+            <label class="z-return-label">Ảnh tình trạng hàng (1–5 ảnh) *</label>
+            <input class="lm-input z-file-input" type="file" accept="image/jpeg,image/png" multiple @change="onReturnImages">
+            <div class="z-return-help">Mỗi ảnh tối đa 5MB. Hãy chụp rõ sản phẩm, tem mác và vị trí lỗi.</div>
+            <div v-if="returnImagePreviews.length" class="z-return-preview-list"><div v-for="(url, index) in returnImagePreviews" :key="url"><img :src="url" alt="Ảnh tình trạng"><button title="Bỏ ảnh" @click="removeReturnImage(index)"><i class="bi bi-x"></i></button></div></div>
+          </div>
+        </div>
+        <div class="d-flex gap-3 mt-4 pt-3 border-top">
           <button class="lm-btn-secondary flex-fill" style="height:44px;" @click="showReturnModal = false">Đóng</button>
-          <button class="lm-btn-primary flex-fill" style="height:44px;" @click="submitReturnOrder">Xác nhận gửi</button>
+          <button class="lm-btn-primary flex-fill" style="height:44px;" :disabled="submittingReturn" @click="submitReturnOrder">{{ submittingReturn ? 'Đang gửi...' : 'Xác nhận gửi' }}</button>
         </div>
       </div>
     </div>
@@ -404,13 +463,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import OrderTrackingCard from '@/components/OrderTrackingCard.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 
 const toast = useToast()
+const { confirmDialog } = useConfirm()
 
 const loading = ref(false)
 const orders = ref([])
@@ -428,7 +489,18 @@ const cancelReason = ref('')
 const otherCancelReason = ref('')
 const orderToCancel = ref(null)
 const showReturnModal = ref(false)
+const returnRequests = ref([])
+const returnType = ref('DOI')
+const selectedReturnDetailId = ref(null)
+const returnQuantity = ref(1)
 const returnReason = ref('')
+const returnCondition = ref('')
+const refundReceivingInfo = ref('')
+const replacementVariantId = ref(null)
+const returnReplacementOptions = ref([])
+const returnImages = ref([])
+const returnImagePreviews = ref([])
+const submittingReturn = ref(false)
 const orderToReturn = ref(null)
 const payingId = ref(null)
 
@@ -458,15 +530,18 @@ statusMap[7] = { key: 'danger', label: 'Thanh toán thất bại' }
 statusMap[8] = { key: 'warning', label: 'Yêu cầu đổi/trả' }
 statusMap[9] = { key: 'danger', label: 'Đã hoàn tiền' }
 
-onMounted(() => {
-  loadOrders()
-})
+onMounted(loadOrders)
+onBeforeUnmount(clearReturnImagePreviews)
 
 async function loadOrders() {
   loading.value = true
   try {
-    const res = await api().getMyOrders()
-    orders.value = res.data || res || []
+    const [ordersRes, returnsRes] = await Promise.all([
+      api().getMyOrders(),
+      api().getMyReturnRequests().catch(() => [])
+    ])
+    orders.value = ordersRes.data || ordersRes || []
+    returnRequests.value = returnsRes || []
   } catch (e) {
     toast.showToast('Không thể tải danh sách đơn hàng', 'error')
   } finally {
@@ -500,7 +575,7 @@ function getCountByTab(tabValue) {
   if (tabValue === 'pending') return orders.value.filter(o => o.trangThai === 0).length
   if (tabValue === 'processing') return orders.value.filter(o => o.trangThai >= 1 && o.trangThai <= 3).length
   if (tabValue === 'completed') return orders.value.filter(o => o.trangThai === 4).length
-  if (tabValue === 'return') return orders.value.filter(o => o.trangThai === 8 || o.trangThai === 9).length
+  if (tabValue === 'return') return returnRequests.value.length
   if (tabValue === 'cancelled') return orders.value.filter(o => o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7).length
   return 0
 }
@@ -519,7 +594,7 @@ const filteredOrders = computed(() => {
     } else if (currentTab.value === 'completed') {
       matchesTab = o.trangThai === 4
     } else if (currentTab.value === 'return') {
-      matchesTab = o.trangThai === 8 || o.trangThai === 9
+      matchesTab = false
     } else if (currentTab.value === 'cancelled') {
       matchesTab = o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7
     }
@@ -542,6 +617,17 @@ const paginatedOrders = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage
   return filteredOrders.value.slice(start, start + itemsPerPage)
 })
+
+const filteredReturnRequests = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase()
+  return returnRequests.value.filter(item => !query || String(item.orderCode || '').toLowerCase().includes(query))
+})
+
+const eligibleReturnLines = computed(() => (orderToReturn.value?.chiTiets || []).filter(line =>
+  !returnRequests.value.some(request => Number(request.orderDetailId) === Number(line.id))
+))
+
+const selectedReturnLine = computed(() => eligibleReturnLines.value.find(line => Number(line.id) === Number(selectedReturnDetailId.value)))
 
 // Actions
 async function openDetail(order) {
@@ -573,10 +659,70 @@ function openCancel(order) {
   showCancelModal.value = true
 }
 
-function openReturn(order) {
-  orderToReturn.value = order
+async function openReturn(order) {
+  clearReturnImagePreviews()
+  returnType.value = 'DOI'
+  selectedReturnDetailId.value = null
+  returnQuantity.value = 1
   returnReason.value = ''
-  showReturnModal.value = true
+  returnCondition.value = ''
+  refundReceivingInfo.value = ''
+  replacementVariantId.value = null
+  returnReplacementOptions.value = []
+  try {
+    orderToReturn.value = await api().getHoaDonById(order.id)
+    if (!eligibleReturnLines.value.length) {
+      toast.showToast('Các sản phẩm trong đơn này đã có hồ sơ đổi hoặc trả', 'warning')
+      return
+    }
+    showReturnModal.value = true
+  } catch (error) {
+    toast.showToast(error.error || 'Không thể tải chi tiết đơn hàng', 'error')
+  }
+}
+
+async function onReturnLineChanged() {
+  returnQuantity.value = 1
+  await loadReturnReplacementOptions()
+}
+
+async function loadReturnReplacementOptions() {
+  replacementVariantId.value = null
+  returnReplacementOptions.value = []
+  if (returnType.value !== 'DOI' || !selectedReturnLine.value?.productId) return
+  try {
+    const product = await api().getVayById(selectedReturnLine.value.productId)
+    returnReplacementOptions.value = (product.bienThe || []).filter(variant =>
+      Number(variant.id) !== Number(selectedReturnLine.value.variantId)
+      && Number(variant.trangThai) === 1 && Number(variant.soLuong || 0) > 0
+    )
+  } catch (error) {
+    toast.showToast(error.error || 'Không thể tải màu và kích cỡ đổi mới', 'error')
+  }
+}
+
+function onReturnImages(event) {
+  const files = Array.from(event.target.files || []).slice(0, 5)
+  if (files.some(file => file.size > 5 * 1024 * 1024)) {
+    toast.showToast('Mỗi ảnh chỉ được tối đa 5MB', 'warning')
+    event.target.value = ''
+    return
+  }
+  clearReturnImagePreviews()
+  returnImages.value = files
+  returnImagePreviews.value = files.map(file => URL.createObjectURL(file))
+}
+
+function removeReturnImage(index) {
+  URL.revokeObjectURL(returnImagePreviews.value[index])
+  returnImagePreviews.value.splice(index, 1)
+  returnImages.value.splice(index, 1)
+}
+
+function clearReturnImagePreviews() {
+  returnImagePreviews.value.forEach(url => URL.revokeObjectURL(url))
+  returnImagePreviews.value = []
+  returnImages.value = []
 }
 
 async function submitCancelOrder() {
@@ -605,19 +751,49 @@ async function submitCancelOrder() {
 }
 
 async function submitReturnOrder() {
-  if (!returnReason.value.trim()) {
-    toast.showToast('Vui lòng nhập lý do đổi/trả', 'warning')
-    return
-  }
-
+  if (!selectedReturnLine.value) return toast.showToast('Vui lòng chọn sản phẩm', 'warning')
+  if (returnQuantity.value < 1 || returnQuantity.value > Number(selectedReturnLine.value.soLuong || 0)) return toast.showToast('Số lượng không hợp lệ', 'warning')
+  if (returnType.value === 'DOI' && !replacementVariantId.value) return toast.showToast('Vui lòng chọn màu và kích cỡ muốn đổi', 'warning')
+  if (returnReason.value.trim().length < 5) return toast.showToast('Lý do cần ít nhất 5 ký tự', 'warning')
+  if (returnCondition.value.trim().length < 10) return toast.showToast('Vui lòng mô tả tình trạng hàng ít nhất 10 ký tự', 'warning')
+  if (returnType.value === 'TRA' && refundReceivingInfo.value.trim().length < 10) return toast.showToast('Vui lòng nhập đầy đủ thông tin nhận tiền hoàn', 'warning')
+  if (!returnImages.value.length) return toast.showToast('Vui lòng tải ít nhất một ảnh tình trạng hàng', 'warning')
+  const accepted = await confirmDialog({ title: `Gửi yêu cầu ${returnType.value === 'DOI' ? 'đổi' : 'trả'} hàng`, message: 'Zestia sẽ dùng thông tin và ảnh này để kiểm tra điều kiện đổi trả.', confirmText: 'Xác nhận gửi' })
+  if (!accepted) return
+  submittingReturn.value = true
   try {
-    await api().requestReturnOrder(orderToReturn.value.id, returnReason.value.trim())
-    toast.showToast('Đã gửi yêu cầu đổi/trả hàng', 'success')
+    await api().createOnlineReturnRequest({
+      orderId: orderToReturn.value.id,
+      orderDetailId: selectedReturnLine.value.id,
+      type: returnType.value,
+      quantity: returnQuantity.value,
+      reason: returnReason.value.trim(),
+      condition: returnCondition.value.trim(),
+      refundInfo: returnType.value === 'TRA' ? refundReceivingInfo.value.trim() : null,
+      replacementVariantId: returnType.value === 'DOI' ? replacementVariantId.value : null,
+      images: returnImages.value
+    })
+    toast.showToast(`Đã gửi yêu cầu ${returnType.value === 'DOI' ? 'đổi' : 'trả'} hàng`, 'success')
     showReturnModal.value = false
+    clearReturnImagePreviews()
     await loadOrders()
   } catch (e) {
     toast.showToast(e.error || 'Không thể gửi yêu cầu đổi/trả', 'error')
+  } finally {
+    submittingReturn.value = false
   }
+}
+
+function returnStatusInfo(status) {
+  return {
+    CHO_DUYET: { label: 'Chờ nhân viên duyệt', cls: 'pending', hint: 'Zestia đang kiểm tra nội dung và ảnh tình trạng hàng.' },
+    CHO_NHAN_HANG: { label: 'Đã duyệt · Chờ gửi hàng', cls: 'waiting', hint: 'Vui lòng gửi sản phẩm về cửa hàng theo hướng dẫn của nhân viên.' },
+    CHO_HOAN_TAT: { label: 'Đã nhận hàng', cls: 'processing', hint: 'Sản phẩm đã được nhận và đang chờ hoàn tất xử lý.' },
+    TU_CHOI: { label: 'Không đủ điều kiện', cls: 'rejected', hint: 'Yêu cầu đã bị từ chối.' },
+    TRA_LAI_KHACH: { label: 'Trả lại hàng', cls: 'rejected', hint: 'Hàng gửi về không đạt điều kiện và sẽ được gửi lại.' },
+    DA_DOI: { label: 'Đã đổi hàng', cls: 'done', hint: 'Yêu cầu đổi hàng đã hoàn tất.' },
+    DA_HOAN_TIEN: { label: 'Đã hoàn tiền', cls: 'done', hint: 'Yêu cầu trả hàng và hoàn tiền đã hoàn tất.' }
+  }[status] || { label: status, cls: 'pending', hint: '' }
 }
 
 // Repay Online
@@ -770,6 +946,32 @@ function formatDateTime(val) {
   color: var(--z-white);
 }
 
+.z-return-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--z-dark);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.z-return-help {
+  margin-top: 6px;
+  color: var(--z-gray);
+  font-size: 11px;
+}
+
+.z-order-review-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--z-accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.z-order-review-link:hover { color: var(--z-dark); }
+
 /* Pagination */
 .lm-pagination-btn {
   width: 40px;
@@ -885,5 +1087,35 @@ function formatDateTime(val) {
   display: flex;
   flex-direction: column;
   padding: 24px;
+}
+.z-customer-return-modal { max-width: 760px; }
+.z-return-muted { color: var(--z-gray); font-size: 12px; margin-top: 3px; }
+.z-return-type-switch {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  padding: 4px; border: 1px solid var(--z-gray-border); background: var(--z-bg-alt);
+}
+.z-return-type-switch button {
+  height: 40px; border: 0; background: transparent; color: var(--z-gray); font-size: 13px; font-weight: 600;
+}
+.z-return-type-switch button.active { background: var(--z-dark); color: var(--z-white); }
+.z-file-input { height: auto; padding: 9px 12px; }
+.z-return-preview-list { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
+.z-return-preview-list > div { position: relative; flex: none; }
+.z-return-preview-list img { width: 78px; height: 92px; object-fit: cover; border: 1px solid var(--z-gray-border); border-radius: var(--z-radius); }
+.z-return-preview-list button {
+  position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0;
+  background: rgba(24,24,27,.86); color: white; display: grid; place-items: center; border-radius: 50%;
+}
+.z-return-product-image { width: 54px; height: 66px; object-fit: cover; border: 1px solid var(--z-gray-border); border-radius: var(--z-radius); }
+.z-return-status { padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.z-return-status.pending { background: #fff4d6; color: #8a5b00; }
+.z-return-status.waiting { background: #eaf5ff; color: #1769aa; }
+.z-return-status.processing { background: #f2edff; color: #6440a4; }
+.z-return-status.rejected { background: #ffeded; color: #b42318; }
+.z-return-status.done { background: #eaf8ee; color: #217a3d; }
+.z-return-progress-note { margin-top: 14px; padding: 10px 12px; background: var(--z-bg-alt); font-size: 12px; color: var(--z-gray); }
+@media (max-width: 575px) {
+  .z-modal { margin: 8px; padding: 18px; }
+  .z-return-type-switch button { font-size: 12px; }
 }
 </style>

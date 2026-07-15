@@ -35,18 +35,21 @@
 
           <div class="d-flex align-items-center gap-2 mb-4">
             <div class="d-flex gap-1">
-              <i v-for="s in 5" :key="s" class="bi bi-star-fill"
-                 :style="{ color: s <= 4 ? 'var(--z-accent)' : 'var(--z-gray-border)', fontSize:'14px' }"></i>
+              <i v-for="s in 5" :key="s" class="bi"
+                 :class="s <= Math.round(reviewSummary.average || 0) ? 'bi-star-fill' : 'bi-star'"
+                 :style="{ color: s <= Math.round(reviewSummary.average || 0) ? 'var(--z-accent)' : 'var(--z-gray-border)', fontSize:'14px' }"></i>
             </div>
-            <span style="font-size:13px;color:var(--z-gray)">4.2 · {{ product.tonKho || 0 }} tồn kho</span>
+            <span style="font-size:13px;color:var(--z-gray)">
+              {{ reviewSummary.count ? `${Number(reviewSummary.average).toFixed(1)} · ${reviewSummary.count} đánh giá` : 'Chưa có đánh giá' }} · {{ product.tonKho || 0 }} tồn kho
+            </span>
           </div>
 
           <div class="d-flex align-items-baseline gap-3 mb-4 pb-4" style="border-bottom:1px solid var(--z-gray-border)">
             <div class="z-display" style="font-size:32px;font-weight:500;color:var(--z-dark)">{{ fmtPrice(product.giaBan) }}</div>
-            <div v-if="product.giaBanGoc && Number(product.giaBanGoc) > Number(product.giaBan)"
-                 style="font-size:16px;color:var(--z-gray-light);text-decoration:line-through;font-weight:400">{{ fmtPrice(product.giaBanGoc) }}</div>
-            <div v-if="discountPct"
-                 style="font-size:12px;font-weight:600;color:var(--z-accent);background:var(--z-accent-soft);padding:4px 12px;border-radius:20px">-{{ discountPct }}%</div>
+            <div v-if="product.dotKhuyenMai"
+                 style="font-size:12px;font-weight:600;color:var(--z-accent);background:var(--z-accent-soft);padding:4px 12px;border-radius:20px">
+              {{ product.dotKhuyenMai }}
+            </div>
           </div>
 
           <p style="font-size:14px;font-weight:400;line-height:1.8;color:var(--z-gray);margin-bottom:32px">
@@ -83,12 +86,19 @@
               <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Gợi ý chọn size</span>
               <span v-if="activeSize" style="font-size:12px;color:var(--z-accent)">Đang chọn {{ activeSize }}</span>
             </div>
-            <div class="d-grid gap-2" style="grid-template-columns:repeat(4,1fr)">
+            <div class="z-size-guide-grid">
               <div v-for="row in sizeGuideRows" :key="row.size" class="z-size-guide-cell" :class="{ active: activeSize === row.size }">
                 <strong>{{ row.size }}</strong>
                 <span>{{ row.fit }}</span>
+                <small v-if="row.measurements">{{ row.measurements }}</small>
               </div>
             </div>
+            <p v-if="product.moTaPhom" class="z-fit-note">{{ product.moTaPhom }}</p>
+            <p v-if="product.chieuCaoNguoiMau || product.canNangNguoiMau" class="z-model-note">
+              Người mẫu: {{ product.chieuCaoNguoiMau ? `${product.chieuCaoNguoiMau}cm` : '' }}
+              {{ product.canNangNguoiMau ? `· ${product.canNangNguoiMau}kg` : '' }}
+              {{ product.sizeNguoiMau ? `· mặc size ${product.sizeNguoiMau}` : '' }}
+            </p>
           </div>
 
           <div class="d-grid gap-2 mb-4" style="grid-template-columns:1fr 52px">
@@ -104,22 +114,106 @@
           </div>
 
           <div class="d-flex flex-column gap-3" style="font-size:13px;color:var(--z-gray);padding:20px;background:var(--z-bg-alt);border-radius:var(--z-radius-lg)">
-            <div class="d-flex align-items-center gap-3">
+            <div v-for="policy in productPolicies" :key="policy.code" class="d-flex align-items-center gap-3">
+              <i class="bi" :class="policyIcon(policy.code)" style="color:var(--z-accent);font-size:16px"></i>
+              {{ policy.summary }}
+            </div>
+            <div v-if="product.chatLieu" class="d-flex align-items-center gap-3">
+              <i class="bi bi-patch-check" style="color:var(--z-accent);font-size:16px"></i>
+              Chất liệu: {{ product.chatLieu }}
+            </div>
+            <RouterLink to="/policies" class="z-policy-link">Xem đầy đủ điều kiện áp dụng <i class="bi bi-arrow-right"></i></RouterLink>
+            <!-- Icons and copy above are sourced from product/policy data. -->
+            <div v-if="!productPolicies.length" class="d-flex align-items-center gap-3">
               <i class="bi bi-truck" style="color:var(--z-accent);font-size:16px"></i>
-              Giao hàng miễn phí cho đơn từ 1.000.000đ
-            </div>
-            <div class="d-flex align-items-center gap-3">
-              <i class="bi bi-arrow-repeat" style="color:var(--z-accent);font-size:16px"></i>
-              Đổi trả trong 30 ngày
-            </div>
-            <div class="d-flex align-items-center gap-3">
-              <i class="bi bi-shield-check" style="color:var(--z-accent);font-size:16px"></i>
-              Chất liệu lụa tự nhiên 100% được chứng nhận
+              Chính sách mua hàng đang được cập nhật
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <section id="reviews" class="z-reviews-section">
+      <div class="container">
+        <div class="z-review-heading">
+          <div>
+            <p class="lm-eyebrow mb-2">Đánh giá từ đơn đã giao</p>
+            <h2 class="lm-section-title">Người mua <em>chia sẻ</em></h2>
+          </div>
+          <div class="z-review-score">
+            <strong>{{ reviewSummary.count ? Number(reviewSummary.average).toFixed(1) : '–' }}</strong>
+            <span>{{ reviewSummary.count || 0 }} đánh giá đã xác minh</span>
+          </div>
+        </div>
+
+        <div v-if="!isLoggedIn()" class="z-review-login-prompt">
+          <div>
+            <i class="bi bi-chat-square-heart"></i>
+            <div>
+              <h3>Đăng nhập để chia sẻ trải nghiệm</h3>
+              <p>Chỉ khách hàng đã đăng nhập và đã nhận sản phẩm mới có thể gửi đánh giá.</p>
+            </div>
+          </div>
+          <button class="lm-btn-primary" type="button" @click="goToReviewLogin"><span>Đăng nhập để đánh giá</span></button>
+        </div>
+
+        <div v-else-if="reviewEligibility.canReview" class="z-review-form">
+          <h3>Đánh giá sản phẩm đã nhận</h3>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="z-review-label">Đơn hàng</label>
+              <select v-model="reviewForm.orderId" class="lm-input">
+                <option value="">Chọn đơn đã giao</option>
+                <option v-for="order in reviewEligibility.orders" :key="order.id" :value="order.id">{{ order.maHoaDon }}</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="z-review-label">Số sao</label>
+              <div class="z-review-star-input">
+                <button v-for="star in 5" :key="star" type="button" :title="`${star} sao`" @click="reviewForm.stars = star">
+                  <i class="bi" :class="star <= reviewForm.stars ? 'bi-star-fill' : 'bi-star'"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="z-review-label">Ảnh thực tế (tối đa 3)</label>
+              <input class="lm-input" type="file" accept="image/jpeg,image/png" multiple @change="onReviewImages" />
+            </div>
+            <div class="col-12">
+              <label class="z-review-label">Nội dung</label>
+              <textarea v-model="reviewForm.content" class="lm-input" rows="4" maxlength="2000" placeholder="Chia sẻ về phom, size, chất liệu và trải nghiệm nhận hàng..."></textarea>
+            </div>
+          </div>
+          <button class="lm-btn-primary mt-3" type="button" :disabled="reviewSubmitting" @click="submitReview">
+            <span>{{ reviewSubmitting ? 'Đang gửi...' : 'Gửi đánh giá' }}</span>
+          </button>
+        </div>
+
+        <div v-else class="z-review-eligibility-note">
+          <i class="bi bi-patch-check"></i>
+          <span>Bạn có thể đánh giá tại đây sau khi đơn chứa sản phẩm đã được giao thành công.</span>
+          <RouterLink to="/my-orders">Xem đơn hàng</RouterLink>
+        </div>
+
+        <div v-if="reviews.length" class="z-review-list">
+          <article v-for="review in reviews" :key="review.id" class="z-review-item">
+            <div class="z-review-author">
+              <strong>{{ review.customerName }}</strong>
+              <span><i class="bi bi-patch-check-fill"></i> Đã mua hàng · {{ formatReviewDate(review.createdAt) }}</span>
+            </div>
+            <div>
+              <div class="z-review-stars"><i v-for="star in 5" :key="star" class="bi" :class="star <= review.stars ? 'bi-star-fill' : 'bi-star'"></i></div>
+              <p>{{ review.content }}</p>
+              <div v-if="review.images?.length" class="z-review-images">
+                <img v-for="image in review.images" :key="image" :src="image" alt="Ảnh đánh giá thực tế" loading="lazy" />
+              </div>
+            </div>
+          </article>
+        </div>
+        <div v-else class="z-review-empty">Chưa có đánh giá cho sản phẩm này.</div>
+        <button v-if="reviewPage + 1 < reviewTotalPages" class="lm-btn-secondary z-load-reviews" type="button" @click="loadMoreReviews">Xem thêm đánh giá</button>
+      </div>
+    </section>
 
     <AppFooter />
   </div>
@@ -127,18 +221,20 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
-import { api } from '@/composables/useApi'
+import { api, useAuth } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
 import { useWishlist } from '@/composables/useWishlist'
 
 const route = useRoute()
+const router = useRouter()
 const { addItem } = useCart()
 const { showToast } = useToast()
 const { isInWishlist, toggleWishlist } = useWishlist()
+const { isLoggedIn } = useAuth()
 
 const product = ref({})
 const activeThumb = ref(0)
@@ -146,12 +242,24 @@ const activeThumb = ref(0)
 const activeColor = ref(null) 
 const activeSize  = ref(null) 
 const isLiked = computed(() => isInWishlist(product.value.id))
-const sizeGuideRows = [
-  { size: 'S', fit: '40-48kg' },
-  { size: 'M', fit: '49-56kg' },
-  { size: 'L', fit: '57-64kg' },
-  { size: 'XL', fit: '65-72kg' },
-]
+const policies = ref([])
+const reviewSummary = ref({ average: 0, count: 0, distribution: {} })
+const reviews = ref([])
+const reviewPage = ref(0)
+const reviewTotalPages = ref(0)
+const reviewEligibility = ref({ canReview: false, orders: [] })
+const reviewSubmitting = ref(false)
+const reviewForm = ref({ orderId: '', stars: 5, content: '', images: [] })
+const sizeGuideRows = computed(() => (product.value.huongDanSize || []).map(row => ({
+  size: row.kichThuoc || row.size || '',
+  fit: [row.canNangTu, row.canNangDen].every(value => value != null) ? `${row.canNangTu}-${row.canNangDen}kg` : 'Theo số đo',
+  measurements: [
+    row.vongNgucTu != null ? `Ngực ${row.vongNgucTu}-${row.vongNgucDen}` : '',
+    row.vongEoTu != null ? `Eo ${row.vongEoTu}-${row.vongEoDen}` : '',
+    row.vongMongTu != null ? `Mông ${row.vongMongTu}-${row.vongMongDen}` : ''
+  ].filter(Boolean).join(' · ')
+})))
+const productPolicies = computed(() => policies.value.filter(policy => ['SHIPPING', 'SIZE_EXCHANGE', 'RETURN'].includes(policy.code)))
 
 const letters = ['Z', 'e', 's', 't', 'i', 'a']
 const bgs = [
@@ -161,15 +269,16 @@ const bgs = [
 ]
 
 const galleryImages = computed(() => {
-  const imgs = product.value.danhSachAnh || []
-  if (imgs.length >= 4) return imgs.slice(0, 4)
-  const main = product.value.anhUrl
-  if (main) {
-    const arr = [main, ...imgs.filter(u => u !== main)]
-    while (arr.length < 4) arr.push(null)
-    return arr.slice(0, 4)
-  }
-  return [null, null, null, null]
+  const variants = (product.value.bienThe || []).filter(variant => Number(variant.trangThai) === 1)
+  const colorNames = [...new Set(variants.map(variant => variant.mauSac).filter(Boolean))]
+  const colorName = activeColor.value !== null ? colorNames[activeColor.value] : null
+  const colorImage = colorName
+    ? variants.find(variant => variant.mauSac === colorName && variant.anhUrl)?.anhUrl
+    : null
+  const productImages = [product.value.anhUrl, ...(product.value.danhSachAnh || [])].filter(Boolean)
+  const uniqueImages = [...new Set([colorImage, ...productImages].filter(Boolean))]
+  while (uniqueImages.length < 4) uniqueImages.push(null)
+  return uniqueImages.slice(0, 4)
 })
 
 const productName = computed(() => {
@@ -178,13 +287,6 @@ const productName = computed(() => {
   if (words.length <= 2) return { main: name, sub: '' }
   const mid = Math.ceil(words.length / 2)
   return { main: words.slice(0, mid).join(' '), sub: words.slice(mid).join(' ') }
-})
-
-const discountPct = computed(() => {
-  const orig = Number(product.value.giaBanGoc)
-  const cur = Number(product.value.giaBan)
-  if (!orig || orig <= cur) return 0
-  return Math.round((1 - cur / orig) * 100)
 })
 
 const activeVariants = computed(() => {
@@ -231,6 +333,7 @@ const selectedVariant = computed(() => {
 })
 
 watch(activeColor, () => {
+  activeThumb.value = 0
   if (activeSize.value && !sizes.value.some(s => s.label === activeSize.value && !s.soldOut)) {
     activeSize.value = null
   }
@@ -239,10 +342,69 @@ watch(activeColor, () => {
 onMounted(async () => {
   try {
     const id = route.params.id
-    product.value = await api().getVayById(id)
-    // Đã xóa phần auto-select size để ép người dùng phải chọn
+    const [productData, reviewData, policyData] = await Promise.all([
+      api().getVayById(id),
+      api().getProductReviews(id),
+      api().getStorePolicies()
+    ])
+    product.value = productData
+    applyReviewData(reviewData)
+    policies.value = policyData || []
+    if (isLoggedIn()) {
+      api().recordCustomerView(id).catch(() => {})
+      reviewEligibility.value = await api().getReviewEligibility(id).catch(() => ({ canReview: false, orders: [] }))
+    }
   } catch (e) { console.error('Failed to load product:', e) }
 })
+
+function applyReviewData(data, append = false) {
+  if (!data) return
+  reviews.value = append ? [...reviews.value, ...(data.content || [])] : (data.content || [])
+  reviewSummary.value = data.summary || reviewSummary.value
+  reviewPage.value = Number(data.page || 0)
+  reviewTotalPages.value = Number(data.totalPages || 0)
+}
+
+async function loadMoreReviews() {
+  const data = await api().getProductReviews(route.params.id, reviewPage.value + 1, 6)
+  applyReviewData(data, true)
+}
+
+function onReviewImages(event) {
+  const files = [...(event.target.files || [])]
+  if (files.length > 3) showToast('Mỗi đánh giá được chọn tối đa 3 ảnh')
+  reviewForm.value.images = files.slice(0, 3)
+}
+
+async function submitReview() {
+  if (!isLoggedIn()) return goToReviewLogin()
+  if (!reviewForm.value.orderId) return showToast('Vui lòng chọn đơn hàng đã giao')
+  if (reviewForm.value.content.trim().length < 10) return showToast('Nội dung đánh giá cần ít nhất 10 ký tự')
+  reviewSubmitting.value = true
+  try {
+    await api().createProductReview(route.params.id, reviewForm.value)
+    showToast('Cảm ơn bạn đã gửi đánh giá')
+    reviewForm.value = { orderId: '', stars: 5, content: '', images: [] }
+    reviewEligibility.value = await api().getReviewEligibility(route.params.id)
+    applyReviewData(await api().getProductReviews(route.params.id))
+  } catch (error) {
+    showToast(error.error || 'Không thể gửi đánh giá')
+  } finally {
+    reviewSubmitting.value = false
+  }
+}
+
+function goToReviewLogin() {
+  router.push({ name: 'login', query: { redirect: `${route.path}#reviews` } })
+}
+
+function policyIcon(code) {
+  return { SHIPPING: 'bi-truck', SIZE_EXCHANGE: 'bi-rulers', RETURN: 'bi-arrow-repeat' }[code] || 'bi-info-circle'
+}
+
+function formatReviewDate(value) {
+  return value ? new Date(value).toLocaleDateString('vi-VN') : ''
+}
 
 function addToCart() {
   // --- BẮT BUỘC CHỌN MÀU VÀ SIZE ---
@@ -264,6 +426,7 @@ function addToCart() {
   const p = product.value
   const idx = (p.id || 0) % letters.length
   const colorName = colors.value[activeColor.value]?.name || ''
+  const currentPrice = Number(variantMatch.giaBan ?? p.giaBan) || 0
   
   // TẠO ID DUY NHẤT ĐỂ GIỎ HÀNG KHÔNG GỘP CHUNG SẢN PHẨM KHÁC SIZE/MÀU
   const uniqueCartId = `variant-${variantMatch.id}`
@@ -275,10 +438,10 @@ function addToCart() {
     size: activeSize.value, // Lưu size vào giỏ
     color: colorName,       // Lưu màu vào giỏ
     variant: [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · '),
-    price: Number(variantMatch.giaBan || p.giaBan) || 0,
+    price: currentPrice,
     maxQty: Number(variantMatch.soLuong || 0),
     variantId: variantMatch.id,
-    image: p.anhUrl || null,
+    image: variantMatch.anhUrl || p.anhUrl || p.danhSachAnh?.[0] || null,
     letter: letters[idx], 
     bg: bgs[idx % bgs.length]
   })
@@ -301,6 +464,7 @@ function toggleWish() {
   padding: 12px;
   background: var(--z-bg-alt);
 }
+.z-size-guide-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 8px; }
 .z-size-guide-cell {
   border: 1px solid var(--z-gray-border);
   border-radius: var(--z-radius);
@@ -314,5 +478,43 @@ function toggleWish() {
 }
 .z-size-guide-cell strong { font-size: 13px; color: var(--z-dark); }
 .z-size-guide-cell span { font-size: 11px; color: var(--z-gray); white-space: nowrap; }
+.z-size-guide-cell small { color: var(--z-gray); font-size: 9px; line-height: 1.45; }
 .z-size-guide-cell.active { border-color: var(--z-accent); background: var(--z-accent-soft); }
+.z-fit-note, .z-model-note { margin: 10px 0 0; color: var(--z-gray); font-size: 11px; line-height: 1.6; }
+.z-policy-link { color: var(--z-accent); font-size: 12px; font-weight: 600; text-decoration: none; }
+.z-reviews-section { padding: 72px 0; background: var(--z-bg-alt); }
+.z-review-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 38px; }
+.z-review-score { text-align: right; }
+.z-review-score strong { display: block; color: var(--z-dark); font-family: var(--z-font-display); font-size: 40px; }
+.z-review-score span { color: var(--z-gray); font-size: 12px; }
+.z-review-form { margin-bottom: 32px; padding: 24px; border: 1px solid var(--z-gray-border); background: var(--z-white); }
+.z-review-login-prompt, .z-review-eligibility-note { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; padding: 22px 24px; border: 1px solid var(--z-gray-border); background: var(--z-white); }
+.z-review-login-prompt > div { display: flex; align-items: center; gap: 16px; }
+.z-review-login-prompt > div > i { color: var(--z-accent); font-size: 26px; }
+.z-review-login-prompt h3 { margin: 0 0 4px; font-size: 16px; }
+.z-review-login-prompt p { margin: 0; color: var(--z-gray); font-size: 13px; }
+.z-review-eligibility-note { justify-content: flex-start; color: var(--z-gray); font-size: 13px; }
+.z-review-eligibility-note i { color: var(--z-accent); font-size: 18px; }
+.z-review-eligibility-note a { margin-left: auto; color: var(--z-dark); font-weight: 600; }
+.z-review-form h3 { margin-bottom: 18px; font-size: 16px; }
+.z-review-label { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 600; }
+.z-review-star-input { display: flex; min-height: 43px; align-items: center; }
+.z-review-star-input button { border: 0; background: transparent; color: var(--z-accent); font-size: 20px; }
+.z-review-list { border-top: 1px solid var(--z-gray-border); }
+.z-review-item { display: grid; grid-template-columns: minmax(180px, .35fr) 1fr; gap: 32px; padding: 30px 0; border-bottom: 1px solid var(--z-gray-border); }
+.z-review-author strong { display: block; font-size: 13px; }
+.z-review-author span { color: var(--z-gray); font-size: 11px; }
+.z-review-author i, .z-review-stars { color: var(--z-accent); }
+.z-review-item p { margin: 12px 0; color: var(--z-dark); line-height: 1.7; }
+.z-review-images { display: flex; gap: 10px; flex-wrap: wrap; }
+.z-review-images img { width: 96px; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--z-gray-border); }
+.z-review-empty { padding: 40px 0; border-top: 1px solid var(--z-gray-border); color: var(--z-gray); text-align: center; }
+.z-load-reviews { display: block; margin: 24px auto 0; }
+@media (max-width: 700px) {
+  .z-review-heading { align-items: start; flex-direction: column; }
+  .z-review-score { text-align: left; }
+  .z-review-item { grid-template-columns: 1fr; gap: 12px; }
+  .z-review-login-prompt, .z-review-eligibility-note { align-items: stretch; flex-direction: column; }
+  .z-review-eligibility-note a { margin-left: 0; }
+}
 </style>

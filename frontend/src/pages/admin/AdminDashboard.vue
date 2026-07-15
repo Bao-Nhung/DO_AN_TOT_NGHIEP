@@ -1,6 +1,60 @@
 <template>
   <AdminLayout>
-    <template v-if="isStaffDashboard">
+    <template v-if="isInventoryDashboard">
+      <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+        <div>
+          <p class="lm-eyebrow mb-2">Quản lý kho</p>
+          <h1 class="z-display mb-1" style="font-size:30px;font-weight:500;color:var(--z-dark)">Xin chào, {{ userName }}</h1>
+          <p style="font-size:14px;color:var(--z-gray);margin:0">Theo dõi biến thể sắp hết và cập nhật danh mục sản phẩm.</p>
+        </div>
+        <RouterLink to="/admin/products" class="lm-btn-primary"><span><i class="bi bi-box-seam me-1"></i>Quản lý sản phẩm</span></RouterLink>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div v-for="stat in inventoryStats" :key="stat.label" class="col-6 col-xl-3">
+          <div class="z-stat-card z-staff-stat">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <span class="z-stat-label">{{ stat.label }}</span>
+              <i class="bi" :class="stat.icon"></i>
+            </div>
+            <div class="z-stat-value">{{ stat.value }}</div>
+            <div class="z-stat-change">{{ stat.hint }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="z-admin-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 class="z-admin-card-title">Biến thể tồn kho thấp</h3>
+          <RouterLink to="/admin/products" class="z-inline-link">Mở danh sách sản phẩm</RouterLink>
+        </div>
+        <div class="table-responsive">
+          <table class="z-table">
+            <thead><tr><th>Sản phẩm</th><th>Mã</th><th>Màu</th><th>Size</th><th>Còn lại</th></tr></thead>
+            <tbody>
+              <tr v-if="!lowStockVariants.length"><td colspan="5" class="text-center py-4" style="color:var(--z-gray)">Không có biến thể sắp hết.</td></tr>
+              <tr v-for="variant in lowStockVariants" :key="variant.variantId">
+                <td>
+                  <div class="d-flex align-items-center gap-3" style="min-width:220px">
+                    <div class="z-dashboard-product-thumb">
+                      <img v-if="variant.image" :src="variant.image" :alt="variant.tenVay">
+                      <i v-else class="bi bi-image"></i>
+                    </div>
+                    <span class="z-dashboard-product-name">{{ variant.tenVay }}</span>
+                  </div>
+                </td>
+                <td>{{ variant.maVay }}</td>
+                <td>{{ variant.mauSac || 'N/A' }}</td>
+                <td>{{ variant.kichThuoc || 'N/A' }}</td>
+                <td><span class="z-status danger">{{ variant.soLuong }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+    <template v-else-if="isStaffDashboard">
       <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div>
           <p class="lm-eyebrow mb-2">Ca làm hôm nay</p>
@@ -11,13 +65,19 @@
             Theo dõi nhanh ca làm, đơn tại quầy và các đơn đang cần xử lý.
           </p>
         </div>
-        <div class="d-flex gap-2">
+        <div v-if="staffCanOperate" class="d-flex gap-2">
           <RouterLink to="/admin/pos" class="lm-btn-primary"><span><i class="bi bi-shop me-1"></i>Bán tại quầy</span></RouterLink>
           <RouterLink to="/admin/orders" class="lm-btn-secondary">Xem đơn hàng</RouterLink>
         </div>
+        <RouterLink v-else to="/admin/schedule" class="lm-btn-primary"><span><i class="bi bi-calendar-check me-1"></i>Xem và xác nhận ca</span></RouterLink>
       </div>
 
-      <div class="row g-3 mb-4">
+      <div v-if="!staffCanOperate" class="z-admin-card mb-4" style="border-left:4px solid var(--z-accent)">
+        <div style="font-size:15px;font-weight:650;color:var(--z-dark)">{{ staffShiftReason }}</div>
+        <div style="font-size:12px;color:var(--z-gray);margin-top:5px">Bạn chỉ có thể bán hàng và xem số liệu trong đúng ca đã check-in.</div>
+      </div>
+
+      <div v-if="staffCanOperate" class="row g-3 mb-4">
         <div v-for="stat in staffStats" :key="stat.label" class="col-6 col-xl-3">
           <div class="z-stat-card z-staff-stat">
             <div class="d-flex align-items-center justify-content-between mb-3">
@@ -31,7 +91,7 @@
       </div>
 
       <div class="row g-3">
-        <div class="col-xl-5">
+        <div :class="staffCanOperate ? 'col-xl-5' : 'col-12'">
           <div class="z-admin-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h3 class="z-admin-card-title">Lịch hôm nay</h3>
@@ -53,7 +113,7 @@
           </div>
         </div>
 
-        <div class="col-xl-7">
+        <div v-if="staffCanOperate" class="col-xl-7">
           <div class="z-admin-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h3 class="z-admin-card-title">Đơn tại quầy gần đây</h3>
@@ -146,7 +206,7 @@
               <div v-for="(p, i) in topProducts" :key="p.name" class="d-flex align-items-center gap-3">
                 <div style="width:20px;font-size:14px;font-weight:700;color:var(--z-gray-light)">#{{ i + 1 }}</div>
                 <div style="width:44px;height:52px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
-                  <img v-if="p.image" :src="p.image" style="width:100%;height:100%;object-fit:cover">
+                  <img v-if="p.image" :src="p.image" :alt="p.name" style="width:100%;height:100%;object-fit:cover">
                   <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                        :style="{ background: p.bg, fontFamily:'var(--z-font-display)', fontSize:'14px', color:'rgba(255,255,255,0.3)' }">
                     {{ p.letter }}
@@ -156,7 +216,10 @@
                   <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ p.name }}</div>
                   <div style="font-size:12px;color:var(--z-gray)">Đã bán: {{ p.sold }}</div>
                 </div>
-                <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ p.revenue }}</div>
+                <div class="z-top-product-revenue">
+                  <span>Doanh thu</span>
+                  <strong>{{ p.revenue }}</strong>
+                </div>
               </div>
             </div>
           </div>
@@ -164,11 +227,17 @@
           <div class="z-admin-card mt-3">
             <h3 class="z-admin-card-title mb-3">Tồn kho thấp</h3>
             <div v-if="lowStockVariants.length" class="d-flex flex-column gap-3">
-              <div v-for="v in lowStockVariants" :key="v.variantId" class="d-flex justify-content-between gap-3">
-                <div>
-                  <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ v.tenVay }}</div>
-                  <div style="font-size:12px;color:var(--z-gray)">
-                    {{ v.maVay }} · {{ v.mauSac || 'N/A' }} · Size {{ v.kichThuoc || 'N/A' }}
+              <div v-for="v in lowStockVariants" :key="v.variantId" class="d-flex align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3" style="min-width:0">
+                  <div class="z-dashboard-product-thumb">
+                    <img v-if="v.image" :src="v.image" :alt="v.tenVay">
+                    <i v-else class="bi bi-image"></i>
+                  </div>
+                  <div style="min-width:0">
+                    <div class="z-dashboard-product-name">{{ v.tenVay }}</div>
+                    <div style="font-size:12px;color:var(--z-gray)">
+                      {{ v.maVay }} · {{ v.mauSac || 'N/A' }} · Size {{ v.kichThuoc || 'N/A' }}
+                    </div>
                   </div>
                 </div>
                 <span class="z-status danger">Còn {{ v.soLuong }}</span>
@@ -190,7 +259,8 @@ import { fmtPrice, mapProduct } from '@/composables/useProducts'
 
 const { getUser } = useAuth()
 const currentUser = computed(() => getUser() || {})
-const isStaffDashboard = computed(() => currentUser.value.role !== 'Admin')
+const isInventoryDashboard = computed(() => ['QuanLyKho', 'Quản lý kho'].includes(currentUser.value.role))
+const isStaffDashboard = computed(() => currentUser.value.role !== 'Admin' && !isInventoryDashboard.value)
 const userName = computed(() => currentUser.value.hoVaTen || currentUser.value.username || 'Nhân viên')
 
 const statusMap = {
@@ -219,11 +289,37 @@ const lowStockVariants = ref([])
 const staffStats = ref([])
 const todayShifts = ref([])
 const myRecentOrders = ref([])
+const inventoryStats = ref([])
+const staffCanOperate = ref(false)
+const staffShiftReason = ref('Bạn chưa check-in ca làm')
 
 onMounted(async () => {
-  if (isStaffDashboard.value) await loadStaffDashboard()
+  if (isInventoryDashboard.value) await loadInventoryDashboard()
+  else if (isStaffDashboard.value) await loadStaffDashboard()
   else await loadAdminDashboard()
 })
+
+async function loadInventoryDashboard() {
+  try {
+    const [summary, products] = await Promise.all([api().getInventoryDashboard(), api().getVay()])
+    const mappedProducts = products.map(mapProduct)
+    const productsById = new Map(mappedProducts.map(product => [Number(product.id), product]))
+    const activeProducts = products.filter(product => Number(product.trangThai) === 1)
+    const inactiveProducts = products.length - activeProducts.length
+    lowStockVariants.value = (summary.lowStockVariants || []).map(variant => ({
+      ...variant,
+      image: productsById.get(Number(variant.productId))?.image || null
+    }))
+    inventoryStats.value = [
+      { label: 'Sản phẩm đang bán', value: String(activeProducts.length), hint: 'Hiển thị ngoài cửa hàng', icon: 'bi-bag-check' },
+      { label: 'Sản phẩm đã khóa', value: String(inactiveProducts), hint: 'Không hiển thị với khách', icon: 'bi-lock' },
+      { label: 'Tổng biến thể', value: String(summary.tongBienThe || 0), hint: 'Theo màu sắc và kích cỡ', icon: 'bi-grid-3x3-gap' },
+      { label: 'Sắp hết hàng', value: String(lowStockVariants.value.length), hint: 'Cần kiểm tra nhập kho', icon: 'bi-exclamation-triangle' }
+    ]
+  } catch (error) {
+    console.error('Inventory dashboard load failed:', error)
+  }
+}
 
 async function loadAdminDashboard() {
   try {
@@ -241,7 +337,13 @@ async function loadAdminDashboard() {
 
     recentOrders.value = sortByDate(orders).slice(0, 6).map(mapOrder)
 
-    lowStockVariants.value = s.lowStockVariants || []
+    const mappedProducts = prods.map(mapProduct)
+    const productsById = new Map(mappedProducts.map(p => [Number(p.id), p]))
+
+    lowStockVariants.value = (s.lowStockVariants || []).map(v => ({
+      ...v,
+      image: productsById.get(Number(v.productId))?.image || null
+    }))
     const topSelling = s.topSellingProducts || []
     if (topSelling.length) {
       topProducts.value = topSelling.map((p, i) => ({
@@ -250,12 +352,12 @@ async function loadAdminDashboard() {
         revenue: fmtPrice(p.doanhThu || 0),
         letter: (p.tenVay || 'Z').charAt(0),
         bg: ['#D4A99E', '#C4A98E', '#A8A49E'][i % 3],
-        image: null
+        image: productsById.get(Number(p.productId))?.image || null
       }))
     } else {
-      const mapped = prods.map(mapProduct).sort((a, b) => b.stock - a.stock)
-      topProducts.value = mapped.slice(0, 5).map(p => ({
-        name: p.name, sold: String(p.stock), revenue: fmtPrice((p.salePrice || p.price) * Math.max(1, p.stock || 1)),
+      const stockRankedProducts = [...mappedProducts].sort((a, b) => b.stock - a.stock)
+      topProducts.value = stockRankedProducts.slice(0, 5).map(p => ({
+        name: p.name, sold: String(p.stock), revenue: fmtPrice(p.price * Math.max(1, p.stock || 1)),
         letter: p.letter, bg: p.bg, image: p.image || null
       }))
     }
@@ -267,10 +369,20 @@ async function loadAdminDashboard() {
 async function loadStaffDashboard() {
   try {
     const today = inputDate(new Date())
-    const [orders, shifts] = await Promise.all([
-      api().getHoaDon(),
+    const [shiftStatus, shifts] = await Promise.all([
+      api().getWorkShiftStatus(),
       api().getLichLamViec({ startDate: today, endDate: today, nhanVienId: currentUser.value.userId })
     ])
+    staffCanOperate.value = Boolean(shiftStatus?.canOperate)
+    staffShiftReason.value = shiftStatus?.reason || 'Bạn chưa check-in ca làm'
+    todayShifts.value = shifts
+    if (!staffCanOperate.value) {
+      staffStats.value = []
+      myRecentOrders.value = []
+      return
+    }
+
+    const orders = await api().getHoaDon()
     const userId = Number(currentUser.value.userId)
     const myOrders = orders.filter(o =>
       Number(o.nhanVienId) === userId ||
@@ -284,7 +396,6 @@ async function loadStaffDashboard() {
       .reduce((sum, o) => sum + Number(o.tongTien || 0), 0)
     const pendingOrders = orders.filter(o => Number(o.trangThai) === 0)
 
-    todayShifts.value = shifts
     myRecentOrders.value = sortByDate(myOrders).slice(0, 6).map(mapOrder)
     staffStats.value = [
       { label: 'Ca hôm nay', value: String(shifts.length), hint: shifts.length ? 'Đã có lịch làm việc' : 'Chưa có lịch', icon: 'bi-calendar2-week' },
@@ -340,6 +451,30 @@ function shortTime(value) {
 </script>
 
 <style scoped>
+.z-stat-card {
+  display: block;
+  height: 100%;
+  min-height: 148px;
+  padding: 20px;
+}
+.z-stat-label {
+  color: var(--z-gray);
+  font-size: 12px;
+  font-weight: 600;
+}
+.z-stat-value {
+  color: var(--z-dark);
+  font-family: var(--z-font-display);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.z-stat-change {
+  margin-top: 8px;
+  color: var(--z-gray);
+  font-size: 12px;
+  line-height: 1.45;
+}
 .z-staff-stat i {
   color: var(--z-accent);
   font-size: 20px;
@@ -372,5 +507,45 @@ function shortTime(value) {
 .z-empty-state i {
   color: var(--z-accent);
   font-size: 34px;
+}
+.z-dashboard-product-thumb {
+  width: 44px;
+  height: 52px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--z-radius);
+  background: var(--z-bg-alt);
+  color: var(--z-gray-light);
+}
+.z-dashboard-product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.z-dashboard-product-name {
+  overflow: hidden;
+  color: var(--z-dark);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.z-top-product-revenue { flex-shrink: 0; text-align: right; }
+.z-top-product-revenue span, .z-top-product-revenue strong { display: block; }
+.z-top-product-revenue span { margin-bottom: 2px; color: var(--z-gray); font-size: 9px; text-transform: uppercase; }
+.z-top-product-revenue strong { color: var(--z-dark); font-size: 13px; font-weight: 600; }
+@media (max-width: 575px) {
+  .z-stat-card {
+    min-height: 142px;
+    padding: 16px;
+  }
+  .z-stat-value {
+    font-size: 26px;
+  }
+  .z-admin-card {
+    padding: 18px;
+  }
 }
 </style>

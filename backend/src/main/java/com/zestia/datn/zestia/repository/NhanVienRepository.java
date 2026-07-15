@@ -2,6 +2,7 @@ package com.zestia.datn.zestia.repository;
 
 import com.zestia.datn.zestia.entity.NhanVien;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,9 @@ public interface NhanVienRepository extends JpaRepository<NhanVien, Integer> {
     Optional<NhanVien> findByTenNguoiDung(String tenNguoiDung);
 
     List<NhanVien> findByTinhTrangLamViec(Byte tinhTrangLamViec);
+
+    @Query("SELECT nv FROM NhanVien nv WHERE nv.matKhau IS NOT NULL AND nv.matKhau NOT LIKE '$2%'")
+    List<NhanVien> findAccountsWithLegacyPassword();
 
     boolean existsByEmail(String email);
 

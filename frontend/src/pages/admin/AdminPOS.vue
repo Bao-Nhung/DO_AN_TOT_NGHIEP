@@ -75,8 +75,10 @@
             <div class="d-flex flex-column gap-2 mb-3" style="max-height:300px;overflow-y:auto">
               <div v-for="(item, i) in cart" :key="i"
                    class="d-flex align-items-center gap-3 p-2" style="background:var(--z-bg-alt);border-radius:var(--z-radius)">
+                <img v-if="item.image" :src="item.image" :alt="item.name" class="z-pos-cart-image">
                 <div class="flex-grow-1">
                   <div style="font-size:13px;font-weight:500">{{ item.name }}</div>
+                  <div style="font-size:11px;color:var(--z-gray)">Mã SP: {{ item.code }}</div>
                   <div style="font-size:12px;color:var(--z-gray)">
                     {{ fmtPrice(item.price) }}
                     <span v-if="item.color || item.size" style="color:var(--z-accent);font-weight:500"> | {{ item.color }} - {{ item.size }}</span>
@@ -97,12 +99,50 @@
 
             <!-- Customer info -->
             <div class="mb-3 pt-3" style="border-top:1px solid var(--z-gray-border)">
-              <label class="z-label">Khách hàng (tuỳ chọn)</label>
+              <label class="z-label">Tìm khách hàng</label>
+              <div class="z-customer-search">
+                <i class="bi bi-search"></i>
+                <input v-model="customerSearch" class="lm-input" placeholder="Nhập tên, mã, SĐT hoặc email..." style="font-size:13px;padding:8px 12px 8px 34px">
+                <div v-if="customerResults.length" class="z-customer-results">
+                  <button v-for="customer in customerResults" :key="customer.id" type="button" @click="selectCustomer(customer)">
+                    <strong>{{ customer.hoVaTen }}</strong>
+                    <span>{{ customer.soDienThoai }}<template v-if="customer.email"> · {{ customer.email }}</template></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="z-label">Số điện thoại *</label>
+              <input
+                v-model="customerPhone"
+                class="lm-input"
+                type="text"
+                inputmode="numeric"
+                autocomplete="tel"
+                maxlength="10"
+                placeholder="0901234567"
+                style="font-size:13px;padding:8px 12px"
+                @input="onCustomerPhoneInput"
+              >
+              <small style="display:block;margin-top:5px;color:var(--z-gray);font-size:10px">Nhập đủ 10 số để hệ thống tự tìm khách đã mua.</small>
+            </div>
+            <div class="mb-3">
+              <label class="z-label">Tên khách hàng *</label>
               <input v-model="customerName" class="lm-input" placeholder="Tên khách hàng" style="font-size:13px;padding:8px 12px">
             </div>
             <div class="mb-3">
-              <label class="z-label">Số điện thoại (tuỳ chọn)</label>
-              <input v-model="customerPhone" class="lm-input" placeholder="Số điện thoại" style="font-size:13px;padding:8px 12px">
+              <label class="z-label">Email (không bắt buộc)</label>
+              <input v-model="customerEmail" type="email" class="lm-input" placeholder="email@example.com" style="font-size:13px;padding:8px 12px">
+            </div>
+            <div v-if="selectedCustomerId" class="z-selected-customer mb-3">
+              <span><i class="bi bi-person-check me-1"></i>Đã chọn hồ sơ {{ selectedCustomerCode }}</span>
+              <button type="button" @click="clearSelectedCustomer">Đổi khách</button>
+            </div>
+            <div v-else class="mb-3">
+              <button type="button" class="lm-btn-secondary w-100" style="height:38px" :disabled="savingCustomer" @click="quickSaveCustomer">
+                <i class="bi bi-person-plus"></i>
+                {{ savingCustomer ? 'Đang lưu...' : 'Lưu nhanh khách mới' }}
+              </button>
             </div>
 
             <div class="mb-3">
@@ -114,20 +154,22 @@
                 <button v-else class="z-pm-btn" style="flex:0 0 auto" @click="removeVoucher">Bỏ</button>
               </div>
 
-              <!-- Eligible vouchers list -->
-              <div v-if="!appliedVoucher && eligibleVouchers.length" class="mt-2">
-                <span style="font-size:11px;color:var(--z-gray)">Chọn nhanh mã đủ điều kiện:</span>
-                <div class="d-flex flex-wrap gap-2 mt-1">
-                  <button v-for="v in eligibleVouchers" :key="v.id"
-                          class="z-quick-cash" 
-                          style="font-size: 11px; padding: 4px 8px; border-color: #16a34a; color: #16a34a; background: #f0fdf4;"
+              <div v-if="activeVouchers.length" class="mt-2">
+                <span style="font-size:11px;color:var(--z-gray)">Voucher hiện có:</span>
+                <div class="z-pos-voucher-list mt-1">
+                  <button v-for="v in activeVouchers" :key="v.id"
+                          class="z-pos-voucher-item"
+                          :class="{ disabled: !isVoucherEligible(v), selected: appliedVoucher === v.maGiamGia }"
+                          :disabled="!isVoucherEligible(v) || !!appliedVoucher"
                           @click="selectVoucher(v)">
-                    <strong>{{ v.maGiamGia }}</strong> (-{{ fmtVoucherDiscount(v) }})
+                    <span><strong>{{ v.maGiamGia }}</strong> (-{{ fmtVoucherDiscount(v) }})</span>
+                    <span v-if="bestVoucherCode === v.maGiamGia" class="z-best-voucher">Tốt nhất</span>
+                    <small>{{ voucherEligibilityText(v) }}</small>
                   </button>
                 </div>
               </div>
-              <div v-else-if="!appliedVoucher && cart.length > 0" class="mt-1" style="font-size:11px;color:var(--z-gray)">
-                Không có mã giảm giá nào đủ điều kiện
+              <div v-else class="mt-1" style="font-size:11px;color:var(--z-gray)">
+                Hiện chưa có voucher đang hoạt động
               </div>
 
               <div v-if="voucherMsg" :style="{ fontSize:'12px', marginTop:'6px', color: appliedVoucher ? '#2E7D32' : '#C62828' }">{{ voucherMsg }}</div>
@@ -295,13 +337,23 @@ const { confirmDialog } = useConfirm()
 const { getUser } = useAuth()
 
 const search = ref('')
-const filters = ['Tất cả', 'Váy truyền thống', 'Váy cách tân', 'Váy dạ hội', 'Váy công sở', 'Váy cưới', 'Sale']
 const activeFilter = ref('Tất cả')
 const allProducts = ref([])
+const filters = computed(() => [
+  'Tất cả',
+  ...new Set(allProducts.value.filter(p => p.active).map(p => p.category).filter(Boolean))
+])
 const vouchersList = ref([])
 const cart = ref([])
 const customerName = ref('')
 const customerPhone = ref('')
+const customerEmail = ref('')
+const customerSearch = ref('')
+const customerResults = ref([])
+const selectedCustomerId = ref(null)
+const selectedCustomerCode = ref('')
+const selectedCustomerPhone = ref('')
+const savingCustomer = ref(false)
 const paymentMethod = ref('cash')
 const transferMethod = ref('vietqr')
 const tienKhachDua = ref(null)
@@ -340,6 +392,9 @@ const voucherCode = ref('')
 const appliedVoucher = ref('')
 const discount = ref(0)
 const voucherMsg = ref('')
+const bestVoucherCode = ref('')
+const autoVoucherDisabled = ref(false)
+let bestVoucherRequestId = 0
 
 // QR chuyển khoản
 const transferQrSrc = ref('')
@@ -368,27 +423,24 @@ onMounted(async () => {
     })
     allProducts.value = sortedData.filter(p => p.trangThai === 1).map((p, i) => {
       const m = mapProduct(p, i)
-      return { ...m, priceDisplay: fmtPrice(m.salePrice || m.price), rawId: p.id }
+      return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
     })
   } catch (e) { console.error(e) }
 
   try {
     const vData = await api().getVouchers()
     vouchersList.value = vData || []
+    await applyBestVoucher(true)
   } catch (e) { console.error('Failed to load vouchers:', e) }
 })
 
 const filteredProducts = computed(() => {
-  let result = [...allProducts.value]
+  let result = allProducts.value.filter(p => p.active)
 
   if (activeFilter.value !== 'Tất cả') {
-    if (activeFilter.value === 'Sale') {
-      result = result.filter(p => p.salePrice)
-    } else {
-      result = result.filter(p => 
-        p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
-      )
-    }
+    result = result.filter(p =>
+      p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
+    )
   }
 
   if (search.value) {
@@ -468,6 +520,8 @@ watch([paymentMethod, transferMethod, finalTotal], () => {
 
 const canPay = computed(() => {
   if (cart.value.length === 0) return false
+  if (customerName.value.trim().length < 2 || !/^0[35789]\d{8}$/.test(customerPhone.value)) return false
+  if (customerEmail.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.value)) return false
   if (paymentMethod.value === 'cash') return change.value >= 0
   // Chuyển khoản / thẻ: nhân viên phải báo đã nhận tiền
   return paymentConfirmed.value
@@ -527,11 +581,13 @@ function confirmAddVariant() {
       id: selectedProduct.value.id,
       variantId: match.id,
       name: selectedProduct.value.name,
+      code: selectedProduct.value.code,
       price: match.giaBan || selectedProduct.value.price,
       qty: 1,
       color: selectedColor.value,
       size: selectedSize.value,
-      maxQty: match.soLuong
+      maxQty: match.soLuong,
+      image: match.anhUrl || selectedProduct.value.image || null
     })
   }
   
@@ -543,7 +599,7 @@ function removeFromCart(index) {
   cart.value.splice(index, 1)
 }
 
-const eligibleVouchers = computed(() => {
+const activeVouchers = computed(() => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   
@@ -560,14 +616,22 @@ const eligibleVouchers = computed(() => {
       endDate.setHours(0, 0, 0, 0)
       if (today > endDate) return false
     }
-    if (v.giaTriDonToiThieu !== null && cartTotal.value < Number(v.giaTriDonToiThieu)) {
-      return false
-    }
     return true
   })
 })
 
+function isVoucherEligible(voucher) {
+  return cartTotal.value >= Number(voucher.giaTriDonToiThieu || 0)
+}
+
+function voucherEligibilityText(voucher) {
+  const minimum = Number(voucher.giaTriDonToiThieu || 0)
+  if (cartTotal.value < minimum) return `Cần thêm ${fmtPrice(minimum - cartTotal.value)}`
+  return `Đơn tối thiểu ${fmtPrice(minimum)}`
+}
+
 function selectVoucher(v) {
+  if (!isVoucherEligible(v)) return
   voucherCode.value = v.maGiamGia
   applyVoucher()
 }
@@ -582,8 +646,9 @@ function fmtVoucherDiscount(v) {
   return '0đ'
 }
 
-async function applyVoucher() {
+async function applyVoucher(markManual = true) {
   if (!voucherCode.value.trim()) return showToast('Vui lòng nhập mã giảm giá')
+  if (markManual !== false) autoVoucherDisabled.value = true
   voucherMsg.value = ''
   try {
     const res = await api().applyVoucher(voucherCode.value.trim(), cartTotal.value)
@@ -595,6 +660,10 @@ async function applyVoucher() {
       appliedVoucher.value = ''
       discount.value = 0
       voucherMsg.value = res.message || 'Mã không hợp lệ'
+      if (markManual === false) {
+        autoVoucherDisabled.value = false
+        await applyBestVoucher(true)
+      }
     }
   } catch (e) {
     voucherMsg.value = e.message || 'Không áp dụng được mã'
@@ -602,11 +671,56 @@ async function applyVoucher() {
 }
 
 function removeVoucher() {
+  autoVoucherDisabled.value = true
   appliedVoucher.value = ''
   discount.value = 0
   voucherCode.value = ''
   voucherMsg.value = ''
 }
+
+async function applyBestVoucher(force = false) {
+  if ((!force && autoVoucherDisabled.value) || cartTotal.value <= 0) return
+  const requestId = ++bestVoucherRequestId
+  try {
+    const res = await api().getBestVoucher(cartTotal.value)
+    if (requestId !== bestVoucherRequestId || autoVoucherDisabled.value) return
+    if (!res?.valid) {
+      bestVoucherCode.value = ''
+      voucherCode.value = ''
+      appliedVoucher.value = ''
+      discount.value = 0
+      voucherMsg.value = ''
+      return
+    }
+    bestVoucherCode.value = res.maGiamGia
+    voucherCode.value = res.maGiamGia
+    appliedVoucher.value = res.maGiamGia
+    discount.value = Number(res.giamGia) || 0
+    voucherMsg.value = `${res.tenGiamGia} — tự động giảm ${fmtPrice(discount.value)}`
+  } catch (e) {
+    console.error('Không thể tự chọn voucher:', e)
+  }
+}
+
+let voucherRefreshTimer
+watch(cartTotal, () => {
+  clearTimeout(voucherRefreshTimer)
+  voucherRefreshTimer = setTimeout(async () => {
+    if (cartTotal.value <= 0) {
+      appliedVoucher.value = ''
+      voucherCode.value = ''
+      discount.value = 0
+      voucherMsg.value = ''
+      autoVoucherDisabled.value = false
+      return
+    }
+    if (autoVoucherDisabled.value && appliedVoucher.value) {
+      await applyVoucher(false)
+    } else {
+      await applyBestVoucher()
+    }
+  }, 150)
+})
 
 function paymentLabel() {
   if (paymentMethod.value === 'cash') return 'Tiền mặt'
@@ -614,8 +728,96 @@ function paymentLabel() {
   return t[transferMethod.value] || 'Chuyển khoản'
 }
 
+function onCustomerPhoneInput(event) {
+  let digits = String(event.target.value || '').replace(/\D/g, '')
+  if (digits.startsWith('84') && digits.length >= 11) digits = `0${digits.slice(2)}`
+  customerPhone.value = digits.slice(0, 10)
+  if (selectedCustomerId.value && customerPhone.value !== selectedCustomerPhone.value) {
+    selectedCustomerId.value = null
+    selectedCustomerCode.value = ''
+  }
+}
+
+let customerSearchTimer
+watch(customerSearch, value => {
+  clearTimeout(customerSearchTimer)
+  const query = value.trim()
+  if (query.length < 2) {
+    customerResults.value = []
+    return
+  }
+  customerSearchTimer = setTimeout(async () => {
+    try {
+      customerResults.value = await api().searchKhachHang(query) || []
+    } catch {
+      customerResults.value = []
+    }
+  }, 250)
+})
+
+let customerPhoneTimer
+watch(customerPhone, phone => {
+  clearTimeout(customerPhoneTimer)
+  if (!/^0[35789]\d{8}$/.test(phone) || selectedCustomerId.value) return
+  customerPhoneTimer = setTimeout(async () => {
+    try {
+      const matches = await api().searchKhachHang(phone) || []
+      const exact = matches.find(customer => customer.soDienThoai === phone)
+      if (exact) selectCustomer(exact)
+    } catch { /* giữ dữ liệu nhân viên đang nhập */ }
+  }, 250)
+})
+
+function selectCustomer(customer) {
+  selectedCustomerId.value = customer.id
+  selectedCustomerCode.value = customer.maKhachHang || ''
+  selectedCustomerPhone.value = customer.soDienThoai || ''
+  customerName.value = customer.hoVaTen || ''
+  customerPhone.value = customer.soDienThoai || ''
+  customerEmail.value = customer.email || ''
+  customerSearch.value = ''
+  customerResults.value = []
+}
+
+function clearSelectedCustomer() {
+  selectedCustomerId.value = null
+  selectedCustomerCode.value = ''
+  selectedCustomerPhone.value = ''
+  customerSearch.value = ''
+}
+
+async function quickSaveCustomer() {
+  if (customerName.value.trim().length < 2) return showToast('Vui lòng nhập tên khách hàng')
+  if (!/^0[35789]\d{8}$/.test(customerPhone.value)) return showToast('Vui lòng nhập số điện thoại hợp lệ')
+  if (customerEmail.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.value)) {
+    return showToast('Email khách hàng không hợp lệ')
+  }
+  savingCustomer.value = true
+  try {
+    const customer = await api().quickCreateKhachHang({
+      hoVaTen: customerName.value.trim(),
+      soDienThoai: customerPhone.value,
+      email: customerEmail.value.trim() || null
+    })
+    selectCustomer(customer)
+    showToast('Đã lưu hồ sơ khách hàng')
+  } catch (e) {
+    showToast(e.error || 'Không thể lưu khách hàng')
+  } finally {
+    savingCustomer.value = false
+  }
+}
+
 async function createOrder() {
   if (!canPay.value) return
+  if (customerName.value.trim().length < 2) {
+    showToast('Vui lòng nhập tên khách hàng')
+    return
+  }
+  if (!/^0[35789]\d{8}$/.test(customerPhone.value)) {
+    showToast('Số điện thoại phải có 10 chữ số và bắt đầu bằng 03, 05, 07, 08 hoặc 09')
+    return
+  }
   if (!await confirmDialog({
     title: 'Xác nhận thanh toán POS',
     message: `Hoàn tất đơn tại quầy với tổng tiền ${fmtPrice(finalTotal.value)} bằng ${paymentLabel()}?`,
@@ -646,20 +848,27 @@ async function createOrder() {
       maGiamGia: appliedVoucher.value || null,
       nhanVienId: user?.userId || null,
       ghiChu: noteText,
-      tenKhachHang: customerName.value || 'Khách lẻ',
-      soDienThoai: customerPhone.value || null
+      tenKhachHang: customerName.value.trim(),
+      soDienThoai: customerPhone.value,
+      email: customerEmail.value.trim() || null,
+      customerId: selectedCustomerId.value
     }
     await api().createOrder(orderData)
     showToast('Tạo đơn & thanh toán thành công!')
     cart.value = []
     customerName.value = ''
     customerPhone.value = ''
+    customerEmail.value = ''
+    selectedCustomerId.value = null
+    selectedCustomerCode.value = ''
+    selectedCustomerPhone.value = ''
     note.value = ''
     tienKhachDua.value = null
     paymentConfirmed.value = false
     removeVoucher()
+    autoVoucherDisabled.value = false
   } catch (e) {
-    showToast('Lỗi: ' + (e.message || 'Không thể tạo đơn'))
+    showToast('Lỗi: ' + (e.error || e.message || 'Không thể tạo đơn'))
   } finally {
     creating.value = false
   }
@@ -667,6 +876,26 @@ async function createOrder() {
 </script>
 
 <style scoped>
+.z-pos-cart-image { width: 42px; height: 50px; flex: 0 0 42px; object-fit: cover; border: 1px solid var(--z-gray-border); background: var(--z-white); }
+.z-customer-search { position: relative; }
+.z-customer-search > i { position: absolute; z-index: 2; left: 12px; top: 10px; color: var(--z-gray); }
+.z-customer-results {
+  position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
+  max-height: 210px; overflow-y: auto; border: 1px solid var(--z-gray-border);
+  background: var(--z-white); box-shadow: 0 10px 28px rgba(0,0,0,.12);
+}
+.z-customer-results button {
+  width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
+  border: 0; border-bottom: 1px solid var(--z-gray-border); background: var(--z-white);
+  color: var(--z-dark); text-align: left; font-size: 12px;
+}
+.z-customer-results button:hover { background: var(--z-accent-soft); }
+.z-customer-results span { color: var(--z-gray); font-size: 11px; }
+.z-selected-customer {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 9px 11px; background: #dcfce7; color: #166534; font-size: 12px;
+}
+.z-selected-customer button { border: 0; background: transparent; color: #166534; text-decoration: underline; }
 .z-pos-item {
   padding: 12px 16px;
   border-bottom: 1px solid var(--z-gray-border);
@@ -752,6 +981,31 @@ async function createOrder() {
 }
 .z-test-card-row span { color: var(--z-gray); }
 .z-test-card-row strong { color: var(--z-dark); font-family: monospace; }
+.z-pos-voucher-list {
+  display: grid;
+  gap: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.z-pos-voucher-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px dashed #16a34a;
+  border-radius: var(--z-radius);
+  background: #f0fdf4;
+  color: #166534;
+  text-align: left;
+  font-size: 11px;
+  cursor: pointer;
+}
+.z-pos-voucher-item small { grid-column: 1 / -1; color: var(--z-gray); }
+.z-pos-voucher-item.disabled { border-color: var(--z-gray-border); background: var(--z-bg-alt); color: var(--z-gray); opacity: .7; cursor: not-allowed; }
+.z-pos-voucher-item.selected { border-style: solid; box-shadow: inset 0 0 0 1px #16a34a; }
+.z-best-voucher { align-self: start; border-radius: 10px; background: #dcfce7; color: #166534; padding: 2px 7px; font-size: 9px; font-weight: 700; }
 </style>
 
 

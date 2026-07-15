@@ -1,7 +1,7 @@
 <template>
   <div class="lm-collection-card position-relative overflow-hidden cursor-pointer"
        :style="{ height: tall ? '100%' : 'auto' }"
-       @click="$router.push('/collections')">
+       @click="$router.push(to || '/collections')">
     <div class="lm-card-image w-100 position-relative overflow-hidden"
          :style="{ aspectRatio: tall ? 'unset' : '3/4', height: tall ? '100%' : 'auto' }">
       <div v-if="image" class="lm-card-image-inner w-100 h-100">
@@ -28,6 +28,7 @@ defineProps({
   bg:     String,
   image:  String,
   tall:   Boolean,
+  to:     [String, Object],
 })
 </script>
 
@@ -46,4 +47,9 @@ defineProps({
 .lm-card-name  { opacity: 0; transition: opacity 0.4s ease 0.15s; }
 .lm-collection-card:hover .lm-card-label,
 .lm-collection-card:hover .lm-card-name { opacity: 1; }
+@media (hover: none), (max-width: 768px) {
+  .lm-card-overlay { opacity: 1; }
+  .lm-card-info { transform: translateY(0); }
+  .lm-card-label, .lm-card-name { opacity: 1; }
+}
 </style>

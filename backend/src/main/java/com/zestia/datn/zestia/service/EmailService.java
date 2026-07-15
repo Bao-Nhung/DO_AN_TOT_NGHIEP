@@ -149,6 +149,41 @@ public class EmailService {
         }
     }
 
+    @Async
+    public void sendOrderCancellationOtpEmail(HoaDon hoaDon, String otp, LocalDateTime expiresAt) {
+        try {
+            String to = resolveRecipientEmail(hoaDon);
+            if (to == null) {
+                log.warn("Không thể gửi OTP hủy đơn - khách hàng không có email");
+                return;
+            }
+
+            String expiresText = expiresAt != null
+                    ? expiresAt.format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
+                    : "sau 5 phút";
+            String subject = "Đơn hàng #" + hoaDon.getMaHoaDon() + " - Mã xác nhận hủy đơn";
+            StringBuilder html = new StringBuilder();
+            html.append("<html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif;'>");
+            html.append("<div style='max-width: 600px; margin: 0 auto; background-color: #f5f5f5; padding: 20px;'>");
+            html.append("<div style='background-color: #111111; color: white; padding: 22px; text-align: center; border-radius: 6px 6px 0 0;'>");
+            html.append("<h1 style='margin: 0; font-size: 24px;'>ZESTIA FASHION</h1></div>");
+            html.append("<div style='background-color: white; padding: 24px; border-radius: 0 0 6px 6px;'>");
+            html.append("<h2 style='margin-top: 0; color: #D4564E;'>Xác nhận hủy đơn hàng</h2>");
+            html.append("<p>Xin chào <strong>").append(escapeHtml(resolveRecipientName(hoaDon))).append("</strong>,</p>");
+            html.append("<p>Mã OTP để hủy đơn <strong>").append(escapeHtml(hoaDon.getMaHoaDon())).append("</strong> là:</p>");
+            html.append("<div style='font-size: 32px; font-weight: 700; letter-spacing: 8px; text-align: center; padding: 18px; background: #f5f5f5; border-radius: 6px;'>")
+                    .append(escapeHtml(otp)).append("</div>");
+            html.append("<p>Mã có hiệu lực đến <strong>").append(escapeHtml(expiresText)).append("</strong> và chỉ sử dụng một lần.</p>");
+            html.append("<p style='color: #666; font-size: 12px;'>Nếu bạn không yêu cầu hủy đơn, không cung cấp mã này cho bất kỳ ai.</p>");
+            html.append("</div></div></body></html>");
+
+            sendHtmlEmail(to, subject, html.toString());
+            log.info("OTP hủy đơn {} đã gửi cho {}", hoaDon.getMaHoaDon(), to);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi OTP hủy đơn: ", e);
+        }
+    }
+
     // ===== HTML BUILDERS =====
 
     private String buildOrderConfirmationEmailHtml(HoaDon hoaDon, List<HoaDonChiTiet> chiTiets) {
@@ -523,7 +558,7 @@ public class EmailService {
         String base = frontendUrl != null && frontendUrl.endsWith("/")
                 ? frontendUrl.substring(0, frontendUrl.length() - 1)
                 : frontendUrl;
-        String url = (base != null && !base.isBlank() ? base : "http://localhost:5173") + "/#/login";
+        String url = (base != null && !base.isBlank() ? base : "http://localhost:5173") + "/login";
         return url + "?resetToken=" + urlEncode(token);
     }
 

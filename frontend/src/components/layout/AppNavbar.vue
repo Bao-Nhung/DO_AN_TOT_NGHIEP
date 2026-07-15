@@ -6,9 +6,11 @@
         Zest<span class="lm-gold-text">ia</span>
       </div>
 
-      <ul class="d-none d-lg-flex list-unstyled mb-0 gap-4 align-items-center">
+      <ul class="d-none d-xl-flex list-unstyled mb-0 gap-3 align-items-center">
         <li><RouterLink class="lm-nav-link" to="/">Trang Chủ</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/collections">Sản Phẩm</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/lookbook">Lookbook</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/reviews">Đánh Giá</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/tracking">Tra Cứu Đơn</RouterLink></li>
         <li><RouterLink v-if="isLoggedIn()" class="lm-nav-link" to="/my-orders">Đơn Hàng</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/wishlist">Yêu Thích</RouterLink></li>
@@ -67,7 +69,7 @@
         <button class="lm-nav-icon-btn d-none d-md-flex" @click="$router.push('/profile')" title="Tài khoản">
           <i class="bi bi-person"></i>
         </button>
-        <button class="lm-nav-icon-btn d-lg-none" @click="mobileOpen = !mobileOpen" title="Menu">
+        <button class="lm-nav-icon-btn d-xl-none" @click="mobileOpen = !mobileOpen" title="Menu">
           <i class="bi" :class="mobileOpen ? 'bi-x-lg' : 'bi-list'"></i>
         </button>
       </div>
@@ -79,6 +81,8 @@
       <nav class="z-mobile-menu-inner" @click.stop>
         <RouterLink class="z-mobile-link" to="/" @click="mobileOpen = false">Trang Chủ</RouterLink>
         <RouterLink class="z-mobile-link" to="/collections" @click="mobileOpen = false">Sản Phẩm</RouterLink>
+        <RouterLink class="z-mobile-link" to="/lookbook" @click="mobileOpen = false">Lookbook</RouterLink>
+        <RouterLink class="z-mobile-link" to="/reviews" @click="mobileOpen = false">Đánh Giá</RouterLink>
         <RouterLink class="z-mobile-link" to="/tracking" @click="mobileOpen = false">Tra Cứu Đơn</RouterLink>
         <RouterLink v-if="isLoggedIn()" class="z-mobile-link" to="/my-orders" @click="mobileOpen = false">Đơn Hàng</RouterLink>
         <RouterLink class="z-mobile-link" to="/wishlist" @click="mobileOpen = false">Yêu Thích</RouterLink>
@@ -112,7 +116,7 @@
           </div>
           <div>
             <div style="font-weight:500;font-size:14px;color:var(--z-dark)">{{ r.name }}</div>
-            <div style="font-size:12px;color:var(--z-gray)">{{ r.category }} · {{ formatPrice(r.salePrice || r.price) }}</div>
+            <div style="font-size:12px;color:var(--z-gray)">{{ r.category }} · {{ formatPrice(r.price) }}</div>
           </div>
         </div>
       </div>

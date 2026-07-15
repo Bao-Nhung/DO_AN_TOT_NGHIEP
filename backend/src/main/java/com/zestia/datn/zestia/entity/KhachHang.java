@@ -19,7 +19,7 @@ public class KhachHang {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "ma_khach_hang", unique = true, length = 50)
+    @Column(name = "ma_khach_hang", length = 50)
     private String maKhachHang;
 
     @Column(name = "ho_va_ten", nullable = false, length = 150)
@@ -31,11 +31,14 @@ public class KhachHang {
     @Column(name = "ngay_sinh")
     private LocalDate ngaySinh;
 
-    @Column(name = "so_dien_thoai", unique = true, length = 20)
+    @Column(name = "so_dien_thoai", length = 20)
     private String soDienThoai;
 
-    @Column(unique = true, length = 150)
+    @Column(length = 150)
     private String email;
+
+    @Column(name = "google_subject", length = 100)
+    private String googleSubject;
 
     @Column(name = "mat_khau", length = 255)
     private String matKhau;

@@ -6,7 +6,13 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Lich_su_xem")
+@Table(
+        name = "Lich_su_xem",
+        uniqueConstraints = @UniqueConstraint(
+                name = "UQ_Lich_su_xem_Khach_Vay",
+                columnNames = {"id_khach_hang", "id_vay"}
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,7 +25,7 @@ public class LichSuXem {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_khach_hang")
+    @JoinColumn(name = "id_khach_hang", nullable = false)
     private KhachHang khachHang;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -220,13 +220,14 @@
             <div style="flex:1;height:1px;background:var(--z-gray-border)"></div>
           </div>
 
-          <button class="w-100 d-flex align-items-center justify-content-center gap-3"
-                  style="padding:12px;border:1px solid var(--z-gray-border);background:transparent;font-size:13px;font-family:var(--z-font-body);cursor:pointer;transition:all 0.3s;border-radius:var(--z-radius)"
-                  @mouseover="e => e.currentTarget.style.borderColor = 'var(--z-accent)'"
-                  @mouseleave="e => e.currentTarget.style.borderColor = 'var(--z-gray-border)'">
-            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-            Tiếp tục với Google
-          </button>
+          <div v-if="loginRole === 'customer'" class="z-google-login">
+            <div v-if="googleClientId" ref="googleButton"></div>
+            <button v-else class="z-google-unconfigured" type="button" disabled
+                    title="Cấu hình VITE_GOOGLE_CLIENT_ID và GOOGLE_CLIENT_ID để bật đăng nhập Google">
+              <i class="bi bi-google"></i>
+              Đăng nhập Google chưa được cấu hình
+            </button>
+          </div>
         </template>
       </div>
     </div>
@@ -251,6 +252,9 @@ const username = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const googleButton = ref(null)
+const defaultGoogleClientId = '906678560911-vv9vu3jsqkvgu7og8mjg8to7lhh88odt.apps.googleusercontent.com'
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || defaultGoogleClientId
 
 const roles = [
   { key: 'customer', label: 'Khách hàng', icon: 'bi-person' },
@@ -260,8 +264,8 @@ const roles = [
 const features = [
   'Truy cập sớm bộ sưu tập mới',
   'Ưu đãi độc quyền cho thành viên',
-  'Tích điểm và đổi quà',
-  'Tư vấn phong cách 1-1',
+  'Đồng bộ giỏ hàng và sản phẩm yêu thích',
+  'Theo dõi đơn và đánh giá sản phẩm đã mua',
 ]
 
 const regForm = ref({ hoVaTen: '', email: '', soDienThoai: '', matKhau: '' })
@@ -277,7 +281,47 @@ onMounted(() => {
     resetToken.value = String(route.query.resetToken)
     view.value = 'reset'
   }
+  if (googleClientId) initializeGoogleButton()
 })
+
+function initializeGoogleButton(attempt = 0) {
+  if (!googleButton.value) return
+  if (!window.google?.accounts?.id) {
+    if (attempt < 20) setTimeout(() => initializeGoogleButton(attempt + 1), 200)
+    else error.value = 'Không tải được dịch vụ đăng nhập Google'
+    return
+  }
+  window.google.accounts.id.initialize({
+    client_id: googleClientId,
+    callback: handleGoogleCredential
+  })
+  window.google.accounts.id.renderButton(googleButton.value, {
+    type: 'standard',
+    theme: 'outline',
+    size: 'large',
+    text: 'continue_with',
+    shape: 'rectangular',
+    width: 400,
+    locale: 'vi'
+  })
+}
+
+async function handleGoogleCredential(response) {
+  if (!response?.credential) return
+  loading.value = true
+  error.value = ''
+  try {
+    const data = await api().googleLogin(response.credential)
+    saveLogin(data)
+    showToast('Đăng nhập Google thành công')
+    const redirectPath = route.query.redirect ? String(route.query.redirect) : ''
+    await router.replace(redirectPath && !redirectPath.startsWith('/admin') ? redirectPath : '/profile')
+  } catch (e) {
+    error.value = e.error || e.message || 'Đăng nhập Google thất bại'
+  } finally {
+    loading.value = false
+  }
+}
 
 async function doLogin() {
   if (!username.value || !password.value) {
@@ -291,13 +335,14 @@ async function doLogin() {
     saveLogin(data)
     showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
     
-    const redirectPath = route.query.redirect
-    if (redirectPath) {
-      router.push(redirectPath)
-    } else if (data.role && data.role !== 'KhachHang') {
-      router.push('/admin')
+    const isStaff = ['Admin', 'NhanVien', 'Nhân viên', 'QuanLyKho', 'Quản lý kho'].includes(data.role)
+    const redirectPath = route.query.redirect ? String(route.query.redirect) : ''
+    if (isStaff) {
+      await router.replace('/admin')
+    } else if (redirectPath && !redirectPath.startsWith('/admin')) {
+      await router.replace(redirectPath)
     } else {
-      router.push('/profile')
+      await router.replace('/profile')
     }
   } catch (e) {
     error.value = e.error || e.message || 'Tài khoản hoặc mật khẩu không chính xác'
@@ -322,7 +367,7 @@ async function doRegister() {
     const data = await api().register(regForm.value)
     saveLogin(data)
     showToast('Đăng ký thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
-    router.push('/profile')
+    await router.replace('/profile')
   } catch (e) {
     error.value = e.error || e.message || 'Đăng ký thất bại'
   } finally {
@@ -383,3 +428,28 @@ async function doResetPassword() {
   }
 }
 </script>
+
+<style scoped>
+.z-google-login {
+  width: 100%;
+  min-height: 44px;
+  overflow: hidden;
+}
+.z-google-login :deep(iframe) {
+  max-width: 100%;
+}
+.z-google-unconfigured {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-bg-alt);
+  color: var(--z-gray);
+  font-family: var(--z-font-body);
+  font-size: 13px;
+}
+</style>

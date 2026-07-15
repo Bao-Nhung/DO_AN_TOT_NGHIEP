@@ -42,7 +42,14 @@ public class OrderReservationService {
                 ONLINE_PAYMENT_METHODS
         );
 
-        for (HoaDon order : expiredOrders) {
+        for (HoaDon candidate : expiredOrders) {
+            HoaDon order = hoaDonRepo.findByIdForUpdate(candidate.getId()).orElse(null);
+            if (order == null
+                    || order.getTrangThai() == null
+                    || order.getTrangThai() != STATUS_PENDING
+                    || Boolean.TRUE.equals(order.getDaThanhToan())) {
+                continue;
+            }
             orderInventoryService.restoreReservation(order);
             order.setTrangThai(STATUS_PAYMENT_FAILED);
             order.setDaThanhToan(false);

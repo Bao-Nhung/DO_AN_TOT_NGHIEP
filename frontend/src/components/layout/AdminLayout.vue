@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex" style="min-height:100vh">
     <!-- Sidebar -->
-    <aside class="z-admin-sidebar">
+    <aside class="z-admin-sidebar" :class="{ open: sidebarOpen }">
       <div class="z-admin-logo" @click="$router.push('/admin')">
         <span class="z-admin-logo-text">Zest<span style="color:var(--z-accent)">ia</span></span>
         <span class="z-admin-badge">{{ roleBadge }}</span>
@@ -10,6 +10,7 @@
       <nav class="z-admin-nav">
         <RouterLink v-for="item in navItems" :key="item.path"
                     :to="item.path" class="z-admin-nav-item"
+                    @click="sidebarOpen = false"
                     :class="{ active: $route.path === item.path }">
           <i class="bi" :class="item.icon"></i>
           <span>{{ item.label }}</span>
@@ -32,6 +33,11 @@
       </div>
     </aside>
 
+    <button class="z-admin-menu-toggle" type="button" title="Mở menu quản lý" @click="sidebarOpen = !sidebarOpen">
+      <i class="bi" :class="sidebarOpen ? 'bi-x-lg' : 'bi-list'"></i>
+    </button>
+    <div v-if="sidebarOpen" class="z-admin-sidebar-backdrop" @click="sidebarOpen = false"></div>
+
     <!-- Main content -->
     <main class="z-admin-main">
       <slot />
@@ -40,12 +46,14 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/composables/useApi'
 import { useAuth } from '@/composables/useApi'
 
 const pendingCount = ref(0)
+const shiftCanOperate = ref(false)
+const sidebarOpen = ref(false)
 const router = useRouter()
 const { getUser, logout } = useAuth()
 const currentUser = computed(() => getUser() || {})
@@ -54,7 +62,9 @@ const adminEmail = computed(() => currentUser.value.email || currentUser.value.r
 const adminInitial = computed(() => (adminName.value || 'N').charAt(0).toUpperCase())
 const roleName = computed(() => currentUser.value.role || '')
 const isAdmin = computed(() => roleName.value === 'Admin')
-const roleBadge = computed(() => isAdmin.value ? 'Admin' : 'Nhân viên')
+const isInventory = computed(() => ['QuanLyKho', 'Quản lý kho'].includes(roleName.value))
+const isEmployee = computed(() => ['NhanVien', 'Nhân viên'].includes(roleName.value))
+const roleBadge = computed(() => isAdmin.value ? 'Admin' : isInventory.value ? 'Quản lý kho' : 'Nhân viên')
 
 const allNavItems = [
   { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan', adminOnly: true },
@@ -62,22 +72,50 @@ const allNavItems = [
   { path: '/admin/pos',       icon: 'bi-shop',         label: 'Bán tại quầy' },
   { path: '/admin/products',  icon: 'bi-bag',          label: 'Sản phẩm', adminOnly: true },
   { path: '/admin/orders',    icon: 'bi-receipt',      label: 'Đơn hàng', badgeRef: 'pending' },
+  { path: '/admin/returns',   icon: 'bi-arrow-left-right', label: 'Đổi / trả hàng' },
+  { path: '/admin/support-chat', icon: 'bi-headset',    label: 'Hỗ trợ trực tuyến' },
   { path: '/admin/customers', icon: 'bi-people',       label: 'Khách hàng', adminOnly: true },
   { path: '/admin/employees', icon: 'bi-person-badge', label: 'Nhân viên', adminOnly: true },
   { path: '/admin/schedule',  icon: 'bi-calendar-week', label: 'Lịch làm việc' },
   { path: '/admin/vouchers',  icon: 'bi-tag',          label: 'Voucher', adminOnly: true },
+  { path: '/admin/promotions', icon: 'bi-calendar2-event', label: 'Đợt khuyến mãi', adminOnly: true },
   { path: '/admin/notifications', icon: 'bi-bell',     label: 'Thông báo', adminOnly: true },
   { path: '/admin/settings',  icon: 'bi-gear',         label: 'Cài đặt', adminOnly: true },
 ]
 
-const navItems = computed(() => isAdmin.value ? allNavItems : allNavItems.filter(item => !item.adminOnly || item.path === '/admin'))
+const navItems = computed(() => {
+  if (isAdmin.value) return allNavItems
+  if (isInventory.value) return allNavItems.filter(item => ['/admin', '/admin/products'].includes(item.path))
+  if (isEmployee.value && !shiftCanOperate.value) {
+    return allNavItems.filter(item => ['/admin', '/admin/schedule'].includes(item.path))
+  }
+  return allNavItems.filter(item => !item.adminOnly || item.path === '/admin')
+})
 
 onMounted(async () => {
+  if (isInventory.value) return
+  if (isEmployee.value) {
+    await loadShiftStatus()
+    window.addEventListener('zestia-shift-changed', loadShiftStatus)
+    if (!shiftCanOperate.value) return
+  }
   try {
     const orders = await api().getHoaDon()
     pendingCount.value = orders.filter(o => o.trangThai === 0).length
   } catch (e) { /* ignore */ }
 })
+
+onBeforeUnmount(() => window.removeEventListener('zestia-shift-changed', loadShiftStatus))
+
+async function loadShiftStatus() {
+  if (!isEmployee.value) return
+  try {
+    const status = await api().getWorkShiftStatus()
+    shiftCanOperate.value = Boolean(status?.canOperate)
+  } catch (e) {
+    shiftCanOperate.value = false
+  }
+}
 
 function handleLogout() {
   logout()
@@ -139,5 +177,19 @@ function handleLogout() {
   background: var(--z-bg);
   padding: 28px 32px;
   min-height: 100vh;
+}
+.z-admin-menu-toggle { display: none; }
+.z-admin-sidebar-backdrop { display: none; }
+@media (max-width: 900px) {
+  .z-admin-sidebar { transform: translateX(-100%); transition: transform .25s ease; }
+  .z-admin-sidebar.open { transform: translateX(0); }
+  .z-admin-main { width: 100%; margin-left: 0; padding: 72px 16px 24px; overflow-x: hidden; }
+  .z-admin-menu-toggle {
+    position: fixed; z-index: 103; top: 14px; left: 14px;
+    display: grid; place-items: center; width: 42px; height: 42px;
+    border: 1px solid var(--z-gray-border); border-radius: var(--z-radius);
+    background: var(--z-white); color: var(--z-dark); font-size: 20px;
+  }
+  .z-admin-sidebar-backdrop { position: fixed; z-index: 99; inset: 0; display: block; background: rgba(0,0,0,.35); }
 }
 </style>

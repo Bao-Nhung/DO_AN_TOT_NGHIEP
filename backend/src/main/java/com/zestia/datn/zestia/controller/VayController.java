@@ -4,8 +4,10 @@ import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.*;
 import com.zestia.datn.zestia.entity.Anh;
 import com.zestia.datn.zestia.repository.*;
+import com.zestia.datn.zestia.service.PromotionPricingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,7 +33,9 @@ public class VayController {
     private final MauSacRepository mauSacRepo;
     private final KichThuocRepository kichThuocRepo;
     private final AnhRepository anhRepo;
+    private final HuongDanKichThuocRepository sizeGuideRepo;
     private final JwtUtil jwtUtil;
+    private final PromotionPricingService promotionPricingService;
 
     @GetMapping
     public List<Map<String, Object>> getAll(@RequestHeader(value = "Authorization", required = false) String authHeader) {
@@ -41,11 +45,35 @@ public class VayController {
                 : vayRepo.findByTrangThai((byte) 1).stream()
                         .sorted(Comparator.comparing(Vay::getId, Comparator.nullsLast(Comparator.reverseOrder())))
                         .toList();
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Vay v : list) {
-            result.add(toMap(v));
-        }
-        return result;
+        return toMaps(list);
+    }
+
+    @GetMapping("/paged")
+    public Map<String, Object> getPage(@RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "10") int size,
+                                       @RequestParam(required = false) String q,
+                                       @RequestParam(required = false) Byte status,
+                                       @RequestParam(required = false) String category,
+                                       @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        String keyword = normalizeFilter(q);
+        String categoryFilter = normalizeFilter(category);
+        Byte effectiveStatus = status;
+        if (!hasStaffAccess(authHeader)) effectiveStatus = Byte.valueOf((byte) 1);
+        var pageable = org.springframework.data.domain.PageRequest.of(
+                safePage,
+                safeSize,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "ngayTao", "id")
+        );
+        var result = vayRepo.findAdminPage(keyword, effectiveStatus, categoryFilter, pageable);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", toMaps(result.getContent()));
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        return response;
     }
 
     @GetMapping("/{id}")
@@ -66,9 +94,10 @@ public class VayController {
     public List<Map<String, Object>> search(@RequestParam String q,
                                             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         boolean staff = hasStaffAccess(authHeader);
-        return vayRepo.findByTenVayContainingIgnoreCase(q).stream()
+        List<Vay> matches = vayRepo.findByTenVayContainingIgnoreCase(q).stream()
                 .filter(v -> staff || (v.getTrangThai() != null && v.getTrangThai() == 1))
-                .map(this::toMap).toList();
+                .toList();
+        return toMaps(matches);
     }
 
     private boolean hasStaffAccess(String authHeader) {
@@ -86,7 +115,9 @@ public class VayController {
     private static boolean isStaffRole(String role) {
         return "Admin".equalsIgnoreCase(role)
                 || "NhanVien".equalsIgnoreCase(role)
-                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role)
+                || "QuanLyKho".equalsIgnoreCase(role)
+                || "Qu\u1EA3n l\u00FD kho".equalsIgnoreCase(role);
     }
 
     private static boolean activeVariant(VayChiTiet variant) {
@@ -123,6 +154,7 @@ public class VayController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         if (body.get("variants") == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "San pham phai co it nhat mot bien the mau sac va kich thuoc"));
@@ -136,6 +168,7 @@ public class VayController {
         v.setMoTa((String) body.get("moTa"));
         v.setTrangThai(body.get("trangThai") != null ? ((Number) body.get("trangThai")).byteValue() : (byte) 1);
         v.setNgayTao(LocalDateTime.now());
+        applyFitFields(v, body);
 
         if (body.get("idLoaiVay") != null) {
             loaiVayRepo.findById(((Number) body.get("idLoaiVay")).intValue()).ifPresent(v::setLoaiVay);
@@ -157,10 +190,10 @@ public class VayController {
                 VayChiTiet ct = new VayChiTiet();
                 ct.setVay(saved);
                 ct.setMaVayChiTiet(saved.getMaVay() + "-" + String.format("%03d", varIdx++));
-                ct.setGiaBan(new BigDecimal(bt.get("giaBan").toString()));
-                if (bt.get("giaBanGoc") != null) {
-                    ct.setGiaBanGoc(new BigDecimal(bt.get("giaBanGoc").toString()));
-                }
+                BigDecimal sellingPrice = new BigDecimal(bt.get("giaBan").toString());
+                ct.setGiaBan(sellingPrice);
+                ct.setGiaBanGoc(sellingPrice); // Cột cũ được giữ để tương thích dữ liệu, không còn là một giá thứ hai.
+                ct.setAnhUrl(cleanText(bt.get("anhUrl")));
                 ct.setSoLuong(bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0);
                 
                 Integer idMau = toInt(bt.get("idMauSac"));
@@ -180,20 +213,21 @@ public class VayController {
             VayChiTiet ct = new VayChiTiet();
             ct.setVay(saved);
             ct.setMaVayChiTiet(saved.getMaVay() + "-001");
-            ct.setGiaBan(new BigDecimal(body.get("giaBan").toString()));
-            if (body.get("giaBanGoc") != null) {
-                ct.setGiaBanGoc(new BigDecimal(body.get("giaBanGoc").toString()));
-            }
+            BigDecimal sellingPrice = new BigDecimal(body.get("giaBan").toString());
+            ct.setGiaBan(sellingPrice);
+            ct.setGiaBanGoc(sellingPrice);
             ct.setSoLuong(body.get("soLuong") != null ? ((Number) body.get("soLuong")).intValue() : 0);
             ct.setTrangThai((byte) 1);
             ct.setNgayTao(LocalDateTime.now());
             vayCtRepo.save(ct);
         }
 
+        saveSizeGuides(saved, body.get("huongDanSize"));
         return ResponseEntity.ok(toMap(saved));
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
         ResponseEntity<?> validationError = validateVariants(body.get("variants"));
         if (validationError != null) return validationError;
@@ -202,6 +236,7 @@ public class VayController {
             if (body.get("tenVay") != null) v.setTenVay((String) body.get("tenVay"));
             if (body.get("moTa") != null) v.setMoTa((String) body.get("moTa"));
             if (body.get("trangThai") != null) v.setTrangThai(((Number) body.get("trangThai")).byteValue());
+            applyFitFields(v, body);
             if (body.get("idLoaiVay") != null) {
                 loaiVayRepo.findById(((Number) body.get("idLoaiVay")).intValue()).ifPresent(v::setLoaiVay);
             }
@@ -237,10 +272,10 @@ public class VayController {
                     }
                     
                     if (match != null) {
-                        match.setGiaBan(new BigDecimal(bt.get("giaBan").toString()));
-                        if (bt.get("giaBanGoc") != null) {
-                            match.setGiaBanGoc(new BigDecimal(bt.get("giaBanGoc").toString()));
-                        }
+                        BigDecimal sellingPrice = new BigDecimal(bt.get("giaBan").toString());
+                        match.setGiaBan(sellingPrice);
+                        match.setGiaBanGoc(sellingPrice);
+                        match.setAnhUrl(cleanText(bt.get("anhUrl")));
                         match.setSoLuong(bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0);
                         match.setTrangThai((byte) 1);
                         vayCtRepo.save(match);
@@ -249,10 +284,10 @@ public class VayController {
                         VayChiTiet ct = new VayChiTiet();
                         ct.setVay(saved);
                         ct.setMaVayChiTiet(saved.getMaVay() + "-" + String.format("%03d", varIdx++));
-                        ct.setGiaBan(new BigDecimal(bt.get("giaBan").toString()));
-                        if (bt.get("giaBanGoc") != null) {
-                            ct.setGiaBanGoc(new BigDecimal(bt.get("giaBanGoc").toString()));
-                        }
+                        BigDecimal sellingPrice = new BigDecimal(bt.get("giaBan").toString());
+                        ct.setGiaBan(sellingPrice);
+                        ct.setGiaBanGoc(sellingPrice);
+                        ct.setAnhUrl(cleanText(bt.get("anhUrl")));
                         ct.setSoLuong(bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0);
                         
                         if (idMau != null) {
@@ -276,6 +311,7 @@ public class VayController {
                 }
             }
             
+            saveSizeGuides(saved, body.get("huongDanSize"));
             return ResponseEntity.ok(toMap(saved));
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -341,8 +377,7 @@ public class VayController {
             v.setNgayTao(LocalDateTime.now().minusDays(rand.nextInt(90)));
             Vay saved = vayRepo.save(v);
 
-            BigDecimal giaBanGoc = new BigDecimal(p[5]);
-            BigDecimal giaBanReal = p[6] != null ? new BigDecimal(p[6]) : giaBanGoc;
+            BigDecimal giaBanReal = p[6] != null ? new BigDecimal(p[6]) : new BigDecimal(p[5]);
 
             int numColors = Math.min(rand.nextInt(3) + 2, mauSacs.size());
             int numSizes = Math.min(rand.nextInt(3) + 3, kichThuocs.size());
@@ -363,7 +398,7 @@ public class VayController {
                     ct.setKichThuoc(kt);
                     ct.setMaVayChiTiet(saved.getMaVay() + "-" + String.format("%03d", varIdx++));
                     ct.setGiaBan(giaBanReal);
-                    ct.setGiaBanGoc(giaBanGoc);
+                    ct.setGiaBanGoc(giaBanReal);
                     ct.setSoLuong(rand.nextInt(20) + 5);
                     ct.setTrangThai((byte) 1);
                     ct.setNgayTao(LocalDateTime.now());
@@ -416,6 +451,33 @@ public class VayController {
         }
     }
 
+    /** Upload one image for a product color and apply it to every size of that color. */
+    @PostMapping("/{id}/mau/{mauSacId}/anh")
+    @Transactional
+    public ResponseEntity<?> uploadColorImage(@PathVariable Integer id,
+                                              @PathVariable Integer mauSacId,
+                                              @RequestParam("file") MultipartFile file) {
+        if (vayRepo.findById(id).isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Sản phẩm không tồn tại"));
+        }
+        List<VayChiTiet> variants = vayCtRepo.findByVayId(id).stream()
+                .filter(variant -> variant.getMauSac() != null && Objects.equals(variant.getMauSac().getId(), mauSacId))
+                .toList();
+        if (variants.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Màu sắc không thuộc sản phẩm này"));
+        }
+        try {
+            String imageUrl = storeImage(file, "vay" + id + "_mau" + mauSacId);
+            variants.forEach(variant -> variant.setAnhUrl(imageUrl));
+            vayCtRepo.saveAll(variants);
+            return ResponseEntity.ok(Map.of("url", imageUrl, "updatedVariants", variants.size()));
+        } catch (IllegalArgumentException error) {
+            return ResponseEntity.badRequest().body(Map.of("error", error.getMessage()));
+        } catch (IOException error) {
+            return ResponseEntity.internalServerError().body(Map.of("error", "Lỗi lưu ảnh: " + error.getMessage()));
+        }
+    }
+
     /** Xoá 1 ảnh sản phẩm theo id ảnh. */
     @DeleteMapping("/anh/{anhId}")
     public ResponseEntity<?> deleteAnh(@PathVariable Integer anhId) {
@@ -437,6 +499,25 @@ public class VayController {
         return candidates[0].toAbsolutePath().normalize();
     }
 
+    private String storeImage(MultipartFile file, String prefix) throws IOException {
+        if (file == null || file.isEmpty()) throw new IllegalArgumentException("Chưa chọn ảnh");
+        if (file.getSize() > 10L * 1024 * 1024) throw new IllegalArgumentException("Ảnh không được vượt quá 10MB");
+        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase(Locale.ROOT) : "";
+        if (!Set.of("image/jpeg", "image/png", "image/webp", "image/avif").contains(contentType)) {
+            throw new IllegalArgumentException("Chỉ hỗ trợ ảnh JPG, PNG, WebP hoặc AVIF");
+        }
+        String original = file.getOriginalFilename() != null ? file.getOriginalFilename() : "image.jpg";
+        String extension = original.contains(".")
+                ? original.substring(original.lastIndexOf('.')).toLowerCase(Locale.ROOT)
+                : ".jpg";
+        if (!extension.matches("\\.(jpg|jpeg|png|webp|avif)")) extension = ".jpg";
+        Path directory = resolveUploadDir();
+        Files.createDirectories(directory);
+        String filename = prefix + "_" + System.currentTimeMillis() + extension;
+        Files.copy(file.getInputStream(), directory.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+        return "/images/products/" + filename;
+    }
+
     @SuppressWarnings("unchecked")
     private ResponseEntity<?> validateVariants(Object variantsObj) {
         if (variantsObj == null) return null;
@@ -454,7 +535,6 @@ public class VayController {
             Integer idMau = toInt(bt.get("idMauSac"));
             Integer idKich = toInt(bt.get("idKichThuoc"));
             BigDecimal giaBan = toDecimal(bt.get("giaBan"));
-            BigDecimal giaBanGoc = toDecimal(bt.get("giaBanGoc"));
             Integer soLuong = toInt(bt.get("soLuong"));
 
             if (idMau == null) {
@@ -471,12 +551,6 @@ public class VayController {
             }
             if (giaBan == null || giaBan.compareTo(BigDecimal.ZERO) < 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co gia ban hop le"));
-            }
-            if (giaBanGoc == null || giaBanGoc.compareTo(BigDecimal.ZERO) < 0) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co gia goc hop le"));
-            }
-            if (giaBanGoc.compareTo(giaBan) < 0) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + ": gia goc khong duoc nho hon gia ban"));
             }
             if (soLuong == null || soLuong < 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Bien the " + idx + " chua co so luong hop le"));
@@ -499,20 +573,57 @@ public class VayController {
         }
     }
 
+    private List<Map<String, Object>> toMaps(List<Vay> products) {
+        if (products.isEmpty()) return List.of();
+        List<Integer> productIds = products.stream().map(Vay::getId).toList();
+        Map<Integer, List<VayChiTiet>> variantsByProduct = vayCtRepo.findByVayIdIn(productIds).stream()
+                .filter(VayController::activeVariant)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        variant -> variant.getVay().getId(),
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()
+                ));
+        Map<Integer, List<Anh>> imagesByProduct = anhRepo
+                .findByVayIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1).stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        image -> image.getVay().getId(),
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()
+                ));
+        return products.stream()
+                .map(product -> toMap(
+                        product,
+                        variantsByProduct.getOrDefault(product.getId(), List.of()),
+                        imagesByProduct.getOrDefault(product.getId(), List.of())
+                ))
+                .toList();
+    }
+
+    private static String normalizeFilter(String value) {
+        if (value == null) return null;
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
     private Map<String, Object> toMap(Vay v) {
         List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId()).stream()
                 .filter(VayController::activeVariant)
                 .toList();
-        BigDecimal minPrice = bienThe.stream()
-                .map(VayChiTiet::getGiaBan)
-                .filter(Objects::nonNull)
-                .min(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
-        BigDecimal originalPrice = bienThe.stream()
-                .map(VayChiTiet::getGiaBanGoc)
-                .filter(Objects::nonNull)
-                .min(BigDecimal::compareTo)
-                .orElse(null);
+        List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(v.getId(), (byte) 1);
+        return toMap(v, bienThe, anhs);
+    }
+
+    private Map<String, Object> toMap(Vay v, List<VayChiTiet> bienThe, List<Anh> anhs) {
+        List<PromotionPricingService.PriceQuote> priceQuotes = bienThe.stream()
+                .map(promotionPricingService::quote)
+                .toList();
+        PromotionPricingService.PriceQuote bestQuote = priceQuotes.stream()
+                .min(Comparator.comparing(PromotionPricingService.PriceQuote::effectivePrice))
+                .orElse(new PromotionPricingService.PriceQuote(
+                        BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, null, null
+                ));
+        BigDecimal minPrice = bestQuote.effectivePrice();
+        BigDecimal basePrice = bestQuote.basePrice();
         int stock = bienThe.stream()
                 .filter(bt -> bt.getSoLuong() != null)
                 .mapToInt(VayChiTiet::getSoLuong)
@@ -528,13 +639,20 @@ public class VayController {
         map.put("chatLieu", v.getChatLieu() != null ? v.getChatLieu().getTenChatLieu() : null);
         map.put("idNhaCungCap", v.getNhaCungCap() != null ? v.getNhaCungCap().getId() : null);
         map.put("giaBan", minPrice);
-        map.put("giaBanGoc", originalPrice);
+        map.put("giaBanCoSo", basePrice);
+        map.put("coKhuyenMai", bestQuote.discounted());
+        map.put("dotKhuyenMai", bestQuote.campaignName());
+        map.put("maDotKhuyenMai", bestQuote.campaignCode());
+        map.put("mucGiam", bestQuote.discount());
         map.put("tonKho", stock);
         map.put("trangThai", v.getTrangThai());
         map.put("moTa", v.getMoTa());
         map.put("ngayTao", v.getNgayTao());
+        map.put("chieuCaoNguoiMau", v.getChieuCaoNguoiMau());
+        map.put("canNangNguoiMau", v.getCanNangNguoiMau());
+        map.put("sizeNguoiMau", v.getSizeNguoiMau());
+        map.put("moTaPhom", v.getMoTaPhom());
 
-        List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(v.getId(), (byte) 1);
         if (!anhs.isEmpty()) {
             map.put("anhUrl", anhs.get(0).getAnhUrl());
             map.put("danhSachAnh", anhs.stream().map(Anh::getAnhUrl).toList());
@@ -550,12 +668,14 @@ public class VayController {
     }
 
     private Map<String, Object> toDetailMap(Vay v) {
-        Map<String, Object> map = toMap(v);
         List<VayChiTiet> bienThe = vayCtRepo.findByVayId(v.getId()).stream()
                 .filter(VayController::activeVariant)
                 .toList();
+        List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(v.getId(), (byte) 1);
+        Map<String, Object> map = toMap(v, bienThe, anhs);
         List<Map<String, Object>> variants = new ArrayList<>();
         for (VayChiTiet bt : bienThe) {
+            PromotionPricingService.PriceQuote quote = promotionPricingService.quote(bt);
             Map<String, Object> btMap = new LinkedHashMap<>();
             btMap.put("id", bt.getId());
             btMap.put("maVayChiTiet", bt.getMaVayChiTiet());
@@ -564,13 +684,117 @@ public class VayController {
             btMap.put("maHex", bt.getMauSac() != null ? bt.getMauSac().getMaHex() : null);
             btMap.put("idKichThuoc", bt.getKichThuoc() != null ? bt.getKichThuoc().getId() : null);
             btMap.put("kichThuoc", bt.getKichThuoc() != null ? bt.getKichThuoc().getTenKichThuoc() : null);
-            btMap.put("giaBan", bt.getGiaBan());
-            btMap.put("giaBanGoc", bt.getGiaBanGoc());
+            btMap.put("giaBan", quote.effectivePrice());
+            btMap.put("giaBanCoSo", quote.basePrice());
+            btMap.put("coKhuyenMai", quote.discounted());
+            btMap.put("dotKhuyenMai", quote.campaignName());
+            btMap.put("maDotKhuyenMai", quote.campaignCode());
             btMap.put("soLuong", bt.getSoLuong());
+            btMap.put("anhUrl", bt.getAnhUrl());
             btMap.put("trangThai", bt.getTrangThai());
             variants.add(btMap);
         }
         map.put("bienThe", variants);
+        map.put("huongDanSize", sizeGuideRepo.findByVayIdOrderByKichThuocId(v.getId()).stream()
+                .map(this::sizeGuideMap)
+                .toList());
         return map;
+    }
+
+    private void applyFitFields(Vay product, Map<String, Object> body) {
+        if (body.containsKey("chieuCaoNguoiMau")) product.setChieuCaoNguoiMau(toInt(body.get("chieuCaoNguoiMau")));
+        if (body.containsKey("canNangNguoiMau")) product.setCanNangNguoiMau(toInt(body.get("canNangNguoiMau")));
+        if (body.containsKey("sizeNguoiMau")) product.setSizeNguoiMau(cleanText(body.get("sizeNguoiMau")));
+        if (body.containsKey("moTaPhom")) product.setMoTaPhom(cleanText(body.get("moTaPhom")));
+    }
+
+    @SuppressWarnings("unchecked")
+    private void saveSizeGuides(Vay product, Object guideObject) {
+        if (guideObject instanceof List<?> rawGuides) {
+            for (Object raw : rawGuides) {
+                if (!(raw instanceof Map<?, ?> guide)) continue;
+                Integer sizeId = toInt(guide.get("idKichThuoc"));
+                if (sizeId == null) continue;
+                KichThuoc size = kichThuocRepo.findById(sizeId).orElse(null);
+                if (size == null) continue;
+                HuongDanKichThuoc entity = sizeGuideRepo.findByVayIdAndKichThuocId(product.getId(), sizeId)
+                        .orElseGet(() -> HuongDanKichThuoc.builder().vay(product).kichThuoc(size).build());
+                entity.setChieuCaoTu(toInt(guide.get("chieuCaoTu")));
+                entity.setChieuCaoDen(toInt(guide.get("chieuCaoDen")));
+                entity.setCanNangTu(toInt(guide.get("canNangTu")));
+                entity.setCanNangDen(toInt(guide.get("canNangDen")));
+                entity.setVongNgucTu(toInt(guide.get("vongNgucTu")));
+                entity.setVongNgucDen(toInt(guide.get("vongNgucDen")));
+                entity.setVongEoTu(toInt(guide.get("vongEoTu")));
+                entity.setVongEoDen(toInt(guide.get("vongEoDen")));
+                entity.setVongMongTu(toInt(guide.get("vongMongTu")));
+                entity.setVongMongDen(toInt(guide.get("vongMongDen")));
+                entity.setGhiChu(cleanText(guide.get("ghiChu")));
+                sizeGuideRepo.save(entity);
+            }
+        }
+        ensureDefaultGuides(product);
+    }
+
+    private void ensureDefaultGuides(Vay product) {
+        Set<Integer> sizeIds = vayCtRepo.findByVayId(product.getId()).stream()
+                .filter(VayController::activeVariant)
+                .map(VayChiTiet::getKichThuoc)
+                .filter(Objects::nonNull)
+                .map(KichThuoc::getId)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        for (Integer sizeId : sizeIds) {
+            if (sizeGuideRepo.findByVayIdAndKichThuocId(product.getId(), sizeId).isPresent()) continue;
+            KichThuoc size = kichThuocRepo.findById(sizeId).orElse(null);
+            if (size == null) continue;
+            int[] values = defaultMeasurements(size.getTenKichThuoc());
+            sizeGuideRepo.save(HuongDanKichThuoc.builder()
+                    .vay(product)
+                    .kichThuoc(size)
+                    .chieuCaoTu(values[0]).chieuCaoDen(values[1])
+                    .canNangTu(values[2]).canNangDen(values[3])
+                    .vongNgucTu(values[4]).vongNgucDen(values[5])
+                    .vongEoTu(values[6]).vongEoDen(values[7])
+                    .vongMongTu(values[8]).vongMongDen(values[9])
+                    .ghiChu("Số đo tham khảo, ưu tiên đối chiếu phom sản phẩm")
+                    .build());
+        }
+    }
+
+    private int[] defaultMeasurements(String sizeName) {
+        String size = sizeName != null ? sizeName.trim().toUpperCase(Locale.ROOT) : "M";
+        return switch (size) {
+            case "XS" -> new int[]{148, 160, 36, 43, 76, 80, 58, 62, 82, 86};
+            case "S" -> new int[]{150, 163, 40, 48, 80, 84, 62, 66, 86, 90};
+            case "L" -> new int[]{155, 170, 57, 64, 88, 92, 70, 74, 94, 98};
+            case "XL" -> new int[]{158, 175, 65, 72, 92, 98, 74, 80, 98, 104};
+            case "XXL" -> new int[]{158, 178, 73, 82, 98, 104, 80, 86, 104, 110};
+            default -> new int[]{152, 168, 49, 56, 84, 88, 66, 70, 90, 94};
+        };
+    }
+
+    private Map<String, Object> sizeGuideMap(HuongDanKichThuoc guide) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", guide.getId());
+        map.put("idKichThuoc", guide.getKichThuoc().getId());
+        map.put("size", guide.getKichThuoc().getTenKichThuoc());
+        map.put("chieuCaoTu", guide.getChieuCaoTu());
+        map.put("chieuCaoDen", guide.getChieuCaoDen());
+        map.put("canNangTu", guide.getCanNangTu());
+        map.put("canNangDen", guide.getCanNangDen());
+        map.put("vongNgucTu", guide.getVongNgucTu());
+        map.put("vongNgucDen", guide.getVongNgucDen());
+        map.put("vongEoTu", guide.getVongEoTu());
+        map.put("vongEoDen", guide.getVongEoDen());
+        map.put("vongMongTu", guide.getVongMongTu());
+        map.put("vongMongDen", guide.getVongMongDen());
+        map.put("ghiChu", guide.getGhiChu());
+        return map;
+    }
+
+    private String cleanText(Object value) {
+        if (value == null) return null;
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() ? null : text;
     }
 }

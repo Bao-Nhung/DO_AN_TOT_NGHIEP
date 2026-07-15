@@ -12,9 +12,7 @@
       <div class="container">
         <div class="row g-5 align-items-center mb-5">
           <div class="col-lg-6">
-            <div style="aspect-ratio:4/3;background:linear-gradient(160deg,#F3E8E6,#D4A99E);border-radius:var(--z-radius-lg);display:flex;align-items:center;justify-content:center;font-family:var(--z-font-display);font-size:80px;color:rgba(255,255,255,0.15)">
-              Z
-            </div>
+            <img src="/images/banners/banner6.png" alt="Thiết kế Zestia" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--z-radius-lg)" />
           </div>
           <div class="col-lg-6">
             <p class="lm-eyebrow mb-3">Câu Chuyện Của Chúng Tôi</p>
@@ -24,8 +22,8 @@
               Chúng tôi tin rằng thời trang không chỉ là trang phục — đó là cách bạn kể câu chuyện của chính mình.
             </p>
             <p style="font-size:14px;line-height:1.8;color:var(--z-gray);margin-bottom:20px">
-              Mỗi sản phẩm của Zestia được thiết kế tỉ mỉ, pha trộn giữa nét truyền thống và xu hướng hiện đại,
-              sử dụng chất liệu cao cấp từ lụa tơ tằm đến vải nhập khẩu — giúp bạn tự tin toả sáng mỗi ngày.
+              Danh mục hiện có nhiều phom, chất liệu, màu và kích cỡ. Thông tin tồn kho, bảng size,
+              đánh giá và chính sách được hiển thị từ dữ liệu đang áp dụng để bạn dễ đối chiếu trước khi mua.
             </p>
             <div class="d-flex gap-4 flex-wrap">
               <div v-for="stat in stats" :key="stat.label" class="text-center">
@@ -91,21 +89,33 @@
 </template>
 
 <script setup>
+import { computed, onMounted, reactive } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import { api } from '@/composables/useApi'
 
-const stats = [
-  { num: '6+', label: 'Loại váy' },
-  { num: '200+', label: 'Thiết kế' },
-  { num: '10K+', label: 'Khách hàng' },
-  { num: '5', label: 'Năm kinh nghiệm' },
-]
+const summary = reactive({ activeProductCount: 0, categoryCount: 0, customerCount: 0, completedOrderCount: 0, reviewCount: 0, policies: [] })
+const stats = computed(() => [
+  { num: summary.categoryCount || 0, label: 'Dòng sản phẩm' },
+  { num: summary.activeProductCount || 0, label: 'Sản phẩm đang bán' },
+  { num: summary.customerCount || 0, label: 'Tài khoản khách hàng' },
+  { num: summary.reviewCount || 0, label: 'Đánh giá đã mua' },
+])
 
-const values = [
-  { icon: 'bi-gem', title: 'Chất liệu cao cấp', desc: 'Sử dụng lụa tơ tằm, vải gấm nhập khẩu và các loại vải cao cấp được tuyển chọn kỹ lưỡng.' },
-  { icon: 'bi-palette', title: 'Thiết kế độc quyền', desc: 'Mỗi mẫu váy đều được thiết kế riêng bởi đội ngũ nhà thiết kế tài năng của Zestia.' },
-  { icon: 'bi-truck', title: 'Giao hàng toàn quốc', desc: 'Miễn phí vận chuyển cho đơn hàng từ 500K. Giao hàng nhanh trong 2-5 ngày.' },
-  { icon: 'bi-arrow-repeat', title: 'Đổi trả 30 ngày', desc: 'Cam kết đổi trả miễn phí trong 30 ngày nếu sản phẩm không vừa ý.' },
-]
+const values = computed(() => {
+  const shipping = summary.policies?.find(policy => policy.code === 'SHIPPING')
+  const returns = summary.policies?.find(policy => policy.code === 'RETURN')
+  return [
+    { icon: 'bi-rulers', title: 'Bảng size theo sản phẩm', desc: 'Đối chiếu chiều cao, cân nặng và số đo theo từng phom trước khi chọn biến thể.' },
+    { icon: 'bi-patch-check', title: 'Đánh giá đã xác minh', desc: 'Chỉ tài khoản có đơn đã giao chứa đúng sản phẩm mới có thể gửi đánh giá.' },
+    { icon: 'bi-truck', title: shipping?.title || 'Giao hàng', desc: shipping?.summary || 'Phí giao hàng được hệ thống tính từ địa chỉ và giá trị đơn.' },
+    { icon: 'bi-arrow-repeat', title: returns?.title || 'Đổi trả', desc: returns?.summary || 'Điều kiện và thời hạn đổi trả được công bố trong trang chính sách.' },
+  ]
+})
+
+onMounted(async () => {
+  try { Object.assign(summary, await api().getStorefrontSummary()) }
+  catch (error) { console.warn('Không tải được thông tin cửa hàng', error) }
+})
 
 const contactInfo = [
   { icon: 'bi-geo-alt-fill', label: 'Địa chỉ', value: 'FPT Polytechnic, Hà Nội' },

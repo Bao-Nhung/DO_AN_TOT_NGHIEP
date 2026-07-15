@@ -48,11 +48,23 @@ public class Vay {
     @Column(name = "trang_thai")
     private Byte trangThai;
 
-    @Column(columnDefinition = "nvarchar(max)")
+    @Column(name = "mo_ta", columnDefinition = "nvarchar(max)")
     private String moTa;
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
+
+    @Column(name = "chieu_cao_nguoi_mau")
+    private Integer chieuCaoNguoiMau;
+
+    @Column(name = "can_nang_nguoi_mau")
+    private Integer canNangNguoiMau;
+
+    @Column(name = "size_nguoi_mau", length = 30)
+    private String sizeNguoiMau;
+
+    @Column(name = "mo_ta_phom", length = 500)
+    private String moTaPhom;
 
     @JsonIgnore
     @OneToMany(mappedBy = "vay")

@@ -196,6 +196,9 @@ public class LichLamViecController {
         if (validationError != null) {
             return ResponseEntity.badRequest().body(Map.of("message", validationError));
         }
+        if (hasOverlap(lich, null)) {
+            return ResponseEntity.status(409).body(Map.of("message", "Nhân viên đã có ca làm trùng thời gian"));
+        }
         lich.setNhanVien(nhanVien);
         lich.setNgayTao(LocalDateTime.now());
         if (lich.getTrangThai() == null) lich.setTrangThai(ShiftAccessService.STATUS_PENDING);
@@ -215,6 +218,11 @@ public class LichLamViecController {
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody LichLamViec lich) {
         return lichLamViecRepo.findById(id).map(existing -> {
+            if (existing.getGioCheckIn() != null || existing.getGioCheckOut() != null) {
+                return ResponseEntity.status(409).body(Map.of(
+                        "message", "Không thể sửa ca đã chấm công; hãy giữ lịch sử để đối soát"
+                ));
+            }
             if (lich.getNhanVien() != null && lich.getNhanVien().getId() != null) {
                 nhanVienRepo.findById(lich.getNhanVien().getId()).ifPresent(existing::setNhanVien);
             }
@@ -235,6 +243,9 @@ public class LichLamViecController {
             String validationError = validateSchedule(existing);
             if (validationError != null) {
                 return ResponseEntity.badRequest().body(Map.of("message", validationError));
+            }
+            if (hasOverlap(existing, existing.getId())) {
+                return ResponseEntity.status(409).body(Map.of("message", "Nhân viên đã có ca làm trùng thời gian"));
             }
             return ResponseEntity.ok(toMap(lichLamViecRepo.save(existing)));
         }).orElse(ResponseEntity.notFound().build());
@@ -362,9 +373,35 @@ public class LichLamViecController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<?> delete(@PathVariable Integer id) {
-        lichLamViecRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return lichLamViecRepo.findByIdForUpdate(id).map(shift -> {
+            if (shift.getGioCheckIn() != null || shift.getGioCheckOut() != null
+                    || (shift.getNgayLam() != null && shift.getNgayLam().isBefore(LocalDate.now()))) {
+                return ResponseEntity.status(409).body(Map.of(
+                        "error", "Không thể xóa ca đã diễn ra hoặc đã chấm công"
+                ));
+            }
+            shift.setTrangThai(ShiftAccessService.STATUS_UNAVAILABLE);
+            shift.setLyDoBaoBan("Ca đã được hủy bởi quản trị viên");
+            shift.setThoiGianBaoBan(LocalDateTime.now());
+            return ResponseEntity.ok(toMap(lichLamViecRepo.save(shift)));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    private boolean hasOverlap(LichLamViec shift, Integer excludedId) {
+        return shift.getNhanVien() != null
+                && shift.getNhanVien().getId() != null
+                && shift.getNgayLam() != null
+                && shift.getGioBatDau() != null
+                && shift.getGioKetThuc() != null
+                && lichLamViecRepo.countOverlapping(
+                        shift.getNhanVien().getId(),
+                        shift.getNgayLam(),
+                        shift.getGioBatDau(),
+                        shift.getGioKetThuc(),
+                        excludedId
+                ) > 0;
     }
 
     private Map<String, Object> toMap(LichLamViec lich) {

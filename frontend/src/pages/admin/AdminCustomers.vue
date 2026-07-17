@@ -49,7 +49,7 @@
             <td style="font-weight:600">{{ c.spent }}</td>
             <td style="color:var(--z-gray)">{{ c.date }}</td>
             <td @click.stop>
-              <button class="z-icon-btn" title="Chi tiết" @click="openDetail(c)"><i class="bi bi-eye"></i></button>
+              <button type="button" class="z-icon-btn" title="Chi tiết" aria-label="Xem chi tiết khách hàng" @click="openDetail(c)"><i class="bi bi-eye"></i></button>
             </td>
           </tr>
         </tbody>
@@ -88,7 +88,7 @@
       <div class="z-modal" style="max-width:900px">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết khách hàng</h3>
-          <button class="z-icon-btn" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết khách hàng" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div v-if="selectedCustomer" class="text-center mb-4">
@@ -307,7 +307,7 @@ function formatAddress(address) {
 .z-info-card {
   padding: 14px; background: var(--z-bg-alt); border-radius: var(--z-radius); text-align: center;
 }
-.z-info-label { font-size: 11px; font-weight: 500; color: var(--z-gray); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.z-info-label { font-size: 11px; font-weight: 500; color: var(--z-gray); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0; }
 .z-info-value { font-size: 14px; font-weight: 500; color: var(--z-dark); }
 .z-address-card { text-align: left; }
 .z-address-row { display: flex; align-items: flex-start; gap: 8px; color: var(--z-dark); font-size: 13px; }

@@ -12,11 +12,14 @@
       <div class="row g-4">
         <div v-for="(item, i) in wishlistProducts" :key="item.id"
              class="col-6 col-lg-4 z-fade-item" :style="{ animationDelay: i * 0.04 + 's' }">
-          <div class="lm-product-card position-relative" @click="$router.push('/product/' + item.id)">
+          <div class="lm-product-card position-relative" role="link" tabindex="0" :aria-label="`Xem ${item.name}`"
+               @click="$router.push('/product/' + item.id)"
+               @keydown.enter="$router.push('/product/' + item.id)"
+               @keydown.space.prevent="$router.push('/product/' + item.id)">
             <div class="lm-product-image">
               <div v-if="item.image" class="lm-product-img-inner"><img :src="item.image" :alt="item.name" loading="lazy" /></div>
               <div v-else class="lm-product-img-inner" :style="{ background: item.bg }">{{ item.letter }}</div>
-              <button class="position-absolute d-flex align-items-center justify-content-center"
+              <button type="button" class="position-absolute d-flex align-items-center justify-content-center" :aria-label="`Xóa ${item.name} khỏi yêu thích`"
                       @click.stop="removeFromWishlist(item.id)"
                       style="top:12px;right:12px;width:36px;height:36px;background:var(--z-white);border-radius:50%;cursor:pointer;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:none;transition:all 0.3s">
                 <i class="bi bi-x" style="font-size:16px;color:var(--z-gray)"></i>

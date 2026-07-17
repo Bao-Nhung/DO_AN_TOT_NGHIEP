@@ -103,9 +103,7 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, Integer> {
 
     @Query("""
             SELECT COUNT(h) AS orderCount, COALESCE(SUM(
-                CASE WHEN h.trangThai = 4
-                    OR (h.daThanhToan = true AND h.trangThai NOT IN (5, 6, 7, 9))
-                THEN h.tongTien ELSE 0 END
+                CASE WHEN h.trangThai = 4 THEN h.tongTien ELSE 0 END
             ), 0) AS revenue
             FROM HoaDon h
             """)

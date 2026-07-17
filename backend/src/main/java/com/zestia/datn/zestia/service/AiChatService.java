@@ -15,6 +15,7 @@ import com.zestia.datn.zestia.repository.VayRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -43,6 +44,7 @@ public class AiChatService {
     private final VayChiTietRepository vayChiTietRepository;
     private final GiamGiaRepository giamGiaRepository;
     private final HoaDonRepository hoaDonRepository;
+    private final PromotionPricingService promotionPricingService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${openai.api-key:}")
@@ -128,7 +130,7 @@ public class AiChatService {
         sb.append("Nguoi dung: ").append(user != null && user.authenticated() ? user.role() : "guest").append("\n\n");
         sb.append("CONTEXT DU AN:\n").append(context).append("\n\n");
         sb.append("LICH SU GAN DAY:\n").append(formatHistory(history)).append("\n\n");
-        sb.append("CAU HOI HIEN TAI:\n").append(message.trim());
+        sb.append("CAU HOI HIEN TAI:\n").append(redactSensitive(message.trim()));
         return sb.toString();
     }
 
@@ -143,16 +145,15 @@ public class AiChatService {
             String content = Objects.toString(map.get("content"), "").trim();
             if (content.isBlank()) continue;
             if (content.length() > 400) content = content.substring(0, 400);
-            sb.append(role).append(": ").append(content).append("\n");
+            sb.append(role).append(": ").append(redactSensitive(content)).append("\n");
         }
         return sb.isEmpty() ? "Khong co." : sb.toString();
     }
 
     private String buildContext(ChatUser user, String message) {
         StringBuilder sb = new StringBuilder();
-        List<Vay> activeProducts = vayRepository.findByTrangThai((byte) 1).stream()
-                .sorted(Comparator.comparing(Vay::getNgayTao, Comparator.nullsLast(Comparator.reverseOrder())))
-                .toList();
+        long activeProductCount = vayRepository.countByTrangThai((byte) 1);
+        List<Vay> activeProducts = vayRepository.findActiveForAi(PageRequest.of(0, 100));
         List<Integer> productIds = activeProducts.stream()
                 .map(Vay::getId)
                 .filter(Objects::nonNull)
@@ -162,28 +163,14 @@ public class AiChatService {
                 : vayChiTietRepository.findByVayIdIn(productIds).stream()
                         .filter(this::activeVariant)
                         .collect(Collectors.groupingBy(v -> v.getVay().getId()));
-        List<VayChiTiet> activeVariants = variantsByProduct.values().stream()
-                .flatMap(List::stream)
-                .toList();
-        int totalStock = activeVariants.stream()
-                .map(VayChiTiet::getSoLuong)
-                .filter(Objects::nonNull)
-                .mapToInt(Integer::intValue)
-                .sum();
-        long colorCount = activeVariants.stream()
-                .map(v -> v.getMauSac() != null ? v.getMauSac().getTenMauSac() : null)
-                .filter(Objects::nonNull)
-                .distinct()
-                .count();
-        long sizeCount = activeVariants.stream()
-                .map(v -> v.getKichThuoc() != null ? v.getKichThuoc().getTenKichThuoc() : null)
-                .filter(Objects::nonNull)
-                .distinct()
-                .count();
+        long activeVariantCount = vayChiTietRepository.countActiveVariants();
+        long totalStock = Objects.requireNonNullElse(vayChiTietRepository.sumActiveStock(), 0L);
+        long colorCount = vayChiTietRepository.countActiveColors();
+        long sizeCount = vayChiTietRepository.countActiveSizes();
 
         sb.append("THONG KE THAT TRONG DATABASE:\n");
-        sb.append("- Tong mau vay dang ban (bang Vay, trangThai=1): ").append(activeProducts.size()).append("\n");
-        sb.append("- Tong bien the mau-size dang ban: ").append(activeVariants.size()).append("\n");
+        sb.append("- Tong mau vay dang ban (bang Vay, trangThai=1): ").append(activeProductCount).append("\n");
+        sb.append("- Tong bien the mau-size dang ban: ").append(activeVariantCount).append("\n");
         sb.append("- Tong ton kho cua cac bien the dang ban: ").append(totalStock).append("\n");
         sb.append("- So mau sac khac nhau trong bien the: ").append(colorCount).append("\n");
         sb.append("- So size khac nhau trong bien the: ").append(sizeCount).append("\n");
@@ -197,8 +184,8 @@ public class AiChatService {
             prioritizedProducts.stream()
                     .limit(30)
                     .forEach(v -> sb.append("- ").append(productSummary(v, variantsByProduct.getOrDefault(v.getId(), List.of()))).append("\n"));
-            if (prioritizedProducts.size() > 30) {
-                sb.append("- ... con ").append(prioritizedProducts.size() - 30).append(" san pham khac trong database.\n");
+            if (activeProductCount > 30) {
+                sb.append("- ... con ").append(activeProductCount - 30).append(" san pham khac trong database.\n");
             }
         }
 
@@ -261,7 +248,8 @@ public class AiChatService {
         variants.forEach(v -> {
             if (v.getMauSac() != null) fields.add("mau " + v.getMauSac().getTenMauSac());
             if (v.getKichThuoc() != null) fields.add("size " + v.getKichThuoc().getTenKichThuoc());
-            if (v.getGiaBan() != null) fields.add(v.getGiaBan().toPlainString());
+            BigDecimal effectivePrice = promotionPricingService.quote(v).effectivePrice();
+            if (effectivePrice != null) fields.add(effectivePrice.toPlainString());
         });
         String haystack = normalizeForSearch(String.join(" ", fields.stream().filter(Objects::nonNull).toList()));
         return queryTokens(query).stream().anyMatch(haystack::contains);
@@ -286,7 +274,7 @@ public class AiChatService {
     private String productSummary(Vay vay, List<VayChiTiet> variants) {
         int stock = variants.stream().map(VayChiTiet::getSoLuong).filter(Objects::nonNull).mapToInt(Integer::intValue).sum();
         BigDecimal minPrice = variants.stream()
-                .map(VayChiTiet::getGiaBan)
+                .map(v -> promotionPricingService.quote(v).effectivePrice())
                 .filter(Objects::nonNull)
                 .min(BigDecimal::compareTo)
                 .orElse(BigDecimal.ZERO);
@@ -343,7 +331,7 @@ public class AiChatService {
 
     private String orderSummary(HoaDon order) {
         return "%s - trang thai %s, thanh toan %s, tong %s, ngay tao %s".formatted(
-                safe(order.getMaHoaDon()),
+                maskOrderCode(order.getMaHoaDon()),
                 statusLabel(order.getTrangThai()),
                 Boolean.TRUE.equals(order.getDaThanhToan()) ? "da thanh toan" : "chua thanh toan",
                 money(order.getTongTien()),
@@ -424,6 +412,20 @@ public class AiChatService {
 
     private String safe(String value) {
         return value == null || value.isBlank() ? "N/A" : value;
+    }
+
+    private String maskOrderCode(String value) {
+        String code = safe(value);
+        if (code.length() <= 6) return "***";
+        return code.substring(0, 2) + "***" + code.substring(code.length() - 4);
+    }
+
+    private String redactSensitive(String value) {
+        if (value == null || value.isBlank()) return "";
+        return value
+                .replaceAll("(?i)\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b", "[EMAIL_DA_AN]")
+                .replaceAll("(?i)\\bHD[0-9A-Z]{6,}\\b", "[MA_DON_DA_AN]")
+                .replaceAll("(?:\\+84|0)[0-9\\s.-]{8,12}", "[SDT_DA_AN]");
     }
 
     public record ChatUser(String role, Integer userId) {

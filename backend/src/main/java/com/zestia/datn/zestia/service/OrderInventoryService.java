@@ -22,6 +22,7 @@ public class OrderInventoryService {
     private final HoaDonRepository hoaDonRepo;
     private final VayChiTietRepository vayChiTietRepo;
     private final GiamGiaRepository giamGiaRepo;
+    private final InventoryMovementService inventoryMovementService;
 
     @Transactional
     public void restoreReservation(HoaDon order) {
@@ -41,8 +42,14 @@ public class OrderInventoryService {
             }
             vayChiTietRepo.findByIdForUpdate(detail.getVayChiTiet().getId()).ifPresent(variant -> {
                 int currentStock = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
-                variant.setSoLuong(currentStock + detail.getSoLuong());
+                int afterStock = currentStock + detail.getSoLuong();
+                variant.setSoLuong(afterStock);
                 vayChiTietRepo.save(variant);
+                inventoryMovementService.record(
+                        variant, currentStock, afterStock, "HOAN_DON",
+                        order.getMaHoaDon(), "System",
+                        "Hoàn tồn do hủy, giao thất bại hoặc thanh toán thất bại"
+                );
             });
         }
     }

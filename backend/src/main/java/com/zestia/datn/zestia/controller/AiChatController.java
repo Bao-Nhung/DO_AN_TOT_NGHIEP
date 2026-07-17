@@ -2,6 +2,7 @@ package com.zestia.datn.zestia.controller;
 
 import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.service.AiChatService;
+import com.zestia.datn.zestia.service.RequestRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -11,12 +12,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/ai-chat")
@@ -28,13 +25,13 @@ public class AiChatController {
 
     private final AiChatService aiChatService;
     private final JwtUtil jwtUtil;
-    private final ConcurrentHashMap<String, Deque<Long>> requestLog = new ConcurrentHashMap<>();
+    private final RequestRateLimiter rateLimiter;
 
     @PostMapping
     public ResponseEntity<?> chat(@RequestBody Map<String, Object> body,
                                   @RequestHeader(value = "Authorization", required = false) String authHeader,
                                   HttpServletRequest request) {
-        if (isRateLimited(clientKey(request))) {
+        if (!rateLimiter.tryAcquire("ai-chat", clientKey(request), MAX_REQUESTS, WINDOW_SECONDS)) {
             return ResponseEntity.status(429).body(Map.of(
                     "reply", "Bạn đang gửi quá nhiều tin nhắn. Vui lòng thử lại sau ít phút."
             ));
@@ -64,26 +61,7 @@ public class AiChatController {
         }
     }
 
-    private boolean isRateLimited(String key) {
-        long now = Instant.now().getEpochSecond();
-        Deque<Long> entries = requestLog.computeIfAbsent(key, ignored -> new ArrayDeque<>());
-        synchronized (entries) {
-            while (!entries.isEmpty() && now - entries.peekFirst() > WINDOW_SECONDS) {
-                entries.removeFirst();
-            }
-            if (entries.size() >= MAX_REQUESTS) {
-                return true;
-            }
-            entries.addLast(now);
-            return false;
-        }
-    }
-
     private String clientKey(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
         return request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 }

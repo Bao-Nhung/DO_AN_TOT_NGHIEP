@@ -42,6 +42,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -216,13 +217,11 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
-    @WithMockUser(authorities = "ROLE_Quản lý kho")
-    void inventoryManagerCanAccessInventoryButNotRevenueOrOrders() throws Exception {
+    @WithMockUser(authorities = "ROLE_NhanVien")
+    void employeeCannotAccessAdminInventoryOrRevenueDashboard() throws Exception {
         mockMvc.perform(get("/api/dashboard/inventory"))
-                .andExpect(status().isOk());
-        mockMvc.perform(get("/api/dashboard/stats"))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/hoa-don"))
+        mockMvc.perform(get("/api/dashboard/stats"))
                 .andExpect(status().isForbidden());
     }
 
@@ -261,6 +260,45 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
+    void staleInactiveEmployeeTokenCannotRevealLockedProducts() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        VaiTro role = roleRepository.findByTenVaiTro("NhanVien")
+                .orElseGet(() -> roleRepository.save(VaiTro.builder().tenVaiTro("NhanVien").build()));
+        NhanVien employee = employeeRepository.save(NhanVien.builder()
+                .vaiTro(role)
+                .maNhanVien("NV-LOCKED-" + marker)
+                .hoVaTen("Nhan vien da khoa")
+                .email("locked-" + marker + "@example.com")
+                .tenNguoiDung("locked-" + marker)
+                .matKhau(passwordEncoder.encode("Matkhau123"))
+                .tinhTrangLamViec((byte) 0)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        Vay lockedProduct = vayRepository.save(Vay.builder()
+                .maVay("V-LOCKED-" + marker)
+                .tenVay("Locked product " + marker)
+                .trangThai((byte) 0)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        String staleToken = jwtUtil.generateToken(employee.getTenNguoiDung(), "NhanVien", employee.getId());
+
+        String response = mockMvc.perform(get("/api/vay")
+                        .header("Authorization", "Bearer " + staleToken))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(response).doesNotContain(lockedProduct.getTenVay());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_KhachHang")
+    void customerCannotSearchOtherCustomersOrdersByPhone() throws Exception {
+        mockMvc.perform(get("/api/hoa-don/search-by-phone")
+                        .param("soDienThoai", "0900000001"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(authorities = "ROLE_Admin")
     void orderStatusMachineRejectsSkippedStages() throws Exception {
         HoaDon order = hoaDonRepository.save(HoaDon.builder()
@@ -291,6 +329,18 @@ class PaymentAndOrderSecurityTests {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Vui lòng nhập họ tên hợp lệ"));
+    }
+
+    @Test
+    void checkoutRejectsMalformedOrderLinesWithoutServerError() throws Exception {
+        mockMvc.perform(post("/api/payment/create-order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"hoTen":"Khach Test","soDienThoai":"0911111111","email":"guest@example.com",
+                                 "diaChi":"1 Pho Hue, Ha Noi","hinhThucThanhToan":"COD","items":[1]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Dòng sản phẩm không hợp lệ"));
     }
 
     @Test

@@ -4,7 +4,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Bootstrap
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
-import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
 // Global styles
 import '@/assets/main.css'
@@ -103,11 +102,7 @@ function isAdminRole(role) {
 }
 
 function isStaffRole(role) {
-  return isAdminRole(role) || role === 'NhanVien' || role === 'Nhân viên' || isInventoryRole(role)
-}
-
-function isInventoryRole(role) {
-  return role === 'QuanLyKho' || role === 'Quản lý kho'
+  return isAdminRole(role) || role === 'NhanVien' || role === 'Nhân viên'
 }
 
 function isEmployeeRole(role) {
@@ -136,7 +131,7 @@ router.beforeEach(async (to, from, next) => {
       if (!isStaffRole(user.role)) {
         return next({ name: 'home' })
       }
-      if (isEmployeeRole(user.role) && !['admin-dashboard', 'admin-schedule'].includes(to.name)) {
+      if (isEmployeeRole(user.role) && to.name !== 'admin-schedule') {
         try {
           const shiftStatus = await api().getWorkShiftStatus()
           if (!shiftStatus?.canOperate) return next({ name: 'admin-schedule' })
@@ -145,18 +140,17 @@ router.beforeEach(async (to, from, next) => {
         }
       }
       if (!isAdminRole(user.role) && adminOnlyRouteNames.has(to.name)) {
-        return next({ name: isInventoryRole(user.role) ? 'admin-products' : 'admin-pos' })
-      }
-      if (!isAdminRole(user.role) && !isInventoryRole(user.role) && to.name === 'admin-products') {
         return next({ name: 'admin-pos' })
       }
-      if (isInventoryRole(user.role) && !['admin-dashboard', 'admin-products'].includes(to.name)) {
-        return next({ name: 'admin-products' })
+      if (!isAdminRole(user.role) && to.name === 'admin-products') {
+        return next({ name: 'admin-pos' })
       }
     }
   }
   next()
 })
 
-createApp(App).use(router).mount('#app')
+const app = createApp(App)
+app.use(router)
+router.isReady().then(() => app.mount('#app'))
 

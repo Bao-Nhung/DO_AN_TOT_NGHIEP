@@ -4,6 +4,8 @@ import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.service.SupportChatService;
+import com.zestia.datn.zestia.service.RequestRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,10 +20,17 @@ public class SupportChatController {
     private final SupportChatService supportChatService;
     private final KhachHangRepository customerRepository;
     private final JwtUtil jwtUtil;
+    private final RequestRateLimiter rateLimiter;
 
     @PostMapping("/customer/request")
     public ResponseEntity<?> requestSupport(@RequestBody Map<String, Object> body,
-                                            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+                                            @RequestHeader(value = "Authorization", required = false) String authHeader,
+                                            HttpServletRequest request) {
+        if (!rateLimiter.tryAcquire("support-request", clientIp(request), 5, 10 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã tạo quá nhiều yêu cầu hỗ trợ. Vui lòng thử lại sau"
+            ));
+        }
         return ResponseEntity.ok(supportChatService.requestSupport(text(body, "message"), customer(authHeader)));
     }
 
@@ -31,7 +40,15 @@ public class SupportChatController {
     }
 
     @PostMapping("/customer/{token}/messages")
-    public ResponseEntity<?> customerMessage(@PathVariable String token, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> customerMessage(@PathVariable String token,
+                                             @RequestBody Map<String, Object> body,
+                                             HttpServletRequest request) {
+        String rateKey = clientIp(request) + "|" + token;
+        if (!rateLimiter.tryAcquire("support-message", rateKey, 30, 5 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ một chút"
+            ));
+        }
         return ResponseEntity.ok(supportChatService.sendCustomerMessage(token, text(body, "message")));
     }
 
@@ -131,6 +148,10 @@ public class SupportChatController {
     private String text(Map<String, Object> body, String key) {
         Object value = body != null ? body.get(key) : null;
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private static String clientIp(HttpServletRequest request) {
+        return request != null && request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 
     private record Staff(Integer id, String role, String name, boolean admin) {

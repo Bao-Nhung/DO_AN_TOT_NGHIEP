@@ -263,7 +263,7 @@
 
             <p class="text-center mt-3" style="font-size:12px;color:var(--z-gray)">
               <i class="bi bi-shield-check"></i>
-              Thông tin thanh toán được bảo mật 100%
+              Thanh toán trực tuyến được xử lý qua cổng MoMo hoặc ZaloPay
             </p>
           </div>
         </div>
@@ -525,6 +525,8 @@ const checkoutRequestId = ref('')
 
 function handlePlaceOrder() {
   if (loading.value) return
+  if (state.items.some(item => item.unavailable)) return showToast('Vui lòng xóa sản phẩm không còn khả dụng khỏi giỏ hàng')
+  if (!state.items.length) return showToast('Giỏ hàng đang trống')
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
   phoneTouched.value = true
   if (phoneError.value) return showToast(phoneError.value)

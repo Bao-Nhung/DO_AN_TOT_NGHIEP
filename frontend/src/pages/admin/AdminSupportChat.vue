@@ -47,7 +47,7 @@
               <strong>{{ selected.customerName }}</strong>
               <span>{{ selected.employeeName ? `Phụ trách: ${selected.employeeName}` : 'Chưa có người tiếp nhận' }}</span>
             </div>
-            <button class="z-icon-btn" title="Kết thúc hỗ trợ" type="button" @click="closeConversation">
+            <button class="z-icon-btn" title="Kết thúc hỗ trợ" aria-label="Kết thúc hỗ trợ" type="button" @click="closeConversation">
               <i class="bi bi-check2-circle"></i>
             </button>
           </header>
@@ -75,7 +75,7 @@
               placeholder="Nhập câu trả lời cho khách hàng..."
               :disabled="sending"
             >
-            <button class="lm-btn-primary" :disabled="sending || draft.trim().length < 2" title="Gửi" type="submit">
+            <button class="lm-btn-primary" :disabled="sending || draft.trim().length < 2" title="Gửi" aria-label="Gửi tin nhắn" type="submit">
               <span><i class="bi bi-send"></i></span>
             </button>
           </form>

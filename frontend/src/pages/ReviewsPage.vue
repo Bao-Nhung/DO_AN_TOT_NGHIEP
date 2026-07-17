@@ -92,9 +92,9 @@
         </div>
 
         <nav v-if="totalPages > 1" class="z-review-pagination" aria-label="Phân trang đánh giá">
-          <button type="button" :disabled="page === 0" title="Trang trước" @click="changePage(page - 1)"><i class="bi bi-chevron-left"></i></button>
+          <button type="button" :disabled="page === 0" title="Trang trước" aria-label="Trang đánh giá trước" @click="changePage(page - 1)"><i class="bi bi-chevron-left"></i></button>
           <button v-for="number in visiblePages" :key="number" type="button" :class="{ active: page === number }" @click="changePage(number)">{{ number + 1 }}</button>
-          <button type="button" :disabled="page + 1 >= totalPages" title="Trang sau" @click="changePage(page + 1)"><i class="bi bi-chevron-right"></i></button>
+          <button type="button" :disabled="page + 1 >= totalPages" title="Trang sau" aria-label="Trang đánh giá sau" @click="changePage(page + 1)"><i class="bi bi-chevron-right"></i></button>
         </nav>
       </div>
     </section>
@@ -180,7 +180,7 @@ function formatDate(value) {
 .z-review-summary > * + * { border-left: 1px solid var(--z-gray-border); }
 .z-review-average strong { display: block; font-family: var(--z-font-display); font-size: 58px; font-weight: 400; line-height: 1; }
 .z-review-average > span { display: block; margin-top: 8px; color: var(--z-gray); font-size: 12px; }
-.z-review-stars { color: var(--z-accent); letter-spacing: 2px; }
+.z-review-stars { color: var(--z-accent); letter-spacing: 0; }
 .z-rating-bars { display: flex; flex-direction: column; gap: 7px; }
 .z-rating-bars button { display: grid; grid-template-columns: 48px 1fr 28px; align-items: center; gap: 10px; padding: 3px 6px; border: 0; background: transparent; color: var(--z-gray); font-size: 11px; text-align: left; }
 .z-rating-bars button:hover, .z-rating-bars button.active { color: var(--z-dark); background: var(--z-bg-alt); }

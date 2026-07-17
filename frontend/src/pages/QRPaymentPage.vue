@@ -44,7 +44,7 @@
               <span>{{ method === 'MOMO' ? 'Số điện thoại' : 'Tài khoản' }}</span>
               <div class="z-qr-copy-group">
                 <strong>{{ cfg.account }}</strong>
-                <button class="z-copy-btn" @click="copyText(cfg.account)" :title="'Sao chép'">
+                <button type="button" class="z-copy-btn" aria-label="Sao chép số tài khoản" @click="copyText(cfg.account)" :title="'Sao chép'">
                   <i class="bi" :class="copied === cfg.account ? 'bi-check-lg' : 'bi-clipboard'"></i>
                 </button>
               </div>
@@ -57,7 +57,7 @@
               <span>Số tiền</span>
               <div class="z-qr-copy-group">
                 <strong style="color:var(--z-accent)">{{ formatPrice(amount) }}</strong>
-                <button class="z-copy-btn" @click="copyText(String(amount))" title="Sao chép">
+                <button type="button" class="z-copy-btn" aria-label="Sao chép số tiền" @click="copyText(String(amount))" title="Sao chép">
                   <i class="bi" :class="copied === String(amount) ? 'bi-check-lg' : 'bi-clipboard'"></i>
                 </button>
               </div>
@@ -66,7 +66,7 @@
               <span>Nội dung CK</span>
               <div class="z-qr-copy-group">
                 <strong>{{ transferContent }}</strong>
-                <button class="z-copy-btn" @click="copyText(transferContent)" title="Sao chép">
+                <button type="button" class="z-copy-btn" aria-label="Sao chép nội dung chuyển khoản" @click="copyText(transferContent)" title="Sao chép">
                   <i class="bi" :class="copied === transferContent ? 'bi-check-lg' : 'bi-clipboard'"></i>
                 </button>
               </div>

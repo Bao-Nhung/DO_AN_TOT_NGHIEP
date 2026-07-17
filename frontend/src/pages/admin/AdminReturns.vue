@@ -55,7 +55,7 @@
       <div class="z-modal z-return-detail-modal">
         <div class="z-modal-head">
           <div><h3>Yêu cầu {{ detail.type === 'DOI' ? 'đổi' : 'trả' }} #{{ detail.id }}</h3><span>{{ detail.orderCode }} · {{ detail.source === 'ONLINE' ? 'Đơn online' : 'Đơn tại quầy' }}</span></div>
-          <button class="z-icon-btn" @click="detail = null"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết đổi trả" @click="detail = null"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="z-return-detail-grid">
@@ -65,7 +65,7 @@
           </section>
           <section>
             <h4>Nội dung yêu cầu</h4>
-            <dl><dt>Lý do</dt><dd>{{ detail.reason }}</dd><dt v-if="detail.condition">Tình trạng hàng</dt><dd v-if="detail.condition">{{ detail.condition }}</dd><dt v-if="detail.refundInfo">Nhận tiền hoàn</dt><dd v-if="detail.refundInfo">{{ detail.refundInfo }}</dd><dt v-if="detail.rejectionReason">Lý do từ chối/trả lại</dt><dd v-if="detail.rejectionReason" class="text-danger">{{ detail.rejectionReason }}</dd><dt v-if="detail.employeeName">Nhân viên xử lý</dt><dd v-if="detail.employeeName">{{ detail.employeeName }}</dd></dl>
+            <dl><dt>Lý do</dt><dd>{{ detail.reason }}</dd><dt v-if="detail.condition">Tình trạng hàng</dt><dd v-if="detail.condition">{{ detail.condition }}</dd><dt v-if="detail.refundInfo">Nhận tiền hoàn</dt><dd v-if="detail.refundInfo">{{ detail.refundInfo }}</dd><dt v-if="detail.refundAmount != null">Số tiền hoàn</dt><dd v-if="detail.refundAmount != null">{{ formatCurrency(detail.refundAmount) }}</dd><dt v-if="detail.refundTransactionId">Mã hoàn tiền</dt><dd v-if="detail.refundTransactionId">{{ detail.refundTransactionId }}</dd><dt v-if="detail.gatewayResponse">Đối soát cổng</dt><dd v-if="detail.gatewayResponse">{{ detail.gatewayResponse }}</dd><dt v-if="detail.rejectionReason">Lý do từ chối/trả lại</dt><dd v-if="detail.rejectionReason" class="text-danger">{{ detail.rejectionReason }}</dd><dt v-if="detail.employeeName">Nhân viên xử lý</dt><dd v-if="detail.employeeName">{{ detail.employeeName }}</dd></dl>
           </section>
         </div>
 
@@ -85,14 +85,15 @@
             <button class="lm-btn-secondary z-danger-text" @click="openAction('sendBack')"><i class="bi bi-arrow-return-left"></i><span>Không đạt, trả khách</span></button>
             <button class="lm-btn-primary" @click="openAction('receive')"><i class="bi bi-box-seam"></i><span>Đã nhận hàng</span></button>
           </template>
-          <button v-if="detail.status === 'CHO_HOAN_TAT'" class="lm-btn-primary" @click="openAction('complete')"><i class="bi bi-check-circle"></i><span>{{ detail.type === 'DOI' ? 'Hoàn tất đổi hàng' : 'Xác nhận đã hoàn tiền' }}</span></button>
+          <button v-if="detail.status === 'CHO_HOAN_TAT'" class="lm-btn-primary" @click="openAction('complete')"><i class="bi bi-check-circle"></i><span>{{ detail.type === 'DOI' ? 'Hoàn tất đổi hàng' : 'Yêu cầu hoàn tiền' }}</span></button>
+          <button v-if="detail.status === 'CHO_XAC_NHAN_HOAN_TIEN'" class="lm-btn-primary" @click="openAction('complete')"><i class="bi bi-arrow-repeat"></i><span>Đối soát hoàn tiền</span></button>
         </div>
       </div>
     </div>
 
     <div v-if="actionModal" class="z-modal-overlay" style="z-index:1100" @click.self="actionModal = null">
       <div class="z-modal" style="max-width:500px">
-        <div class="z-modal-head"><div><h3>{{ actionTitle }}</h3><span>Thao tác được ghi vào lịch sử hóa đơn.</span></div><button class="z-icon-btn" @click="actionModal = null"><i class="bi bi-x-lg"></i></button></div>
+        <div class="z-modal-head"><div><h3>{{ actionTitle }}</h3><span>Thao tác được ghi vào lịch sử hóa đơn.</span></div><button type="button" class="z-icon-btn" aria-label="Đóng thao tác đổi trả" @click="actionModal = null"><i class="bi bi-x-lg"></i></button></div>
         <label class="z-label">{{ actionNeedsReason ? 'Lý do *' : 'Ghi chú' }}</label>
         <textarea v-model="actionReason" class="lm-input" rows="4" :placeholder="actionNeedsReason ? 'Nhập lý do cụ thể để khách hàng hiểu rõ...' : 'Ghi chú kiểm tra hàng (không bắt buộc)...'"></textarea>
         <div class="z-modal-actions"><button class="lm-btn-secondary" @click="actionModal = null">Đóng</button><button class="lm-btn-primary" :disabled="saving" @click="submitAction">Xác nhận</button></div>
@@ -101,7 +102,7 @@
 
     <div v-if="offlineModal" class="z-modal-overlay" @click.self="closeOffline">
       <div class="z-modal" style="max-width:760px">
-        <div class="z-modal-head"><div><h3>{{ offlineForm.type === 'DOI' ? 'Đổi hàng' : 'Trả hàng' }} tại quầy</h3><span>Chỉ áp dụng với hóa đơn đã thanh toán tại cửa hàng.</span></div><button class="z-icon-btn" @click="closeOffline"><i class="bi bi-x-lg"></i></button></div>
+        <div class="z-modal-head"><div><h3>{{ offlineForm.type === 'DOI' ? 'Đổi hàng' : 'Trả hàng' }} tại quầy</h3><span>Chỉ áp dụng với hóa đơn đã thanh toán tại cửa hàng.</span></div><button type="button" class="z-icon-btn" aria-label="Đóng đổi trả tại quầy" @click="closeOffline"><i class="bi bi-x-lg"></i></button></div>
         <div class="row g-3">
           <div class="col-md-7"><label class="z-label">Hóa đơn *</label><select v-model="offlineForm.orderId" class="lm-input" @change="loadOfflineOrder"><option :value="null">Chọn hóa đơn tại quầy</option><option v-for="order in offlineOrders" :key="order.id" :value="order.id">{{ order.maHoaDon }} · {{ order.khachHang }} · {{ order.soDienThoai }}</option></select></div>
           <div class="col-md-5"><label class="z-label">Loại xử lý *</label><div class="z-segmented z-form-segment"><button :class="{ active: offlineForm.type === 'DOI' }" @click="offlineForm.type = 'DOI'; loadReplacementOptions()">Đổi</button><button :class="{ active: offlineForm.type === 'TRA' }" @click="offlineForm.type = 'TRA'">Trả</button></div></div>
@@ -142,13 +143,14 @@ const offlineForm = ref(defaultOfflineForm())
 
 const statusOptions = [
   { value: 'CHO_DUYET', label: 'Chờ duyệt' }, { value: 'CHO_NHAN_HANG', label: 'Chờ khách gửi hàng' },
-  { value: 'CHO_HOAN_TAT', label: 'Chờ hoàn tất' }, { value: 'TU_CHOI', label: 'Đã từ chối' },
+  { value: 'CHO_HOAN_TAT', label: 'Chờ hoàn tất' }, { value: 'CHO_XAC_NHAN_HOAN_TIEN', label: 'Đang hoàn tiền' }, { value: 'TU_CHOI', label: 'Đã từ chối' },
   { value: 'TRA_LAI_KHACH', label: 'Trả lại khách' }, { value: 'DA_DOI', label: 'Đã đổi hàng' },
   { value: 'DA_HOAN_TIEN', label: 'Đã hoàn tiền' }
 ]
 
 const selectedOfflineLine = computed(() => (offlineDetail.value?.chiTiets || []).find(line => Number(line.id) === Number(offlineForm.value.orderDetailId)))
-const actionNeedsReason = computed(() => ['reject', 'sendBack'].includes(actionModal.value))
+const actionNeedsReason = computed(() => ['reject', 'sendBack'].includes(actionModal.value)
+  || (actionModal.value === 'complete' && detail.value?.type === 'TRA'))
 const actionTitle = computed(() => ({ approve: 'Duyệt yêu cầu', reject: 'Từ chối yêu cầu', receive: 'Xác nhận đã nhận hàng', sendBack: 'Trả lại hàng cho khách', complete: detail.value?.type === 'DOI' ? 'Hoàn tất đổi hàng' : 'Xác nhận hoàn tiền' }[actionModal.value] || 'Xác nhận'))
 
 onMounted(loadRequests)
@@ -237,17 +239,18 @@ async function submitOffline() {
 function statusInfo(status) {
   return {
     CHO_DUYET: { label: 'Chờ duyệt', cls: 'pending' }, CHO_NHAN_HANG: { label: 'Chờ nhận hàng', cls: 'waiting' },
-    CHO_HOAN_TAT: { label: 'Chờ hoàn tất', cls: 'processing' }, TU_CHOI: { label: 'Đã từ chối', cls: 'rejected' },
+    CHO_HOAN_TAT: { label: 'Chờ hoàn tất', cls: 'processing' }, CHO_XAC_NHAN_HOAN_TIEN: { label: 'Đang hoàn tiền', cls: 'waiting' }, TU_CHOI: { label: 'Đã từ chối', cls: 'rejected' },
     TRA_LAI_KHACH: { label: 'Trả lại khách', cls: 'rejected' }, DA_DOI: { label: 'Đã đổi hàng', cls: 'done' },
     DA_HOAN_TIEN: { label: 'Đã hoàn tiền', cls: 'done' }
   }[status] || { label: status, cls: 'pending' }
 }
 
 function processHint(status) {
-  return { CHO_DUYET: 'Nhân viên cần kiểm tra bằng chứng và nội dung yêu cầu.', CHO_NHAN_HANG: 'Đã duyệt, đang chờ sản phẩm được gửi về cửa hàng.', CHO_HOAN_TAT: 'Hàng đã được kiểm tra, sẵn sàng hoàn tiền hoặc đổi biến thể.', TU_CHOI: 'Yêu cầu không đủ điều kiện.', TRA_LAI_KHACH: 'Hàng gửi về không đạt điều kiện và sẽ được trả lại.', DA_DOI: 'Đã hoàn tất đổi hàng và cập nhật tồn kho.', DA_HOAN_TIEN: 'Đã hoàn tiền và cập nhật tồn kho.' }[status] || ''
+  return { CHO_DUYET: 'Nhân viên cần kiểm tra bằng chứng và nội dung yêu cầu.', CHO_NHAN_HANG: 'Đã duyệt, đang chờ sản phẩm được gửi về cửa hàng.', CHO_HOAN_TAT: 'Hàng đã được kiểm tra, sẵn sàng hoàn tiền hoặc đổi biến thể.', CHO_XAC_NHAN_HOAN_TIEN: 'Cổng thanh toán đã nhận yêu cầu; cần đối soát lại trước khi cộng tồn.', TU_CHOI: 'Yêu cầu không đủ điều kiện.', TRA_LAI_KHACH: 'Hàng gửi về không đạt điều kiện và sẽ được trả lại.', DA_DOI: 'Đã hoàn tất đổi hàng và cập nhật tồn kho.', DA_HOAN_TIEN: 'Đã hoàn tiền và cập nhật tồn kho.' }[status] || ''
 }
 
 function formatDate(value) { return value ? new Date(value).toLocaleString('vi-VN') : '' }
+function formatCurrency(value) { return Number(value || 0).toLocaleString('vi-VN') + 'đ' }
 </script>
 
 <style scoped>

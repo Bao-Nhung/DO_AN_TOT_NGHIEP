@@ -1,5 +1,9 @@
 <template>
-  <div class="lm-product-card" @click="$router.push('/product/' + product.id)">
+  <article class="lm-product-card" role="link" tabindex="0"
+           :aria-label="`Xem ${product.name}`"
+           @click="$router.push('/product/' + product.id)"
+           @keydown.enter="$router.push('/product/' + product.id)"
+           @keydown.space.prevent="$router.push('/product/' + product.id)">
     <div class="lm-product-image">
       <div v-if="product.image" class="lm-product-img-inner">
         <img :src="product.image" :alt="product.name" loading="lazy" />
@@ -13,18 +17,19 @@
       </div>
 
       <button class="lm-product-wish" :class="{ liked: isLiked }"
+              :aria-label="isLiked ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'"
               @click.stop="toggleWish">
         <i class="bi" :class="isLiked ? 'bi-heart-fill' : 'bi-heart'"
            :style="{ color: isLiked ? 'var(--z-accent)' : 'var(--z-dark)', fontSize:'14px' }"></i>
       </button>
 
-      <div class="lm-product-quick" @click.stop="$router.push('/product/' + product.id)">Tùy chọn</div>
+      <div class="lm-product-quick" aria-hidden="true">Tùy chọn</div>
     </div>
 
     <div class="lm-product-cat">{{ product.category }}</div>
     <div class="lm-product-name">{{ product.name }}</div>
     <div class="lm-product-price">{{ formatPrice(product.price) }}</div>
-  </div>
+  </article>
 </template>
 
 <script setup>
@@ -49,3 +54,10 @@ function toggleWish() {
   showToast(added ? 'Đã thêm vào yêu thích' : 'Đã xoá khỏi yêu thích')
 }
 </script>
+
+<style scoped>
+@media (hover: none) {
+  .lm-product-wish { opacity: 1; }
+  .lm-product-quick { bottom: 0; }
+}
+</style>

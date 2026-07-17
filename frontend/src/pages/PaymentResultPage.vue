@@ -214,7 +214,7 @@ const methodLabel = computed(() => {
   color: var(--z-dark);
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
   border-radius: 0;
   cursor: pointer;
   transition: all 0.3s;

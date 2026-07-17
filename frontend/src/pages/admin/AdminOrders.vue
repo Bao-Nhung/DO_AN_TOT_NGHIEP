@@ -96,7 +96,7 @@
             <td><span class="z-status" :class="o.statusClass">{{ o.status }}</span></td>
             <td style="color:var(--z-gray)">{{ o.date }}</td>
             <td @click.stop style="text-align: right; padding-right: 20px;">
-              <button class="z-action-btn d-inline-block" title="Xem & Xử lý" @click="openDetail(o)">
+              <button type="button" class="z-action-btn d-inline-block" title="Xem & Xử lý" :aria-label="`Xem và xử lý đơn ${o.maHoaDon || o.id}`" @click="openDetail(o)">
                 <i class="bi bi-pencil-square"></i>
               </button>
             </td>
@@ -143,7 +143,7 @@
           <div>
             <h3 style="font-size:18px;font-weight:600;margin:0">Xử lý đơn hàng: {{ detailData?.maHoaDon }}</h3>
           </div>
-          <button class="z-icon-btn" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết đơn hàng" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div v-if="loadingDetail" class="text-center py-4">
@@ -347,7 +347,7 @@
       <div class="z-modal" style="max-width:440px">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h3 style="font-size:16px;font-weight:600;margin:0">{{ confirmTitle }}</h3>
-          <button class="z-icon-btn" @click="showConfirm = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng xác nhận" @click="showConfirm = false"><i class="bi bi-x-lg"></i></button>
         </div>
         <p style="font-size:14px;color:var(--z-gray);margin-bottom:16px">{{ confirmMessage }}</p>
         

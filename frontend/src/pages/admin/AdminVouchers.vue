@@ -15,14 +15,14 @@
           <div>
             <div class="d-flex justify-content-between align-items-start mb-3">
               <div>
-                <div style="font-size:18px;font-weight:700;font-family:monospace;color:var(--z-dark);letter-spacing:0.05em">{{ v.code }}</div>
+                <div style="font-size:18px;font-weight:700;font-family:monospace;color:var(--z-dark);letter-spacing:0">{{ v.code }}</div>
                 <div style="font-size:13px;color:var(--z-gray);margin-top:2px">{{ v.name }}</div>
               </div>
               <div class="d-flex align-items-center gap-1">
                 <span class="z-status me-2" :class="v.active ? 'success' : 'pending'">{{ v.active ? 'Hoạt động' : 'Hết hạn' }}</span>
-                <button class="z-icon-btn" title="Xem chi tiết" @click="openViewVoucher(v)"><i class="bi bi-eye"></i></button>
-                <button class="z-icon-btn" title="Chỉnh sửa" @click="openEditVoucher(v)"><i class="bi bi-pencil"></i></button>
-                <button class="z-icon-btn" title="Xóa" style="color:var(--z-accent)" @click="deleteVoucher(v)"><i class="bi bi-trash"></i></button>
+                <button type="button" class="z-icon-btn" title="Xem chi tiết" aria-label="Xem chi tiết voucher" @click="openViewVoucher(v)"><i class="bi bi-eye"></i></button>
+                <button type="button" class="z-icon-btn" title="Chỉnh sửa" aria-label="Chỉnh sửa voucher" @click="openEditVoucher(v)"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="z-icon-btn" title="Xóa" aria-label="Xóa voucher" style="color:var(--z-accent)" @click="deleteVoucher(v)"><i class="bi bi-trash"></i></button>
               </div>
             </div>
             <div class="d-flex flex-column gap-2 mb-3" style="font-size:13px">
@@ -76,7 +76,7 @@
       <div class="z-modal">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">{{ vForm.id ? 'Chỉnh sửa Voucher' : 'Thêm voucher mới' }}</h3>
-          <button class="z-icon-btn" @click="showVoucherModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu voucher" @click="showVoucherModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
         <div class="d-flex flex-column gap-3">
           <div class="row g-3">
@@ -145,7 +145,7 @@
       <div class="z-modal">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết Voucher</h3>
-          <button class="z-icon-btn" @click="showViewModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết voucher" @click="showViewModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
         <div v-if="viewData" class="d-flex flex-column gap-3" style="font-size: 14px;">
           <div class="row g-3">

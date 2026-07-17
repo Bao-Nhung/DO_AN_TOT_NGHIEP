@@ -2,10 +2,10 @@
   <div class="d-flex" style="min-height:100vh">
     <!-- Sidebar -->
     <aside class="z-admin-sidebar" :class="{ open: sidebarOpen }">
-      <div class="z-admin-logo" @click="$router.push('/admin')">
+      <RouterLink class="z-admin-logo text-decoration-none" to="/admin" aria-label="Zestia - Tổng quan quản lý">
         <span class="z-admin-logo-text">Zest<span style="color:var(--z-accent)">ia</span></span>
         <span class="z-admin-badge">{{ roleBadge }}</span>
-      </div>
+      </RouterLink>
 
       <nav class="z-admin-nav">
         <RouterLink v-for="item in navItems" :key="item.path"
@@ -33,7 +33,7 @@
       </div>
     </aside>
 
-    <button class="z-admin-menu-toggle" type="button" title="Mở menu quản lý" @click="sidebarOpen = !sidebarOpen">
+    <button class="z-admin-menu-toggle" type="button" title="Mở menu quản lý" aria-label="Mở menu quản lý" :aria-expanded="sidebarOpen" @click="sidebarOpen = !sidebarOpen">
       <i class="bi" :class="sidebarOpen ? 'bi-x-lg' : 'bi-list'"></i>
     </button>
     <div v-if="sidebarOpen" class="z-admin-sidebar-backdrop" @click="sidebarOpen = false"></div>
@@ -62,9 +62,8 @@ const adminEmail = computed(() => currentUser.value.email || currentUser.value.r
 const adminInitial = computed(() => (adminName.value || 'N').charAt(0).toUpperCase())
 const roleName = computed(() => currentUser.value.role || '')
 const isAdmin = computed(() => roleName.value === 'Admin')
-const isInventory = computed(() => ['QuanLyKho', 'Quản lý kho'].includes(roleName.value))
 const isEmployee = computed(() => ['NhanVien', 'Nhân viên'].includes(roleName.value))
-const roleBadge = computed(() => isAdmin.value ? 'Admin' : isInventory.value ? 'Quản lý kho' : 'Nhân viên')
+const roleBadge = computed(() => isAdmin.value ? 'Admin' : 'Nhân viên')
 
 const allNavItems = [
   { path: '/admin',           icon: 'bi-grid-1x2',    label: 'Tổng quan', adminOnly: true },
@@ -85,18 +84,17 @@ const allNavItems = [
 
 const navItems = computed(() => {
   if (isAdmin.value) return allNavItems
-  if (isInventory.value) return allNavItems.filter(item => ['/admin', '/admin/products'].includes(item.path))
   if (isEmployee.value && !shiftCanOperate.value) {
-    return allNavItems.filter(item => ['/admin', '/admin/schedule'].includes(item.path))
+    return allNavItems.filter(item => item.path === '/admin/schedule')
   }
   return allNavItems.filter(item => !item.adminOnly || item.path === '/admin')
 })
 
 onMounted(async () => {
-  if (isInventory.value) return
   if (isEmployee.value) {
     await loadShiftStatus()
     window.addEventListener('zestia-shift-changed', loadShiftStatus)
+    window.addEventListener('zestia-shift-required', handleShiftRequired)
     if (!shiftCanOperate.value) return
   }
   try {
@@ -105,7 +103,15 @@ onMounted(async () => {
   } catch (e) { /* ignore */ }
 })
 
-onBeforeUnmount(() => window.removeEventListener('zestia-shift-changed', loadShiftStatus))
+onBeforeUnmount(() => {
+  window.removeEventListener('zestia-shift-changed', loadShiftStatus)
+  window.removeEventListener('zestia-shift-required', handleShiftRequired)
+})
+
+function handleShiftRequired() {
+  shiftCanOperate.value = false
+  if (router.currentRoute.value.name !== 'admin-schedule') router.push({ name: 'admin-schedule' })
+}
 
 async function loadShiftStatus() {
   if (!isEmployee.value) return

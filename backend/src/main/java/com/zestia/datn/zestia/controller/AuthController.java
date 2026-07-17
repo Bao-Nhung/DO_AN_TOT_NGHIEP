@@ -14,15 +14,19 @@ import com.zestia.datn.zestia.repository.PasswordResetTokenRepository;
 import com.zestia.datn.zestia.service.EmailService;
 import com.zestia.datn.zestia.service.GoogleAuthService;
 import com.zestia.datn.zestia.service.CustomerIdentityService;
+import com.zestia.datn.zestia.service.RequestRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +43,7 @@ public class AuthController {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
     private static final Pattern PHONE_PATTERN = Pattern.compile("0[35789]\\d{8}");
+    private static final Pattern STRONG_PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d).{8,100}$");
 
     private final NhanVienRepository nhanVienRepo;
     private final KhachHangRepository khachHangRepo;
@@ -49,12 +54,25 @@ public class AuthController {
     private final PasswordResetTokenRepository passwordResetTokenRepo;
     private final GoogleAuthService googleAuthService;
     private final CustomerIdentityService customerIdentityService;
+    private final RequestRateLimiter rateLimiter;
 
     @Value("${app.password-reset-token-minutes:30}")
     private long passwordResetTokenMinutes;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletRequest request) {
+        String identifier = req != null && req.getUsername() != null
+                ? req.getUsername().trim().toLowerCase()
+                : "empty";
+        String rateKey = clientIp(request) + "|" + identifier;
+        if (!rateLimiter.tryAcquire("login", rateKey, 8, 15 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút"
+            ));
+        }
+        if (req == null || req.getUsername() == null || req.getPassword() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập tài khoản và mật khẩu"));
+        }
         Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDung(req.getUsername());
         if (nvOpt.isEmpty()) {
             nvOpt = nhanVienRepo.findByEmail(req.getUsername());
@@ -66,6 +84,7 @@ public class AuthController {
                 return ResponseEntity.status(403).body(Map.of("error", "Tài khoản nhân viên đang bị tạm khoá"));
             }
             if (passwordEncoder.matches(req.getPassword(), nv.getMatKhau())) {
+                rateLimiter.reset("login", rateKey);
                 String role = nv.getVaiTro() != null ? nv.getVaiTro().getTenVaiTro() : "NhanVien";
                 String token = jwtUtil.generateToken(nv.getTenNguoiDung(), role, nv.getId());
                 return ResponseEntity.ok(LoginResponse.builder()
@@ -87,6 +106,7 @@ public class AuthController {
         if (khOpt.isPresent()) {
             KhachHang kh = khOpt.get();
             if (passwordEncoder.matches(req.getPassword(), kh.getMatKhau())) {
+                rateLimiter.reset("login", rateKey);
                 String token = jwtUtil.generateToken(kh.getEmail(), "KhachHang", kh.getId());
                 return ResponseEntity.ok(LoginResponse.builder()
                         .token(token)
@@ -123,8 +143,8 @@ public class AuthController {
         if (!PHONE_PATTERN.matcher(soDienThoai).matches()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Số điện thoại không hợp lệ"));
         }
-        if (matKhau.length() < 6 || matKhau.length() > 100) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu phải có từ 6 đến 100 ký tự"));
+        if (!isStrongPassword(matKhau)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu cần 8-100 ký tự, gồm ít nhất một chữ và một số"));
         }
 
         Optional<KhachHang> byEmail = khachHangRepo.findByEmailIgnoreCase(email);
@@ -167,12 +187,26 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> requestPasswordReset(@RequestBody Map<String, String> req) {
+    public ResponseEntity<?> requestPasswordReset(@RequestBody Map<String, String> req,
+                                                   HttpServletRequest request) {
+        if (req == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập email hoặc tên đăng nhập"));
+        }
         String identifier = req.get("identifier");
         if (identifier == null || identifier.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập email hoặc tên đăng nhập"));
         }
         identifier = identifier.trim();
+
+        String normalizedIdentifier = identifier.toLowerCase();
+        String clientAddress = clientIp(request);
+        boolean ipAllowed = rateLimiter.tryAcquire("forgot-password-ip", clientAddress, 5, 15 * 60);
+        boolean accountAllowed = rateLimiter.tryAcquire("forgot-password-account", normalizedIdentifier, 3, 30 * 60);
+        if (!ipAllowed || !accountAllowed) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau"
+            ));
+        }
 
         Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDung(identifier);
         if (nvOpt.isEmpty()) nvOpt = nhanVienRepo.findByEmail(identifier);
@@ -217,8 +251,8 @@ public class AuthController {
         if (token == null || token.isBlank() || newPassword == null || newPassword.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ token và mật khẩu mới"));
         }
-        if (newPassword.length() < 6) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu mới phải có tối thiểu 6 ký tự"));
+        if (!isStrongPassword(newPassword)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu mới cần 8-100 ký tự, gồm ít nhất một chữ và một số"));
         }
 
         Optional<PasswordResetToken> resetTokenOpt = passwordResetTokenRepo.findByTokenAndUsedAtIsNull(token.trim());
@@ -258,6 +292,55 @@ public class AuthController {
         resetToken.setUsedAt(now);
         passwordResetTokenRepo.save(resetToken);
         return ResponseEntity.ok(Map.of("message", "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới."));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> req, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(Map.of("error", "Vui lòng đăng nhập lại"));
+        }
+        String currentPassword = req != null ? req.get("currentPassword") : null;
+        String newPassword = req != null ? req.get("newPassword") : null;
+        if (!isStrongPassword(newPassword)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu mới cần 8-100 ký tự, gồm ít nhất một chữ và một số"));
+        }
+
+        boolean customerAccount = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_KhachHang".equals(authority.getAuthority()));
+        if (customerAccount) {
+            KhachHang customer = khachHangRepo.findByEmail(authentication.getName())
+                    .or(() -> khachHangRepo.findBySoDienThoai(authentication.getName()))
+                    .orElse(null);
+            if (customer == null) {
+                return ResponseEntity.status(403).body(Map.of("error", "Tài khoản không còn tồn tại"));
+            }
+            if (!passwordMatches(currentPassword, customer.getMatKhau())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu hiện tại không đúng"));
+            }
+            if (customer.getMatKhau() != null && passwordEncoder.matches(newPassword, customer.getMatKhau())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu mới phải khác mật khẩu hiện tại"));
+            }
+            customer.setMatKhau(passwordEncoder.encode(newPassword));
+            khachHangRepo.save(customer);
+            invalidateResetTokens(ACCOUNT_KHACH_HANG, customer.getId());
+        } else {
+            NhanVien employee = nhanVienRepo.findByTenNguoiDung(authentication.getName())
+                    .or(() -> nhanVienRepo.findByEmail(authentication.getName()))
+                    .orElse(null);
+            if (employee == null) {
+                return ResponseEntity.status(403).body(Map.of("error", "Tài khoản không còn tồn tại"));
+            }
+            if (!passwordMatches(currentPassword, employee.getMatKhau())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu hiện tại không đúng"));
+            }
+            if (employee.getMatKhau() != null && passwordEncoder.matches(newPassword, employee.getMatKhau())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu mới phải khác mật khẩu hiện tại"));
+            }
+            employee.setMatKhau(passwordEncoder.encode(newPassword));
+            nhanVienRepo.save(employee);
+            invalidateResetTokens(ACCOUNT_NHAN_VIEN, employee.getId());
+        }
+        return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
     }
 
     private ResponseEntity<Map<String, String>> passwordResetAccepted() {
@@ -323,56 +406,109 @@ public class AuthController {
         return value == null || value.isBlank();
     }
 
+    private boolean isStrongPassword(String value) {
+        return value != null && STRONG_PASSWORD_PATTERN.matcher(value).matches();
+    }
+
+    private boolean passwordMatches(String rawPassword, String encodedPassword) {
+        if (encodedPassword == null || encodedPassword.isBlank()) {
+            return rawPassword == null || rawPassword.isBlank();
+        }
+        return rawPassword != null && passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+
+    private void invalidateResetTokens(String accountType, Integer accountId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<PasswordResetToken> tokens = passwordResetTokenRepo
+                .findByAccountTypeAndAccountIdAndUsedAtIsNull(accountType, accountId);
+        tokens.forEach(token -> token.setUsedAt(now));
+        passwordResetTokenRepo.saveAll(tokens);
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        return request != null && request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+    }
+
     @PutMapping("/profile")
-    public ResponseEntity<?> updateProfile(@RequestHeader("Authorization") String header,
-                                            @RequestBody Map<String, String> body) {
-        if (header == null || !header.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> body, Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(Map.of("error", "Vui lòng đăng nhập lại"));
         }
-        String token = header.substring(7);
-        if (!jwtUtil.isValid(token)) {
-            return ResponseEntity.status(401).body(Map.of("error", "Token hết hạn"));
-        }
-        var claims = jwtUtil.extractClaims(token);
-        String role = (String) claims.get("role");
-        Integer userId = ((Number) claims.get("userId")).intValue();
-
-        if ("KhachHang".equals(role)) {
-            return khachHangRepo.findById(userId).map(kh -> {
-                if (body.containsKey("hoVaTen")) kh.setHoVaTen(body.get("hoVaTen"));
-                if (body.containsKey("soDienThoai")) kh.setSoDienThoai(body.get("soDienThoai"));
-                if (body.containsKey("gioiTinh")) {
-                    String gt = body.get("gioiTinh");
-                    kh.setGioiTinh(gt != null && !gt.isEmpty() ? Byte.parseByte(gt) : null);
-                }
-                khachHangRepo.save(kh);
-                return ResponseEntity.ok(Map.of(
-                    "hoVaTen", kh.getHoVaTen() != null ? kh.getHoVaTen() : "",
-                    "email", kh.getEmail() != null ? kh.getEmail() : "",
-                    "soDienThoai", kh.getSoDienThoai() != null ? kh.getSoDienThoai() : "",
-                    "gioiTinh", kh.getGioiTinh() != null ? kh.getGioiTinh().toString() : ""
-                ));
-            }).orElse(ResponseEntity.notFound().build());
+        KhachHang customer = khachHangRepo.findByEmail(authentication.getName())
+                .or(() -> khachHangRepo.findBySoDienThoai(authentication.getName()))
+                .orElse(null);
+        if (customer == null) {
+            return ResponseEntity.status(403).body(Map.of("error", "Chức năng này chỉ dành cho khách hàng"));
         }
 
-        return ResponseEntity.badRequest().body(Map.of("error", "Chức năng này chỉ dành cho khách hàng"));
+        if (body != null && body.containsKey("hoVaTen")) {
+            String fullName = clean(body.get("hoVaTen"));
+            if (fullName == null || fullName.length() < 2 || fullName.length() > 150) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Họ tên phải có từ 2 đến 150 ký tự"));
+            }
+            customer.setHoVaTen(fullName);
+        }
+        if (body != null && body.containsKey("soDienThoai")) {
+            String phone = customerIdentityService.normalizePhone(body.get("soDienThoai"));
+            if (phone == null || !PHONE_PATTERN.matcher(phone).matches()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Số điện thoại Việt Nam không hợp lệ"));
+            }
+            Optional<KhachHang> owner = khachHangRepo.findBySoDienThoai(phone);
+            if (owner.isPresent() && !Objects.equals(owner.get().getId(), customer.getId())) {
+                return ResponseEntity.status(409).body(Map.of("error", "Số điện thoại đã thuộc tài khoản khác"));
+            }
+            customer.setSoDienThoai(phone);
+        }
+        if (body != null && body.containsKey("gioiTinh")) {
+            String gender = clean(body.get("gioiTinh"));
+            if (gender == null) {
+                customer.setGioiTinh(null);
+            } else if ("0".equals(gender) || "1".equals(gender)) {
+                customer.setGioiTinh(Byte.valueOf(gender));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "Giới tính không hợp lệ"));
+            }
+        }
+        khachHangRepo.save(customer);
+        return ResponseEntity.ok(Map.of(
+                "hoVaTen", Objects.toString(customer.getHoVaTen(), ""),
+                "email", Objects.toString(customer.getEmail(), ""),
+                "soDienThoai", Objects.toString(customer.getSoDienThoai(), ""),
+                "gioiTinh", customer.getGioiTinh() != null ? customer.getGioiTinh().toString() : ""
+        ));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> me(@RequestHeader("Authorization") String header) {
-        if (header == null || !header.startsWith("Bearer ")) {
+    public ResponseEntity<?> me(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
-        String token = header.substring(7);
-        if (!jwtUtil.isValid(token)) {
-            return ResponseEntity.status(401).body(Map.of("error", "Token hết hạn"));
+        Optional<NhanVien> employee = nhanVienRepo.findByTenNguoiDung(authentication.getName())
+                .or(() -> nhanVienRepo.findByEmail(authentication.getName()));
+        if (employee.isPresent()) {
+            NhanVien value = employee.get();
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("username", value.getTenNguoiDung());
+            result.put("hoVaTen", value.getHoVaTen());
+            result.put("email", value.getEmail());
+            result.put("role", value.getVaiTro() != null ? value.getVaiTro().getTenVaiTro() : "NhanVien");
+            result.put("userId", value.getId());
+            return ResponseEntity.ok(result);
         }
-        var claims = jwtUtil.extractClaims(token);
-        return ResponseEntity.ok(Map.of(
-            "username", claims.getSubject(),
-            "role", claims.get("role"),
-            "userId", claims.get("userId")
-        ));
+        return khachHangRepo.findByEmail(authentication.getName())
+                .or(() -> khachHangRepo.findBySoDienThoai(authentication.getName()))
+                .<ResponseEntity<?>>map(customer -> {
+                    Map<String, Object> result = new LinkedHashMap<>();
+                    result.put("username", customer.getEmail());
+                    result.put("hoVaTen", customer.getHoVaTen());
+                    result.put("email", customer.getEmail());
+                    result.put("soDienThoai", customer.getSoDienThoai());
+                    result.put("gioiTinh", customer.getGioiTinh());
+                    result.put("role", "KhachHang");
+                    result.put("userId", customer.getId());
+                    return ResponseEntity.ok(result);
+                })
+                .orElse(ResponseEntity.status(401).body(Map.of("error", "Tài khoản không còn tồn tại")));
     }
 
     @GetMapping("/profile/address")

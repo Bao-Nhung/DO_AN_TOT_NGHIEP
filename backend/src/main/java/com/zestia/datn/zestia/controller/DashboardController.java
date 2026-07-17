@@ -5,6 +5,8 @@ import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import com.zestia.datn.zestia.repository.VayRepository;
+import com.zestia.datn.zestia.repository.LoaiVayRepository;
+import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,12 +28,15 @@ public class DashboardController {
     private final KhachHangRepository khachHangRepo;
     private final VayRepository vayRepo;
     private final VayChiTietRepository vayCtRepo;
+    private final LoaiVayRepository loaiVayRepo;
+    private final LichSuThanhToanRepository paymentHistoryRepo;
 
     @GetMapping("/stats")
     public Map<String, Object> stats() {
         HoaDonRepository.DashboardSummary summary = hoaDonRepo.summarizeDashboard();
         long orderCount = summary != null && summary.getOrderCount() != null ? summary.getOrderCount() : 0;
         BigDecimal revenue = summary != null && summary.getRevenue() != null ? summary.getRevenue() : BigDecimal.ZERO;
+        revenue = revenue.add(paymentHistoryRepo.sumSuccessfulRefunds());
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("doanhThu", revenue);
@@ -39,7 +44,7 @@ public class DashboardController {
         map.put("tongKhachHang", khachHangRepo.count());
         map.put("tongSanPham", vayRepo.count());
         map.put("tongBienThe", vayCtRepo.count());
-        map.put("tongLoaiVay", vayRepo.count());
+        map.put("tongLoaiVay", loaiVayRepo.count());
         map.put("topSellingProducts", topSellingProducts());
         map.put("lowStockVariants", lowStockVariants());
         return map;

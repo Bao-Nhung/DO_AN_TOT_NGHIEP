@@ -66,7 +66,7 @@ public class StorefrontService {
         map.put("id", review.getId());
         map.put("productId", review.getProductId());
         map.put("productName", review.getProductName());
-        map.put("customerName", review.getCustomerName());
+        map.put("customerName", CustomerPrivacy.maskName(review.getCustomerName()));
         map.put("stars", review.getStars());
         map.put("content", review.getContent());
         map.put("createdAt", review.getCreatedAt());

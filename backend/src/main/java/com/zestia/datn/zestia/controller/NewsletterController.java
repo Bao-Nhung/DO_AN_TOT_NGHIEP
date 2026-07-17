@@ -3,6 +3,8 @@ package com.zestia.datn.zestia.controller;
 import com.zestia.datn.zestia.entity.NewsletterSubscriber;
 import com.zestia.datn.zestia.repository.NewsletterSubscriberRepository;
 import com.zestia.datn.zestia.service.EmailService;
+import com.zestia.datn.zestia.service.RequestRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +23,20 @@ public class NewsletterController {
 
     private final NewsletterSubscriberRepository newsletterRepo;
     private final EmailService emailService;
+    private final RequestRateLimiter rateLimiter;
 
     @PostMapping("/subscribe")
-    public ResponseEntity<?> subscribe(@RequestBody SubscribeRequest request) {
-        String email = request != null && request.email() != null ? request.email().trim().toLowerCase() : "";
+    public ResponseEntity<?> subscribe(@RequestBody SubscribeRequest payload, HttpServletRequest request) {
+        String email = payload != null && payload.email() != null ? payload.email().trim().toLowerCase() : "";
         if (email.isBlank() || !EMAIL_PATTERN.matcher(email).matches()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email không hợp lệ"));
+        }
+        boolean ipAllowed = rateLimiter.tryAcquire("newsletter-ip", clientIp(request), 5, 60 * 60);
+        boolean emailAllowed = rateLimiter.tryAcquire("newsletter-email", email, 2, 24 * 60 * 60);
+        if (!ipAllowed || !emailAllowed) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau"
+            ));
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -61,6 +71,10 @@ public class NewsletterController {
         result.put("email", saved.getEmail());
         result.put("message", alreadyActive ? "Email này đã đăng ký nhận tin" : "Đăng ký nhận tin thành công");
         return ResponseEntity.ok(result);
+    }
+
+    private static String clientIp(HttpServletRequest request) {
+        return request != null && request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 
     public record SubscribeRequest(String email) {}

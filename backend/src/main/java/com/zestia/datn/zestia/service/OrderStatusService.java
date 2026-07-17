@@ -21,14 +21,11 @@ import java.util.Set;
 public class OrderStatusService {
     private static final byte STATUS_CANCELLED = 5;
     private static final byte STATUS_DELIVERY_FAILED = 6;
-    private static final byte STATUS_REFUNDED = 9;
     private static final Map<Byte, Set<Byte>> ALLOWED_TRANSITIONS = Map.of(
             (byte) 0, Set.of((byte) 1, STATUS_CANCELLED),
             (byte) 1, Set.of((byte) 2, STATUS_CANCELLED),
             (byte) 2, Set.of((byte) 3, STATUS_CANCELLED),
-            (byte) 3, Set.of((byte) 4, STATUS_DELIVERY_FAILED),
-            (byte) 4, Set.of((byte) 8),
-            (byte) 8, Set.of((byte) 4, STATUS_REFUNDED)
+            (byte) 3, Set.of((byte) 4, STATUS_DELIVERY_FAILED)
     );
 
     private final HoaDonRepository hoaDonRepo;
@@ -50,6 +47,9 @@ public class OrderStatusService {
         if (newStatus == 1 && isOnline(order) && !Boolean.TRUE.equals(order.getDaThanhToan())) {
             throw new IllegalStateException("Đơn MoMo/ZaloPay chỉ được xác nhận sau khi cổng thanh toán báo thành công");
         }
+        if (newStatus == STATUS_CANCELLED && Boolean.TRUE.equals(order.getDaThanhToan())) {
+            throw new IllegalStateException("Đơn đã thanh toán không thể hủy trực tiếp. Vui lòng xử lý qua quy trình trả hàng và hoàn tiền");
+        }
 
         String trackingStatus = trackingStatus(newStatus);
         String description = note != null && !note.isBlank() ? note.trim() : defaultDescription(newStatus);
@@ -59,7 +59,7 @@ public class OrderStatusService {
             order.setNgayGiaoHangThucTe(LocalDateTime.now());
             if ("COD".equalsIgnoreCase(order.getHinhThucThanhToan())) order.setDaThanhToan(true);
         }
-        if (newStatus == STATUS_CANCELLED || newStatus == STATUS_DELIVERY_FAILED || newStatus == STATUS_REFUNDED) {
+        if (newStatus == STATUS_CANCELLED || newStatus == STATUS_DELIVERY_FAILED) {
             inventoryService.restoreReservation(order);
         }
         if (note != null && !note.isBlank()) order.setGhiChu(note.trim());

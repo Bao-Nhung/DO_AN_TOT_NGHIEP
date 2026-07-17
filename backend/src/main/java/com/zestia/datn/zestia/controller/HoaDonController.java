@@ -18,7 +18,10 @@ import com.zestia.datn.zestia.repository.YeuCauDoiTraRepository;
 import com.zestia.datn.zestia.service.EmailService;
 import com.zestia.datn.zestia.service.OrderInventoryService;
 import com.zestia.datn.zestia.service.OrderStatusService;
+import com.zestia.datn.zestia.service.RequestRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -35,6 +38,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/hoa-don")
 @RequiredArgsConstructor
+@Slf4j
 public class HoaDonController {
     private static final byte STATUS_CANCELLED = 5;
     private static final byte STATUS_PAYMENT_FAILED = 7;
@@ -58,6 +62,7 @@ public class HoaDonController {
     private final OrderInventoryService orderInventoryService;
     private final PasswordEncoder passwordEncoder;
     private final OrderStatusService orderStatusService;
+    private final RequestRateLimiter rateLimiter;
 
     @GetMapping
     public List<Map<String, Object>> getAll() {
@@ -152,6 +157,11 @@ public class HoaDonController {
         return hoaDonRepo.findByIdForUpdate(id).map(hd -> {
             ResponseEntity<?> authError = authorizeCancel(hd, authHeader);
             if (authError != null) return authError;
+            if (Boolean.TRUE.equals(hd.getDaThanhToan())) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Đơn đã thanh toán không thể hủy trực tiếp. Vui lòng yêu cầu trả hàng và hoàn tiền"
+                ));
+            }
             if (hd.getTrangThai() == 0) {
                 byte oldTrangThai = hd.getTrangThai();
                 hd.setTrangThai((byte) 5); // Trạng thái 5 = Đã Hủy
@@ -181,7 +191,13 @@ public class HoaDonController {
     @PostMapping("/{id}/cancel-guest/request-otp")
     @Transactional
     public ResponseEntity<?> requestCancelOrderGuestOtp(@PathVariable Integer id,
-                                                        @RequestBody Map<String, Object> body) {
+                                                        @RequestBody Map<String, Object> body,
+                                                        HttpServletRequest request) {
+        if (!rateLimiter.tryAcquire("guest-cancel-otp", clientIp(request), 10, 15 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã yêu cầu quá nhiều mã OTP. Vui lòng thử lại sau"
+            ));
+        }
         return hoaDonRepo.findByIdForUpdate(id).map(hd -> {
             if (!matchesGuestOrder(hd, body)) {
                 return ResponseEntity.status(403).body(Map.of("error", "Không thể xác minh thông tin đơn hàng"));
@@ -231,7 +247,13 @@ public class HoaDonController {
     @PutMapping("/{id}/cancel-guest")
     @Transactional
     public ResponseEntity<?> cancelOrderGuest(@PathVariable Integer id,
-                                              @RequestBody Map<String, Object> body) {
+                                              @RequestBody Map<String, Object> body,
+                                              HttpServletRequest request) {
+        if (!rateLimiter.tryAcquire("guest-cancel-verify", clientIp(request), 30, 15 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã thử xác nhận quá nhiều lần. Vui lòng thử lại sau"
+            ));
+        }
         return hoaDonRepo.findByIdForUpdate(id).map(hd -> {
             if (!matchesGuestOrder(hd, body)) {
                 return ResponseEntity.status(403).body(Map.of("error", "Không thể xác minh thông tin đơn hàng"));
@@ -305,7 +327,14 @@ public class HoaDonController {
     @GetMapping("/search")
     public ResponseEntity<?> searchOrder(
             @RequestParam String maHoaDon,
-            @RequestParam(required = false) String soDienThoai) {
+            @RequestParam(required = false) String soDienThoai,
+            HttpServletRequest request) {
+        if (!rateLimiter.tryAcquire("guest-order-search", clientIp(request), 30, 5 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "success", false,
+                    "message", "Bạn đã tra cứu quá nhiều lần. Vui lòng thử lại sau"
+            ));
+        }
         try {
             if (maHoaDon == null || maHoaDon.isBlank() || soDienThoai == null || soDienThoai.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -330,9 +359,10 @@ public class HoaDonController {
                 ));
             }
         } catch (Exception e) {
+            log.error("Không thể tra cứu đơn hàng", e);
             return ResponseEntity.status(500).body(Map.of(
                     "success", false,
-                    "message", "Lỗi khi tìm kiếm: " + e.getMessage()
+                    "message", "Không thể tra cứu đơn hàng lúc này"
             ));
         }
     }
@@ -360,15 +390,14 @@ public class HoaDonController {
             }
 
             List<HoaDon> orders = hoaDonRepo.findByCustomerIdOrderByLatest(kh.getId());
-            List<Map<String, Object>> result = orders.stream()
-                    .map(this::toMap)
-                    .toList();
+            List<Map<String, Object>> result = toMaps(orders);
             return ResponseEntity.ok(Map.of("success", true, "data", result));
             
         } catch (Exception e) {
+            log.error("Không thể tải đơn hàng của khách đang đăng nhập", e);
             return ResponseEntity.status(500).body(Map.of(
                     "success", false,
-                    "message", "Lỗi: " + e.getMessage()
+                    "message", "Không thể tải danh sách đơn hàng lúc này"
             ));
         }
     }
@@ -377,12 +406,11 @@ public class HoaDonController {
     public ResponseEntity<?> getOrdersByCustomerId(@PathVariable Integer khachHangId) {
         try {
             List<HoaDon> orders = hoaDonRepo.findByCustomerIdOrderByLatest(khachHangId);
-            List<Map<String, Object>> result = orders.stream()
-                    .map(this::toMap)
-                    .toList();
+            List<Map<String, Object>> result = toMaps(orders);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Lỗi: " + e.getMessage()));
+            log.error("Không thể tải lịch sử mua của khách hàng {}", khachHangId, e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Không thể tải lịch sử mua lúc này"));
         }
     }
 
@@ -421,7 +449,8 @@ public class HoaDonController {
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Lỗi: " + e.getMessage()));
+            log.error("Không thể tải tracking đơn hàng {}", hoaDonId, e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Không thể tải hành trình đơn hàng lúc này"));
         }
     }
 
@@ -465,12 +494,11 @@ public class HoaDonController {
             if (orders.isEmpty()) {
                 return ResponseEntity.status(404).body(Map.of("success", false, "message", "Không tìm thấy đơn hàng nào"));
             }
-            List<Map<String, Object>> result = orders.stream()
-                    .map(this::toMap)
-                    .toList();
+            List<Map<String, Object>> result = toMaps(orders);
             return ResponseEntity.ok(Map.of("success", true, "data", result));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Lỗi: " + e.getMessage()));
+            log.error("Không thể tìm đơn hàng theo số điện thoại", e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "message", "Không thể tìm đơn hàng lúc này"));
         }
     }
 
@@ -545,6 +573,19 @@ public class HoaDonController {
         map.put("emailKhachHang", hd.getKhachHang() != null ? hd.getKhachHang().getEmail() : hd.getEmailKhachHang());
         
         List<HoaDonChiTiet> chiTiets = hoaDonCtRepo.findByHoaDonId(hd.getId());
+        List<Integer> productIds = chiTiets.stream()
+                .filter(item -> item.getVayChiTiet() != null && item.getVayChiTiet().getVay() != null)
+                .map(item -> item.getVayChiTiet().getVay().getId())
+                .distinct()
+                .toList();
+        Map<Integer, String> firstImages = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            for (Anh image : anhRepo.findByVayIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
+                if (image.getVay() != null) {
+                    firstImages.putIfAbsent(image.getVay().getId(), image.getAnhUrl());
+                }
+            }
+        }
         List<Map<String, Object>> items = new ArrayList<>();
         for (HoaDonChiTiet ct : chiTiets) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -565,9 +606,10 @@ public class HoaDonController {
                         ? ct.getVayChiTiet().getKichThuoc().getTenKichThuoc() : null);
                 
                 if (ct.getVayChiTiet().getVay() != null) {
-                    List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(
-                            ct.getVayChiTiet().getVay().getId(), (byte) 1);
-                    item.put("anhUrl", !anhs.isEmpty() ? anhs.get(0).getAnhUrl() : null);
+                    String variantImage = cleanText(ct.getVayChiTiet().getAnhUrl());
+                    item.put("anhUrl", variantImage != null
+                            ? variantImage
+                            : firstImages.get(ct.getVayChiTiet().getVay().getId()));
                 }
             }
             item.put("soLuong", ct.getSoLuong());
@@ -586,6 +628,7 @@ public class HoaDonController {
                                                   com.zestia.datn.zestia.entity.YeuCauDoiTra request) {
         map.put("returnRequestStatus", request != null ? request.getTrangThai() : null);
         map.put("returnRequestType", request != null ? request.getLoaiYeuCau() : null);
+        map.put("returnRefundAmount", request != null ? request.getSoTienHoan() : null);
         return map;
     }
 
@@ -690,6 +733,11 @@ public class HoaDonController {
         if (hd.getTrangThai() != null && hd.getTrangThai() == STATUS_CANCELLED) {
             return ResponseEntity.badRequest().body(Map.of("error", "Đơn hàng này đã được hủy trước đó"));
         }
+        if (Boolean.TRUE.equals(hd.getDaThanhToan())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Đơn đã thanh toán không thể hủy trực tiếp. Vui lòng đăng nhập để yêu cầu trả hàng và hoàn tiền"
+            ));
+        }
         if (hd.getTrangThai() == null || hd.getTrangThai() != 0) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Đơn hàng đã được xác nhận hoặc đang vận chuyển, không thể hủy ở thời điểm này"
@@ -779,6 +827,10 @@ public class HoaDonController {
         return "Admin".equalsIgnoreCase(role)
                 || "NhanVien".equalsIgnoreCase(role)
                 || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+    }
+
+    private static String clientIp(HttpServletRequest request) {
+        return request != null && request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
     }
 
     private record Actor(String name, String role) {}

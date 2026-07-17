@@ -28,7 +28,7 @@
             <div class="d-flex gap-4 flex-wrap">
               <div v-for="stat in stats" :key="stat.label" class="text-center">
                 <div class="z-display" style="font-size:32px;font-weight:500;color:var(--z-accent)">{{ stat.num }}</div>
-                <div style="font-size:11px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--z-gray)">{{ stat.label }}</div>
+                <div style="font-size:11px;font-weight:500;letter-spacing:0;text-transform:uppercase;color:var(--z-gray)">{{ stat.label }}</div>
               </div>
             </div>
           </div>

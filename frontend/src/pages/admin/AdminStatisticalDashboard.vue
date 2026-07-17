@@ -120,9 +120,12 @@
 import { ref, onMounted } from "vue";
 import AdminLayout from "@/components/layout/AdminLayout.vue";
 import { api } from "@/composables/useApi";
+import { useToast } from "@/composables/useToast";
 import LineChartUI from "@/components/charts/LineChartUI.vue";
 import BarChartUI from "@/components/charts/BarChartUI.vue";
 import PieChartUI from "@/components/charts/PieChartUI.vue";
+
+const { showToast } = useToast();
 
 // 1. TỰ ĐỘNG TÍNH NGÀY ĐẦU THÁNG ĐẾN HIỆN TẠI
 const initDates = () => {
@@ -185,22 +188,22 @@ async function loadThongKe() {
 
     if (filter.value.timeType === "ngay") {
       if (!filter.value.startDate || !filter.value.endDate) {
-        alert("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc");
+        showToast("Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc", "error");
         return;
       }
       if (filter.value.startDate > filter.value.endDate) {
-        alert("Ngày bắt đầu không được sau ngày kết thúc");
+        showToast("Ngày bắt đầu không được sau ngày kết thúc", "error");
         return;
       }
       payload.startDate = `${filter.value.startDate}T00:00`;
       payload.endDate = `${addDays(filter.value.endDate, 1)}T00:00`;
     } else {
       if (!filter.value.startMonth || !filter.value.endMonth) {
-        alert("Vui lòng chọn đầy đủ tháng bắt đầu và tháng kết thúc");
+        showToast("Vui lòng chọn đầy đủ tháng bắt đầu và tháng kết thúc", "error");
         return;
       }
       if (filter.value.startMonth > filter.value.endMonth) {
-        alert("Tháng bắt đầu không được sau tháng kết thúc");
+        showToast("Tháng bắt đầu không được sau tháng kết thúc", "error");
         return;
       }
       payload.startDate = `${filter.value.startMonth}-01T00:00`;
@@ -326,6 +329,7 @@ async function loadThongKe() {
     };
   } catch (e) {
     console.error("Lỗi thống kê", e);
+    showToast(e.error || e.message || "Không thể tải dữ liệu thống kê", "error");
   }
 }
 

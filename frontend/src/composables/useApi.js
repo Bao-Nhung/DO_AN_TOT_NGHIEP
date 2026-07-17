@@ -22,6 +22,9 @@ async function request(path, options = {}) {
       clearAuthStorage()
       window.dispatchEvent(new Event('zestia-auth-changed'))
     }
+    if (res.status === 403 && err.code === 'SHIFT_REQUIRED') {
+      window.dispatchEvent(new CustomEvent('zestia-shift-required', { detail: err }))
+    }
     throw { status: res.status, ...err }
   }
   const text = await res.text()
@@ -92,6 +95,11 @@ export function api() {
       request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ identifier }) }),
     resetPassword: (token, newPassword) =>
       request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
+    changePassword: (currentPassword, newPassword) =>
+      request('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword })
+      }),
 
     // Customer AI support
     sendAiChat: (data) =>
@@ -271,7 +279,6 @@ export function api() {
 
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
-    getInventoryDashboard: () => request('/dashboard/inventory'),
 
     // Thống kê (báo cáo admin)
     getThongKeTongHop: ({ startDate, endDate, timeType = 'ngay' }) => {
@@ -394,6 +401,9 @@ export function api() {
     deleteProfileAddress: (id) => request(`/auth/profile/addresses/${id}`, { method: 'DELETE' }),
     getThongBao: () => request('/thong-bao'),
     getThongBaoActive: () => request('/thong-bao/active'),
+    getCustomerNotifications: () => request('/customer-notifications'),
+    markCustomerNotificationRead: (id) => request(`/customer-notifications/${id}/read`, { method: 'PUT' }),
+    markAllCustomerNotificationsRead: () => request('/customer-notifications/read-all', { method: 'PUT' }),
     addThongBao: (data) => request('/thong-bao', { method: 'POST', body: JSON.stringify(data) }),
     updateThongBao: (id, data) => request(`/thong-bao/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteThongBao: (id) => request(`/thong-bao/${id}`, { method: 'DELETE' })

@@ -1,60 +1,6 @@
 <template>
   <AdminLayout>
-    <template v-if="isInventoryDashboard">
-      <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-        <div>
-          <p class="lm-eyebrow mb-2">Quản lý kho</p>
-          <h1 class="z-display mb-1" style="font-size:30px;font-weight:500;color:var(--z-dark)">Xin chào, {{ userName }}</h1>
-          <p style="font-size:14px;color:var(--z-gray);margin:0">Theo dõi biến thể sắp hết và cập nhật danh mục sản phẩm.</p>
-        </div>
-        <RouterLink to="/admin/products" class="lm-btn-primary"><span><i class="bi bi-box-seam me-1"></i>Quản lý sản phẩm</span></RouterLink>
-      </div>
-
-      <div class="row g-3 mb-4">
-        <div v-for="stat in inventoryStats" :key="stat.label" class="col-6 col-xl-3">
-          <div class="z-stat-card z-staff-stat">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <span class="z-stat-label">{{ stat.label }}</span>
-              <i class="bi" :class="stat.icon"></i>
-            </div>
-            <div class="z-stat-value">{{ stat.value }}</div>
-            <div class="z-stat-change">{{ stat.hint }}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="z-admin-card">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h3 class="z-admin-card-title">Biến thể tồn kho thấp</h3>
-          <RouterLink to="/admin/products" class="z-inline-link">Mở danh sách sản phẩm</RouterLink>
-        </div>
-        <div class="table-responsive">
-          <table class="z-table">
-            <thead><tr><th>Sản phẩm</th><th>Mã</th><th>Màu</th><th>Size</th><th>Còn lại</th></tr></thead>
-            <tbody>
-              <tr v-if="!lowStockVariants.length"><td colspan="5" class="text-center py-4" style="color:var(--z-gray)">Không có biến thể sắp hết.</td></tr>
-              <tr v-for="variant in lowStockVariants" :key="variant.variantId">
-                <td>
-                  <div class="d-flex align-items-center gap-3" style="min-width:220px">
-                    <div class="z-dashboard-product-thumb">
-                      <img v-if="variant.image" :src="variant.image" :alt="variant.tenVay">
-                      <i v-else class="bi bi-image"></i>
-                    </div>
-                    <span class="z-dashboard-product-name">{{ variant.tenVay }}</span>
-                  </div>
-                </td>
-                <td>{{ variant.maVay }}</td>
-                <td>{{ variant.mauSac || 'N/A' }}</td>
-                <td>{{ variant.kichThuoc || 'N/A' }}</td>
-                <td><span class="z-status danger">{{ variant.soLuong }}</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </template>
-
-    <template v-else-if="isStaffDashboard">
+    <template v-if="isStaffDashboard">
       <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div>
           <p class="lm-eyebrow mb-2">Ca làm hôm nay</p>
@@ -259,8 +205,7 @@ import { fmtPrice, mapProduct } from '@/composables/useProducts'
 
 const { getUser } = useAuth()
 const currentUser = computed(() => getUser() || {})
-const isInventoryDashboard = computed(() => ['QuanLyKho', 'Quản lý kho'].includes(currentUser.value.role))
-const isStaffDashboard = computed(() => currentUser.value.role !== 'Admin' && !isInventoryDashboard.value)
+const isStaffDashboard = computed(() => currentUser.value.role !== 'Admin')
 const userName = computed(() => currentUser.value.hoVaTen || currentUser.value.username || 'Nhân viên')
 
 const statusMap = {
@@ -289,37 +234,13 @@ const lowStockVariants = ref([])
 const staffStats = ref([])
 const todayShifts = ref([])
 const myRecentOrders = ref([])
-const inventoryStats = ref([])
 const staffCanOperate = ref(false)
 const staffShiftReason = ref('Bạn chưa check-in ca làm')
 
 onMounted(async () => {
-  if (isInventoryDashboard.value) await loadInventoryDashboard()
-  else if (isStaffDashboard.value) await loadStaffDashboard()
+  if (isStaffDashboard.value) await loadStaffDashboard()
   else await loadAdminDashboard()
 })
-
-async function loadInventoryDashboard() {
-  try {
-    const [summary, products] = await Promise.all([api().getInventoryDashboard(), api().getVay()])
-    const mappedProducts = products.map(mapProduct)
-    const productsById = new Map(mappedProducts.map(product => [Number(product.id), product]))
-    const activeProducts = products.filter(product => Number(product.trangThai) === 1)
-    const inactiveProducts = products.length - activeProducts.length
-    lowStockVariants.value = (summary.lowStockVariants || []).map(variant => ({
-      ...variant,
-      image: productsById.get(Number(variant.productId))?.image || null
-    }))
-    inventoryStats.value = [
-      { label: 'Sản phẩm đang bán', value: String(activeProducts.length), hint: 'Hiển thị ngoài cửa hàng', icon: 'bi-bag-check' },
-      { label: 'Sản phẩm đã khóa', value: String(inactiveProducts), hint: 'Không hiển thị với khách', icon: 'bi-lock' },
-      { label: 'Tổng biến thể', value: String(summary.tongBienThe || 0), hint: 'Theo màu sắc và kích cỡ', icon: 'bi-grid-3x3-gap' },
-      { label: 'Sắp hết hàng', value: String(lowStockVariants.value.length), hint: 'Cần kiểm tra nhập kho', icon: 'bi-exclamation-triangle' }
-    ]
-  } catch (error) {
-    console.error('Inventory dashboard load failed:', error)
-  }
-}
 
 async function loadAdminDashboard() {
   try {

@@ -53,7 +53,8 @@ export function useWishlist() {
     const previousOwner = localStorage.getItem(OWNER_KEY)
     const sameOwner = previousOwner && String(previousOwner) === String(userId)
     const remote = (remoteIds || []).map(Number).filter(Boolean)
-    const merged = sameOwner ? remote : [...new Set([...remote, ...wishlistIds.value.map(Number)])]
+    const guestIds = previousOwner ? [] : wishlistIds.value.map(Number)
+    const merged = sameOwner ? remote : [...new Set([...remote, ...guestIds])]
     wishlistIds.value = merged
     localStorage.setItem(OWNER_KEY, String(userId))
     save()

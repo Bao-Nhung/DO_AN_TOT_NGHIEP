@@ -19,7 +19,6 @@
 
     <properties>
         <java.version>21</java.version>
-        <mapstruct.version>1.6.0</mapstruct.version>
         <jjwt.version>0.12.6</jjwt.version>
     </properties>
 
@@ -85,13 +84,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- MAPSTRUCT -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${mapstruct.version}</version>
-        </dependency>
-
         <!-- DEVTOOLS -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -155,12 +147,6 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                        </path>
-
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${mapstruct.version}</version>
                         </path>
 
                     </annotationProcessorPaths>

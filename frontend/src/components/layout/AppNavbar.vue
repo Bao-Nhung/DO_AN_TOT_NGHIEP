@@ -1,10 +1,10 @@
 <template>
   <nav class="lm-navbar" :class="{ scrolled: isScrolled }">
-    <div class="container-fluid px-4 h-100 d-flex align-items-center justify-content-between">
+    <div class="container-fluid z-nav-shell h-100 d-flex align-items-center justify-content-between">
 
-      <div class="lm-nav-logo" @click="$router.push('/')">
+      <RouterLink class="lm-nav-logo text-decoration-none" to="/" aria-label="Zestia - Trang chủ">
         Zest<span class="lm-gold-text">ia</span>
-      </div>
+      </RouterLink>
 
       <ul class="d-none d-xl-flex list-unstyled mb-0 gap-3 align-items-center">
         <li><RouterLink class="lm-nav-link" to="/">Trang Chủ</RouterLink></li>
@@ -19,16 +19,16 @@
       </ul>
 
       <div class="d-flex align-items-center gap-1">
-        <button class="lm-nav-icon-btn" @click="toggleSearch" title="Tìm kiếm">
+        <button type="button" class="lm-nav-icon-btn" @click="toggleSearch" title="Tìm kiếm" aria-label="Tìm kiếm" :aria-expanded="searchOpen">
           <i class="bi bi-search"></i>
         </button>
-        <button class="lm-nav-icon-btn" @click="$router.push('/wishlist')" title="Yêu thích">
+        <button type="button" class="lm-nav-icon-btn d-none d-sm-flex" @click="$router.push('/wishlist')" title="Yêu thích" aria-label="Yêu thích">
           <i class="bi bi-heart"></i>
         </button>
 
         <!-- Notifications Dropdown -->
         <div class="position-relative d-inline-block z-notif-container">
-          <button class="lm-nav-icon-btn" @click="toggleNotifs" title="Thông báo">
+          <button type="button" class="lm-nav-icon-btn" @click="toggleNotifs" title="Thông báo" aria-label="Thông báo" :aria-expanded="notifOpen">
             <i class="bi bi-bell"></i>
             <span v-if="unreadCount > 0" class="lm-cart-badge" style="background:var(--z-accent)">{{ unreadCount }}</span>
           </button>
@@ -45,14 +45,14 @@
               <div v-else-if="notifs.length === 0" class="text-center py-4 text-muted" style="font-size:11px">
                 Không có thông báo mới
               </div>
-              <div v-else v-for="n in notifs" :key="n.id" class="z-notif-item" :class="{ unread: !n.read }" @click="viewNotif(n)">
+              <button v-else v-for="n in notifs" :key="n.id" type="button" class="z-notif-item" :class="{ unread: !n.read }" @click="viewNotif(n)">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                   <span :class="['z-status', getLabelClass(n.loai)]" style="font-size:8px; padding:1px 5px; height:auto; line-height:1.2;">{{ getTypeName(n.loai) }}</span>
                   <span class="z-notif-time">{{ formatTime(n.ngayTao) }}</span>
                 </div>
                 <div class="z-notif-title">{{ n.tieuDe }}</div>
                 <div class="z-notif-body">{{ n.noiDung }}</div>
-              </div>
+              </button>
             </div>
             <div class="p-2 border-top text-center bg-light">
               <RouterLink to="/notifications" class="text-decoration-none" style="font-size:11px;color:var(--z-dark);font-weight:600;display:block;padding:4px;" @click="notifOpen = false">
@@ -62,14 +62,14 @@
           </div>
         </div>
 
-        <button class="lm-nav-icon-btn" @click="openCart()" title="Giỏ hàng">
+        <button type="button" class="lm-nav-icon-btn" @click="openCart()" title="Giỏ hàng" aria-label="Giỏ hàng">
           <i class="bi bi-bag"></i>
           <span class="lm-cart-badge" :style="badgeScale">{{ totalCount }}</span>
         </button>
-        <button class="lm-nav-icon-btn d-none d-md-flex" @click="$router.push('/profile')" title="Tài khoản">
+        <button type="button" class="lm-nav-icon-btn d-none d-md-flex" @click="$router.push('/profile')" title="Tài khoản" aria-label="Tài khoản">
           <i class="bi bi-person"></i>
         </button>
-        <button class="lm-nav-icon-btn d-xl-none" @click="mobileOpen = !mobileOpen" title="Menu">
+        <button type="button" class="lm-nav-icon-btn d-xl-none" @click="mobileOpen = !mobileOpen" title="Menu" aria-label="Menu" :aria-expanded="mobileOpen">
           <i class="bi" :class="mobileOpen ? 'bi-x-lg' : 'bi-list'"></i>
         </button>
       </div>
@@ -92,20 +92,20 @@
     </div>
   </Transition>
 
-  <div class="z-search-overlay" :class="{ open: searchOpen }" @click="searchOpen = false">
+  <div class="z-search-overlay" :class="{ open: searchOpen }" :aria-hidden="!searchOpen" :inert="!searchOpen" @click="searchOpen = false">
     <div class="z-search-box" @click.stop>
       <div class="d-flex align-items-center gap-3 px-2">
         <i class="bi bi-search" style="font-size:20px;color:var(--z-gray-light)"></i>
         <input ref="searchInput" class="z-search-input" v-model="searchQuery"
                placeholder="Tìm kiếm sản phẩm, danh mục..."
                @keydown.enter="doSearch" @keydown.esc="searchOpen = false">
-        <button v-if="searchQuery" @click="searchQuery = ''"
+        <button v-if="searchQuery" type="button" aria-label="Xóa nội dung tìm kiếm" @click="searchQuery = ''"
                 style="border:none;background:none;cursor:pointer;color:var(--z-gray);font-size:18px">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
       <div v-if="searchResults.length" class="z-search-results">
-        <div v-for="r in searchResults" :key="r.id" class="z-search-item"
+        <button v-for="r in searchResults" :key="r.id" type="button" class="z-search-item"
              @click="goProduct(r.id)">
           <div style="width:48px;height:60px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
             <img v-if="r.image" :src="r.image" :alt="r.name" style="width:100%;height:100%;object-fit:cover">
@@ -118,7 +118,7 @@
             <div style="font-weight:500;font-size:14px;color:var(--z-dark)">{{ r.name }}</div>
             <div style="font-size:12px;color:var(--z-gray)">{{ r.category }} · {{ formatPrice(r.price) }}</div>
           </div>
-        </div>
+        </button>
       </div>
       <div v-else-if="searchQuery.length >= 2" class="px-4 py-3" style="color:var(--z-gray);font-size:14px;border-top:1px solid var(--z-gray-border)">
         Không tìm thấy sản phẩm nào
@@ -131,7 +131,7 @@
     <div class="z-modal" style="max-width: 480px; background: var(--z-white); border-radius: var(--z-radius-lg); padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.12)">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <span :class="['z-status', getLabelClass(activeNotifDetail.loai)]">{{ getTypeName(activeNotifDetail.loai) }}</span>
-        <button class="z-icon-btn" @click="activeNotifDetail = null"><i class="bi bi-x-lg"></i></button>
+        <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết thông báo" @click="activeNotifDetail = null"><i class="bi bi-x-lg"></i></button>
       </div>
       <h4 style="font-size:15px; font-weight:700; color:var(--z-dark); margin-bottom:8px;">{{ activeNotifDetail.tieuDe }}</h4>
       <div style="font-size:11px; color:var(--z-gray); margin-bottom:16px;">Ngày đăng: {{ formatDateTime(activeNotifDetail.ngayTao) }}</div>
@@ -205,12 +205,14 @@ watch(totalCount, () => {
 function onScroll() { isScrolled.value = window.scrollY > 50 }
 onMounted(() => {
   window.addEventListener('scroll', onScroll)
-  window.addEventListener('notifs-changed', syncReadIds)
+  window.addEventListener('notifs-changed', fetchNotifs)
+  window.addEventListener('zestia-auth-changed', fetchNotifs)
 })
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
   document.removeEventListener('click', closeNotifsOutside)
-  window.removeEventListener('notifs-changed', syncReadIds)
+  window.removeEventListener('notifs-changed', fetchNotifs)
+  window.removeEventListener('zestia-auth-changed', fetchNotifs)
 })
 
 // Notifications State & Actions
@@ -218,26 +220,22 @@ const notifOpen = ref(false)
 const notifs = ref([])
 const loadingNotif = ref(false)
 const activeNotifDetail = ref(null)
-const readIds = ref(JSON.parse(localStorage.getItem('read_notif_ids') || '[]'))
 
 const unreadCount = computed(() => {
-  return notifs.value.filter(n => !readIds.value.includes(n.id)).length
+  return notifs.value.filter(n => !n.read).length
 })
-
-function syncReadIds() {
-  readIds.value = JSON.parse(localStorage.getItem('read_notif_ids') || '[]')
-  notifs.value.forEach(n => {
-    n.read = readIds.value.includes(n.id)
-  })
-}
 
 async function fetchNotifs() {
   loadingNotif.value = true
   try {
-    const list = await api().getThongBaoActive()
+    const authenticated = isLoggedIn()
+    const list = authenticated
+      ? await api().getCustomerNotifications()
+      : await api().getThongBaoActive()
+    const guestReadIds = authenticated ? new Set() : loadGuestReadIds()
     notifs.value = list.map(n => ({
       ...n,
-      read: readIds.value.includes(n.id)
+      read: authenticated ? Boolean(n.read) : guestReadIds.has(n.id)
     }))
   } catch (e) {
     console.error('Lỗi khi tải thông báo', e)
@@ -266,21 +264,30 @@ function closeNotifsOutside(e) {
   }
 }
 
-function markAllAsRead() {
-  notifs.value.forEach(n => {
-    if (!readIds.value.includes(n.id)) {
-      readIds.value.push(n.id)
-    }
-    n.read = true
-  })
-  localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
+async function markAllAsRead() {
+  try {
+    if (isLoggedIn()) await api().markAllCustomerNotificationsRead()
+    else saveGuestReadIds(notifs.value.map(n => n.id))
+    notifs.value.forEach(n => { n.read = true })
+    window.dispatchEvent(new Event('notifs-changed'))
+  } catch (e) {
+    console.error('Không thể đánh dấu thông báo', e)
+  }
 }
 
 function viewNotif(n) {
-  if (!readIds.value.includes(n.id)) {
-    readIds.value.push(n.id)
+  if (!n.read) {
     n.read = true
-    localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
+    if (isLoggedIn()) {
+      api().markCustomerNotificationRead(n.id)
+        .then(() => window.dispatchEvent(new Event('notifs-changed')))
+        .catch(e => {
+          n.read = false
+          console.error('Không thể đánh dấu thông báo', e)
+        })
+    } else {
+      saveGuestReadIds([...loadGuestReadIds(), n.id])
+    }
   }
   activeNotifDetail.value = n
   notifOpen.value = false
@@ -315,9 +322,22 @@ function formatDateTime(val) {
   const d = new Date(val)
   return d.toLocaleString('vi-VN')
 }
+
+function loadGuestReadIds() {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem('zestia_guest_read_notifications') || '[]').map(Number))
+  } catch {
+    return new Set()
+  }
+}
+
+function saveGuestReadIds(ids) {
+  sessionStorage.setItem('zestia_guest_read_notifications', JSON.stringify([...new Set(ids.map(Number))]))
+}
 </script>
 
 <style scoped>
+.z-nav-shell { padding-inline: 24px; }
 .z-notif-dropdown {
   position: absolute;
   top: 100%;
@@ -338,8 +358,11 @@ function formatDateTime(val) {
   flex: 1;
 }
 .z-notif-item {
+  width: 100%;
   padding: 12px 16px;
+  border: 0;
   border-bottom: 1px solid var(--z-bg-alt);
+  background: var(--z-white);
   cursor: pointer;
   transition: background 0.2s ease;
   text-align: left;
@@ -388,5 +411,8 @@ function formatDateTime(val) {
   width: min(480px, calc(100vw - 32px));
   max-height: min(80vh, 640px);
   overflow-y: auto;
+}
+@media (max-width: 480px) {
+  .z-nav-shell { padding-inline: 12px; }
 }
 </style>

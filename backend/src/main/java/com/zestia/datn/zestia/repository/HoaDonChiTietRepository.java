@@ -52,7 +52,6 @@ public interface HoaDonChiTietRepository extends JpaRepository<HoaDonChiTiet, In
             FROM HoaDonChiTiet ct
             JOIN ct.hoaDon h
             WHERE h.trangThai = 4
-               OR (h.daThanhToan = true AND h.trangThai NOT IN (5, 6, 7, 9))
             GROUP BY ct.vayChiTiet.vay.id, ct.vayChiTiet.vay.maVay, ct.vayChiTiet.vay.tenVay
             ORDER BY SUM(ct.soLuong) DESC
             """)

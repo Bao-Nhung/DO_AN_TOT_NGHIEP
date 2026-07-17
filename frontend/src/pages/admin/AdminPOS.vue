@@ -27,10 +27,10 @@
         </div>
 
         <div class="z-admin-card" style="padding:0;overflow:hidden;max-height:calc(100vh - 320px);overflow-y:auto">
-          <div v-for="p in paginatedProducts" :key="p.id"
-               class="d-flex align-items-center gap-3 z-pos-item" @click="addToCart(p)">
+          <button v-for="p in paginatedProducts" :key="p.id" type="button"
+               class="d-flex align-items-center gap-3 z-pos-item" :aria-label="`Chọn ${p.name}, mã ${p.code}`" @click="addToCart(p)">
             <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
-              <img v-if="p.image" :src="p.image" style="width:100%;height:100%;object-fit:cover">
+              <img v-if="p.image" :src="p.image" :alt="p.name" style="width:100%;height:100%;object-fit:cover">
               <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                    :style="{ background: p.bg, fontFamily:'var(--z-font-display)', fontSize:'12px', color:'rgba(255,255,255,0.3)' }">
                 {{ p.letter }}
@@ -41,8 +41,8 @@
               <div style="font-size:12px;color:var(--z-gray)">{{ p.code }} · Tồn: {{ p.stock }}</div>
             </div>
             <div style="font-size:14px;font-weight:600;color:var(--z-accent)">{{ p.priceDisplay }}</div>
-            <button class="z-add-btn"><i class="bi bi-plus"></i></button>
-          </div>
+            <span class="z-add-btn" aria-hidden="true"><i class="bi bi-plus"></i></span>
+          </button>
           <div v-if="filteredProducts.length === 0" class="text-center py-5">
             <i class="bi bi-search" style="font-size:32px;color:var(--z-gray-border)"></i>
             <p style="font-size:13px;color:var(--z-gray);margin-top:8px">Không tìm thấy sản phẩm</p>
@@ -85,11 +85,11 @@
                   </div>
                 </div>
                 <div class="d-flex align-items-center gap-1">
-                  <button class="z-qty-btn" @click="item.qty > 1 ? item.qty-- : removeFromCart(i)">
+                  <button type="button" class="z-qty-btn" :aria-label="item.qty > 1 ? `Giảm số lượng ${item.name}` : `Xóa ${item.name}`" @click="item.qty > 1 ? item.qty-- : removeFromCart(i)">
                     <i class="bi" :class="item.qty > 1 ? 'bi-dash' : 'bi-trash'"></i>
                   </button>
                   <span style="width:28px;text-align:center;font-size:13px;font-weight:600">{{ item.qty }}</span>
-                  <button class="z-qty-btn" @click="item.qty < item.maxQty ? item.qty++ : showToast('Đạt giới hạn tồn kho!')">
+                  <button type="button" class="z-qty-btn" :aria-label="`Tăng số lượng ${item.name}`" @click="item.qty < item.maxQty ? item.qty++ : showToast('Đạt giới hạn tồn kho!')">
                     <i class="bi bi-plus"></i>
                   </button>
                 </div>
@@ -271,7 +271,7 @@
       <div class="z-modal" style="max-width: 450px;">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h4 class="z-display mb-0" style="font-size:18px; font-weight:600">Chọn biến thể</h4>
-          <button class="z-icon-btn" @click="showVariantModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng bảng chọn biến thể" @click="showVariantModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
         
         <div v-if="selectedProduct" class="mb-4">
@@ -897,11 +897,14 @@ async function createOrder() {
 }
 .z-selected-customer button { border: 0; background: transparent; color: #166534; text-decoration: underline; }
 .z-pos-item {
+  width: 100%; border: 0; background: transparent; color: inherit;
+  font: inherit; text-align: left;
   padding: 12px 16px;
   border-bottom: 1px solid var(--z-gray-border);
   cursor: pointer; transition: all 0.15s;
 }
 .z-pos-item:hover { background: var(--z-accent-soft); }
+.z-pos-item:hover .z-add-btn { background: var(--z-accent); color: var(--z-white); }
 .z-pos-item:last-child { border-bottom: none; }
 .z-modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);

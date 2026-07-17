@@ -3,6 +3,7 @@ package com.zestia.datn.zestia.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -58,6 +59,18 @@ public class YeuCauDoiTra {
 
     @Column(name = "thong_tin_hoan_tien", length = 500)
     private String thongTinHoanTien;
+
+    @Column(name = "so_tien_hoan", precision = 18, scale = 2)
+    private BigDecimal soTienHoan;
+
+    @Column(name = "ma_giao_dich_hoan", length = 150)
+    private String maGiaoDichHoan;
+
+    @Column(name = "phan_hoi_cong", length = 2000)
+    private String phanHoiCong;
+
+    @Column(name = "ngay_yeu_cau_hoan")
+    private LocalDateTime ngayYeuCauHoan;
 
     @Column(name = "ly_do_tu_choi", length = 1000)
     private String lyDoTuChoi;

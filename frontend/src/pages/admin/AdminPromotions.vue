@@ -33,8 +33,8 @@
               <td><span class="z-status" :class="statusInfo(campaign).cls">{{ statusInfo(campaign).label }}</span></td>
               <td>
                 <div class="d-flex gap-1">
-                  <button class="z-icon-btn" title="Sửa đợt khuyến mãi" @click="openEdit(campaign)"><i class="bi bi-pencil"></i></button>
-                  <button class="z-icon-btn" title="Xoá đợt khuyến mãi" @click="removeCampaign(campaign)"><i class="bi bi-trash"></i></button>
+                  <button type="button" class="z-icon-btn" title="Sửa đợt khuyến mãi" aria-label="Sửa đợt khuyến mãi" @click="openEdit(campaign)"><i class="bi bi-pencil"></i></button>
+                  <button type="button" class="z-icon-btn" title="Xoá đợt khuyến mãi" aria-label="Xóa đợt khuyến mãi" @click="removeCampaign(campaign)"><i class="bi bi-trash"></i></button>
                 </div>
               </td>
             </tr>
@@ -54,7 +54,7 @@
             <h3 style="font-size:18px;font-weight:600;margin:0">{{ editingId ? 'Sửa đợt khuyến mãi' : 'Tạo đợt khuyến mãi' }}</h3>
             <div style="font-size:12px;color:var(--z-gray)">Giá cuối cùng được chọn theo đợt giúp khách tiết kiệm nhiều nhất.</div>
           </div>
-          <button class="z-icon-btn" @click="closeModal"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu đợt khuyến mãi" @click="closeModal"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="row g-3">
@@ -87,7 +87,7 @@
             <select v-model="scope.idLoaiVay" class="lm-input"><option :value="null">Tất cả loại</option><option v-for="item in attributes.loaiVay" :key="item.id" :value="item.id">{{ item.tenLoaiVay }}</option></select>
             <select v-model="scope.idMauSac" class="lm-input"><option :value="null">Tất cả màu</option><option v-for="item in attributes.mauSac" :key="item.id" :value="item.id">{{ item.tenMauSac }}</option></select>
             <select v-model="scope.idKichThuoc" class="lm-input"><option :value="null">Tất cả size</option><option v-for="item in attributes.kichThuoc" :key="item.id" :value="item.id">{{ item.tenKichThuoc }}</option></select>
-            <button class="z-icon-btn" title="Bỏ phạm vi" :disabled="form.phamVis.length === 1" @click="form.phamVis.splice(index, 1)"><i class="bi bi-trash"></i></button>
+            <button type="button" class="z-icon-btn" title="Bỏ phạm vi" aria-label="Bỏ phạm vi áp dụng" :disabled="form.phamVis.length === 1" @click="form.phamVis.splice(index, 1)"><i class="bi bi-trash"></i></button>
           </div>
         </div>
 

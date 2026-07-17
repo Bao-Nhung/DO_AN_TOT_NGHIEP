@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -32,8 +34,13 @@ public class EmployeeShiftAccessFilter extends OncePerRequestFilter {
             return;
         }
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || !isEmployee(authentication)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String token = header.substring(7);
-        String role;
         Integer employeeId;
         try {
             if (!jwtUtil.isValid(token)) {
@@ -41,13 +48,8 @@ public class EmployeeShiftAccessFilter extends OncePerRequestFilter {
                 return;
             }
             var claims = jwtUtil.extractClaims(token);
-            role = claims.get("role", String.class);
             employeeId = toInt(claims.get("userId"));
         } catch (Exception ignored) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-        if (!isEmployeeRole(role)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -83,8 +85,11 @@ public class EmployeeShiftAccessFilter extends OncePerRequestFilter {
         return path.startsWith("/api/auth/") || path.startsWith("/api/lich-lam-viec");
     }
 
-    private boolean isEmployeeRole(String role) {
-        return "NhanVien".equalsIgnoreCase(role) || "Nhân viên".equalsIgnoreCase(role);
+    private boolean isEmployee(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .anyMatch(authority -> "ROLE_NhanVien".equalsIgnoreCase(authority)
+                        || "ROLE_Nhân viên".equalsIgnoreCase(authority));
     }
 
     private Integer toInt(Object value) {

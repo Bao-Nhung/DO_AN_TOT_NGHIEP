@@ -105,7 +105,7 @@
             <button class="lm-btn-primary justify-content-center" @click="addToCart()">
               <span>Thêm vào giỏ hàng</span>
             </button>
-            <button @click="toggleWish"
+            <button type="button" :aria-label="isLiked ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'" @click="toggleWish"
                     style="border:1px solid var(--z-gray-border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;border-radius:var(--z-radius)"
                     :style="isLiked ? 'border-color:var(--z-accent);background:var(--z-accent-soft)' : ''">
               <i class="bi" :class="isLiked ? 'bi-heart-fill' : 'bi-heart'"
@@ -170,7 +170,7 @@
             <div class="col-md-4">
               <label class="z-review-label">Số sao</label>
               <div class="z-review-star-input">
-                <button v-for="star in 5" :key="star" type="button" :title="`${star} sao`" @click="reviewForm.stars = star">
+                <button v-for="star in 5" :key="star" type="button" :title="`${star} sao`" :aria-label="`Đánh giá ${star} sao`" @click="reviewForm.stars = star">
                   <i class="bi" :class="star <= reviewForm.stars ? 'bi-star-fill' : 'bi-star'"></i>
                 </button>
               </div>

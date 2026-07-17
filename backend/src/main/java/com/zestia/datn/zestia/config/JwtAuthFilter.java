@@ -33,9 +33,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 var claims = jwtUtil.extractClaims(token);
                 String role = claims.get("role", String.class);
                 Integer userId = toInt(claims.get("userId"));
-                if (isStaffRole(role) && !activeStaff(userId)) {
-                    filterChain.doFilter(request, response);
-                    return;
+                if (isStaffRole(role)) {
+                    var employee = userId == null ? null : nhanVienRepository.findById(userId).orElse(null);
+                    if (employee == null || (employee.getTinhTrangLamViec() != null && employee.getTinhTrangLamViec() != 1)) {
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                    if (employee.getVaiTro() == null || !isStaffRole(employee.getVaiTro().getTenVaiTro())) {
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                    username = employee.getTenNguoiDung();
+                    role = employee.getVaiTro().getTenVaiTro();
                 }
                 var auth = new UsernamePasswordAuthenticationToken(
                     username, null,
@@ -47,19 +56,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private boolean activeStaff(Integer userId) {
-        if (userId == null) return false;
-        return nhanVienRepository.findById(userId)
-                .map(nv -> nv.getTinhTrangLamViec() == null || nv.getTinhTrangLamViec() == 1)
-                .orElse(false);
-    }
-
     private static boolean isStaffRole(String role) {
         return "Admin".equalsIgnoreCase(role)
                 || "NhanVien".equalsIgnoreCase(role)
-                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role)
-                || "QuanLyKho".equalsIgnoreCase(role)
-                || "Qu\u1EA3n l\u00FD kho".equalsIgnoreCase(role);
+                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
     }
 
     private static Integer toInt(Object obj) {

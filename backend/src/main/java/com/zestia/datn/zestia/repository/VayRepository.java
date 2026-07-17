@@ -26,6 +26,10 @@ public interface VayRepository extends JpaRepository<Vay, Integer> {
     long countByTrangThai(Byte trangThai);
 
     @EntityGraph(attributePaths = {"loaiVay", "chatLieu", "nhaCungCap"})
+    @Query("SELECT v FROM Vay v WHERE v.trangThai = 1 ORDER BY v.ngayTao DESC, v.id DESC")
+    List<Vay> findActiveForAi(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"loaiVay", "chatLieu", "nhaCungCap"})
     @Query(value = """
             SELECT v FROM Vay v
             LEFT JOIN v.loaiVay lv

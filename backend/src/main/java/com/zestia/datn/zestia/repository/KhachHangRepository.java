@@ -57,7 +57,7 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    kh.ngayTao AS ngayTao,
                    COUNT(h.id) AS tongDon,
                    COALESCE(SUM(CASE
-                       WHEN h.daThanhToan = true AND h.trangThai NOT IN (5, 7, 9) THEN h.tongTien
+                       WHEN h.trangThai = 4 THEN h.tongTien
                        ELSE 0
                    END), 0) AS tongChiTieu
             FROM KhachHang kh
@@ -77,7 +77,7 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    kh.ngayTao AS ngayTao,
                    COUNT(h.id) AS tongDon,
                    COALESCE(SUM(CASE
-                       WHEN h.daThanhToan = true AND h.trangThai NOT IN (5, 7, 9) THEN h.tongTien
+                       WHEN h.trangThai = 4 THEN h.tongTien
                        ELSE 0
                    END), 0) AS tongChiTieu
             FROM KhachHang kh

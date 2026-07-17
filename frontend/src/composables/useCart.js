@@ -26,7 +26,7 @@ watch(() => state.items, (items) => {
 }, { deep: true })
 
 const totalCount = computed(() => state.items.reduce((s, i) => s + i.qty, 0))
-const subtotal   = computed(() => state.items.reduce((s, i) => s + i.price * i.qty, 0))
+const subtotal   = computed(() => state.items.reduce((s, i) => i.unavailable ? s : s + i.price * i.qty, 0))
 
 function openCart()  { state.isOpen = true;  document.body.style.overflow = 'hidden' }
 function closeCart() { state.isOpen = false; document.body.style.overflow = '' }
@@ -63,15 +63,30 @@ function refreshItems(loadProduct) {
 
       for (const item of items) {
         const variant = variants.find(v => Number(v.id) === Number(item.variantId))
+        const availableStock = Number(variant?.soLuong || 0)
+        if (!variant || availableStock <= 0 || Number(product?.trangThai) !== 1) {
+          item.unavailable = true
+          item.unavailableReason = variant ? 'Biến thể hiện đã hết hàng' : 'Biến thể hiện không còn được bán'
+          item.maxQty = 0
+          continue
+        }
         const currentPrice = Number(variant?.giaBan ?? product?.giaBan ?? item.price) || 0
 
+        item.unavailable = false
+        delete item.unavailableReason
         item.name = product?.tenVay || item.name
         item.image = variant?.anhUrl || product?.anhUrl || item.image || null
         item.price = currentPrice
         delete item.originalPrice
-        if (variant?.soLuong != null) item.maxQty = Number(variant.soLuong)
+        item.maxQty = availableStock
+        item.qty = Math.min(Number(item.qty || 1), availableStock)
       }
     } catch (error) {
+      items.forEach(item => {
+        item.unavailable = true
+        item.unavailableReason = 'Sản phẩm hiện không còn được bán'
+        item.maxQty = 0
+      })
       console.warn(`Không thể làm mới sản phẩm ${productId} trong giỏ hàng`, error)
     }
   })).finally(() => {
@@ -83,7 +98,7 @@ function refreshItems(loadProduct) {
 
 function changeQty(id, delta) {
   const item = state.items.find(i => i.id === id)
-  if (!item) return
+  if (!item || item.unavailable) return
   const maxQty = Number(item.maxQty || 0)
   const next = Math.max(1, item.qty + delta)
   item.qty = maxQty > 0 ? Math.min(maxQty, next) : next
@@ -107,7 +122,8 @@ async function hydrateCart(remoteItems = [], userId) {
   const previousOwner = localStorage.getItem(OWNER_KEY)
   const sameOwner = previousOwner && String(previousOwner) === String(userId)
   const incoming = Array.isArray(remoteItems) ? remoteItems : []
-  const merged = sameOwner ? incoming : mergeGuestAndServer(state.items, incoming)
+  const guestItems = previousOwner ? [] : state.items
+  const merged = sameOwner ? incoming : mergeGuestAndServer(guestItems, incoming)
 
   applyingServerState = true
   state.items.splice(0, state.items.length, ...merged)
@@ -151,6 +167,7 @@ async function syncCartNow() {
   if (!syncReady) return
   const user = useAuth().getUser()
   if (!user || user.role !== 'KhachHang') return
+  if (state.items.some(item => item.unavailable)) return
   if (syncTimer) clearTimeout(syncTimer)
   syncTimer = null
   try {

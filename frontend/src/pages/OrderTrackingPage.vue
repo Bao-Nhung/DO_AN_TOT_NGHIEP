@@ -177,7 +177,7 @@
             <h3 style="font-size:18px;font-weight:600;margin:0">
               {{ cancelStep === 'reason' ? 'Lý do huỷ đơn hàng' : 'Xác nhận mã OTP' }}
             </h3>
-            <button class="z-icon-btn" @click="showCancelModal = false"><i class="bi bi-x-lg"></i></button>
+            <button type="button" class="z-icon-btn" aria-label="Đóng hủy đơn hàng" @click="showCancelModal = false"><i class="bi bi-x-lg"></i></button>
           </div>
           <p style="font-size:14px;color:var(--z-gray);margin-bottom:20px">
             {{ cancelStep === 'reason'
@@ -225,7 +225,7 @@
               autocomplete="one-time-code"
               maxlength="6"
               placeholder="000000"
-              style="font-size:22px;letter-spacing:8px;font-weight:700"
+              style="font-size:22px;letter-spacing:0;font-weight:700"
               @input="normalizeCancelOtp"
             />
             <button

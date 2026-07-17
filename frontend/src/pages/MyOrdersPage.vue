@@ -200,7 +200,7 @@
 
           <!-- Pagination -->
           <div v-if="currentTab !== 'return' && totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
-            <button class="lm-pagination-btn" :disabled="currentPage === 1" @click="currentPage--">
+            <button type="button" class="lm-pagination-btn" aria-label="Trang đơn hàng trước" :disabled="currentPage === 1" @click="currentPage--">
               <i class="bi bi-chevron-left"></i>
             </button>
             <button 
@@ -212,7 +212,7 @@
             >
               {{ page }}
             </button>
-            <button class="lm-pagination-btn" :disabled="currentPage === totalPages" @click="currentPage++">
+            <button type="button" class="lm-pagination-btn" aria-label="Trang đơn hàng sau" :disabled="currentPage === totalPages" @click="currentPage++">
               <i class="bi bi-chevron-right"></i>
             </button>
           </div>
@@ -228,7 +228,7 @@
             <h3 style="font-size:18px;font-weight:700;margin:0;color:var(--z-dark)">Chi tiết đơn hàng</h3>
             <div style="font-size:13px;color:var(--z-gray);margin-top:2px;">Mã hóa đơn: <strong>{{ detailOrder?.maHoaDon }}</strong></div>
           </div>
-          <button class="z-icon-btn" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết đơn hàng" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div v-if="loadingDetail" class="text-center py-5">
@@ -379,7 +379,7 @@
       <div class="z-modal" style="max-width:500px">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">Lý do huỷ đơn hàng</h3>
-          <button class="z-icon-btn" @click="showCancelModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng hủy đơn hàng" @click="showCancelModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
         <p style="font-size:14px;color:var(--z-gray);margin-bottom:20px">Vui lòng cho Zestia biết lý do bạn muốn huỷ đơn hàng này nhé:</p>
         
@@ -418,7 +418,7 @@
       <div class="z-modal z-customer-return-modal">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div><h3 style="font-size:18px;font-weight:600;margin:0">Yêu cầu đổi hoặc trả hàng</h3><div class="z-return-muted">{{ orderToReturn?.maHoaDon }} · Áp dụng cho đơn giao online</div></div>
-          <button class="z-icon-btn" @click="showReturnModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng yêu cầu đổi trả" @click="showReturnModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="z-return-type-switch mb-3">
@@ -450,7 +450,7 @@
             <label class="z-return-label">Ảnh tình trạng hàng (1–5 ảnh) *</label>
             <input class="lm-input z-file-input" type="file" accept="image/jpeg,image/png" multiple @change="onReturnImages">
             <div class="z-return-help">Mỗi ảnh tối đa 5MB. Hãy chụp rõ sản phẩm, tem mác và vị trí lỗi.</div>
-            <div v-if="returnImagePreviews.length" class="z-return-preview-list"><div v-for="(url, index) in returnImagePreviews" :key="url"><img :src="url" alt="Ảnh tình trạng"><button title="Bỏ ảnh" @click="removeReturnImage(index)"><i class="bi bi-x"></i></button></div></div>
+            <div v-if="returnImagePreviews.length" class="z-return-preview-list"><div v-for="(url, index) in returnImagePreviews" :key="url"><img :src="url" alt="Ảnh tình trạng"><button type="button" title="Bỏ ảnh" aria-label="Bỏ ảnh tình trạng" @click="removeReturnImage(index)"><i class="bi bi-x"></i></button></div></div>
           </div>
         </div>
         <div class="d-flex gap-3 mt-4 pt-3 border-top">
@@ -887,7 +887,7 @@ function formatDateTime(val) {
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 6px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -897,7 +897,7 @@ function formatDateTime(val) {
   padding: 4px 12px;
   border-radius: 20px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   display: inline-block;
 }
 .badge-status.pending { background: #fef3c7; color: #d97706; }

@@ -138,7 +138,7 @@
               <div style="font-size:12px;color:var(--z-gray)">{{ shiftRangeText(shift) }}</div>
             </div>
             <div v-for="day in weekDays" :key="shift + day.value" class="z-day-cell">
-              <button v-if="isAdmin" class="z-add-mini" title="Thêm ca vào ngày này" @click="openAddFor(day.value, shift)">
+              <button v-if="isAdmin" type="button" class="z-add-mini" title="Thêm ca vào ngày này" aria-label="Thêm ca vào ngày này" @click="openAddFor(day.value, shift)">
                 <i class="bi bi-plus-lg"></i>
               </button>
               <div v-if="cellSchedules(day.value, shift).length" class="d-flex flex-column gap-2">
@@ -204,10 +204,10 @@
             </td>
             <td>
               <div v-if="isAdmin" class="d-flex gap-1 flex-wrap">
-                <button v-if="Number(item.trangThai) === 3" class="z-icon-btn z-approve-btn" title="Duyệt báo bận" @click="approveUnavailable(item)"><i class="bi bi-check-lg"></i></button>
-                <button v-if="Number(item.trangThai) === 3" class="z-icon-btn z-reject-btn" title="Từ chối báo bận" @click="openRejectUnavailable(item)"><i class="bi bi-x-lg"></i></button>
-                <button class="z-icon-btn" title="Sửa" @click="openEdit(item)"><i class="bi bi-pencil"></i></button>
-                <button class="z-icon-btn" title="Xóa" style="color:var(--z-accent)" @click="deleteSchedule(item)"><i class="bi bi-trash"></i></button>
+                <button v-if="Number(item.trangThai) === 3" type="button" class="z-icon-btn z-approve-btn" title="Duyệt báo bận" aria-label="Duyệt báo bận" @click="approveUnavailable(item)"><i class="bi bi-check-lg"></i></button>
+                <button v-if="Number(item.trangThai) === 3" type="button" class="z-icon-btn z-reject-btn" title="Từ chối báo bận" aria-label="Từ chối báo bận" @click="openRejectUnavailable(item)"><i class="bi bi-x-lg"></i></button>
+                <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa ca làm" @click="openEdit(item)"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="z-icon-btn" title="Xóa" aria-label="Xóa ca làm" style="color:var(--z-accent)" @click="deleteSchedule(item)"><i class="bi bi-trash"></i></button>
               </div>
               <div v-else class="d-flex gap-1 flex-wrap">
                 <button v-if="Number(item.trangThai) === 0" class="z-row-action" @click="confirmOwnShift(item)">Xác nhận</button>
@@ -290,7 +290,7 @@
               <td>{{ formatMoney(history.tienChuyenKhoan) }}</td>
               <td><strong class="z-cash-value">{{ formatMoney(history.tienMatBanGiao) }}</strong></td>
               <td>
-                <button class="z-icon-btn" title="Xem lịch sử hoạt động" @click="openActivityHistory(history)">
+                <button type="button" class="z-icon-btn" title="Xem lịch sử hoạt động" aria-label="Xem lịch sử hoạt động" @click="openActivityHistory(history)">
                   <i class="bi bi-clock-history"></i>
                 </button>
               </td>
@@ -307,7 +307,7 @@
             <h3 style="font-size:18px;font-weight:600;margin:0">Hoạt động trong ca</h3>
             <p class="z-activity-caption">{{ activityShift.tenNhanVien }} · {{ formatDate(activityShift.ngayLam) }} · {{ activityShift.caLam }}</p>
           </div>
-          <button class="z-icon-btn" @click="activityShift = null"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng lịch sử hoạt động" @click="activityShift = null"><i class="bi bi-x-lg"></i></button>
         </div>
         <div class="z-activity-summary">
           <div><span>Doanh thu</span><strong>{{ formatMoney(activityShift.doanhThu) }}</strong></div>
@@ -330,7 +330,7 @@
       <div class="z-modal">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">{{ editingId ? 'Cập nhật ca làm' : 'Thêm ca làm mới' }}</h3>
-          <button class="z-icon-btn" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu ca làm" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="d-flex flex-column gap-3">
@@ -398,7 +398,7 @@
       <div class="z-modal" style="max-width:500px">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h3 style="font-size:18px;font-weight:600;margin:0">{{ reasonModalMode === 'reject' ? 'Từ chối yêu cầu báo bận' : 'Báo bận ca làm' }}</h3>
-          <button class="z-icon-btn" @click="closeReasonModal"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu lý do" @click="closeReasonModal"><i class="bi bi-x-lg"></i></button>
         </div>
         <p style="font-size:13px;color:var(--z-gray)">
           {{ reasonModalMode === 'reject' ? 'Nhập lý do để nhân viên biết vì sao yêu cầu chưa được chấp nhận.' : 'Trình bày rõ lý do không thể tham gia ca. Ca đã xác nhận sẽ chờ admin duyệt.' }}
@@ -950,7 +950,7 @@ function diffHours(start, end) {
 .z-week-corner {
   padding: 14px 16px;
   font-size: 12px; font-weight: 700; color: var(--z-gray);
-  text-transform: uppercase; letter-spacing: 0.04em;
+  text-transform: uppercase; letter-spacing: 0;
 }
 .z-week-day {
   padding: 12px 14px;

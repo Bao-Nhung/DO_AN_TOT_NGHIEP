@@ -10,8 +10,17 @@
 
     <main class="container z-policy-page">
       <nav class="z-policy-nav" aria-label="Danh sách chính sách">
+        <a href="#shopping-guide">Hướng dẫn mua hàng</a>
         <a v-for="policy in policies" :key="policy.code" :href="`#policy-${policy.code}`">{{ policy.title }}</a>
       </nav>
+      <article id="shopping-guide" class="z-policy-row">
+        <div><p class="lm-eyebrow">4 bước</p></div>
+        <div>
+          <h2>Hướng dẫn mua hàng</h2>
+          <strong>Chọn đúng biến thể, kiểm tra thông tin rồi mới xác nhận thanh toán.</strong>
+          <p>1. Mở sản phẩm và chọn đầy đủ màu sắc, kích thước.\n2. Kiểm tra số lượng trong giỏ hàng và voucher phù hợp.\n3. Nhập email, số điện thoại và chọn địa chỉ nhận hàng.\n4. Kiểm tra lại bảng xác nhận; với MoMo hoặc ZaloPay, đơn chỉ được xác nhận sau khi cổng báo thanh toán thành công.</p>
+        </div>
+      </article>
       <section v-if="loading" class="z-policy-empty">Đang tải chính sách...</section>
       <section v-else-if="!policies.length" class="z-policy-empty">Chưa có chính sách đang áp dụng.</section>
       <article v-for="policy in policies" :id="`policy-${policy.code}`" :key="policy.code" class="z-policy-row">

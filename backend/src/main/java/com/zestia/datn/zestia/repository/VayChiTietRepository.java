@@ -52,4 +52,28 @@ public interface VayChiTietRepository extends JpaRepository<VayChiTiet, Integer>
             Integer mauSacId,
             Integer kichThuocId
     );
+
+    @Query("""
+            SELECT COUNT(v) FROM VayChiTiet v
+            WHERE v.trangThai = 1 AND v.vay.trangThai = 1
+            """)
+    long countActiveVariants();
+
+    @Query("""
+            SELECT COALESCE(SUM(v.soLuong), 0) FROM VayChiTiet v
+            WHERE v.trangThai = 1 AND v.vay.trangThai = 1
+            """)
+    Long sumActiveStock();
+
+    @Query("""
+            SELECT COUNT(DISTINCT v.mauSac.id) FROM VayChiTiet v
+            WHERE v.trangThai = 1 AND v.vay.trangThai = 1 AND v.mauSac IS NOT NULL
+            """)
+    long countActiveColors();
+
+    @Query("""
+            SELECT COUNT(DISTINCT v.kichThuoc.id) FROM VayChiTiet v
+            WHERE v.trangThai = 1 AND v.vay.trangThai = 1 AND v.kichThuoc IS NOT NULL
+            """)
+    long countActiveSizes();
 }

@@ -91,13 +91,13 @@
               </td>
               <td>
                 <div class="d-flex justify-content-end gap-2">
-                  <button class="z-icon-btn text-primary" title="Xem chi tiết" @click="viewDetail(item)">
+                  <button type="button" class="z-icon-btn text-primary" title="Xem chi tiết" aria-label="Xem chi tiết thông báo" @click="viewDetail(item)">
                     <i class="bi bi-eye"></i>
                   </button>
-                  <button class="z-icon-btn text-warning" title="Chỉnh sửa" @click="openEdit(item)">
+                  <button type="button" class="z-icon-btn text-warning" title="Chỉnh sửa" aria-label="Chỉnh sửa thông báo" @click="openEdit(item)">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="z-icon-btn text-danger" title="Xóa" @click="deleteItem(item.id)">
+                  <button type="button" class="z-icon-btn text-danger" title="Xóa" aria-label="Xóa thông báo" @click="deleteItem(item.id)">
                     <i class="bi bi-trash"></i>
                   </button>
                 </div>
@@ -141,7 +141,7 @@
           <h3 style="font-size:18px;font-weight:600;margin:0">
             {{ editingId ? 'Cập nhật thông báo' : 'Tạo thông báo mới' }}
           </h3>
-          <button class="z-icon-btn" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu thông báo" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="d-flex flex-column gap-3">
@@ -220,7 +220,7 @@
           <span :class="['z-status', getLabelClass(selectedItem.loai)]">
             {{ getTypeName(selectedItem.loai) }}
           </span>
-          <button class="z-icon-btn" @click="selectedItem = null"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết thông báo" @click="selectedItem = null"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ selectedItem.tieuDe }}</h3>

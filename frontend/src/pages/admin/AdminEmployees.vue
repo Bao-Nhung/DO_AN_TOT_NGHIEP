@@ -115,11 +115,11 @@
             </td>
             <td>
               <div class="d-flex gap-1">
-                <button class="z-icon-btn" title="Sửa" @click="openEdit(nv)"><i class="bi bi-pencil"></i></button>
-                <button class="z-icon-btn" title="Khoá / mở khoá" @click="toggleStatus(nv)">
+                <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa nhân viên" @click="openEdit(nv)"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="z-icon-btn" title="Khoá / mở khoá" :aria-label="Number(nv.tinhTrangLamViec) === 1 ? 'Khóa nhân viên' : 'Mở khóa nhân viên'" @click="toggleStatus(nv)">
                   <i class="bi" :class="Number(nv.tinhTrangLamViec) === 1 ? 'bi-lock' : 'bi-unlock'"></i>
                 </button>
-                <button class="z-icon-btn" title="Tạm khoá" style="color:var(--z-accent)" @click="deleteEmployee(nv)"><i class="bi bi-person-x"></i></button>
+                <button type="button" class="z-icon-btn" title="Tạm khoá" aria-label="Tạm khóa nhân viên" style="color:var(--z-accent)" @click="deleteEmployee(nv)"><i class="bi bi-person-x"></i></button>
               </div>
             </td>
           </tr>
@@ -160,7 +160,7 @@
             <h3 style="font-size:18px;font-weight:600;margin:0">{{ editingId ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới' }}</h3>
             <div style="font-size:13px;color:var(--z-gray)">Tài khoản này có thể đăng nhập ở trang Đăng nhập bằng username hoặc email</div>
           </div>
-          <button class="z-icon-btn" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu nhân viên" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="row">
@@ -191,7 +191,7 @@
               <label class="z-label">Mật khẩu {{ editingId ? '(để trống nếu không đổi)' : '*' }}</label>
               <div class="position-relative">
                 <input v-model="form.matKhau" class="lm-input" :class="{ 'is-invalid': formErrors.matKhau }" :type="showPassword ? 'text' : 'password'" maxlength="72" autocomplete="new-password" placeholder="8-72 ký tự, gồm chữ và số" @input="clearFieldError('matKhau')">
-                <button type="button" class="z-password-toggle" @click="showPassword = !showPassword">
+                <button type="button" class="z-password-toggle" :aria-label="showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPassword = !showPassword">
                   <i class="bi" :class="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                 </button>
               </div>
@@ -251,7 +251,7 @@
         </div>
 
         <div class="col-md-5 ps-4" v-if="editingId">
-            <h4 style="font-size:14px;font-weight:600;margin-bottom:16px; color: var(--z-dark); text-transform:uppercase; letter-spacing:0.04em;">Báo cáo hiệu suất & ca làm</h4>
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:16px; color: var(--z-dark); text-transform:uppercase; letter-spacing:0;">Báo cáo hiệu suất & ca làm</h4>
             <div v-if="loadingPerf" class="text-center py-5">
               <div class="spinner-border spinner-border-sm text-secondary"></div>
               <p style="color:var(--z-gray);font-size:12px;margin-top:8px">Đang tính toán hiệu suất...</p>

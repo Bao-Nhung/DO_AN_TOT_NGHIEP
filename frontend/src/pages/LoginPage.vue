@@ -21,14 +21,14 @@
 
     <div class="d-flex align-items-center justify-content-center p-5" style="background:var(--z-bg)">
       <div style="width:100%;max-width:400px">
-        <span class="z-display d-block mb-5" style="font-size:26px;font-weight:600;letter-spacing:0.08em;cursor:pointer"
-              @click="$router.push('/')">
+        <RouterLink class="z-display d-block mb-5 text-decoration-none" to="/" aria-label="Zestia - Trang chủ"
+              style="font-size:26px;font-weight:600;letter-spacing:0;cursor:pointer;color:inherit">
           Zest<span class="lm-gold-text">ia</span>
-        </span>
+        </RouterLink>
 
         <!-- Role Tabs -->
         <div class="d-flex mb-4" style="border:1px solid var(--z-gray-border);border-radius:var(--z-radius);overflow:hidden">
-          <button v-for="r in roles" :key="r.key"
+          <button v-for="r in roles" :key="r.key" type="button" :aria-pressed="loginRole === r.key"
                   class="flex-fill text-center"
                   :style="{
                     padding: '10px',
@@ -52,7 +52,7 @@
           <p class="mb-4" style="font-size:14px;font-weight:400;color:var(--z-gray)">
             <template v-if="loginRole === 'customer'">
               Chưa có tài khoản?
-              <a @click="view = 'register'; error = ''" style="color:var(--z-accent);cursor:pointer;font-weight:500">Tạo tài khoản ngay</a>
+              <button type="button" class="z-auth-link" @click="view = 'register'; error = ''">Tạo tài khoản ngay</button>
             </template>
             <template v-else>Dành cho nhân viên và quản trị viên</template>
           </p>
@@ -70,9 +70,9 @@
             </div>
             <div class="position-relative">
               <label class="lm-form-label d-block mb-2">Mật khẩu</label>
-              <input class="lm-input" v-model="password" :type="showPw ? 'text' : 'password'" placeholder="••••••••"
+              <input class="lm-input" v-model="password" :type="showPw ? 'text' : 'password'" placeholder="••••••••" aria-label="Mật khẩu"
                      @keydown.enter="doLogin">
-              <button @click="showPw = !showPw"
+              <button type="button" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw"
                       style="position:absolute;right:14px;bottom:12px;border:none;background:none;cursor:pointer;color:var(--z-gray-light)">
                 <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'" style="font-size:16px"></i>
               </button>
@@ -83,7 +83,7 @@
             <label class="d-flex align-items-center gap-2" style="color:var(--z-gray);cursor:pointer">
               <input type="checkbox" checked style="accent-color:var(--z-accent)"> Ghi nhớ đăng nhập
             </label>
-            <a @click="view = 'forgot'; error = ''; forgotMessage = ''" style="color:var(--z-accent);cursor:pointer;font-weight:500">Quên mật khẩu?</a>
+            <button type="button" class="z-auth-link" @click="view = 'forgot'; error = ''; forgotMessage = ''">Quên mật khẩu?</button>
           </div>
 
           <button class="lm-btn-primary w-100 justify-content-center mb-3" :disabled="loading" @click="doLogin">
@@ -97,7 +97,7 @@
           <h1 class="z-display mb-2" style="font-size:32px;font-weight:400;color:var(--z-dark)">Tạo tài khoản</h1>
           <p class="mb-4" style="font-size:14px;font-weight:400;color:var(--z-gray)">
             Đã có tài khoản?
-            <a @click="view = 'login'; error = ''" style="color:var(--z-accent);cursor:pointer;font-weight:500">Đăng nhập</a>
+            <button type="button" class="z-auth-link" @click="view = 'login'; error = ''">Đăng nhập</button>
           </p>
 
           <div v-if="error" class="mb-3" style="padding:12px 16px;background:#fee2e2;color:#dc2626;border-radius:var(--z-radius);font-size:13px">
@@ -118,13 +118,14 @@
             </div>
             <div>
               <label class="lm-form-label d-block mb-2">Số điện thoại</label>
-              <input class="lm-input" v-model="regForm.soDienThoai" type="tel" placeholder="0912 345 678">
+              <input class="lm-input" v-model="regForm.soDienThoai" type="tel" inputmode="numeric"
+                     autocomplete="tel" maxlength="10" placeholder="0912 345 678" @input="normalizeRegistrationPhone">
             </div>
             <div class="position-relative">
               <label class="lm-form-label d-block mb-2">Mật khẩu</label>
-              <input class="lm-input" v-model="regForm.matKhau" :type="showPw ? 'text' : 'password'" placeholder="Tối thiểu 6 ký tự"
+              <input class="lm-input" v-model="regForm.matKhau" :type="showPw ? 'text' : 'password'" placeholder="Tối thiểu 8 ký tự, gồm chữ và số" aria-label="Mật khẩu đăng ký"
                      @keydown.enter="doRegister">
-              <button @click="showPw = !showPw"
+              <button type="button" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw"
                       style="position:absolute;right:14px;bottom:12px;border:none;background:none;cursor:pointer;color:var(--z-gray-light)">
                 <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'" style="font-size:16px"></i>
               </button>
@@ -166,9 +167,9 @@
           </button>
 
           <div class="text-center">
-            <a @click="view = 'login'; error = ''; forgotMessage = ''" style="color:var(--z-accent);cursor:pointer;font-size:13px;font-weight:500">
+            <button type="button" class="z-auth-link" style="font-size:13px" @click="view = 'login'; error = ''; forgotMessage = ''">
               <i class="bi bi-arrow-left me-1"></i> Quay lại đăng nhập
-            </a>
+            </button>
           </div>
         </template>
 
@@ -186,16 +187,16 @@
           <div class="d-flex flex-column gap-3 mb-4">
             <div class="position-relative">
               <label class="lm-form-label d-block mb-2">Mật khẩu mới</label>
-              <input class="lm-input" v-model="resetPassword" :type="showPw ? 'text' : 'password'" placeholder="Tối thiểu 6 ký tự"
+              <input class="lm-input" v-model="resetPassword" :type="showPw ? 'text' : 'password'" placeholder="Tối thiểu 8 ký tự, gồm chữ và số" aria-label="Mật khẩu mới"
                      @keydown.enter="doResetPassword">
-              <button @click="showPw = !showPw"
+              <button type="button" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw"
                       style="position:absolute;right:14px;bottom:12px;border:none;background:none;cursor:pointer;color:var(--z-gray-light)">
                 <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'" style="font-size:16px"></i>
               </button>
             </div>
             <div>
               <label class="lm-form-label d-block mb-2">Xác nhận mật khẩu mới</label>
-              <input class="lm-input" v-model="resetPasswordConfirm" :type="showPw ? 'text' : 'password'" placeholder="Nhập lại mật khẩu mới"
+              <input class="lm-input" v-model="resetPasswordConfirm" :type="showPw ? 'text' : 'password'" placeholder="Nhập lại mật khẩu mới" aria-label="Xác nhận mật khẩu mới"
                      @keydown.enter="doResetPassword">
             </div>
           </div>
@@ -206,9 +207,9 @@
           </button>
 
           <div class="text-center">
-            <a @click="view = 'login'; error = ''" style="color:var(--z-accent);cursor:pointer;font-size:13px;font-weight:500">
+            <button type="button" class="z-auth-link" style="font-size:13px" @click="view = 'login'; error = ''">
               <i class="bi bi-arrow-left me-1"></i> Quay lại đăng nhập
-            </a>
+            </button>
           </div>
         </template>
 
@@ -235,10 +236,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
+import { detachGoogleCredentialHandler, renderGoogleButton } from '@/composables/googleIdentity'
 
 const router = useRouter()
 const route = useRoute()
@@ -255,6 +257,7 @@ const loading = ref(false)
 const googleButton = ref(null)
 const defaultGoogleClientId = '906678560911-vv9vu3jsqkvgu7og8mjg8to7lhh88odt.apps.googleusercontent.com'
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || defaultGoogleClientId
+const googleCredentialHandler = response => handleGoogleCredential(response)
 
 const roles = [
   { key: 'customer', label: 'Khách hàng', icon: 'bi-person' },
@@ -284,6 +287,8 @@ onMounted(() => {
   if (googleClientId) initializeGoogleButton()
 })
 
+onUnmounted(() => detachGoogleCredentialHandler(googleCredentialHandler))
+
 function initializeGoogleButton(attempt = 0) {
   if (!googleButton.value) return
   if (!window.google?.accounts?.id) {
@@ -291,19 +296,7 @@ function initializeGoogleButton(attempt = 0) {
     else error.value = 'Không tải được dịch vụ đăng nhập Google'
     return
   }
-  window.google.accounts.id.initialize({
-    client_id: googleClientId,
-    callback: handleGoogleCredential
-  })
-  window.google.accounts.id.renderButton(googleButton.value, {
-    type: 'standard',
-    theme: 'outline',
-    size: 'large',
-    text: 'continue_with',
-    shape: 'rectangular',
-    width: 400,
-    locale: 'vi'
-  })
+  renderGoogleButton(googleButton.value, googleClientId, googleCredentialHandler)
 }
 
 async function handleGoogleCredential(response) {
@@ -335,7 +328,7 @@ async function doLogin() {
     saveLogin(data)
     showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
     
-    const isStaff = ['Admin', 'NhanVien', 'Nhân viên', 'QuanLyKho', 'Quản lý kho'].includes(data.role)
+    const isStaff = ['Admin', 'NhanVien', 'Nhân viên'].includes(data.role)
     const redirectPath = route.query.redirect ? String(route.query.redirect) : ''
     if (isStaff) {
       await router.replace('/admin')
@@ -352,13 +345,21 @@ async function doLogin() {
 }
 
 async function doRegister() {
-  const { hoVaTen, email, matKhau } = regForm.value
-  if (!hoVaTen || !email || !matKhau) {
+  const { hoVaTen, email, soDienThoai, matKhau } = regForm.value
+  if (!hoVaTen || !email || !soDienThoai || !matKhau) {
     error.value = 'Vui lòng nhập đầy đủ thông tin'
     return
   }
-  if (matKhau.length < 6) {
-    error.value = 'Mật khẩu phải có tối thiểu 6 ký tự'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    error.value = 'Email không hợp lệ'
+    return
+  }
+  if (!/^0[35789]\d{8}$/.test(soDienThoai)) {
+    error.value = 'Số điện thoại Việt Nam không hợp lệ'
+    return
+  }
+  if (!/^(?=.*[A-Za-z])(?=.*\d).{8,100}$/.test(matKhau)) {
+    error.value = 'Mật khẩu cần 8-100 ký tự, gồm ít nhất một chữ và một số'
     return
   }
   error.value = ''
@@ -402,8 +403,8 @@ async function doResetPassword() {
     error.value = 'Vui lòng nhập đầy đủ mật khẩu mới'
     return
   }
-  if (resetPassword.value.length < 6) {
-    error.value = 'Mật khẩu mới phải có tối thiểu 6 ký tự'
+  if (!/^(?=.*[A-Za-z])(?=.*\d).{8,100}$/.test(resetPassword.value)) {
+    error.value = 'Mật khẩu mới cần 8-100 ký tự, gồm ít nhất một chữ và một số'
     return
   }
   if (resetPassword.value !== resetPasswordConfirm.value) {
@@ -426,6 +427,10 @@ async function doResetPassword() {
   } finally {
     loading.value = false
   }
+}
+
+function normalizeRegistrationPhone(event) {
+  regForm.value.soDienThoai = String(event.target.value || '').replace(/\D/g, '').slice(0, 10)
 }
 </script>
 
@@ -452,4 +457,15 @@ async function doResetPassword() {
   font-family: var(--z-font-body);
   font-size: 13px;
 }
+.z-auth-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--z-accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+}
+.z-auth-link:hover,
+.z-auth-link:focus-visible { text-decoration: underline; }
 </style>

@@ -3,9 +3,13 @@ package com.zestia.datn.zestia.controller;
 import com.zestia.datn.zestia.service.CustomerDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,10 +26,24 @@ public class CustomerDataController {
 
     @PutMapping("/cart")
     public List<Map<String, Object>> replaceCart(@RequestBody Map<String, Object> body, Authentication authentication) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> items = body.get("items") instanceof List<?> list
-                ? (List<Map<String, Object>>) list
-                : List.of();
+        Object rawItems = body != null ? body.get("items") : null;
+        if (!(rawItems instanceof List<?> list)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Danh sách giỏ hàng không hợp lệ");
+        }
+        if (list.size() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giỏ hàng vượt quá 100 dòng sản phẩm");
+        }
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Object value : list) {
+            if (!(value instanceof Map<?, ?> source)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dòng sản phẩm không hợp lệ");
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            source.forEach((key, itemValue) -> {
+                if (key instanceof String stringKey) item.put(stringKey, itemValue);
+            });
+            items.add(item);
+        }
         return customerDataService.replaceCart(authentication, items);
     }
 

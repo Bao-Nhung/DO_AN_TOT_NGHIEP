@@ -312,7 +312,7 @@ async function subscribeNewsletter() {
 
 .z-home-hero {
   position: relative;
-  min-height: 92vh;
+  min-height: max(620px, calc(100svh - 118px));
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -337,7 +337,7 @@ async function subscribeNewsletter() {
   position: relative;
   z-index: 2;
   color: var(--z-white);
-  padding-top: 60px;
+  padding: 64px 12px 138px;
 }
 .z-home-hero-content h1 {
   max-width: 780px;
@@ -579,9 +579,8 @@ async function subscribeNewsletter() {
 
 @media (max-width: 992px) {
   .z-home-hero-content h1 { font-size: 48px; }
-  .z-hero-proof { grid-template-columns: 1fr; }
-  .z-hero-proof div { border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
-  .z-hero-proof div:last-child { border-bottom: 0; }
+  .z-hero-proof strong { font-size: 20px; }
+  .z-hero-proof div { padding: 14px; }
   .z-service-strip { grid-template-columns: repeat(2, 1fr); }
   .z-style-edit { grid-template-columns: 1fr; }
   .z-style-media { min-height: 420px; }
@@ -589,7 +588,8 @@ async function subscribeNewsletter() {
 }
 
 @media (max-width: 576px) {
-  .z-home-hero { min-height: 86vh; }
+  .z-home-hero { min-height: calc(100svh - 100px); }
+  .z-home-hero-content { padding: 38px 16px; }
   .z-home-hero-content h1 { font-size: 36px; }
   .z-home-hero-copy { font-size: 14px; }
   .z-hero-proof { display: none; }

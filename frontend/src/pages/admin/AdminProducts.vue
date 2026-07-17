@@ -91,9 +91,9 @@
             <td><span class="z-status" :class="p.active ? 'success' : 'pending'">{{ p.active ? 'Đang bán' : 'Ngừng' }}</span></td>
             <td @click.stop>
               <div class="d-flex gap-1">
-                <button class="z-icon-btn" title="Sửa" @click="openEdit(p)"><i class="bi bi-pencil"></i></button>
-                <button class="z-icon-btn" title="Chi tiết" @click="openProductDetail(p)"><i class="bi bi-eye"></i></button>
-                <button class="z-icon-btn" :title="p.active ? 'Khóa' : 'Mở khóa'"
+                <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa sản phẩm" @click="openEdit(p)"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="z-icon-btn" title="Chi tiết" aria-label="Xem chi tiết sản phẩm" @click="openProductDetail(p)"><i class="bi bi-eye"></i></button>
+                <button type="button" class="z-icon-btn" :title="p.active ? 'Khóa' : 'Mở khóa'" :aria-label="p.active ? 'Khóa sản phẩm' : 'Mở khóa sản phẩm'"
                         :style="{ color: p.active ? 'var(--z-accent)' : '#16a34a' }"
                         @click="toggleLock(p)">
                   <i class="bi" :class="p.active ? 'bi-lock' : 'bi-unlock'"></i>
@@ -144,7 +144,7 @@
             <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết sản phẩm</h3>
             <div style="font-size:13px;color:var(--z-gray)">{{ productDetail?.maVay }}</div>
           </div>
-          <button class="z-icon-btn" @click="showProductDetail = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết sản phẩm" @click="showProductDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div v-if="loadingProductDetail" class="text-center py-4">
@@ -221,7 +221,7 @@
             <h3 style="font-size:18px;font-weight:600;margin:0">Thuộc tính sản phẩm</h3>
             <div style="font-size:13px;color:var(--z-gray)">Quản lý màu sắc, kích thước, chất liệu, danh mục và nhà cung cấp</div>
           </div>
-          <button class="z-icon-btn" @click="showAttrModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng quản lý thuộc tính" @click="showAttrModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="row g-3">
@@ -240,7 +240,7 @@
                   <span :style="{ width:'16px', height:'16px', borderRadius:'50%', background: c.hex, border:'1px solid var(--z-gray-border)', flexShrink:0 }"></span>
                   <span style="font-size:13px;flex:1">{{ c.name }}</span>
                   <code style="font-size:11px;color:var(--z-gray)">{{ c.hex }}</code>
-                  <button class="z-icon-btn-sm" @click="deleteColor(c)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-icon-btn-sm" :aria-label="`Xóa màu ${c.name}`" @click="deleteColor(c)"><i class="bi bi-x"></i></button>
                 </div>
               </div>
             </div>
@@ -257,7 +257,7 @@
               <div class="d-flex flex-wrap gap-2">
                 <div v-for="s in attrSizes" :key="s.id" class="z-chip">
                   {{ s.name }}
-                  <button class="z-chip-x" @click="deleteSize(s)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-chip-x" :aria-label="`Xóa kích thước ${s.name}`" @click="deleteSize(s)"><i class="bi bi-x"></i></button>
                 </div>
               </div>
             </div>
@@ -274,7 +274,7 @@
               <div class="d-flex flex-wrap gap-2">
                 <div v-for="m in attrMaterials" :key="m.id" class="z-chip">
                   {{ m.name }}
-                  <button class="z-chip-x" @click="deleteMaterial(m)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-chip-x" :aria-label="`Xóa chất liệu ${m.name}`" @click="deleteMaterial(m)"><i class="bi bi-x"></i></button>
                 </div>
               </div>
             </div>
@@ -291,7 +291,7 @@
               <div class="d-flex flex-wrap gap-2">
                 <div v-for="cat in attrCategories" :key="cat.id" class="z-chip">
                   {{ cat.name }}
-                  <button class="z-chip-x" @click="deleteCategory(cat)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-chip-x" :aria-label="`Xóa danh mục ${cat.name}`" @click="deleteCategory(cat)"><i class="bi bi-x"></i></button>
                 </div>
               </div>
             </div>
@@ -318,7 +318,7 @@
                     <td style="color:var(--z-gray)">{{ s.address }}</td>
                     <td>{{ s.phone }}</td>
                     <td style="color:var(--z-gray)">{{ s.email }}</td>
-                    <td><button class="z-icon-btn-sm" @click="deleteSupplier(s)"><i class="bi bi-x"></i></button></td>
+                    <td><button type="button" class="z-icon-btn-sm" :aria-label="`Xóa nhà cung cấp ${s.name}`" @click="deleteSupplier(s)"><i class="bi bi-x"></i></button></td>
                   </tr>
                 </tbody>
               </table>
@@ -333,7 +333,7 @@
       <div class="z-modal" style="max-width:700px">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">{{ editingId ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới' }}</h3>
-          <button class="z-icon-btn" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu sản phẩm" @click="showModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <!-- Product info -->
@@ -418,7 +418,7 @@
             </select>
             <input :value="formatPriceInput(v.giaBan)" type="text" inputmode="numeric" class="lm-input" placeholder="Giá bán" style="padding:6px 10px;font-size:12px;flex:1" @input="updateVariantPrice(v, 'giaBan', $event)">
             <input v-model.number="v.soLuong" type="number" class="lm-input" placeholder="SL" style="padding:6px 10px;font-size:12px;width:70px">
-            <button class="z-icon-btn" style="color:var(--z-accent);flex-shrink:0" @click="form.variants.splice(i, 1)">
+            <button type="button" class="z-icon-btn" aria-label="Xóa biến thể" style="color:var(--z-accent);flex-shrink:0" @click="form.variants.splice(i, 1)">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -451,12 +451,12 @@
         <div class="d-flex flex-wrap gap-2 mb-2">
           <div v-for="img in existingImages" :key="'e' + img.id" class="z-img-thumb">
             <img :src="img.url" alt="">
-            <button class="z-img-del" title="Xoá ảnh" @click="removeExistingImage(img)"><i class="bi bi-x"></i></button>
+            <button type="button" class="z-img-del" title="Xoá ảnh" aria-label="Xóa ảnh sản phẩm" @click="removeExistingImage(img)"><i class="bi bi-x"></i></button>
           </div>
           <div v-for="(p, i) in newImagePreviews" :key="'n' + i" class="z-img-thumb">
             <img :src="p" alt="">
             <span class="z-img-new">Mới</span>
-            <button class="z-img-del" title="Bỏ ảnh" @click="removeNewImage(i)"><i class="bi bi-x"></i></button>
+            <button type="button" class="z-img-del" title="Bỏ ảnh" aria-label="Bỏ ảnh mới" @click="removeNewImage(i)"><i class="bi bi-x"></i></button>
           </div>
           <label class="z-img-add">
             <i class="bi bi-plus-lg" style="font-size:18px"></i>

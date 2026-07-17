@@ -31,11 +31,8 @@ public class SecurityConfig {
     private static final String ROLE_ADMIN = "ROLE_Admin";
     private static final String ROLE_NHAN_VIEN = "ROLE_Nh\u00E2n vi\u00EAn";
     private static final String ROLE_NHANVIEN = "ROLE_NhanVien";
-    private static final String ROLE_QUAN_LY_KHO = "ROLE_Qu\u1EA3n l\u00FD kho";
-    private static final String ROLE_QUANLYKHO = "ROLE_QuanLyKho";
     private static final String[] ADMIN_ROLES = { ROLE_ADMIN };
     private static final String[] STAFF_ROLES = { ROLE_ADMIN, ROLE_NHAN_VIEN, ROLE_NHANVIEN };
-    private static final String[] INVENTORY_ROLES = { ROLE_ADMIN, ROLE_QUAN_LY_KHO, ROLE_QUANLYKHO };
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -67,7 +64,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/hoa-don/*/cancel-guest").permitAll()
                 .requestMatchers("/api/auth/me", "/api/auth/profile/**", "/api/hoa-don/my-orders").authenticated()
                 .requestMatchers("/api/customer-data/**").authenticated()
+                .requestMatchers("/api/customer-notifications/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/payment/order/**", "/api/hoa-don/*/tracking").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/hoa-don/search-by-phone").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/hoa-don/*").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/hoa-don/*/cancel").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/returns/mine").authenticated()
@@ -75,7 +74,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/returns/**").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/khach-hang/search").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/khach-hang/quick").hasAnyAuthority(STAFF_ROLES)
-                .requestMatchers("/api/dashboard/inventory").hasAnyAuthority(INVENTORY_ROLES)
+                .requestMatchers("/api/dashboard/inventory").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers("/api/dashboard/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers("/api/admin/**", "/api/khach-hang/**", "/api/nhan-vien/**",
                         "/api/thong-bao/**", "/api/voucher", "/api/voucher/**",
@@ -86,12 +85,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/lich-lam-viec/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/lich-lam-viec/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.DELETE, "/api/lich-lam-viec/**").hasAnyAuthority(ADMIN_ROLES)
-                .requestMatchers(HttpMethod.POST, "/api/vay/**").hasAnyAuthority(INVENTORY_ROLES)
-                .requestMatchers(HttpMethod.PUT, "/api/vay/**").hasAnyAuthority(INVENTORY_ROLES)
-                .requestMatchers(HttpMethod.DELETE, "/api/vay/**").hasAnyAuthority(INVENTORY_ROLES)
-                .requestMatchers(HttpMethod.POST, "/api/thuoc-tinh/**").hasAnyAuthority(INVENTORY_ROLES)
-                .requestMatchers(HttpMethod.PUT, "/api/thuoc-tinh/**").hasAnyAuthority(INVENTORY_ROLES)
-                .requestMatchers(HttpMethod.DELETE, "/api/thuoc-tinh/**").hasAnyAuthority(INVENTORY_ROLES)
+                .requestMatchers(HttpMethod.POST, "/api/vay/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.PUT, "/api/vay/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.DELETE, "/api/vay/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.POST, "/api/thuoc-tinh/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.PUT, "/api/thuoc-tinh/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.DELETE, "/api/thuoc-tinh/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/lich-lam-viec/nhan-vien").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/lich-lam-viec/**").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers("/api/support-chat/staff/**").hasAnyAuthority(STAFF_ROLES)

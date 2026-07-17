@@ -8,11 +8,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.imageio.ImageIO;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,6 +34,7 @@ public class ReturnExchangeService {
     public static final String PENDING = "CHO_DUYET";
     public static final String WAITING_FOR_GOODS = "CHO_NHAN_HANG";
     public static final String READY_TO_COMPLETE = "CHO_HOAN_TAT";
+    public static final String REFUND_PENDING = "CHO_XAC_NHAN_HOAN_TIEN";
     public static final String REJECTED = "TU_CHOI";
     public static final String SEND_BACK = "TRA_LAI_KHACH";
     public static final String EXCHANGED = "DA_DOI";
@@ -46,6 +51,8 @@ public class ReturnExchangeService {
     private final NhanVienRepository employeeRepo;
     private final HoaDonAuditLogRepository auditRepo;
     private final CurrentCustomerService currentCustomerService;
+    private final PaymentRefundService paymentRefundService;
+    private final InventoryMovementService inventoryMovementService;
 
     @Value("${app.upload.return-dir:}")
     private String configuredUploadDir;
@@ -168,8 +175,8 @@ public class ReturnExchangeService {
                 .ngayDuyet(LocalDateTime.now())
                 .ngayNhanHang(LocalDateTime.now())
                 .build());
-        finishInventory(request);
-        request.setNgayHoanTat(LocalDateTime.now());
+        boolean completed = completeRequest(request, safeRefundInfo);
+        if (completed) request.setNgayHoanTat(LocalDateTime.now());
         requestRepo.save(request);
         audit(request, "DOI_TRA_TAI_QUAY", employee.getHoVaTen(), "NhanVien", safeReason);
         return toMap(request, List.of());
@@ -219,15 +226,61 @@ public class ReturnExchangeService {
     public Map<String, Object> complete(Integer id, String note, Authentication authentication) {
         NhanVien employee = requireEmployee(authentication);
         YeuCauDoiTra request = locked(id);
-        requireStatus(request, READY_TO_COMPLETE);
+        if (EXCHANGE.equals(request.getLoaiYeuCau())) {
+            requireStatus(request, READY_TO_COMPLETE);
+        } else if (!READY_TO_COMPLETE.equals(request.getTrangThai())
+                && !REFUND_PENDING.equals(request.getTrangThai())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu không còn ở bước hoàn tiền");
+        }
         request.setNhanVienXuLy(employee);
         request.setGhiChuNhanVien(clean(note));
-        finishInventory(request);
-        request.setNgayHoanTat(LocalDateTime.now());
+        boolean completed = completeRequest(request, note);
+        if (completed) request.setNgayHoanTat(LocalDateTime.now());
         requestRepo.save(request);
-        audit(request, EXCHANGE.equals(request.getLoaiYeuCau()) ? "HOAN_TAT_DOI_HANG" : "HOAN_TAT_HOAN_TIEN",
+        String action = EXCHANGE.equals(request.getLoaiYeuCau())
+                ? "HOAN_TAT_DOI_HANG"
+                : completed ? "HOAN_TAT_HOAN_TIEN" : "YEU_CAU_HOAN_TIEN_DANG_XU_LY";
+        audit(request, action,
                 employee.getHoVaTen(), "NhanVien", note);
         return toMap(request, imageUrls(request.getId()));
+    }
+
+    private boolean completeRequest(YeuCauDoiTra request, String completionReference) {
+        if (RETURN.equals(request.getLoaiYeuCau())) {
+            BigDecimal amount = refundAmount(request);
+            PaymentRefundService.RefundOutcome outcome =
+                    paymentRefundService.refund(request, amount, completionReference);
+            request.setSoTienHoan(amount);
+            request.setMaGiaoDichHoan(outcome.reference());
+            request.setPhanHoiCong(outcome.message());
+            if (request.getNgayYeuCauHoan() == null) request.setNgayYeuCauHoan(LocalDateTime.now());
+            if (outcome.pending()) {
+                request.setTrangThai(REFUND_PENDING);
+                requestRepo.save(request);
+                return false;
+            }
+            paymentRefundService.recordSuccess(request, amount, outcome);
+        }
+        finishInventory(request);
+        return true;
+    }
+
+    private BigDecimal refundAmount(YeuCauDoiTra request) {
+        HoaDonChiTiet detail = request.getHoaDonChiTiet();
+        BigDecimal unitPrice = Optional.ofNullable(detail.getDonGia()).orElse(BigDecimal.ZERO);
+        BigDecimal lineAmount = unitPrice.multiply(BigDecimal.valueOf(request.getSoLuong()));
+        List<HoaDonChiTiet> allLines = orderDetailRepo.findByHoaDonId(request.getHoaDon().getId());
+        BigDecimal goodsTotal = allLines.stream()
+                .map(line -> Optional.ofNullable(line.getDonGia()).orElse(BigDecimal.ZERO)
+                        .multiply(BigDecimal.valueOf(value(line.getSoLuong()))))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal voucherDiscount = Optional.ofNullable(request.getHoaDon().getGiamGiaVoucher())
+                .orElse(BigDecimal.ZERO);
+        BigDecimal allocatedDiscount = goodsTotal.compareTo(BigDecimal.ZERO) > 0
+                ? voucherDiscount.multiply(lineAmount).divide(goodsTotal, 0, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal result = lineAmount.subtract(allocatedDiscount);
+        return result.max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
     }
 
     private void finishInventory(YeuCauDoiTra request) {
@@ -246,16 +299,32 @@ public class ReturnExchangeService {
 
         int quantity = request.getSoLuong();
         VayChiTiet oldVariant = locked.get(oldId);
-        oldVariant.setSoLuong(value(oldVariant.getSoLuong()) + quantity);
+        int oldBefore = value(oldVariant.getSoLuong());
+        int oldAfter = oldBefore + quantity;
+        oldVariant.setSoLuong(oldAfter);
         variantRepo.save(oldVariant);
+        inventoryMovementService.record(
+                oldVariant, oldBefore, oldAfter, "NHAN_HANG_DOI_TRA",
+                "RETURN-" + request.getId(),
+                request.getNhanVienXuLy() != null ? request.getNhanVienXuLy().getHoVaTen() : "System",
+                "Nhập lại sản phẩm khách gửi trả"
+        );
 
         if (EXCHANGE.equals(request.getLoaiYeuCau())) {
             VayChiTiet newVariant = locked.get(newId);
             if (value(newVariant.getSoLuong()) < quantity) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Biến thể đổi không còn đủ tồn kho");
             }
-            newVariant.setSoLuong(value(newVariant.getSoLuong()) - quantity);
+            int newBefore = value(newVariant.getSoLuong());
+            int newAfter = newBefore - quantity;
+            newVariant.setSoLuong(newAfter);
             variantRepo.save(newVariant);
+            inventoryMovementService.record(
+                    newVariant, newBefore, newAfter, "XUAT_HANG_DOI",
+                    "RETURN-" + request.getId(),
+                    request.getNhanVienXuLy() != null ? request.getNhanVienXuLy().getHoVaTen() : "System",
+                    "Xuất biến thể thay thế cho khách"
+            );
             request.setTrangThai(EXCHANGED);
         } else {
             request.setTrangThai(REFUNDED);
@@ -387,6 +456,10 @@ public class ReturnExchangeService {
         map.put("reason", request.getLyDo());
         map.put("condition", request.getTinhTrangHang());
         map.put("refundInfo", request.getThongTinHoanTien());
+        map.put("refundAmount", request.getSoTienHoan());
+        map.put("refundTransactionId", request.getMaGiaoDichHoan());
+        map.put("gatewayResponse", request.getPhanHoiCong());
+        map.put("refundRequestedAt", request.getNgayYeuCauHoan());
         map.put("rejectionReason", request.getLyDoTuChoi());
         map.put("staffNote", request.getGhiChuNhanVien());
         map.put("images", images);
@@ -445,7 +518,9 @@ public class ReturnExchangeService {
                     throw badRequest("Tệp tải lên không phải ảnh hợp lệ");
                 }
                 String filename = "return_" + request.getId() + "_" + UUID.randomUUID() + extension;
-                Files.copy(image.getInputStream(), directory.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+                Path storedFile = directory.resolve(filename);
+                Files.copy(image.getInputStream(), storedFile, StandardCopyOption.REPLACE_EXISTING);
+                registerImageRollback(storedFile);
                 requestImageRepo.save(AnhDoiTra.builder()
                         .yeuCau(request)
                         .anhUrl("/images/returns/" + filename)
@@ -455,6 +530,21 @@ public class ReturnExchangeService {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu ảnh đổi trả");
             }
         }
+    }
+
+    private void registerImageRollback(Path storedFile) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_COMMITTED) return;
+                try {
+                    Files.deleteIfExists(storedFile);
+                } catch (IOException ignored) {
+                    // Database rollback remains authoritative; orphan cleanup can be retried later.
+                }
+            }
+        });
     }
 
     private Path resolveUploadDir() {

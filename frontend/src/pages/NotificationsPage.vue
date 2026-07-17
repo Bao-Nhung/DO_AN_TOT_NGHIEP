@@ -130,7 +130,7 @@
 
           <!-- Pagination -->
           <div v-if="totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
-            <button class="lm-pagination-btn" :disabled="currentPage === 1" @click="currentPage--">
+            <button type="button" class="lm-pagination-btn" aria-label="Trang thông báo trước" :disabled="currentPage === 1" @click="currentPage--">
               <i class="bi bi-chevron-left"></i>
             </button>
             <button 
@@ -142,7 +142,7 @@
             >
               {{ page }}
             </button>
-            <button class="lm-pagination-btn" :disabled="currentPage === totalPages" @click="currentPage++">
+            <button type="button" class="lm-pagination-btn" aria-label="Trang thông báo sau" :disabled="currentPage === totalPages" @click="currentPage++">
               <i class="bi bi-chevron-right"></i>
             </button>
           </div>
@@ -156,12 +156,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
-import { api } from '@/composables/useApi'
+import { api, useAuth } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
+const { isLoggedIn } = useAuth()
 
 const loading = ref(false)
 const notifs = ref([])
@@ -170,8 +171,6 @@ const searchQuery = ref('')
 const expandedId = ref(null)
 const currentPage = ref(1)
 const itemsPerPage = 8
-
-const readIds = ref(JSON.parse(localStorage.getItem('read_notif_ids') || '[]'))
 
 const filterTabs = [
   { label: 'Tất cả', value: 'all' },
@@ -182,15 +181,24 @@ const filterTabs = [
 
 onMounted(() => {
   loadNotifications()
+  window.addEventListener('zestia-auth-changed', loadNotifications)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('zestia-auth-changed', loadNotifications)
 })
 
 async function loadNotifications() {
   loading.value = true
   try {
-    const list = await api().getThongBaoActive()
+    const authenticated = isLoggedIn()
+    const list = authenticated
+      ? await api().getCustomerNotifications()
+      : await api().getThongBaoActive()
+    const guestReadIds = authenticated ? new Set() : loadGuestReadIds()
     notifs.value = list.map(n => ({
       ...n,
-      read: readIds.value.includes(n.id)
+      read: authenticated ? Boolean(n.read) : guestReadIds.has(n.id)
     }))
   } catch (e) {
     console.error('Lỗi khi tải thông báo', e)
@@ -207,7 +215,7 @@ watch([currentTab, searchQuery], () => {
 
 // Counts
 const unreadCount = computed(() => {
-  return notifs.value.filter(n => !readIds.value.includes(n.id)).length
+  return notifs.value.filter(n => !n.read).length
 })
 
 function getCountByTab(tabValue) {
@@ -234,34 +242,52 @@ const paginatedNotifs = computed(() => {
 })
 
 // Actions
-function toggleExpand(n) {
+async function toggleExpand(n) {
   if (expandedId.value === n.id) {
     expandedId.value = null
   } else {
     expandedId.value = n.id
-    if (!readIds.value.includes(n.id)) {
-      readIds.value.push(n.id)
+    if (!n.read) {
       n.read = true
-      localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
-      window.dispatchEvent(new Event('notifs-changed'))
+      if (isLoggedIn()) {
+        try {
+          await api().markCustomerNotificationRead(n.id)
+          window.dispatchEvent(new Event('notifs-changed'))
+        } catch (e) {
+          n.read = false
+          toast.showToast(e.error || e.message || 'Không thể đánh dấu thông báo', 'error')
+        }
+      } else {
+        saveGuestReadIds([...loadGuestReadIds(), n.id])
+        window.dispatchEvent(new Event('notifs-changed'))
+      }
     }
   }
 }
 
-function markAllRead() {
-  let countUpdated = 0
-  notifs.value.forEach(n => {
-    if (!readIds.value.includes(n.id)) {
-      readIds.value.push(n.id)
-      n.read = true
-      countUpdated++
-    }
-  })
-  if (countUpdated > 0) {
-    localStorage.setItem('read_notif_ids', JSON.stringify(readIds.value))
+async function markAllRead() {
+  if (unreadCount.value === 0) return
+  try {
+    if (isLoggedIn()) await api().markAllCustomerNotificationsRead()
+    else saveGuestReadIds(notifs.value.map(n => n.id))
+    notifs.value.forEach(n => { n.read = true })
     window.dispatchEvent(new Event('notifs-changed'))
     toast.showToast('Đã đánh dấu tất cả thông báo là đã đọc', 'success')
+  } catch (e) {
+    toast.showToast(e.error || e.message || 'Không thể đánh dấu thông báo', 'error')
   }
+}
+
+function loadGuestReadIds() {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem('zestia_guest_read_notifications') || '[]').map(Number))
+  } catch {
+    return new Set()
+  }
+}
+
+function saveGuestReadIds(ids) {
+  sessionStorage.setItem('zestia_guest_read_notifications', JSON.stringify([...new Set(ids.map(Number))]))
 }
 
 // Helper methods
@@ -391,7 +417,7 @@ function formatDateTime(val) {
   padding: 3px 10px;
   border-radius: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 .badge-type.HeThong {
   background: #e0f2fe;

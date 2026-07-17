@@ -66,8 +66,10 @@ public class ThuocTinhController {
 
     @DeleteMapping("/mau-sac/{id}")
     public ResponseEntity<?> deleteMauSac(@PathVariable Integer id) {
-        mauSacRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return mauSacRepo.findById(id).map(item -> {
+            item.setTrangThai((byte) 0);
+            return ResponseEntity.ok(mauSacRepo.save(item));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     // --- Kích thước CRUD ---
@@ -90,8 +92,10 @@ public class ThuocTinhController {
 
     @DeleteMapping("/kich-thuoc/{id}")
     public ResponseEntity<?> deleteKichThuoc(@PathVariable Integer id) {
-        kichThuocRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return kichThuocRepo.findById(id).map(item -> {
+            item.setTrangThai((byte) 0);
+            return ResponseEntity.ok(kichThuocRepo.save(item));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     // --- Chất liệu CRUD ---
@@ -114,8 +118,10 @@ public class ThuocTinhController {
 
     @DeleteMapping("/chat-lieu/{id}")
     public ResponseEntity<?> deleteChatLieu(@PathVariable Integer id) {
-        chatLieuRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return chatLieuRepo.findById(id).map(item -> {
+            item.setTrangThai((byte) 0);
+            return ResponseEntity.ok(chatLieuRepo.save(item));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     // --- Loại váy CRUD ---
@@ -138,8 +144,10 @@ public class ThuocTinhController {
 
     @DeleteMapping("/loai-vay/{id}")
     public ResponseEntity<?> deleteLoaiVay(@PathVariable Integer id) {
-        loaiVayRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return loaiVayRepo.findById(id).map(item -> {
+            item.setTrangThai((byte) 0);
+            return ResponseEntity.ok(loaiVayRepo.save(item));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     // --- Nhà cung cấp CRUD ---
@@ -165,7 +173,9 @@ public class ThuocTinhController {
 
     @DeleteMapping("/nha-cung-cap/{id}")
     public ResponseEntity<?> deleteNhaCungCap(@PathVariable Integer id) {
-        nhaCungCapRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+        return nhaCungCapRepo.findById(id).map(item -> {
+            item.setTrangThai((byte) 0);
+            return ResponseEntity.ok(nhaCungCapRepo.save(item));
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

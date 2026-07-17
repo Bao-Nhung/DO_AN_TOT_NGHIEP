@@ -52,7 +52,9 @@ public class CustomerDataService {
             for (Map<String, Object> item : requestedItems) {
                 Integer variantId = toInt(item.get("variantId"));
                 Integer quantity = toInt(item.get("qty"));
-                if (variantId == null || quantity == null || quantity <= 0) continue;
+                if (variantId == null || quantity == null || quantity <= 0 || quantity > 100) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số lượng sản phẩm trong giỏ không hợp lệ");
+                }
                 quantities.merge(variantId, quantity, Integer::sum);
             }
         }

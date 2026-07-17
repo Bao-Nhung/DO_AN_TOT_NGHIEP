@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -95,10 +97,11 @@ public class ReviewService {
     public Map<String, Object> eligibility(Integer productId, Authentication authentication) {
         KhachHang customer = currentCustomerService.require(authentication);
         List<Integer> deliveredIds = orderDetailRepo.findDeliveredOrderIdsForCustomerAndProduct(customer.getId(), productId);
-        List<Map<String, Object>> orders = deliveredIds.stream()
+        List<Integer> eligibleIds = deliveredIds.stream()
                 .filter(orderId -> !reviewRepo.existsByKhachHangIdAndVayIdAndHoaDonId(customer.getId(), productId, orderId))
-                .map(orderRepo::findById)
-                .flatMap(Optional::stream)
+                .toList();
+        List<Map<String, Object>> orders = orderRepo.findAllById(eligibleIds).stream()
+                .sorted(Comparator.comparing(HoaDon::getNgayTao, Comparator.nullsLast(Comparator.reverseOrder())))
                 .map(order -> {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("id", order.getId());
@@ -186,7 +189,7 @@ public class ReviewService {
     private Map<String, Object> toMap(DanhGia review, Map<Integer, String> productImages) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", review.getId());
-        map.put("customerName", review.getKhachHang().getHoVaTen());
+        map.put("customerName", CustomerPrivacy.maskName(review.getKhachHang().getHoVaTen()));
         map.put("productId", review.getVay().getId());
         map.put("productName", review.getVay().getTenVay());
         map.put("productImage", productImages.get(review.getVay().getId()));
@@ -194,7 +197,6 @@ public class ReviewService {
         map.put("content", review.getNoiDung());
         map.put("images", parseImages(review.getAnhDanhGia()));
         map.put("verifiedPurchase", review.getHoaDon() != null);
-        map.put("orderCode", review.getHoaDon() != null ? review.getHoaDon().getMaHoaDon() : null);
         map.put("createdAt", review.getNgayTao());
         return map;
     }
@@ -259,13 +261,31 @@ public class ReviewService {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tệp tải lên không phải ảnh hợp lệ");
                 }
                 String filename = "review_" + productId + "_" + customerId + "_" + UUID.randomUUID() + extension;
-                Files.copy(image.getInputStream(), directory.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+                Path storedFile = directory.resolve(filename);
+                Files.copy(image.getInputStream(), storedFile, StandardCopyOption.REPLACE_EXISTING);
+                registerRollbackDelete(storedFile);
                 urls.add("/images/reviews/" + filename);
             } catch (IOException e) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể lưu ảnh đánh giá");
             }
         }
         return urls;
+    }
+
+    private void registerRollbackDelete(Path path) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException ignored) {
+                        // The database rollback remains authoritative; an orphan cleanup can run later.
+                    }
+                }
+            }
+        });
     }
 
     private Path resolveReviewUploadDir() {

@@ -38,4 +38,19 @@ public interface LichLamViecRepository extends JpaRepository<LichLamViec, Intege
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT l FROM LichLamViec l WHERE l.id = :id")
     Optional<LichLamViec> findByIdForUpdate(@Param("id") Integer id);
+
+    @Query("""
+            SELECT COUNT(l) FROM LichLamViec l
+            WHERE l.nhanVien.id = :employeeId
+              AND l.ngayLam = :date
+              AND (:excludedId IS NULL OR l.id <> :excludedId)
+              AND COALESCE(l.trangThai, 0) <> 2
+              AND l.gioBatDau < :endTime
+              AND l.gioKetThuc > :startTime
+            """)
+    long countOverlapping(@Param("employeeId") Integer employeeId,
+                          @Param("date") LocalDate date,
+                          @Param("startTime") LocalTime startTime,
+                          @Param("endTime") LocalTime endTime,
+                          @Param("excludedId") Integer excludedId);
 }

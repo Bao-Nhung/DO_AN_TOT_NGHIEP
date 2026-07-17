@@ -9,9 +9,9 @@
             Thương hiệu thời trang Việt Nam mang phong cách trẻ trung, hiện đại và thanh lịch cho phụ nữ hiện đại.
           </p>
           <div class="d-flex gap-2 mt-3">
-            <a class="lm-social-link"><i class="bi bi-instagram"></i></a>
-            <a class="lm-social-link"><i class="bi bi-facebook"></i></a>
-            <a class="lm-social-link"><i class="bi bi-tiktok"></i></a>
+            <a class="lm-social-link" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+            <a class="lm-social-link" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+            <a class="lm-social-link" href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer" aria-label="TikTok"><i class="bi bi-tiktok"></i></a>
           </div>
         </div>
 
@@ -30,7 +30,7 @@
           <h4 class="lm-footer-heading mb-4">Hỗ Trợ</h4>
           <ul class="list-unstyled d-flex flex-column gap-2">
             <li><RouterLink class="lm-footer-link" to="/about">Về chúng tôi</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/checkout">Hướng dẫn mua hàng</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/policies#shopping-guide">Hướng dẫn mua hàng</RouterLink></li>
             <li><RouterLink class="lm-footer-link" to="/policies#policy-RETURN">Chính sách đổi trả</RouterLink></li>
             <li><RouterLink class="lm-footer-link" to="/policies#policy-SHIPPING">Vận chuyển</RouterLink></li>
             <li><RouterLink class="lm-footer-link" to="/tracking">Theo dõi đơn hàng</RouterLink></li>
@@ -40,22 +40,22 @@
         <div class="col-lg-3">
           <h4 class="lm-footer-heading mb-4">Liên Hệ</h4>
           <ul class="list-unstyled d-flex flex-column gap-2">
-            <li><a class="lm-footer-link">hello@zestia.vn</a></li>
-            <li><a class="lm-footer-link">1800 9999 (miễn phí)</a></li>
-            <li><a class="lm-footer-link">FPT Polytechnic, Hà Nội</a></li>
-            <li><a class="lm-footer-link">T2-T7: 9:00-21:00</a></li>
+            <li><a class="lm-footer-link" href="mailto:nguyenthanh.hn090307@gmail.com">nguyenthanh.hn090307@gmail.com</a></li>
+            <li><a class="lm-footer-link" href="tel:+84869167207">0869 167 207</a></li>
+            <li><span class="lm-footer-link">FPT Polytechnic, Hà Nội</span></li>
+            <li><span class="lm-footer-link">T2-T7: 9:00-21:00</span></li>
           </ul>
         </div>
       </div>
 
       <!-- Payment Badges -->
       <div class="d-flex flex-wrap align-items-center gap-3 mb-4 pb-4" style="border-bottom:1px solid var(--z-gray-border)">
-        <span style="font-size:12px;font-weight:600;color:var(--z-gray);text-transform:uppercase;letter-spacing:0.08em">Thanh toán bảo mật:</span>
+        <span style="font-size:12px;font-weight:600;color:var(--z-gray);text-transform:uppercase;letter-spacing:0">Phương thức thanh toán:</span>
         <div class="d-flex gap-2 flex-wrap">
-          <span class="z-payment-badge" style="font-weight:700;color:#a50064;font-size:12px;letter-spacing:-0.02em">
+          <span class="z-payment-badge" style="font-weight:700;color:#a50064;font-size:12px;letter-spacing:0">
             MoMo
           </span>
-          <span class="z-payment-badge" style="font-weight:700;color:#0068FF;font-size:12px;letter-spacing:-0.02em">
+          <span class="z-payment-badge" style="font-weight:700;color:#0068FF;font-size:12px;letter-spacing:0">
             ZaloPay
           </span>
           <span class="z-payment-badge" style="font-weight:600;color:var(--z-gray);font-size:11px">

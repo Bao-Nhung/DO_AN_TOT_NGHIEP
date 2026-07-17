@@ -1,6 +1,6 @@
 <template>
   <div class="z-ai-chat">
-    <button v-if="!open" class="z-ai-toggle" title="Hỗ trợ Zestia" @click="open = true">
+    <button v-if="!open" type="button" class="z-ai-toggle" title="Hỗ trợ Zestia" aria-label="Mở hỗ trợ Zestia" @click="open = true">
       <i class="bi bi-chat-dots"></i>
     </button>
 
@@ -11,7 +11,7 @@
           <span v-if="humanMode">{{ supportStatusText }}</span>
           <span v-else>Hỗ trợ sản phẩm, voucher, đơn hàng</span>
         </div>
-        <button class="z-ai-close" title="Đóng" @click="open = false">
+        <button type="button" class="z-ai-close" title="Đóng" aria-label="Đóng hỗ trợ Zestia" @click="open = false">
           <i class="bi bi-x-lg"></i>
         </button>
       </header>
@@ -39,6 +39,8 @@
         <button type="button" @click="backToAi"><i class="bi bi-stars"></i>Quay lại ChatAI</button>
       </div>
 
+      <p v-if="!humanMode" class="z-ai-privacy">Không nhập mật khẩu, OTP hoặc thông tin thanh toán. Nội dung câu hỏi đã che dữ liệu nhận dạng có thể được gửi tới OpenAI.</p>
+
       <form v-if="!humanMode || supportStatus !== 'CLOSED'" class="z-ai-form" @submit.prevent="send">
         <input
           v-model="draft"
@@ -47,7 +49,7 @@
           :disabled="loading"
           maxlength="1000"
         >
-        <button class="z-ai-send" title="Gửi" :disabled="loading || draft.trim().length < 2">
+        <button class="z-ai-send" title="Gửi" aria-label="Gửi tin nhắn" :disabled="loading || draft.trim().length < 2">
           <i class="bi bi-send"></i>
         </button>
       </form>
@@ -358,6 +360,7 @@ async function scrollToBottom() {
 }
 .z-ai-handoff button:hover { color: var(--z-accent); }
 .z-ai-handoff button i { margin-right: 5px; }
+.z-ai-privacy { margin: 0; padding: 7px 12px; border-top: 1px solid var(--z-gray-border); color: var(--z-gray); font-size: 10px; line-height: 1.35; }
 
 .z-ai-form {
   padding: 12px;

@@ -62,12 +62,44 @@
           <p class="lm-eyebrow mb-2">Thông Tin Cửa Hàng</p>
           <h2 class="lm-section-title">Liên hệ <em>với chúng tôi</em></h2>
         </div>
-        <div class="row g-4">
+        <div class="row g-4 mb-5">
           <div v-for="info in contactInfo" :key="info.label" class="col-md-6 col-lg-3">
             <div class="text-center" style="padding:24px">
               <i class="bi" :class="info.icon" style="font-size:28px;color:var(--z-accent);margin-bottom:12px;display:block"></i>
               <h5 style="font-size:14px;font-weight:600;color:var(--z-dark);margin-bottom:6px">{{ info.label }}</h5>
               <p style="font-size:13px;color:var(--z-gray);margin:0">{{ info.value }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Google Maps Store Branch Integration -->
+        <div class="row g-4 align-items-center p-4 bg-light rounded border">
+          <div class="col-lg-5">
+            <div class="p-4 bg-white rounded shadow-sm border">
+              <h4 style="font-size:16px;font-weight:700;color:var(--z-dark)" class="mb-3">
+                <i class="bi bi-geo-alt-fill text-danger me-2"></i>Zestia Flagship Showroom
+              </h4>
+              <p style="font-size:13px;color:var(--z-gray)" class="mb-2">
+                <strong>Địa chỉ:</strong> Trịnh Văn Bô, Nam Từ Liêm, Hà Nội
+              </p>
+              <p style="font-size:13px;color:var(--z-gray)" class="mb-2">
+                <strong>Hotline:</strong> 0869 167 207
+              </p>
+              <p style="font-size:13px;color:var(--z-gray)" class="mb-3">
+                <strong>Giờ mở cửa:</strong> 08:00 - 22:00 (Hàng ngày)
+              </p>
+              <a href="https://maps.google.com/?q=Trịnh+Văn+Bô+Nam+Từ+Liêm+Hà+Nội" target="_blank" rel="noopener noreferrer" class="lm-btn-outline w-100 text-center text-decoration-none" style="font-size:12px">
+                <i class="bi bi-map me-1"></i> Xem chỉ đường trên Google Maps
+              </a>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="rounded overflow-hidden shadow-sm border" style="height:320px">
+              <iframe
+                title="Bản đồ Showroom Zestia"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3723.863981044336!2d105.74459841540243!3d21.034716592835948!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x313454b991d80fd5%3A0x10594511244f04ee!2sTr%E1%BB%8Bnh%20V%C4%83n%20B%C3%B4!5e0!2m3!1svi!2svn!4v1689000000000!5m2!1svi!2svn"
+                width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+              </iframe>
             </div>
           </div>
         </div>

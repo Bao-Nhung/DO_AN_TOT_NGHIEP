@@ -201,6 +201,9 @@
                   {{ change >= 0 ? fmtPrice(change) : 'Thiếu ' + fmtPrice(-change) }}
                 </strong>
               </div>
+              <div v-if="tienKhachDua > 0 && change < 0" class="mt-2 p-2 rounded text-center" style="font-size:12px;font-weight:600;background:#FFEBEE;color:#C62828;border:1px solid #FFCDD2">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>Số tiền khách đưa chưa đủ (Còn thiếu {{ fmtPrice(-change) }})
+              </div>
             </div>
 
             <!-- Transfer: chọn ví + QR -->

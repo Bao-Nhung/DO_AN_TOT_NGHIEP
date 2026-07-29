@@ -518,7 +518,35 @@ async function applyBestVoucher(force = false) {
   }
 }
 
-watch(subtotal, () => applyBestVoucher())
+let voucherRefreshTimer
+watch(subtotal, () => {
+  clearTimeout(voucherRefreshTimer)
+  voucherRefreshTimer = setTimeout(async () => {
+    if (subtotal.value <= 0) {
+      removeVoucher()
+      autoVoucherDisabled.value = false
+      return
+    }
+    if (autoVoucherDisabled.value && appliedVoucher.value) {
+      try {
+        const res = await api().applyVoucher(appliedVoucher.value, subtotal.value)
+        if (!res?.valid) {
+          showToast(`Đã tự động gỡ voucher ${appliedVoucher.value} do đơn hàng không còn đủ điều kiện tối thiểu.`, 'warning')
+          removeVoucher()
+          autoVoucherDisabled.value = false
+          await applyBestVoucher(true)
+        } else {
+          discount.value = Number(res.giamGia) || 0
+          voucherMsg.value = `${res.tenGiamGia} — giảm ${formatPrice(discount.value)}`
+        }
+      } catch (e) {
+        removeVoucher()
+      }
+    } else {
+      await applyBestVoucher()
+    }
+  }, 150)
+})
 
 const showConfirmModal = ref(false)
 const checkoutRequestId = ref('')

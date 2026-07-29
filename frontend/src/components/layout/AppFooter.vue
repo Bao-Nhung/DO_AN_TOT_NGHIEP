@@ -6,7 +6,7 @@
         <div class="col-lg-4">
           <div class="lm-footer-logo mb-3">Zest<span class="lm-gold-text">ia</span></div>
           <p style="font-size:14px;font-weight:400;color:var(--z-gray);line-height:1.7;max-width:280px">
-            Thương hiệu thời trang Việt Nam mang phong cách trẻ trung, hiện đại và thanh lịch cho phụ nữ hiện đại.
+            {{ t('footerAboutText') }}
           </p>
           <div class="d-flex gap-2 mt-3">
             <a class="lm-social-link" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
@@ -16,34 +16,30 @@
         </div>
 
         <div class="col-6 col-lg-2">
-          <h4 class="lm-footer-heading mb-4">Sản Phẩm</h4>
+          <h4 class="lm-footer-heading mb-4">{{ t('products') }}</h4>
           <ul class="list-unstyled d-flex flex-column gap-2">
-            <li><RouterLink class="lm-footer-link" to="/collections?sort=newest">Sản phẩm mới</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/collections?sort=bestseller">Bán chạy</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/collections?occasion=party">Váy dự tiệc</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/collections?occasion=work">Váy công sở</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/lookbook">Lookbook theo dịp</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections?sort=newest">{{ t('products') }}</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections?sort=bestseller">{{ t('lookbook') }}</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/collections">{{ t('reviews') }}</RouterLink></li>
           </ul>
         </div>
 
         <div class="col-6 col-lg-2">
-          <h4 class="lm-footer-heading mb-4">Hỗ Trợ</h4>
+          <h4 class="lm-footer-heading mb-4">{{ t('footerPolicies') }}</h4>
           <ul class="list-unstyled d-flex flex-column gap-2">
-            <li><RouterLink class="lm-footer-link" to="/about">Về chúng tôi</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/policies#shopping-guide">Hướng dẫn mua hàng</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/policies#policy-RETURN">Chính sách đổi trả</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/policies#policy-SHIPPING">Vận chuyển</RouterLink></li>
-            <li><RouterLink class="lm-footer-link" to="/tracking">Theo dõi đơn hàng</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/about">{{ t('about') }}</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/policies#policy-RETURN">{{ t('footerPolicies') }}</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/tracking">{{ t('tracking') }}</RouterLink></li>
           </ul>
         </div>
 
         <div class="col-lg-3">
-          <h4 class="lm-footer-heading mb-4">Liên Hệ</h4>
+          <h4 class="lm-footer-heading mb-4">{{ t('footerContact') }}</h4>
           <ul class="list-unstyled d-flex flex-column gap-2">
             <li><a class="lm-footer-link" href="mailto:nguyenthanh.hn090307@gmail.com">nguyenthanh.hn090307@gmail.com</a></li>
             <li><a class="lm-footer-link" href="tel:+84869167207">0869 167 207</a></li>
             <li><span class="lm-footer-link">FPT Polytechnic, Hà Nội</span></li>
-            <li><span class="lm-footer-link">T2-T7: 9:00-21:00</span></li>
+            <li><span class="lm-footer-link">{{ t('showroomHours') }}</span></li>
           </ul>
         </div>
       </div>
@@ -73,6 +69,8 @@
 </template>
 
 <script setup>
+import { useI18n } from '@/composables/useI18n'
+const { t } = useI18n()
 </script>
 
 <style scoped>

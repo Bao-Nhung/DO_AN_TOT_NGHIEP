@@ -19,16 +19,21 @@
       </nav>
 
       <div class="mt-auto px-3 py-3" style="border-top:1px solid var(--z-gray-border)">
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <div style="width:36px;height:36px;border-radius:50%;background:var(--z-accent);display:flex;align-items:center;justify-content:center;color:var(--z-white);font-weight:600;font-size:14px">{{ adminInitial }}</div>
-          <div>
-            <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ adminName }}</div>
-            <div style="font-size:11px;color:var(--z-gray)">{{ adminEmail }}</div>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width:34px;height:34px;border-radius:50%;background:var(--z-accent);display:flex;align-items:center;justify-content:center;color:var(--z-white);font-weight:600;font-size:13px">{{ adminInitial }}</div>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--z-dark)">{{ adminName }}</div>
+              <div style="font-size:10px;color:var(--z-gray);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ adminEmail }}</div>
+            </div>
           </div>
+          <button type="button" class="lm-lang-btn" @click="toggleLocale" :title="isEn ? 'Switch to VI' : 'Switch to EN'">
+            <span class="lm-lang-badge">{{ isEn ? 'EN 🇬🇧' : 'VI 🇻🇳' }}</span>
+          </button>
         </div>
         <button class="z-admin-nav-item w-100 text-start" style="border:none;background:none;padding:10px 12px" @click="handleLogout">
           <i class="bi bi-box-arrow-right"></i>
-          <span>Đăng xuất</span>
+          <span>{{ isEn ? 'Logout' : 'Đăng xuất' }}</span>
         </button>
       </div>
     </aside>
@@ -50,7 +55,9 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/composables/useApi'
 import { useAuth } from '@/composables/useApi'
+import { useI18n } from '@/composables/useI18n'
 
+const { toggleLocale, isEn } = useI18n()
 const pendingCount = ref(0)
 const shiftCanOperate = ref(false)
 const sidebarOpen = ref(false)
@@ -197,5 +204,28 @@ function handleLogout() {
     background: var(--z-white); color: var(--z-dark); font-size: 20px;
   }
   .z-admin-sidebar-backdrop { position: fixed; z-index: 99; inset: 0; display: block; background: rgba(0,0,0,.35); }
+}
+
+.lm-lang-btn {
+  border: 1px solid var(--z-gray-border);
+  background: var(--z-bg-alt);
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--z-dark);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.2s ease;
+}
+.lm-lang-btn:hover {
+  background: var(--z-accent);
+  color: var(--z-white);
+  border-color: var(--z-accent);
+}
+.lm-lang-badge {
+  letter-spacing: 0.5px;
 }
 </style>

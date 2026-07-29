@@ -7,18 +7,23 @@
       </RouterLink>
 
       <ul class="d-none d-xl-flex list-unstyled mb-0 gap-3 align-items-center">
-        <li><RouterLink class="lm-nav-link" to="/">Trang Chủ</RouterLink></li>
-        <li><RouterLink class="lm-nav-link" to="/collections">Sản Phẩm</RouterLink></li>
-        <li><RouterLink class="lm-nav-link" to="/lookbook">Lookbook</RouterLink></li>
-        <li><RouterLink class="lm-nav-link" to="/reviews">Đánh Giá</RouterLink></li>
-        <li><RouterLink class="lm-nav-link" to="/tracking">Tra Cứu Đơn</RouterLink></li>
-        <li><RouterLink v-if="isLoggedIn()" class="lm-nav-link" to="/my-orders">Đơn Hàng</RouterLink></li>
-        <li><RouterLink class="lm-nav-link" to="/wishlist">Yêu Thích</RouterLink></li>
-        <li><RouterLink class="lm-nav-link" to="/about">Thông Tin</RouterLink></li>
-        <li><RouterLink class="lm-nav-link" to="/profile">Tài Khoản</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/">{{ t('home') }}</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/collections">{{ t('products') }}</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/lookbook">{{ t('lookbook') }}</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/reviews">{{ t('reviews') }}</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/tracking">{{ t('tracking') }}</RouterLink></li>
+        <li><RouterLink v-if="isLoggedIn()" class="lm-nav-link" to="/my-orders">{{ t('myOrders') }}</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/wishlist">{{ t('wishlist') }}</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/about">{{ t('about') }}</RouterLink></li>
+        <li><RouterLink class="lm-nav-link" to="/profile">{{ t('account') }}</RouterLink></li>
       </ul>
 
       <div class="d-flex align-items-center gap-1">
+        <!-- Language Switcher Button -->
+        <button type="button" class="lm-lang-btn ms-1 me-2" @click="toggleLocale" :title="isEn ? 'Chuyển sang Tiếng Việt' : 'Switch to English'">
+          <span class="lm-lang-badge">{{ isEn ? 'EN 🇬🇧' : 'VI 🇻🇳' }}</span>
+        </button>
+
         <button type="button" class="lm-nav-icon-btn" @click="toggleSearch" title="Tìm kiếm" aria-label="Tìm kiếm" :aria-expanded="searchOpen">
           <i class="bi bi-search"></i>
         </button>
@@ -35,15 +40,15 @@
           
           <div v-if="notifOpen" class="z-notif-dropdown shadow">
             <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
-              <strong style="font-size:12px;color:var(--z-dark)">Thông báo</strong>
-              <button @click="markAllAsRead" style="border:none;background:none;font-size:11px;color:var(--z-accent);font-weight:600;cursor:pointer">Đọc hết</button>
+              <strong style="font-size:12px;color:var(--z-dark)">{{ t('notifTitle') }}</strong>
+              <button @click="markAllAsRead" style="border:none;background:none;font-size:11px;color:var(--z-accent);font-weight:600;cursor:pointer">{{ t('notifMarkAll') }}</button>
             </div>
             <div class="z-notif-list">
               <div v-if="loadingNotif" class="text-center py-4">
                 <div class="spinner-border spinner-border-sm text-secondary"></div>
               </div>
               <div v-else-if="notifs.length === 0" class="text-center py-4 text-muted" style="font-size:11px">
-                Không có thông báo mới
+                {{ t('notifEmpty') }}
               </div>
               <button v-else v-for="n in notifs" :key="n.id" type="button" class="z-notif-item" :class="{ unread: !n.read }" @click="viewNotif(n)">
                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -56,7 +61,7 @@
             </div>
             <div class="p-2 border-top text-center bg-light">
               <RouterLink to="/notifications" class="text-decoration-none" style="font-size:11px;color:var(--z-dark);font-weight:600;display:block;padding:4px;" @click="notifOpen = false">
-                Xem tất cả thông báo <i class="bi bi-arrow-right ms-1"></i>
+                {{ t('notifViewAll') }} <i class="bi bi-arrow-right ms-1"></i>
               </RouterLink>
             </div>
           </div>
@@ -79,15 +84,21 @@
   <Transition name="z-mobile-menu">
     <div v-if="mobileOpen" class="z-mobile-menu" @click="mobileOpen = false">
       <nav class="z-mobile-menu-inner" @click.stop>
-        <RouterLink class="z-mobile-link" to="/" @click="mobileOpen = false">Trang Chủ</RouterLink>
-        <RouterLink class="z-mobile-link" to="/collections" @click="mobileOpen = false">Sản Phẩm</RouterLink>
-        <RouterLink class="z-mobile-link" to="/lookbook" @click="mobileOpen = false">Lookbook</RouterLink>
-        <RouterLink class="z-mobile-link" to="/reviews" @click="mobileOpen = false">Đánh Giá</RouterLink>
-        <RouterLink class="z-mobile-link" to="/tracking" @click="mobileOpen = false">Tra Cứu Đơn</RouterLink>
-        <RouterLink v-if="isLoggedIn()" class="z-mobile-link" to="/my-orders" @click="mobileOpen = false">Đơn Hàng</RouterLink>
-        <RouterLink class="z-mobile-link" to="/wishlist" @click="mobileOpen = false">Yêu Thích</RouterLink>
-        <RouterLink class="z-mobile-link" to="/about" @click="mobileOpen = false">Thông Tin</RouterLink>
-        <RouterLink class="z-mobile-link" to="/profile" @click="mobileOpen = false">Tài Khoản</RouterLink>
+        <RouterLink class="z-mobile-link" to="/" @click="mobileOpen = false">{{ t('home') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/collections" @click="mobileOpen = false">{{ t('products') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/lookbook" @click="mobileOpen = false">{{ t('lookbook') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/reviews" @click="mobileOpen = false">{{ t('reviews') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/tracking" @click="mobileOpen = false">{{ t('tracking') }}</RouterLink>
+        <RouterLink v-if="isLoggedIn()" class="z-mobile-link" to="/my-orders" @click="mobileOpen = false">{{ t('myOrders') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/wishlist" @click="mobileOpen = false">{{ t('wishlist') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/about" @click="mobileOpen = false">{{ t('about') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/profile" @click="mobileOpen = false">{{ t('account') }}</RouterLink>
+        <div class="p-3 border-top mt-2 d-flex justify-content-between align-items-center">
+          <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Language / Ngôn ngữ</span>
+          <button type="button" class="lm-lang-btn" @click="toggleLocale">
+            <span class="lm-lang-badge">{{ isEn ? 'EN 🇬🇧' : 'VI 🇻🇳' }}</span>
+          </button>
+        </div>
       </nav>
     </div>
   </Transition>
@@ -153,10 +164,12 @@ import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
 import { products, loadProducts } from '@/composables/useProducts'
 import { api, useAuth } from '@/composables/useApi'
+import { useI18n } from '@/composables/useI18n'
 
 const router = useRouter()
 const { openCart, totalCount, formatPrice } = useCart()
 const { isLoggedIn } = useAuth()
+const { t, toggleLocale, isEn } = useI18n()
 const isScrolled = ref(false)
 const badgeScale = ref('')
 const searchOpen = ref(false)
@@ -412,6 +425,31 @@ function saveGuestReadIds(ids) {
   max-height: min(80vh, 640px);
   overflow-y: auto;
 }
+
+.lm-lang-btn {
+  border: 1px solid var(--z-gray-border);
+  background: var(--z-bg-alt);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--z-dark);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+.lm-lang-btn:hover {
+  background: var(--z-accent);
+  color: var(--z-white);
+  border-color: var(--z-accent);
+  transform: translateY(-1px);
+}
+.lm-lang-badge {
+  letter-spacing: 0.5px;
+}
+
 @media (max-width: 480px) {
   .z-nav-shell { padding-inline: 12px; }
 }

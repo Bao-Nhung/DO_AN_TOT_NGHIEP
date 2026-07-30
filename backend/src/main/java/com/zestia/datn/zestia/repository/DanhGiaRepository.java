@@ -26,6 +26,16 @@ public interface DanhGiaRepository extends JpaRepository<DanhGia, Integer> {
     @Query("SELECT COALESCE(AVG(d.soSao), 0) AS average, COUNT(d) AS total FROM DanhGia d WHERE d.vay.id = :productId AND d.trangThai = 1")
     ReviewSummary summarizeProduct(@Param("productId") Integer productId);
 
+    @Query("""
+            SELECT d.vay.id AS productId,
+                   COALESCE(AVG(d.soSao), 0) AS average,
+                   COUNT(d) AS total
+            FROM DanhGia d
+            WHERE d.trangThai = 1 AND d.vay.id IN :productIds
+            GROUP BY d.vay.id
+            """)
+    List<ProductReviewSummary> summarizeProducts(@Param("productIds") List<Integer> productIds);
+
     @Query("SELECT COALESCE(AVG(d.soSao), 0) AS average, COUNT(d) AS total FROM DanhGia d WHERE d.trangThai = 1")
     ReviewSummary summarizeStore();
 
@@ -50,6 +60,12 @@ public interface DanhGiaRepository extends JpaRepository<DanhGia, Integer> {
     List<ReviewHighlight> findReviewHighlights(Pageable pageable);
 
     interface ReviewSummary {
+        Double getAverage();
+        Long getTotal();
+    }
+
+    interface ProductReviewSummary {
+        Integer getProductId();
         Double getAverage();
         Long getTotal();
     }

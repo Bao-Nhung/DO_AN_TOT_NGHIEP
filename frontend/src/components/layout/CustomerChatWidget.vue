@@ -238,6 +238,7 @@ async function scrollToBottom() {
 
 .z-ai-toggle:hover {
   background: var(--z-accent);
+  color: #fff;
   transform: translateY(-2px);
 }
 
@@ -290,7 +291,7 @@ async function scrollToBottom() {
   justify-content: center;
 }
 
-.z-ai-close:hover { background: var(--z-accent); }
+.z-ai-close:hover { background: var(--z-accent); color: #fff; }
 
 .z-ai-body {
   flex: 1;
@@ -395,7 +396,7 @@ async function scrollToBottom() {
   transition: all 0.2s ease;
 }
 
-.z-ai-send:hover:not(:disabled) { background: var(--z-accent); }
+.z-ai-send:hover:not(:disabled) { background: var(--z-accent); color: #fff; }
 .z-ai-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media (max-width: 575px) {

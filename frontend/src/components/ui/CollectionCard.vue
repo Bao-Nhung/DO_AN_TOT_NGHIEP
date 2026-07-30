@@ -8,13 +8,13 @@
         <img :src="image" :alt="name" style="width:100%;height:100%;object-fit:cover" />
       </div>
       <div v-else class="lm-card-image-inner w-100 h-100 d-flex align-items-center justify-content-center"
-           :style="{ background: bg, fontFamily: 'var(--lm-font-display)', fontSize: '60px', color: 'rgba(255,255,255,0.15)', fontWeight: '300', fontStyle: 'italic' }">
+           :style="{ background: bg, fontFamily: 'var(--z-font-display)', fontSize: '60px', color: 'rgba(255,255,255,0.15)', fontWeight: '300', fontStyle: 'italic' }">
         {{ letter }}
       </div>
       <div class="lm-card-overlay position-absolute inset-0 w-100 h-100"></div>
       <div class="lm-card-info position-absolute bottom-0 start-0 end-0 p-3">
         <div class="lm-card-label lm-eyebrow mb-1">{{ label }}</div>
-        <div class="lm-card-name lm-display" style="font-size:24px;font-weight:400;color:var(--lm-white)">{{ name }}</div>
+        <div class="lm-card-name lm-display" style="font-size:24px;font-weight:400;color:var(--z-white)">{{ name }}</div>
       </div>
     </div>
   </div>
@@ -33,7 +33,7 @@ defineProps({
 </script>
 
 <style scoped>
-.lm-collection-card { cursor: pointer; background: var(--lm-beige); }
+.lm-collection-card { cursor: pointer; background: var(--z-bg-alt); }
 .lm-card-image-inner { transition: transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94); }
 .lm-collection-card:hover .lm-card-image-inner { transform: scale(1.06); }
 .lm-card-overlay {

@@ -79,7 +79,7 @@
               <div style="font-weight:500">{{ o.customer }}</div>
               <div style="font-size:12px;color:var(--z-gray)">{{ o.phone }}</div>
             </td>
-            <td>{{ o.items }} sản phẩm</td>
+            <td data-no-i18n>{{ orderItemCountLabel(o.items) }}</td>
             <td style="font-weight:600">{{ o.total }}</td>
             <td>
               <div>{{ o.payment }}</div>
@@ -111,11 +111,10 @@
       </div>
 
       <!-- Pagination Controls -->
-      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
-        <span style="font-size: 13px; color: var(--z-gray)">
-          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} đơn hàng
-        </span>
-        <div class="d-flex gap-2">
+      <div v-if="totalItems > 0" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+        <span data-no-i18n style="font-size: 13px; color: var(--z-gray)">{{ orderRangeLabel }}</span>
+        <PageSizeSelect v-model="itemsPerPage" />
+        <div v-if="totalPages > 1" class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
@@ -391,8 +390,11 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const { showToast } = useToast()
+const { isEn } = useI18n()
 
 const statusMap = { 
     0: { text: 'Chờ xử lý', cls: 'pending' }, 
@@ -420,11 +422,23 @@ const loadingDetail = ref(false)
 
 const orderTypeTab = ref('all') // 'all', 'online', 'offline'
 const currentPage = ref(1)
-const itemsPerPage = 10
+const itemsPerPage = ref(10)
 const totalItems = ref(0)
 const totalPages = ref(0)
 const allStatusesTotal = ref(0)
 const statusCounts = ref({})
+const orderRangeLabel = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1
+  const end = Math.min(currentPage.value * itemsPerPage.value, totalItems.value)
+  return isEn.value
+    ? `Showing ${start}-${end} of ${totalItems.value} orders`
+    : `Hiển thị từ ${start} đến ${end} trong tổng số ${totalItems.value} đơn hàng`
+})
+function orderItemCountLabel(count) {
+  const value = Number(count || 0)
+  if (!isEn.value) return `${value} sản phẩm`
+  return `${value} ${value === 1 ? 'product' : 'products'}`
+}
 
 const showConfirm = ref(false)
 const confirmTitle = ref('')
@@ -475,7 +489,7 @@ function fetchOrderPage() {
   const orderType = orderTypeTab.value === 'offline' ? 0 : orderTypeTab.value === 'online' ? 1 : null
   return api().getHoaDonPage({
     page: currentPage.value - 1,
-    size: itemsPerPage,
+    size: itemsPerPage.value,
     q: search.value.trim() || null,
     status: activeStatus.value === 'all' ? null : activeStatus.value,
     orderType
@@ -539,6 +553,7 @@ watch(search, () => {
 })
 watch([activeStatus, orderTypeTab], resetOrderPage)
 watch(currentPage, loadOrders)
+watch(itemsPerPage, resetOrderPage)
 
 function resetOrderPage() {
   if (currentPage.value === 1) loadOrders()

@@ -48,7 +48,7 @@ public interface HoaDonChiTietRepository extends JpaRepository<HoaDonChiTiet, In
     @Query("""
             SELECT ct.vayChiTiet.vay.id, ct.vayChiTiet.vay.maVay,
                    ct.vayChiTiet.vay.tenVay, SUM(ct.soLuong),
-                   SUM(ct.donGia * ct.soLuong)
+                   SUM(ct.donGia * ct.soLuong), MIN(ct.vayChiTiet.anhUrl)
             FROM HoaDonChiTiet ct
             JOIN ct.hoaDon h
             WHERE h.trangThai = 4

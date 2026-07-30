@@ -151,7 +151,7 @@ const methodLabel = computed(() => {
   text-align: center;
   background: white;
   border: 1px solid var(--z-gray-border);
-  border-radius: 16px;
+  border-radius: var(--z-radius-lg);
   padding: 48px 36px;
 }
 .z-result-icon {
@@ -183,7 +183,7 @@ const methodLabel = computed(() => {
 .z-result-details {
   text-align: left;
   background: var(--z-bg);
-  border-radius: 10px;
+  border-radius: var(--z-radius);
   padding: 20px;
   margin-bottom: 28px;
 }
@@ -215,7 +215,7 @@ const methodLabel = computed(() => {
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
-  border-radius: 0;
+  border-radius: var(--z-radius);
   cursor: pointer;
   transition: all 0.3s;
   text-decoration: none;

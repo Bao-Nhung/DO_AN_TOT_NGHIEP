@@ -25,6 +25,7 @@ frontend/.env
 
 # Build
 frontend/dist/
+frontend/scripts/.i18n-cache.json
 
 # OS
 .DS_Store

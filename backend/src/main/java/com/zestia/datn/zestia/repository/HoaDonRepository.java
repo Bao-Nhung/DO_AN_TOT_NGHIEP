@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
-// 2 DÒNG IMPORT NÀY LÀ ĐỂ SỬA LỖI BẠN VỪA GẶP:
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -102,6 +101,36 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, Integer> {
     long countByTrangThai(Byte trangThai);
 
     @Query("""
+            SELECT COUNT(h) FROM HoaDon h
+            WHERE h.trangThai = 0
+              AND (UPPER(COALESCE(h.hinhThucThanhToan, '')) = 'COD'
+                   OR h.daThanhToan = true)
+            """)
+    long countActionablePendingOrders();
+
+    @Query("""
+            SELECT COUNT(h) AS orderCount, COALESCE(SUM(
+                CASE WHEN h.hinhThucNhanHang = 0
+                           AND (h.trangThai = 4 OR h.daThanhToan = true)
+                     THEN h.tongTien ELSE 0 END
+            ), 0) AS posRevenue
+            FROM HoaDon h
+            WHERE h.nhanVien.id = :employeeId
+              AND h.ngayTao >= :startAt
+              AND h.ngayTao < :endAt
+            """)
+    StaffTodaySummary summarizeStaffToday(@Param("employeeId") Integer employeeId,
+                                           @Param("startAt") LocalDateTime startAt,
+                                           @Param("endAt") LocalDateTime endAt);
+
+    @EntityGraph(attributePaths = {"khachHang", "nhanVien", "giamGia"})
+    @Query("SELECT h FROM HoaDon h WHERE h.nhanVien.id = :employeeId")
+    Page<HoaDon> findStaffRecentOrders(
+            @Param("employeeId") Integer employeeId,
+            Pageable pageable
+    );
+
+    @Query("""
             SELECT COUNT(h) AS orderCount, COALESCE(SUM(
                 CASE WHEN h.trangThai = 4 THEN h.tongTien ELSE 0 END
             ), 0) AS revenue
@@ -112,6 +141,11 @@ public interface HoaDonRepository extends JpaRepository<HoaDon, Integer> {
     interface DashboardSummary {
         Long getOrderCount();
         java.math.BigDecimal getRevenue();
+    }
+
+    interface StaffTodaySummary {
+        Long getOrderCount();
+        java.math.BigDecimal getPosRevenue();
     }
     
     Optional<HoaDon> findByMaHoaDon(String maHoaDon);

@@ -39,6 +39,7 @@ public class VayController {
     private final KichThuocRepository kichThuocRepo;
     private final AnhRepository anhRepo;
     private final HuongDanKichThuocRepository sizeGuideRepo;
+    private final DanhGiaRepository danhGiaRepo;
     private final PromotionPricingService promotionPricingService;
     private final InventoryMovementService inventoryMovementService;
 
@@ -650,11 +651,18 @@ public class VayController {
                         LinkedHashMap::new,
                         java.util.stream.Collectors.toList()
                 ));
+        Map<Integer, DanhGiaRepository.ProductReviewSummary> reviewsByProduct =
+                danhGiaRepo.summarizeProducts(productIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                DanhGiaRepository.ProductReviewSummary::getProductId,
+                                summary -> summary
+                        ));
         return products.stream()
                 .map(product -> toMap(
                         product,
                         variantsByProduct.getOrDefault(product.getId(), List.of()),
-                        imagesByProduct.getOrDefault(product.getId(), List.of())
+                        imagesByProduct.getOrDefault(product.getId(), List.of()),
+                        reviewsByProduct.get(product.getId())
                 ))
                 .toList();
     }
@@ -670,10 +678,46 @@ public class VayController {
                 .filter(VayController::activeVariant)
                 .toList();
         List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(v.getId(), (byte) 1);
-        return toMap(v, bienThe, anhs);
+        return toMap(v, bienThe, anhs, danhGiaRepo.summarizeProduct(v.getId()));
     }
 
-    private Map<String, Object> toMap(Vay v, List<VayChiTiet> bienThe, List<Anh> anhs) {
+    private Map<String, Object> toMap(
+            Vay v,
+            List<VayChiTiet> bienThe,
+            List<Anh> anhs,
+            DanhGiaRepository.ReviewSummary reviewSummary
+    ) {
+        return toMap(
+                v,
+                bienThe,
+                anhs,
+                reviewSummary != null ? reviewSummary.getAverage() : 0,
+                reviewSummary != null ? reviewSummary.getTotal() : 0
+        );
+    }
+
+    private Map<String, Object> toMap(
+            Vay v,
+            List<VayChiTiet> bienThe,
+            List<Anh> anhs,
+            DanhGiaRepository.ProductReviewSummary reviewSummary
+    ) {
+        return toMap(
+                v,
+                bienThe,
+                anhs,
+                reviewSummary != null ? reviewSummary.getAverage() : 0,
+                reviewSummary != null ? reviewSummary.getTotal() : 0
+        );
+    }
+
+    private Map<String, Object> toMap(
+            Vay v,
+            List<VayChiTiet> bienThe,
+            List<Anh> anhs,
+            Double averageRating,
+            Long reviewCount
+    ) {
         List<PromotionPricingService.PriceQuote> priceQuotes = bienThe.stream()
                 .map(promotionPricingService::quote)
                 .toList();
@@ -712,6 +756,8 @@ public class VayController {
         map.put("canNangNguoiMau", v.getCanNangNguoiMau());
         map.put("sizeNguoiMau", v.getSizeNguoiMau());
         map.put("moTaPhom", v.getMoTaPhom());
+        map.put("diemDanhGia", averageRating != null ? averageRating : 0);
+        map.put("soDanhGia", reviewCount != null ? reviewCount : 0);
 
         if (!anhs.isEmpty()) {
             map.put("anhUrl", anhs.get(0).getAnhUrl());
@@ -732,7 +778,7 @@ public class VayController {
                 .filter(VayController::activeVariant)
                 .toList();
         List<Anh> anhs = anhRepo.findByVayIdAndTrangThai(v.getId(), (byte) 1);
-        Map<String, Object> map = toMap(v, bienThe, anhs);
+        Map<String, Object> map = toMap(v, bienThe, anhs, danhGiaRepo.summarizeProduct(v.getId()));
         List<Map<String, Object>> variants = new ArrayList<>();
         for (VayChiTiet bt : bienThe) {
             PromotionPricingService.PriceQuote quote = promotionPricingService.quote(bt);

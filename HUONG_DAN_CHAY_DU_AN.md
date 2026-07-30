@@ -7,7 +7,7 @@ Máy tính cần cài sẵn các phần mềm sau:
 | Phần mềm | Phiên bản | Link tải |
 |-----------|-----------|----------|
 | **Java JDK** | 21 trở lên | https://adoptium.net/ (chọn Temurin JDK 21) |
-| **Node.js** | 18 trở lên | https://nodejs.org/ (chọn bản LTS) |
+| **Node.js** | 22 LTS (hoặc 20.19 trở lên) | https://nodejs.org/ (chọn bản LTS) |
 | **SQL Server** | 2019 trở lên | https://www.microsoft.com/en-us/sql-server/sql-server-downloads (chọn Express miễn phí) |
 | **SQL Server Management Studio (SSMS)** | Bản mới nhất | https://learn.microsoft.com/en-us/ssms/download-sql-server-management-studio-ssms |
 | **Git** | Bản mới nhất | https://git-scm.com/downloads |
@@ -86,12 +86,12 @@ Toàn bộ dữ liệu mẫu (sản phẩm, **giá tiền**, **hình ảnh**, bi
 **Cách 2 — Dùng dòng lệnh (sqlcmd):**
 
 ```
-sqlcmd -S localhost,1433 -U sa -P 123456 -C -i database/fashion_shop.sql
+sqlcmd -S localhost,1433 -U sa -P 123456 -C -f 65001 -i database/fashion_shop.sql
 ```
 
-> 💡 File này **an toàn khi chạy lại nhiều lần** — mỗi bảng chỉ nạp dữ liệu khi đang trống (idempotent), nên không bị trùng hay lỗi.
+> 💡 File này **an toàn khi chạy lại nhiều lần**: dữ liệu chuẩn được thêm/cập nhật theo khóa nghiệp vụ, dữ liệu trùng được hợp nhất và các bất biến được kiểm tra trước khi báo thành công.
 >
-> 💡 Sau khi nạp xong, Spring Boot khi khởi động sẽ tự nhận diện các bảng đã có (`ddl-auto=update`) và không xóa dữ liệu.
+> 💡 Sau khi nạp xong, Spring Boot dùng `ddl-auto=validate` để kiểm tra schema khớp entity và không tự ý thay đổi dữ liệu.
 
 ---
 
@@ -117,9 +117,9 @@ Nếu mật khẩu sa khác `123456` thì sửa lại cho đúng.
 
 ### Bước 3: Chạy backend
 
-**Windows:**
+**Windows PowerShell:**
 ```
-mvnw.cmd spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 **Mac/Linux:**
@@ -127,6 +127,16 @@ mvnw.cmd spring-boot:run
 ./mvnw spring-boot:run
 ```
 
+Để bật đầy đủ email và ChatAI trong phiên PowerShell hiện tại, đặt biến môi trường trước khi chạy:
+
+```powershell
+$env:MAIL_USERNAME="your_email@gmail.com"
+$env:MAIL_PASSWORD="your_gmail_app_password"
+$env:OPENAI_API_KEY="your_openai_api_key"
+.\mvnw.cmd spring-boot:run
+```
+
+`MAIL_PASSWORD` phải là App Password của Gmail, không phải mật khẩu đăng nhập Gmail.
 Lần đầu chạy sẽ tải dependencies (mất 3-5 phút tùy mạng). Chờ đến khi thấy:
 
 ```
@@ -194,7 +204,7 @@ Mỗi lần muốn chạy dự án, cần **2 terminal chạy song song**:
 
 | Terminal | Thư mục | Lệnh |
 |----------|---------|-------|
-| Terminal 1 (Backend) | `backend/` | `mvnw.cmd spring-boot:run` |
+| Terminal 1 (Backend) | `backend/` | `.\mvnw.cmd spring-boot:run` |
 | Terminal 2 (Frontend) | `frontend/` | `npm run dev` |
 
 Sau đó mở trình duyệt tại **http://localhost:5173**
@@ -209,9 +219,11 @@ Các tài khoản này có sẵn sau khi nạp file `database/fashion_shop.sql`:
 |---------|---------------|----------|
 | Admin | `admin` | `123456` |
 | Nhân viên | `tuannv` | `123456` |
+| Nhân viên POS | `nv_pos` | `123456` |
+| Khách hàng | `khach.demo@zestia.vn` | `123456` |
 
 > Có thể đăng nhập bằng **tên đăng nhập** hoặc **email** (`admin@zestia.vn`).
-> Khách hàng có thể đăng ký tài khoản mới trực tiếp trên trang web.
+> Nhân viên chỉ dùng được nghiệp vụ cửa hàng trong ca đã xác nhận và check-in.
 
 ---
 
@@ -242,7 +254,7 @@ Các tài khoản này có sẵn sau khi nạp file `database/fashion_shop.sql`:
 ### Frontend báo lỗi khi `npm install`
 
 - **Nguyên nhân:** Node.js chưa cài hoặc phiên bản quá cũ
-- **Cách sửa:** Cài Node.js phiên bản 18 trở lên.
+- **Cách sửa:** Cài Node.js 22 LTS (hoặc tối thiểu 20.19) rồi chạy lại `npm install`.
 
 ### Trang web trắng, không hiện sản phẩm
 

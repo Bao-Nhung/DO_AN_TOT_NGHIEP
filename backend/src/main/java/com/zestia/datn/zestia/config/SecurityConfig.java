@@ -94,6 +94,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/lich-lam-viec/nhan-vien").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/lich-lam-viec/**").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers("/api/support-chat/staff/**").hasAnyAuthority(STAFF_ROLES)
+                .requestMatchers("/api/staff/**").hasAnyAuthority(STAFF_ROLES)
+                .requestMatchers("/api/pos-reservations/**").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers("/api/payment/momo/qr", "/api/payment/zalopay/qr", "/api/hoa-don/**").hasAnyAuthority(STAFF_ROLES)
                 .anyRequest().authenticated()
             )

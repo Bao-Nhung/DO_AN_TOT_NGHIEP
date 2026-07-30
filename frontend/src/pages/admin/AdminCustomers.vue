@@ -57,11 +57,12 @@
       </div>
 
       <!-- Pagination Controls -->
-      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+      <div v-if="totalItems > 0" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
         <span style="font-size: 13px; color: var(--z-gray)">
           Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} khách hàng
         </span>
-        <div class="d-flex gap-2">
+        <PageSizeSelect v-model="itemsPerPage" />
+        <div v-if="totalPages > 1" class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
@@ -203,6 +204,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const avatarColors = ['var(--z-accent)', '#6366f1', 'var(--z-warm)', '#16a34a', '#2563eb', '#9333ea']
 const search = ref('')
@@ -219,7 +221,7 @@ async function loadCustomers() {
   try {
     const data = await api().getKhachHangPage({
       page: currentPage.value - 1,
-      size: itemsPerPage,
+      size: itemsPerPage.value,
       q: search.value.trim() || null
     })
     customers.value = (data.content || []).map((c, i) => ({
@@ -235,7 +237,7 @@ async function loadCustomers() {
 }
 
 const currentPage = ref(1)
-const itemsPerPage = 10
+const itemsPerPage = ref(10)
 const totalItems = ref(0)
 const totalPages = ref(0)
 const pageNumbers = computed(() => {
@@ -253,6 +255,10 @@ watch(search, () => {
   }, 300)
 })
 watch(currentPage, loadCustomers)
+watch(itemsPerPage, () => {
+  if (currentPage.value === 1) loadCustomers()
+  else currentPage.value = 1
+})
 
 async function openDetail(c) {
   const requestId = ++addressRequestId

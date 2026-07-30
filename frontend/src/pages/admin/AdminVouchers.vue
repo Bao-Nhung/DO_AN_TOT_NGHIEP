@@ -15,7 +15,7 @@
           <div>
             <div class="d-flex justify-content-between align-items-start mb-3">
               <div>
-                <div style="font-size:18px;font-weight:700;font-family:monospace;color:var(--z-dark);letter-spacing:0">{{ v.code }}</div>
+                <div style="font-size:17px;font-weight:700;font-family:var(--z-font-body);color:var(--z-dark);letter-spacing:0">{{ v.code }}</div>
                 <div style="font-size:13px;color:var(--z-gray);margin-top:2px">{{ v.name }}</div>
               </div>
               <div class="d-flex align-items-center gap-1">
@@ -52,11 +52,12 @@
       </div>
     </div>
 
-    <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mb-4">
+    <div v-if="filteredVouchers.length" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
       <span style="font-size:13px;color:var(--z-gray)">
         Hiển thị {{ (currentPage - 1) * itemsPerPage + 1 }}-{{ Math.min(currentPage * itemsPerPage, filteredVouchers.length) }} / {{ filteredVouchers.length }} voucher
       </span>
-      <div class="d-flex gap-2">
+      <PageSizeSelect v-model="itemsPerPage" :options="[6, 9, 18, 36]" />
+      <div v-if="totalPages > 1" class="d-flex gap-2">
         <button class="lm-btn-secondary z-page-btn" :disabled="currentPage === 1" @click="currentPage--">Trước</button>
         <button
           v-for="page in totalPages"
@@ -151,7 +152,7 @@
           <div class="row g-3">
             <div class="col-6">
               <span style="color:var(--z-gray)">Mã giảm giá:</span>
-              <strong style="font-family:monospace; font-size:16px" class="d-block text-dark mt-1">{{ viewData.maGiamGia }}</strong>
+              <strong style="font-family:var(--z-font-body); font-size:16px" class="d-block text-dark mt-1">{{ viewData.maGiamGia }}</strong>
             </div>
             <div class="col-6">
               <span style="color:var(--z-gray)">Tên voucher:</span>
@@ -215,6 +216,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
@@ -223,7 +225,7 @@ function fmtPrice(v) { return v ? Number(v).toLocaleString('vi-VN') + 'đ' : '0�
 
 const vouchers = ref([])
 const currentPage = ref(1)
-const itemsPerPage = 9
+const itemsPerPage = ref(9)
 const showVoucherModal = ref(false)
 const showViewModal = ref(false)
 const viewData = ref(null)
@@ -246,14 +248,17 @@ const vForm = ref({
 onMounted(() => loadData())
 
 const filteredVouchers = computed(() => vouchers.value)
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredVouchers.value.length / itemsPerPage)))
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredVouchers.value.length / itemsPerPage.value)))
 const paginatedVouchers = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredVouchers.value.slice(start, start + itemsPerPage)
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredVouchers.value.slice(start, start + itemsPerPage.value)
 })
 
 watch(filteredVouchers, () => {
   if (currentPage.value > totalPages.value) currentPage.value = totalPages.value
+})
+watch(itemsPerPage, () => {
+  currentPage.value = 1
 })
 
 async function loadData() {

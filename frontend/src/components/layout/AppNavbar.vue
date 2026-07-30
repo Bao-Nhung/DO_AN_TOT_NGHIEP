@@ -19,21 +19,26 @@
       </ul>
 
       <div class="d-flex align-items-center gap-1">
-        <!-- Language Switcher Button -->
-        <button type="button" class="lm-lang-btn ms-1 me-2" @click="toggleLocale" :title="isEn ? 'Chuyển sang Tiếng Việt' : 'Switch to English'">
-          <span class="lm-lang-badge">{{ isEn ? 'EN 🇬🇧' : 'VI 🇻🇳' }}</span>
+        <button type="button" class="lm-lang-btn ms-1 me-2" @click="toggleLocale"
+                :title="t('switchLanguage')" :aria-label="t('switchLanguage')">
+          <i class="bi bi-globe2" aria-hidden="true"></i>
+          <span>{{ locale.toUpperCase() }}</span>
         </button>
 
-        <button type="button" class="lm-nav-icon-btn" @click="toggleSearch" title="Tìm kiếm" aria-label="Tìm kiếm" :aria-expanded="searchOpen">
+        <button type="button" class="lm-nav-icon-btn" @click="toggleSearch" :title="t('search')" :aria-label="t('search')" :aria-expanded="searchOpen">
           <i class="bi bi-search"></i>
         </button>
-        <button type="button" class="lm-nav-icon-btn d-none d-sm-flex" @click="$router.push('/wishlist')" title="Yêu thích" aria-label="Yêu thích">
+        <button type="button" class="lm-nav-icon-btn d-none d-sm-flex" @click="$router.push('/wishlist')" :title="t('wishlist')" :aria-label="t('wishlist')">
           <i class="bi bi-heart"></i>
+        </button>
+        <button type="button" class="lm-nav-icon-btn d-none d-sm-flex" @click="$router.push('/compare')" :title="t('nav.compare')" :aria-label="t('nav.compare')">
+          <i class="bi bi-columns-gap"></i>
+          <span v-if="compareCount" class="lm-cart-badge">{{ compareCount }}</span>
         </button>
 
         <!-- Notifications Dropdown -->
         <div class="position-relative d-inline-block z-notif-container">
-          <button type="button" class="lm-nav-icon-btn" @click="toggleNotifs" title="Thông báo" aria-label="Thông báo" :aria-expanded="notifOpen">
+          <button type="button" class="lm-nav-icon-btn" @click="toggleNotifs" :title="t('notifications')" :aria-label="t('notifications')" :aria-expanded="notifOpen">
             <i class="bi bi-bell"></i>
             <span v-if="unreadCount > 0" class="lm-cart-badge" style="background:var(--z-accent)">{{ unreadCount }}</span>
           </button>
@@ -67,14 +72,14 @@
           </div>
         </div>
 
-        <button type="button" class="lm-nav-icon-btn" @click="openCart()" title="Giỏ hàng" aria-label="Giỏ hàng">
+        <button type="button" class="lm-nav-icon-btn" @click="openCart()" :title="t('cart')" :aria-label="t('cart')">
           <i class="bi bi-bag"></i>
           <span class="lm-cart-badge" :style="badgeScale">{{ totalCount }}</span>
         </button>
-        <button type="button" class="lm-nav-icon-btn d-none d-md-flex" @click="$router.push('/profile')" title="Tài khoản" aria-label="Tài khoản">
+        <button type="button" class="lm-nav-icon-btn d-none d-md-flex" @click="$router.push('/profile')" :title="t('account')" :aria-label="t('account')">
           <i class="bi bi-person"></i>
         </button>
-        <button type="button" class="lm-nav-icon-btn d-xl-none" @click="mobileOpen = !mobileOpen" title="Menu" aria-label="Menu" :aria-expanded="mobileOpen">
+        <button type="button" class="lm-nav-icon-btn d-xl-none" @click="mobileOpen = !mobileOpen" :title="t('menu')" :aria-label="t('menu')" :aria-expanded="mobileOpen">
           <i class="bi" :class="mobileOpen ? 'bi-x-lg' : 'bi-list'"></i>
         </button>
       </div>
@@ -91,12 +96,17 @@
         <RouterLink class="z-mobile-link" to="/tracking" @click="mobileOpen = false">{{ t('tracking') }}</RouterLink>
         <RouterLink v-if="isLoggedIn()" class="z-mobile-link" to="/my-orders" @click="mobileOpen = false">{{ t('myOrders') }}</RouterLink>
         <RouterLink class="z-mobile-link" to="/wishlist" @click="mobileOpen = false">{{ t('wishlist') }}</RouterLink>
+        <RouterLink class="z-mobile-link" to="/compare" @click="mobileOpen = false">
+          {{ t('nav.compare') }}<span v-if="compareCount"> ({{ compareCount }})</span>
+        </RouterLink>
         <RouterLink class="z-mobile-link" to="/about" @click="mobileOpen = false">{{ t('about') }}</RouterLink>
         <RouterLink class="z-mobile-link" to="/profile" @click="mobileOpen = false">{{ t('account') }}</RouterLink>
         <div class="p-3 border-top mt-2 d-flex justify-content-between align-items-center">
-          <span style="font-size:13px;font-weight:600;color:var(--z-dark)">Language / Ngôn ngữ</span>
-          <button type="button" class="lm-lang-btn" @click="toggleLocale">
-            <span class="lm-lang-badge">{{ isEn ? 'EN 🇬🇧' : 'VI 🇻🇳' }}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ t('languageLabel') }}</span>
+          <button type="button" class="lm-lang-btn" @click="toggleLocale"
+                  :title="t('switchLanguage')" :aria-label="t('switchLanguage')">
+            <i class="bi bi-globe2" aria-hidden="true"></i>
+            <span>{{ locale.toUpperCase() }}</span>
           </button>
         </div>
       </nav>
@@ -108,9 +118,9 @@
       <div class="d-flex align-items-center gap-3 px-2">
         <i class="bi bi-search" style="font-size:20px;color:var(--z-gray-light)"></i>
         <input ref="searchInput" class="z-search-input" v-model="searchQuery"
-               placeholder="Tìm kiếm sản phẩm, danh mục..."
+               :placeholder="t('searchPlaceholder')"
                @keydown.enter="doSearch" @keydown.esc="searchOpen = false">
-        <button v-if="searchQuery" type="button" aria-label="Xóa nội dung tìm kiếm" @click="searchQuery = ''"
+        <button v-if="searchQuery" type="button" :aria-label="t('clearSearch')" @click="searchQuery = ''"
                 style="border:none;background:none;cursor:pointer;color:var(--z-gray);font-size:18px">
           <i class="bi bi-x-lg"></i>
         </button>
@@ -132,7 +142,7 @@
         </button>
       </div>
       <div v-else-if="searchQuery.length >= 2" class="px-4 py-3" style="color:var(--z-gray);font-size:14px;border-top:1px solid var(--z-gray-border)">
-        Không tìm thấy sản phẩm nào
+        {{ t('searchEmpty') }}
       </div>
     </div>
   </div>
@@ -142,16 +152,16 @@
     <div class="z-modal" style="max-width: 480px; background: var(--z-white); border-radius: var(--z-radius-lg); padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.12)">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <span :class="['z-status', getLabelClass(activeNotifDetail.loai)]">{{ getTypeName(activeNotifDetail.loai) }}</span>
-        <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết thông báo" @click="activeNotifDetail = null"><i class="bi bi-x-lg"></i></button>
+        <button type="button" class="z-icon-btn" :aria-label="t('closeNotification')" @click="activeNotifDetail = null"><i class="bi bi-x-lg"></i></button>
       </div>
       <h4 style="font-size:15px; font-weight:700; color:var(--z-dark); margin-bottom:8px;">{{ activeNotifDetail.tieuDe }}</h4>
-      <div style="font-size:11px; color:var(--z-gray); margin-bottom:16px;">Ngày đăng: {{ formatDateTime(activeNotifDetail.ngayTao) }}</div>
+      <div style="font-size:11px; color:var(--z-gray); margin-bottom:16px;">{{ t('publishedAt') }}: {{ formatDateTime(activeNotifDetail.ngayTao) }}</div>
       <div class="p-3 rounded bg-light" style="font-size:13px; line-height:1.6; color:var(--z-dark); border:1px solid var(--z-gray-border); white-space:pre-wrap;">
         {{ activeNotifDetail.noiDung }}
       </div>
       <div class="d-flex justify-content-end mt-4">
         <button class="lm-btn-primary" style="padding:10px 24px; font-size:12px; height:auto;" @click="activeNotifDetail = null">
-          <span>Đóng</span>
+          <span>{{ t('close') }}</span>
         </button>
       </div>
     </div>
@@ -165,11 +175,13 @@ import { useCart } from '@/composables/useCart'
 import { products, loadProducts } from '@/composables/useProducts'
 import { api, useAuth } from '@/composables/useApi'
 import { useI18n } from '@/composables/useI18n'
+import { useCompare } from '@/composables/useCompare'
 
 const router = useRouter()
 const { openCart, totalCount, formatPrice } = useCart()
 const { isLoggedIn } = useAuth()
-const { t, toggleLocale, isEn } = useI18n()
+const { t, toggleLocale, locale } = useI18n()
+const { count: compareCount } = useCompare()
 const isScrolled = ref(false)
 const badgeScale = ref('')
 const searchOpen = ref(false)
@@ -429,28 +441,28 @@ function saveGuestReadIds(ids) {
 .lm-lang-btn {
   border: 1px solid var(--z-gray-border);
   background: var(--z-bg-alt);
-  padding: 4px 10px;
-  border-radius: 20px;
+  min-width: 54px;
+  height: 34px;
+  padding: 0 9px;
+  border-radius: var(--z-radius);
   font-size: 11px;
   font-weight: 700;
   color: var(--z-dark);
   cursor: pointer;
   display: inline-flex;
+  justify-content: center;
   align-items: center;
-  gap: 4px;
-  transition: all 0.2s ease;
+  gap: 6px;
+  transition: var(--z-ease);
 }
 .lm-lang-btn:hover {
   background: var(--z-accent);
   color: var(--z-white);
   border-color: var(--z-accent);
-  transform: translateY(-1px);
-}
-.lm-lang-badge {
-  letter-spacing: 0.5px;
 }
 
 @media (max-width: 480px) {
   .z-nav-shell { padding-inline: 12px; }
+  .lm-lang-btn.ms-1 { display: none; }
 }
 </style>

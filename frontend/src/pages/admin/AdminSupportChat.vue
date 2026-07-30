@@ -18,7 +18,7 @@
         </div>
         <div v-if="loadingList && !conversations.length" class="z-support-empty">Đang tải yêu cầu...</div>
         <button
-          v-for="conversation in conversations"
+          v-for="conversation in pagedConversations"
           :key="conversation.id"
           class="z-conversation-item"
           :class="{ active: selected?.id === conversation.id }"
@@ -37,6 +37,14 @@
         <div v-if="!loadingList && !conversations.length" class="z-support-empty">
           <i class="bi bi-chat-square-check"></i>
           Chưa có yêu cầu đang chờ
+        </div>
+        <div v-if="conversations.length" class="z-support-pagination">
+          <PageSizeSelect v-model="pageSize" :options="[5, 10, 20, 50]" />
+          <div v-if="totalPages > 1">
+            <button type="button" :disabled="currentPage === 1" aria-label="Trang trước" @click="currentPage--"><i class="bi bi-chevron-left"></i></button>
+            <span>{{ currentPage }} / {{ totalPages }}</span>
+            <button type="button" :disabled="currentPage === totalPages" aria-label="Trang sau" @click="currentPage++"><i class="bi bi-chevron-right"></i></button>
+          </div>
         </div>
       </aside>
 
@@ -91,8 +99,9 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 import { api } from '@/composables/useApi'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
@@ -100,12 +109,24 @@ import { useToast } from '@/composables/useToast'
 const { confirmDialog } = useConfirm()
 const { showToast } = useToast()
 const conversations = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 const selected = ref(null)
 const loadingList = ref(false)
 const sending = ref(false)
 const draft = ref('')
 const messageBody = ref(null)
 let pollTimer = null
+const totalPages = computed(() => Math.max(1, Math.ceil(conversations.value.length / pageSize.value)))
+const pagedConversations = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return conversations.value.slice(start, start + pageSize.value)
+})
+
+watch(pageSize, () => { currentPage.value = 1 })
+watch(totalPages, total => {
+  if (currentPage.value > total) currentPage.value = total
+})
 
 onMounted(async () => {
   await refreshList()
@@ -255,6 +276,11 @@ async function scrollBottom() {
 .z-support-placeholder strong { color: var(--z-dark); }
 .z-support-placeholder span, .z-support-empty { font-size: 12px; }
 .z-support-empty { min-height: 160px; padding: 20px; }
+.z-support-pagination { position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-top:1px solid var(--z-gray-border);background:var(--z-white); }
+.z-support-pagination > div { display:flex;align-items:center;gap:6px;color:var(--z-gray);font-size:11px; }
+.z-support-pagination button { width:28px;height:28px;border:1px solid var(--z-gray-border);background:var(--z-white);color:var(--z-dark); }
+.z-support-pagination button:hover:not(:disabled) { border-color:var(--z-accent);color:var(--z-accent); }
+.z-support-pagination button:disabled { opacity:.4; }
 .z-icon-btn { width: 34px; height: 34px; border: 0; background: var(--z-bg-alt); color: var(--z-dark); }
 .z-icon-btn:hover { background: var(--z-accent); color: var(--z-white); }
 @media (max-width: 820px) {

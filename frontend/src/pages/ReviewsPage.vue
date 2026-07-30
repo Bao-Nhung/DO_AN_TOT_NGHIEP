@@ -91,6 +91,9 @@
           <button v-if="selectedStars" class="lm-btn-secondary" type="button" @click="selectStars(null)">Xem tất cả đánh giá</button>
         </div>
 
+        <div v-if="reviews.length" class="d-flex justify-content-end mt-4">
+          <PageSizeSelect v-model="pageSize" :options="[6, 9, 18, 36]" />
+        </div>
         <nav v-if="totalPages > 1" class="z-review-pagination" aria-label="Phân trang đánh giá">
           <button type="button" :disabled="page === 0" title="Trang trước" aria-label="Trang đánh giá trước" @click="changePage(page - 1)"><i class="bi bi-chevron-left"></i></button>
           <button v-for="number in visiblePages" :key="number" type="button" :class="{ active: page === number }" @click="changePage(number)">{{ number + 1 }}</button>
@@ -104,14 +107,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 import { api, useAuth } from '@/composables/useApi'
 
 const { isLoggedIn } = useAuth()
 const reviews = ref([])
 const loading = ref(true)
 const page = ref(0)
+const pageSize = ref(9)
 const totalPages = ref(0)
 const selectedStars = ref(null)
 const summary = reactive({ average: 0, count: 0, distribution: {} })
@@ -123,11 +128,15 @@ const visiblePages = computed(() => {
 })
 
 onMounted(loadReviews)
+watch(pageSize, () => {
+  page.value = 0
+  loadReviews()
+})
 
 async function loadReviews() {
   loading.value = true
   try {
-    const data = await api().getStoreReviews(page.value, 9, selectedStars.value || '')
+    const data = await api().getStoreReviews(page.value, pageSize.value, selectedStars.value || '')
     reviews.value = data?.content || []
     totalPages.value = Number(data?.totalPages || 0)
     Object.assign(summary, data?.summary || {})
@@ -178,7 +187,7 @@ function formatDate(value) {
 .z-review-summary { display: grid; grid-template-columns: .72fr 1fr 1.35fr; align-items: center; min-height: 230px; }
 .z-review-summary > * { min-width: 0; padding: 34px 40px; }
 .z-review-summary > * + * { border-left: 1px solid var(--z-gray-border); }
-.z-review-average strong { display: block; font-family: var(--z-font-display); font-size: 58px; font-weight: 400; line-height: 1; }
+.z-review-average strong { display: block; font-family: var(--z-font-body); font-size: 58px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
 .z-review-average > span { display: block; margin-top: 8px; color: var(--z-gray); font-size: 12px; }
 .z-review-stars { color: var(--z-accent); letter-spacing: 0; }
 .z-rating-bars { display: flex; flex-direction: column; gap: 7px; }

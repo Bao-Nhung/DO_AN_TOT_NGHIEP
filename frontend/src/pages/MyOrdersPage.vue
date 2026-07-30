@@ -199,6 +199,9 @@
           </div>
 
           <!-- Pagination -->
+          <div v-if="currentTab !== 'return' && filteredOrders.length" class="d-flex justify-content-end mt-4">
+            <PageSizeSelect v-model="itemsPerPage" :options="[3, 6, 12, 24]" />
+          </div>
           <div v-if="currentTab !== 'return' && totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
             <button type="button" class="lm-pagination-btn" aria-label="Trang đơn hàng trước" :disabled="currentPage === 1" @click="currentPage--">
               <i class="bi bi-chevron-left"></i>
@@ -469,6 +472,7 @@ import OrderTrackingCard from '@/components/OrderTrackingCard.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const toast = useToast()
 const { confirmDialog } = useConfirm()
@@ -478,7 +482,7 @@ const orders = ref([])
 const currentTab = ref('all')
 const searchQuery = ref('')
 const currentPage = ref(1)
-const itemsPerPage = 6
+const itemsPerPage = ref(6)
 
 const showDetail = ref(false)
 const detailOrder = ref(null)
@@ -549,7 +553,7 @@ async function loadOrders() {
   }
 }
 
-watch([currentTab, searchQuery], () => {
+watch([currentTab, searchQuery, itemsPerPage], () => {
   currentPage.value = 1
 })
 
@@ -612,10 +616,10 @@ const filteredOrders = computed(() => {
 })
 
 // Pagination
-const totalPages = computed(() => Math.ceil(filteredOrders.value.length / itemsPerPage))
+const totalPages = computed(() => Math.ceil(filteredOrders.value.length / itemsPerPage.value))
 const paginatedOrders = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredOrders.value.slice(start, start + itemsPerPage)
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredOrders.value.slice(start, start + itemsPerPage.value)
 })
 
 const filteredReturnRequests = computed(() => {

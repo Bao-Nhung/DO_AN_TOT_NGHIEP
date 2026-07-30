@@ -36,6 +36,8 @@ public interface YeuCauDoiTraRepository extends JpaRepository<YeuCauDoiTra, Inte
 
     boolean existsByHoaDonChiTietIdAndTrangThaiIn(Integer orderDetailId, Collection<String> statuses);
 
+    long countByTrangThaiIn(Collection<String> statuses);
+
     boolean existsByHoaDonChiTietId(Integer orderDetailId);
 
     Optional<YeuCauDoiTra> findByHoaDonChiTietId(Integer orderDetailId);

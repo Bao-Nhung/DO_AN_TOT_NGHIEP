@@ -39,9 +39,7 @@
                  :class="s <= Math.round(reviewSummary.average || 0) ? 'bi-star-fill' : 'bi-star'"
                  :style="{ color: s <= Math.round(reviewSummary.average || 0) ? 'var(--z-accent)' : 'var(--z-gray-border)', fontSize:'14px' }"></i>
             </div>
-            <span style="font-size:13px;color:var(--z-gray)">
-              {{ reviewSummary.count ? `${Number(reviewSummary.average).toFixed(1)} · ${reviewSummary.count} đánh giá` : 'Chưa có đánh giá' }} · {{ product.tonKho || 0 }} tồn kho
-            </span>
+            <span data-no-i18n style="font-size:13px;color:var(--z-gray)">{{ ratingStockLabel }}</span>
           </div>
 
           <div class="d-flex align-items-baseline gap-3 mb-4 pb-4" style="border-bottom:1px solid var(--z-gray-border)">
@@ -94,11 +92,8 @@
               </div>
             </div>
             <p v-if="product.moTaPhom" class="z-fit-note">{{ product.moTaPhom }}</p>
-            <p v-if="product.chieuCaoNguoiMau || product.canNangNguoiMau" class="z-model-note">
-              Người mẫu: {{ product.chieuCaoNguoiMau ? `${product.chieuCaoNguoiMau}cm` : '' }}
-              {{ product.canNangNguoiMau ? `· ${product.canNangNguoiMau}kg` : '' }}
-              {{ product.sizeNguoiMau ? `· mặc size ${product.sizeNguoiMau}` : '' }}
-            </p>
+            <p v-if="product.chieuCaoNguoiMau || product.canNangNguoiMau"
+               class="z-model-note" data-no-i18n>{{ modelNoteLabel }}</p>
           </div>
 
           <div class="d-grid gap-2 mb-4" style="grid-template-columns:1fr 52px">
@@ -120,7 +115,7 @@
             </div>
             <div v-if="product.chatLieu" class="d-flex align-items-center gap-3">
               <i class="bi bi-patch-check" style="color:var(--z-accent);font-size:16px"></i>
-              Chất liệu: {{ product.chatLieu }}
+              <span data-no-i18n>{{ isEn ? 'Material:' : 'Chất liệu:' }} {{ product.chatLieu }}</span>
             </div>
             <RouterLink to="/policies" class="z-policy-link">Xem đầy đủ điều kiện áp dụng <i class="bi bi-arrow-right"></i></RouterLink>
             <!-- Icons and copy above are sourced from product/policy data. -->
@@ -195,6 +190,9 @@
           <RouterLink to="/my-orders">Xem đơn hàng</RouterLink>
         </div>
 
+        <div v-if="reviews.length" class="d-flex justify-content-end mb-3">
+          <PageSizeSelect v-model="reviewPageSize" :options="[3, 6, 12, 24]" />
+        </div>
         <div v-if="reviews.length" class="z-review-list">
           <article v-for="review in reviews" :key="review.id" class="z-review-item">
             <div class="z-review-author">
@@ -228,6 +226,8 @@ import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
 import { useWishlist } from '@/composables/useWishlist'
+import { useI18n } from '@/composables/useI18n'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -235,6 +235,7 @@ const { addItem } = useCart()
 const { showToast } = useToast()
 const { isInWishlist, toggleWishlist } = useWishlist()
 const { isLoggedIn } = useAuth()
+const { isEn } = useI18n()
 
 const product = ref({})
 const activeThumb = ref(0)
@@ -246,17 +247,41 @@ const policies = ref([])
 const reviewSummary = ref({ average: 0, count: 0, distribution: {} })
 const reviews = ref([])
 const reviewPage = ref(0)
+const reviewPageSize = ref(6)
 const reviewTotalPages = ref(0)
 const reviewEligibility = ref({ canReview: false, orders: [] })
 const reviewSubmitting = ref(false)
 const reviewForm = ref({ orderId: '', stars: 5, content: '', images: [] })
+const ratingStockLabel = computed(() => {
+  const stock = Number(product.value.tonKho || 0)
+  if (isEn.value) {
+    return reviewSummary.value.count
+      ? `${Number(reviewSummary.value.average).toFixed(1)} · ${reviewSummary.value.count} reviews · ${stock} in stock`
+      : `No reviews yet · ${stock} in stock`
+  }
+  return reviewSummary.value.count
+    ? `${Number(reviewSummary.value.average).toFixed(1)} · ${reviewSummary.value.count} đánh giá · ${stock} tồn kho`
+    : `Chưa có đánh giá · ${stock} tồn kho`
+})
+const modelNoteLabel = computed(() => {
+  const parts = [
+    product.value.chieuCaoNguoiMau ? `${product.value.chieuCaoNguoiMau}cm` : '',
+    product.value.canNangNguoiMau ? `${product.value.canNangNguoiMau}kg` : '',
+    product.value.sizeNguoiMau
+      ? `${isEn.value ? 'wears size' : 'mặc size'} ${product.value.sizeNguoiMau}`
+      : '',
+  ].filter(Boolean)
+  return `${isEn.value ? 'Model' : 'Người mẫu'}: ${parts.join(' · ')}`
+})
 const sizeGuideRows = computed(() => (product.value.huongDanSize || []).map(row => ({
   size: row.kichThuoc || row.size || '',
-  fit: [row.canNangTu, row.canNangDen].every(value => value != null) ? `${row.canNangTu}-${row.canNangDen}kg` : 'Theo số đo',
+  fit: [row.canNangTu, row.canNangDen].every(value => value != null)
+    ? `${row.canNangTu}-${row.canNangDen}kg`
+    : (isEn.value ? 'By measurements' : 'Theo số đo'),
   measurements: [
-    row.vongNgucTu != null ? `Ngực ${row.vongNgucTu}-${row.vongNgucDen}` : '',
-    row.vongEoTu != null ? `Eo ${row.vongEoTu}-${row.vongEoDen}` : '',
-    row.vongMongTu != null ? `Mông ${row.vongMongTu}-${row.vongMongDen}` : ''
+    row.vongNgucTu != null ? `${isEn.value ? 'Bust' : 'Ngực'} ${row.vongNgucTu}-${row.vongNgucDen}` : '',
+    row.vongEoTu != null ? `${isEn.value ? 'Waist' : 'Eo'} ${row.vongEoTu}-${row.vongEoDen}` : '',
+    row.vongMongTu != null ? `${isEn.value ? 'Hips' : 'Mông'} ${row.vongMongTu}-${row.vongMongDen}` : ''
   ].filter(Boolean).join(' · ')
 })))
 const productPolicies = computed(() => policies.value.filter(policy => ['SHIPPING', 'SIZE_EXCHANGE', 'RETURN'].includes(policy.code)))
@@ -338,13 +363,17 @@ watch(activeColor, () => {
     activeSize.value = null
   }
 })
+watch(reviewPageSize, async () => {
+  const data = await api().getProductReviews(route.params.id, 0, reviewPageSize.value)
+  applyReviewData(data)
+})
 
 onMounted(async () => {
   try {
     const id = route.params.id
     const [productData, reviewData, policyData] = await Promise.all([
       api().getVayById(id),
-      api().getProductReviews(id),
+      api().getProductReviews(id, 0, reviewPageSize.value),
       api().getStorePolicies()
     ])
     product.value = productData
@@ -366,7 +395,7 @@ function applyReviewData(data, append = false) {
 }
 
 async function loadMoreReviews() {
-  const data = await api().getProductReviews(route.params.id, reviewPage.value + 1, 6)
+  const data = await api().getProductReviews(route.params.id, reviewPage.value + 1, reviewPageSize.value)
   applyReviewData(data, true)
 }
 
@@ -386,7 +415,7 @@ async function submitReview() {
     showToast('Cảm ơn bạn đã gửi đánh giá')
     reviewForm.value = { orderId: '', stars: 5, content: '', images: [] }
     reviewEligibility.value = await api().getReviewEligibility(route.params.id)
-    applyReviewData(await api().getProductReviews(route.params.id))
+    applyReviewData(await api().getProductReviews(route.params.id, 0, reviewPageSize.value))
   } catch (error) {
     showToast(error.error || 'Không thể gửi đánh giá')
   } finally {
@@ -485,7 +514,7 @@ function toggleWish() {
 .z-reviews-section { padding: 72px 0; background: var(--z-bg-alt); }
 .z-review-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 38px; }
 .z-review-score { text-align: right; }
-.z-review-score strong { display: block; color: var(--z-dark); font-family: var(--z-font-display); font-size: 40px; }
+.z-review-score strong { display: block; color: var(--z-dark); font-family: var(--z-font-body); font-size: 40px; font-variant-numeric: tabular-nums; }
 .z-review-score span { color: var(--z-gray); font-size: 12px; }
 .z-review-form { margin-bottom: 32px; padding: 24px; border: 1px solid var(--z-gray-border); background: var(--z-white); }
 .z-review-login-prompt, .z-review-eligibility-note { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; padding: 22px 24px; border: 1px solid var(--z-gray-border); background: var(--z-white); }

@@ -24,7 +24,7 @@
       </div>
 
       <div v-if="staffCanOperate" class="row g-3 mb-4">
-        <div v-for="stat in staffStats" :key="stat.label" class="col-6 col-xl-3">
+        <div v-for="stat in staffStats" :key="stat.label" class="col-12 col-sm-6 col-xl-3">
           <div class="z-stat-card z-staff-stat">
             <div class="d-flex align-items-center justify-content-between mb-3">
               <span class="z-stat-label">{{ stat.label }}</span>
@@ -65,7 +65,7 @@
               <h3 class="z-admin-card-title">Đơn tại quầy gần đây</h3>
               <RouterLink to="/admin/orders" class="z-inline-link">Tất cả đơn</RouterLink>
             </div>
-            <div class="table-responsive">
+            <div class="table-responsive z-dashboard-table-wrap">
               <table class="z-table">
                 <thead>
                   <tr>
@@ -100,7 +100,7 @@
       <p style="font-size:14px;color:var(--z-gray);margin-bottom:24px">Chào mừng trở lại, Admin. Đây là tình hình cửa hàng hôm nay.</p>
 
       <div class="row g-3 mb-4">
-        <div v-for="stat in stats" :key="stat.label" class="col-6 col-xl-3">
+        <div v-for="stat in stats" :key="stat.label" class="col-12 col-sm-6 col-xl-3">
           <div class="z-stat-card">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <span class="z-stat-label">{{ stat.label }}</span>
@@ -122,33 +122,35 @@
               <h3 class="z-admin-card-title">Đơn hàng gần đây</h3>
               <RouterLink to="/admin/orders" class="z-inline-link">Xem tất cả <i class="bi bi-arrow-right"></i></RouterLink>
             </div>
-            <table class="z-table">
-              <thead>
-                <tr>
-                  <th>Mã đơn</th>
-                  <th>Khách hàng</th>
-                  <th>Tổng tiền</th>
-                  <th>Trạng thái</th>
-                  <th>Ngày tạo</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="order in recentOrders" :key="order.id">
-                  <td style="font-weight:600">{{ order.id }}</td>
-                  <td>{{ order.customer }}</td>
-                  <td style="font-weight:500">{{ order.total }}</td>
-                  <td><span class="z-status" :class="order.statusClass">{{ order.status }}</span></td>
-                  <td style="color:var(--z-gray)">{{ order.date }}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-responsive z-dashboard-table-wrap">
+              <table class="z-table">
+                <thead>
+                  <tr>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày tạo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="order in recentOrders" :key="order.id">
+                  <td style="font-weight:600">{{ order.code }}</td>
+                    <td>{{ order.customer }}</td>
+                    <td style="font-weight:500">{{ order.total }}</td>
+                    <td><span class="z-status" :class="order.statusClass">{{ order.status }}</span></td>
+                    <td style="color:var(--z-gray)">{{ order.date }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         <div class="col-lg-4">
           <div class="z-admin-card">
             <h3 class="z-admin-card-title mb-3">Sản phẩm nổi bật</h3>
-            <div class="d-flex flex-column gap-3">
+            <div v-if="topProducts.length" class="d-flex flex-column gap-3">
               <div v-for="(p, i) in topProducts" :key="p.name" class="d-flex align-items-center gap-3">
                 <div style="width:20px;font-size:14px;font-weight:700;color:var(--z-gray-light)">#{{ i + 1 }}</div>
                 <div style="width:44px;height:52px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
@@ -167,6 +169,9 @@
                   <strong>{{ p.revenue }}</strong>
                 </div>
               </div>
+            </div>
+            <div v-else style="font-size:13px;color:var(--z-gray)">
+              Chưa có đơn hoàn thành để xếp hạng sản phẩm.
             </div>
           </div>
 
@@ -201,7 +206,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
-import { fmtPrice, mapProduct } from '@/composables/useProducts'
+import { fmtPrice } from '@/composables/useProducts'
 
 const { getUser } = useAuth()
 const currentUser = computed(() => getUser() || {})
@@ -244,10 +249,9 @@ onMounted(async () => {
 
 async function loadAdminDashboard() {
   try {
-    const [s, orders, prods] = await Promise.all([
+    const [s, ordersPage] = await Promise.all([
       api().getDashboardStats(),
-      api().getHoaDon(),
-      api().getVay()
+      api().getHoaDonPage({ page: 0, size: 6 })
     ])
     stats.value = [
       { label: 'Doanh thu', value: fmtPrice(s.doanhThu), change: `${s.tongLoaiVay} loại váy`, up: true, icon: 'bi-graph-up', color: '#16a34a' },
@@ -256,32 +260,20 @@ async function loadAdminDashboard() {
       { label: 'Sản phẩm', value: String(s.tongSanPham), change: `${s.tongBienThe || 0} biến thể`, up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
     ]
 
-    recentOrders.value = sortByDate(orders).slice(0, 6).map(mapOrder)
-
-    const mappedProducts = prods.map(mapProduct)
-    const productsById = new Map(mappedProducts.map(p => [Number(p.id), p]))
-
+    recentOrders.value = (ordersPage?.content || []).map(mapOrder)
     lowStockVariants.value = (s.lowStockVariants || []).map(v => ({
       ...v,
-      image: productsById.get(Number(v.productId))?.image || null
+      image: v.anhUrl || null
     }))
     const topSelling = s.topSellingProducts || []
-    if (topSelling.length) {
-      topProducts.value = topSelling.map((p, i) => ({
-        name: p.tenVay,
-        sold: String(p.soLuongBan || 0),
-        revenue: fmtPrice(p.doanhThu || 0),
-        letter: (p.tenVay || 'Z').charAt(0),
-        bg: ['#D4A99E', '#C4A98E', '#A8A49E'][i % 3],
-        image: productsById.get(Number(p.productId))?.image || null
-      }))
-    } else {
-      const stockRankedProducts = [...mappedProducts].sort((a, b) => b.stock - a.stock)
-      topProducts.value = stockRankedProducts.slice(0, 5).map(p => ({
-        name: p.name, sold: String(p.stock), revenue: fmtPrice(p.price * Math.max(1, p.stock || 1)),
-        letter: p.letter, bg: p.bg, image: p.image || null
-      }))
-    }
+    topProducts.value = topSelling.map((p, i) => ({
+      name: p.tenVay,
+      sold: String(p.soLuongBan || 0),
+      revenue: fmtPrice(p.doanhThu || 0),
+      letter: (p.tenVay || 'Z').charAt(0),
+      bg: ['#D4A99E', '#C4A98E', '#A8A49E'][i % 3],
+      image: p.anhUrl || null
+    }))
   } catch (e) {
     console.error('Dashboard load failed:', e)
   }
@@ -303,26 +295,13 @@ async function loadStaffDashboard() {
       return
     }
 
-    const orders = await api().getHoaDon()
-    const userId = Number(currentUser.value.userId)
-    const myOrders = orders.filter(o =>
-      Number(o.nhanVienId) === userId ||
-      (o.nhanVien && o.nhanVien === userName.value) ||
-      (o.nguoiTaoDon && o.nguoiTaoDon === userName.value)
-    )
-    const todayOrders = myOrders.filter(o => isSameDay(o.ngayTao, today))
-    const todayPosOrders = todayOrders.filter(o => Number(o.hinhThucNhanHang) === 0)
-    const revenue = todayPosOrders
-      .filter(o => Number(o.trangThai) === 4 || o.daThanhToan)
-      .reduce((sum, o) => sum + Number(o.tongTien || 0), 0)
-    const pendingOrders = orders.filter(o => Number(o.trangThai) === 0)
-
-    myRecentOrders.value = sortByDate(myOrders).slice(0, 6).map(mapOrder)
+    const staffSummary = await api().getStaffDashboard()
+    myRecentOrders.value = (staffSummary?.recentOrders || []).map(mapOrder)
     staffStats.value = [
       { label: 'Ca hôm nay', value: String(shifts.length), hint: shifts.length ? 'Đã có lịch làm việc' : 'Chưa có lịch', icon: 'bi-calendar2-week' },
-      { label: 'Đơn đã tạo', value: String(todayOrders.length), hint: 'Tính trong hôm nay', icon: 'bi-receipt-cutoff' },
-      { label: 'Doanh số tại quầy', value: fmtPrice(revenue), hint: 'Đơn POS đã thanh toán', icon: 'bi-cash-stack' },
-      { label: 'Đơn chờ xử lý', value: String(pendingOrders.length), hint: 'Cần xác nhận trong hệ thống', icon: 'bi-hourglass-split' },
+      { label: 'Đơn đã tạo', value: String(staffSummary?.todayOrderCount || 0), hint: 'Tính trong hôm nay', icon: 'bi-receipt-cutoff' },
+      { label: 'Doanh số tại quầy', value: fmtPrice(staffSummary?.todayPosRevenue || 0), hint: 'Đơn POS đã thanh toán', icon: 'bi-cash-stack' },
+      { label: 'Đơn chờ xử lý', value: String(staffSummary?.pendingOrderCount || 0), hint: 'Cần xác nhận trong hệ thống', icon: 'bi-hourglass-split' },
     ]
   } catch (e) {
     console.error('Staff dashboard load failed:', e)
@@ -348,21 +327,8 @@ function mapOrder(o) {
   }
 }
 
-function sortByDate(list) {
-  return [...(list || [])].sort((a, b) => {
-    const da = a.ngayTao ? new Date(a.ngayTao).getTime() : 0
-    const db = b.ngayTao ? new Date(b.ngayTao).getTime() : 0
-    return db - da
-  })
-}
-
 function inputDate(date) {
   return new Date(date).toISOString().slice(0, 10)
-}
-
-function isSameDay(value, today) {
-  if (!value) return false
-  return inputDate(value) === today
 }
 
 function shortTime(value) {
@@ -385,10 +351,11 @@ function shortTime(value) {
 }
 .z-stat-value {
   color: var(--z-dark);
-  font-family: var(--z-font-display);
+  font-family: var(--z-font-body);
   font-size: 30px;
   font-weight: 600;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 .z-stat-change {
   margin-top: 8px;
@@ -452,6 +419,13 @@ function shortTime(value) {
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.z-dashboard-table-wrap {
+  width: 100%;
+  overscroll-behavior-inline: contain;
+}
+.z-dashboard-table-wrap .z-table {
+  min-width: 680px;
 }
 .z-top-product-revenue { flex-shrink: 0; text-align: right; }
 .z-top-product-revenue span, .z-top-product-revenue strong { display: block; }

@@ -51,16 +51,16 @@
 
         <div class="row g-3">
           <div class="col-lg-5 lm-reveal">
-            <CollectionCard label="Mới nhất" name="Váy Lụa Truyền Thống" letter="Z"
-                            image="/images/banners/banner6.png"
-                            bg="linear-gradient(160deg,#F3E8E6,#D4A99E 40%,#C08B7E)" to="/collections?sort=newest" tall />
+            <CollectionCard label="Lễ kỷ niệm" name="Váy Dự Lễ" letter="Z"
+                            image="/images/products/dress6.jpg"
+                            bg="linear-gradient(160deg,#F3E8E6,#D4A99E 40%,#C08B7E)" to="/lookbook" tall />
           </div>
           <div class="col-lg-7">
             <div class="row g-3">
-              <div class="col-6 lm-reveal"><CollectionCard label="Bán chạy" name="Váy Cách Tân" letter="e" image="/images/banners/banner7.png" bg="linear-gradient(160deg,#E8DDD6,#C4A98E)" to="/collections?sort=bestseller" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Dự tiệc" name="Váy Dạ Hội" letter="s" image="/images/banners/banner8.png" bg="linear-gradient(160deg,#E6E0DA,#A8A49E)" to="/collections?occasion=party" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Cưới hỏi" name="Váy Cưới" letter="t" image="/images/banners/banner9.png" bg="linear-gradient(160deg,#F0E8E0,#D4C0A8)" to="/collections?occasion=wedding" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Đi làm" name="Váy Công Sở" letter="ia" image="/images/banners/banner2.jpg" bg="linear-gradient(160deg,#E4DDD2,#C0B49E)" to="/collections?occasion=work" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Hẹn hò" name="Váy Hẹn Hò" letter="e" image="/images/products/dress17.jpg" bg="linear-gradient(160deg,#E8DDD6,#C4A98E)" to="/lookbook" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Dự tiệc" name="Váy Dự Tiệc" letter="s" image="/images/products/dress9.jpg" bg="linear-gradient(160deg,#E6E0DA,#A8A49E)" to="/collections?occasion=party" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Cưới hỏi" name="Váy Cưới" letter="t" image="/images/products/dress11.jpg" bg="linear-gradient(160deg,#F0E8E0,#D4C0A8)" to="/collections?occasion=wedding" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Đi làm" name="Váy Đi Làm" letter="ia" image="/images/products/dress19.jpg" bg="linear-gradient(160deg,#E4DDD2,#C0B49E)" to="/collections?occasion=work" /></div>
             </div>
           </div>
         </div>
@@ -571,6 +571,7 @@ async function subscribeNewsletter() {
 }
 .z-newsletter-form button:hover {
   background: var(--z-accent);
+  color: var(--z-white);
 }
 .z-newsletter-form button:disabled {
   opacity: 0.65;

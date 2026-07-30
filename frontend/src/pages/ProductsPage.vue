@@ -64,15 +64,20 @@
 
     <!-- Results count -->
     <div class="container pt-4 pb-2">
-      <p style="font-size:13px;color:var(--z-gray)">
-        Hiển thị <strong style="color:var(--z-dark)">{{ sortedProducts.length }}</strong> sản phẩm
-      </p>
+      <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+        <p class="mb-0" style="font-size:13px;color:var(--z-gray)">
+          Hiển thị
+          <strong style="color:var(--z-dark)">{{ resultStart }}-{{ resultEnd }}</strong>
+          / {{ sortedProducts.length }} sản phẩm
+        </p>
+        <PageSizeSelect v-model="pageSize" :options="[6, 12, 24, 48]" />
+      </div>
     </div>
 
     <!-- Products Grid -->
     <div class="container pb-5">
       <div class="row g-4">
-        <div v-for="(p, i) in sortedProducts" :key="p.id"
+        <div v-for="(p, i) in paginatedProducts" :key="p.id"
              class="col-6 col-lg-4 z-fade-item" :style="{ animationDelay: i * 0.04 + 's' }">
           <ProductCard :product="p" />
         </div>
@@ -86,7 +91,32 @@
           <span>Xoá bộ lọc</span>
         </button>
       </div>
+      <nav v-else-if="totalPages > 1" class="z-public-pagination" aria-label="Phân trang sản phẩm">
+        <button type="button" :disabled="currentPage === 1" @click="currentPage--">
+          <i class="bi bi-arrow-left"></i><span>Trước</span>
+        </button>
+        <span>Trang {{ currentPage }} / {{ totalPages }}</span>
+        <button type="button" :disabled="currentPage === totalPages" @click="currentPage++">
+          <span>Sau</span><i class="bi bi-arrow-right"></i>
+        </button>
+      </nav>
     </div>
+
+    <Transition name="z-compare-dock">
+      <div v-if="compareCount" class="z-compare-dock">
+        <div>
+          <i class="bi bi-columns-gap"></i>
+          <span data-no-i18n>{{ compareStatusLabel }}</span>
+        </div>
+        <button type="button" class="z-compare-clear" data-no-i18n @click="clearComparison">
+          {{ isEn ? 'Clear' : 'Xóa hết' }}
+        </button>
+        <RouterLink to="/compare" class="lm-btn-primary">
+          <span data-no-i18n>{{ isEn ? 'View comparison' : 'Xem so sánh' }}</span>
+          <i class="bi bi-arrow-right"></i>
+        </RouterLink>
+      </div>
+    </Transition>
 
     <AppFooter />
   </div>
@@ -99,9 +129,17 @@ import ProductCard from '@/components/ui/ProductCard.vue'
 import AppFooter   from '@/components/layout/AppFooter.vue'
 import { products, loadProducts } from '@/composables/useProducts'
 import { api } from '@/composables/useApi'
+import { useCompare } from '@/composables/useCompare'
+import { useI18n } from '@/composables/useI18n'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const route = useRoute()
 const bestsellerRank = ref(new Map())
+const { count: compareCount, clear: clearComparison } = useCompare()
+const { isEn } = useI18n()
+const compareStatusLabel = computed(() => isEn.value
+  ? `Selected ${compareCount.value}/4 products`
+  : `Đã chọn ${compareCount.value}/4 sản phẩm`)
 
 onMounted(async () => {
   await loadProducts()
@@ -123,6 +161,8 @@ const filters = computed(() => [
 const activeFilter = ref('Tất cả')
 const priceRange = ref('all')
 const sortBy = ref('newest')
+const pageSize = ref(12)
+const currentPage = ref(1)
 
 function applyRouteQuery() {
   const requestedSort = String(route.query.sort || '')
@@ -187,6 +227,23 @@ const sortedProducts = computed(() => {
   if (sortBy.value === 'newest') arr.sort((a, b) => Number(b.id) - Number(a.id))
   return arr
 })
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sortedProducts.value.length / pageSize.value)))
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return sortedProducts.value.slice(start, start + pageSize.value)
+})
+const resultStart = computed(() => sortedProducts.value.length
+  ? (currentPage.value - 1) * pageSize.value + 1
+  : 0)
+const resultEnd = computed(() => Math.min(currentPage.value * pageSize.value, sortedProducts.value.length))
+
+watch([activeFilter, priceRange, sortBy, pageSize], () => {
+  currentPage.value = 1
+})
+watch(totalPages, pages => {
+  if (currentPage.value > pages) currentPage.value = pages
+})
 </script>
 
 <style scoped>
@@ -196,5 +253,38 @@ const sortedProducts = computed(() => {
 @keyframes z-item-in {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+.z-compare-dock {
+  position: fixed; z-index: 1100; left: 50%; bottom: 20px; transform: translateX(-50%);
+  min-width: min(520px, calc(100vw - 24px)); padding: 10px 12px 10px 16px;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--z-white); border: 1px solid var(--z-gray-border);
+  box-shadow: 0 12px 36px rgba(0,0,0,.16);
+}
+.z-compare-dock > div { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; font-weight: 600; }
+.z-compare-dock > div i { color: var(--z-accent); }
+.z-compare-clear { border: 0; background: transparent; color: var(--z-gray); font-size: 12px; }
+.z-compare-clear:hover { color: var(--z-accent); }
+.z-compare-dock .lm-btn-primary { min-height: 38px; padding: 8px 14px; }
+.z-compare-dock-enter-active,
+.z-compare-dock-leave-active { transition: opacity .2s ease, transform .2s ease; }
+.z-compare-dock-enter-from,
+.z-compare-dock-leave-to { opacity: 0; transform: translate(-50%, 12px); }
+.z-public-pagination {
+  margin-top: 36px; display: flex; align-items: center; justify-content: center; gap: 18px;
+}
+.z-public-pagination button {
+  min-width: 88px; height: 38px; padding: 0 12px; display: inline-flex;
+  align-items: center; justify-content: center; gap: 7px;
+  border: 1px solid var(--z-gray-border); border-radius: 4px;
+  background: var(--z-white); color: var(--z-dark); font-size: 12px;
+}
+.z-public-pagination button:hover:not(:disabled) { border-color: var(--z-accent); color: var(--z-accent); }
+.z-public-pagination button:disabled { opacity: .45; cursor: not-allowed; }
+.z-public-pagination > span { min-width: 90px; text-align: center; color: var(--z-gray); font-size: 12px; }
+@media (max-width: 575px) {
+  .z-compare-dock { gap: 8px; bottom: 10px; }
+  .z-compare-dock > div span { font-size: 11px; }
+  .z-compare-dock .lm-btn-primary { font-size: 11px; }
 }
 </style>

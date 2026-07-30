@@ -221,11 +221,12 @@
       </table>
 
       <!-- Pagination Controls -->
-      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+      <div v-if="filteredSchedules.length" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
         <span style="font-size: 13px; color: var(--z-gray)">
           Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredSchedules.length) }} trong tổng số {{ filteredSchedules.length }} ca làm
         </span>
-        <div class="d-flex gap-2">
+        <PageSizeSelect v-model="itemsPerPage" />
+        <div v-if="totalPages > 1" class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
@@ -419,6 +420,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
@@ -478,16 +480,16 @@ const filteredSchedules = computed(() => {
 })
 
 const currentPage = ref(1)
-const itemsPerPage = 10
+const itemsPerPage = ref(10)
 
-const totalPages = computed(() => Math.ceil(filteredSchedules.value.length / itemsPerPage))
+const totalPages = computed(() => Math.ceil(filteredSchedules.value.length / itemsPerPage.value))
 
 const paginatedSchedules = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredSchedules.value.slice(start, start + itemsPerPage)
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredSchedules.value.slice(start, start + itemsPerPage.value)
 })
 
-watch([search, filters], () => {
+watch([search, filters, itemsPerPage], () => {
   currentPage.value = 1
 }, { deep: true })
 

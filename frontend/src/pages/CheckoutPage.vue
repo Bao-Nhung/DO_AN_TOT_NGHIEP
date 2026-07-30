@@ -63,9 +63,8 @@
                   @input="onPhoneInput"
                   @blur="phoneTouched = true"
                 />
-                <small id="checkout-phone-help" class="z-field-help" :class="{ error: phoneTouched && phoneError }">
-                  {{ phoneTouched && phoneError ? phoneError : 'Nhập 10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09' }}
-                </small>
+                <small id="checkout-phone-help" class="z-field-help" data-no-i18n
+                       :class="{ error: phoneTouched && phoneError }">{{ phoneHelpText }}</small>
               </div>
               <div class="col-12">
                 <label class="z-label">Email *</label>
@@ -77,7 +76,7 @@
                 <label class="z-label">Tỉnh / Thành phố *</label>
                 <select v-model="selectedCity" class="lm-input" @change="onCityChange">
                   <option value="">Chọn Tỉnh/Thành</option>
-                  <option v-for="c in addressData" :key="c.code" :value="c.code">{{ c.name }}</option>
+                  <option v-for="c in addressData" :key="c.code" :value="c.code">{{ localizedAdministrativeName(c.name) }}</option>
                 </select>
               </div>
 
@@ -85,7 +84,7 @@
                 <label class="z-label">Quận / Huyện *</label>
                 <select v-model="selectedDistrict" class="lm-input" :disabled="!selectedCity" @change="onDistrictChange">
                   <option value="">Chọn Quận/Huyện</option>
-                  <option v-for="d in availableDistricts" :key="d.code" :value="d.code">{{ d.name }}</option>
+                  <option v-for="d in availableDistricts" :key="d.code" :value="d.code">{{ localizedAdministrativeName(d.name) }}</option>
                 </select>
               </div>
 
@@ -93,7 +92,7 @@
                 <label class="z-label">Phường / Xã *</label>
                 <select v-model="selectedWard" class="lm-input" :disabled="!selectedDistrict" @change="clearSavedAddressSelection">
                   <option value="">Chọn Phường/Xã</option>
-                  <option v-for="w in availableWards" :key="w.code" :value="w.code">{{ w.name }}</option>
+                  <option v-for="w in availableWards" :key="w.code" :value="w.code">{{ localizedAdministrativeName(w.name) }}</option>
                 </select>
               </div>
 
@@ -170,7 +169,8 @@
         <div class="col-lg-5">
           <div class="z-order-summary">
             <h3 class="z-checkout-title">
-              <i class="bi bi-bag"></i> Đơn hàng ({{ totalCount }} sản phẩm)
+              <i class="bi bi-bag"></i>
+              <span data-no-i18n>{{ orderSummaryLabel }}</span>
             </h3>
 
             <div class="z-order-items">
@@ -181,11 +181,7 @@
                 </div>
                 <div class="z-order-item-info">
                   <div class="z-order-item-name">{{ item.name }}</div>
-                  <div class="z-order-item-variant">
-                    <span v-if="item.size">Size: {{ item.size }}</span>
-                    <span v-if="item.color"> | Màu: {{ item.color }}</span>
-                    <span v-if="!item.size && !item.color">{{ item.variant || 'Mặc định' }}</span>
-                  </div>
+                  <div class="z-order-item-variant" data-no-i18n>{{ orderItemVariantLabel(item) }}</div>
                   <div class="z-order-item-qty">x{{ item.qty }}</div>
                 </div>
                 <div class="z-order-item-price">
@@ -219,8 +215,7 @@
                        :disabled="!voucherEligible(v) || !!appliedVoucher"
                        @click="selectVoucher(v)">
                     <strong style="color:var(--z-accent)">{{ v.maGiamGia }}</strong>:
-                    <span v-if="v.phanTramGiam > 0"> Giảm {{ v.phanTramGiam }}%</span>
-                    <span v-else-if="v.gioTriGiam > 0"> Giảm {{ formatPrice(v.gioTriGiam) }}</span>
+                    <span data-no-i18n>{{ voucherDiscountLabel(v) }}</span>
                     <span v-if="bestVoucherCode === v.maGiamGia" class="z-best-voucher">Tốt nhất</span>
                     <div style="font-size:9px; color:var(--z-gray); margin-top:2px">{{ voucherEligibilityText(v) }}</div>
                   </button>
@@ -255,9 +250,9 @@
               <span v-if="loading">
                 <i class="bi bi-arrow-repeat z-spin"></i> Đang xử lý...
               </span>
-              <span v-else>
+              <span v-else data-no-i18n>
                 <i class="bi bi-lock"></i>
-                {{ form.hinhThuc === 'COD' ? 'Đặt hàng' : 'Thanh toán ' + formatPrice(finalTotal) }}
+                {{ checkoutActionLabel }}
               </span>
             </button>
 
@@ -292,17 +287,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
+import { useI18n } from '@/composables/useI18n'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 const router = useRouter()
 const { state, totalCount, subtotal, formatPrice, clearCart, refreshItems } = useCart()
 const { showToast } = useToast()
 const { getUser } = useAuth()
+const { isEn, translateUiText } = useI18n()
+const orderSummaryLabel = computed(() => isEn.value
+  ? `Order (${totalCount.value} products)`
+  : `Đơn hàng (${totalCount.value} sản phẩm)`)
+const checkoutActionLabel = computed(() => {
+  if (form.value.hinhThuc === 'COD') return isEn.value ? 'Place order' : 'Đặt hàng'
+  return `${isEn.value ? 'Pay' : 'Thanh toán'} ${formatPrice(finalTotal.value)}`
+})
 
 const loading = ref(false)
 
@@ -321,6 +325,55 @@ const phoneError = computed(() => {
   if (!/^0[35789]\d{8}$/.test(phone)) return 'Đầu số điện thoại không hợp lệ'
   return ''
 })
+const phoneHelpText = computed(() => {
+  const source = phoneTouched.value && phoneError.value
+    ? phoneError.value
+    : 'Nhập 10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09'
+  if (!isEn.value) return source
+  return {
+    'Vui lòng nhập số điện thoại': 'Please enter a phone number',
+    'Số điện thoại phải có đúng 10 chữ số': 'The phone number must contain exactly 10 digits',
+    'Đầu số điện thoại không hợp lệ': 'The phone number prefix is invalid',
+    'Nhập 10 chữ số, bắt đầu bằng 03, 05, 07, 08 hoặc 09':
+      'Enter 10 digits starting with 03, 05, 07, 08 or 09',
+  }[source] || source
+})
+
+function localizedAdministrativeName(value) {
+  if (!isEn.value) return value
+  return String(value || '')
+    .replace(/^Thành phố\s+/i, 'City ')
+    .replace(/^Tỉnh\s+/i, 'Province ')
+    .replace(/^Quận\s+/i, 'District ')
+    .replace(/^Huyện\s+/i, 'District ')
+    .replace(/^Thị xã\s+/i, 'Town ')
+    .replace(/^Phường\s+/i, 'Ward ')
+    .replace(/^Xã\s+/i, 'Commune ')
+    .replace(/^Thị trấn\s+/i, 'Township ')
+}
+
+function orderItemVariantLabel(item) {
+  const parts = []
+  if (item.size) parts.push(`Size: ${item.size}`)
+  if (item.color) {
+    const color = translateUiText(item.color, isEn.value ? 'en' : 'vi')
+    parts.push(`${isEn.value ? 'Color' : 'Màu'}: ${color}`)
+  }
+  if (!parts.length) {
+    return item.variant || (isEn.value ? 'Default' : 'Mặc định')
+  }
+  return parts.join(' | ')
+}
+
+function voucherDiscountLabel(voucher) {
+  if (Number(voucher.phanTramGiam || 0) > 0) {
+    return ` ${isEn.value ? 'Save' : 'Giảm'} ${voucher.phanTramGiam}%`
+  }
+  if (Number(voucher.gioTriGiam || 0) > 0) {
+    return ` ${isEn.value ? 'Save' : 'Giảm'} ${formatPrice(voucher.gioTriGiam)}`
+  }
+  return ''
+}
 
 function normalizeVietnamPhoneInput(value) {
   let digits = String(value || '').replace(/\D/g, '')
@@ -431,17 +484,22 @@ const applyingVoucher = ref(false)
 const bestVoucherCode = ref('')
 const autoVoucherDisabled = ref(false)
 let bestVoucherRequestId = 0
+let voucherValidationRequestId = 0
 
 // Cập nhật finalTotal cộng thêm phí vận chuyển
 const finalTotal = computed(() => Math.max(0, subtotal.value + shippingFee.value - discount.value))
 
 async function applyVoucher() {
-  if (!voucherCode.value.trim()) return showToast('Vui lòng nhập mã giảm giá')
+  const code = voucherCode.value.trim()
+  if (!code) return showToast('Vui lòng nhập mã giảm giá')
+  const amount = subtotal.value
+  const requestId = ++voucherValidationRequestId
   autoVoucherDisabled.value = true
   applyingVoucher.value = true
   voucherMsg.value = ''
   try {
-    const res = await api().applyVoucher(voucherCode.value.trim(), subtotal.value)
+    const res = await api().applyVoucher(code, amount)
+    if (requestId !== voucherValidationRequestId || amount !== subtotal.value) return
     if (res.valid) {
       appliedVoucher.value = res.maGiamGia
       discount.value = Number(res.giamGia) || 0
@@ -452,13 +510,16 @@ async function applyVoucher() {
       voucherMsg.value = res.message || 'Mã không hợp lệ'
     }
   } catch (e) {
+    if (requestId !== voucherValidationRequestId) return
     voucherMsg.value = e.message || 'Không áp dụng được mã'
   } finally {
-    applyingVoucher.value = false
+    if (requestId === voucherValidationRequestId) applyingVoucher.value = false
   }
 }
 
 function removeVoucher() {
+  voucherValidationRequestId += 1
+  applyingVoucher.value = false
   autoVoucherDisabled.value = true
   appliedVoucher.value = ''
   discount.value = 0
@@ -484,8 +545,14 @@ function voucherEligible(voucher) {
 
 function voucherEligibilityText(voucher) {
   const minimum = Number(voucher.giaTriDonToiThieu || 0)
-  if (subtotal.value < minimum) return `Cần thêm ${formatPrice(minimum - subtotal.value)}`
-  return `Đơn tối thiểu: ${formatPrice(minimum)}`
+  if (subtotal.value < minimum) {
+    return isEn.value
+      ? `Add ${formatPrice(minimum - subtotal.value)} more`
+      : `Cần thêm ${formatPrice(minimum - subtotal.value)}`
+  }
+  return isEn.value
+    ? `Minimum order: ${formatPrice(minimum)}`
+    : `Đơn tối thiểu: ${formatPrice(minimum)}`
 }
 
 function selectVoucher(voucher) {
@@ -496,10 +563,13 @@ function selectVoucher(voucher) {
 
 async function applyBestVoucher(force = false) {
   if ((!force && autoVoucherDisabled.value) || subtotal.value <= 0) return
+  const amount = subtotal.value
   const requestId = ++bestVoucherRequestId
   try {
-    const res = await api().getBestVoucher(subtotal.value)
-    if (requestId !== bestVoucherRequestId || autoVoucherDisabled.value) return
+    const res = await api().getBestVoucher(amount)
+    if (requestId !== bestVoucherRequestId
+        || autoVoucherDisabled.value
+        || amount !== subtotal.value) return
     if (!res?.valid) {
       bestVoucherCode.value = ''
       voucherCode.value = ''
@@ -519,17 +589,24 @@ async function applyBestVoucher(force = false) {
 }
 
 let voucherRefreshTimer
+let voucherRefreshRequestId = 0
 watch(subtotal, () => {
   clearTimeout(voucherRefreshTimer)
+  const requestId = ++voucherRefreshRequestId
   voucherRefreshTimer = setTimeout(async () => {
+    const amount = subtotal.value
     if (subtotal.value <= 0) {
       removeVoucher()
       autoVoucherDisabled.value = false
       return
     }
     if (autoVoucherDisabled.value && appliedVoucher.value) {
+      const validationRequestId = ++voucherValidationRequestId
       try {
-        const res = await api().applyVoucher(appliedVoucher.value, subtotal.value)
+        const res = await api().applyVoucher(appliedVoucher.value, amount)
+        if (requestId !== voucherRefreshRequestId
+            || validationRequestId !== voucherValidationRequestId
+            || amount !== subtotal.value) return
         if (!res?.valid) {
           showToast(`Đã tự động gỡ voucher ${appliedVoucher.value} do đơn hàng không còn đủ điều kiện tối thiểu.`, 'warning')
           removeVoucher()
@@ -540,12 +617,22 @@ watch(subtotal, () => {
           voucherMsg.value = `${res.tenGiamGia} — giảm ${formatPrice(discount.value)}`
         }
       } catch (e) {
+        if (requestId !== voucherRefreshRequestId
+            || validationRequestId !== voucherValidationRequestId) return
         removeVoucher()
       }
     } else {
+      voucherValidationRequestId += 1
       await applyBestVoucher()
     }
   }, 150)
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(voucherRefreshTimer)
+  voucherRefreshRequestId += 1
+  bestVoucherRequestId += 1
+  voucherValidationRequestId += 1
 })
 
 const showConfirmModal = ref(false)
@@ -890,7 +977,7 @@ function isValidEmail(value) {
   font-family: var(--z-font-body);
   white-space: nowrap;
 }
-.z-voucher-btn:hover { background: var(--z-accent); }
+.z-voucher-btn:hover { background: var(--z-accent); color: var(--z-white); }
 .z-voucher-remove { background: var(--z-gray); }
 .z-voucher-msg {
   font-size: 12px;

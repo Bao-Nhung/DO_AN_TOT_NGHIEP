@@ -68,6 +68,7 @@ public class DashboardController {
                     item.put("tenVay", row[2]);
                     item.put("soLuongBan", row[3]);
                     item.put("doanhThu", row[4]);
+                    item.put("anhUrl", row[5]);
                     return item;
                 })
                 .toList();
@@ -84,6 +85,7 @@ public class DashboardController {
                     item.put("mauSac", row[4]);
                     item.put("kichThuoc", row[5]);
                     item.put("soLuong", row[6]);
+                    item.put("anhUrl", row[7]);
                     return item;
                 })
                 .toList();

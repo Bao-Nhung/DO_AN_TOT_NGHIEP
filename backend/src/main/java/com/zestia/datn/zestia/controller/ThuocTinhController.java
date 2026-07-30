@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -21,16 +23,24 @@ public class ThuocTinhController {
     private final NhaCungCapRepository nhaCungCapRepo;
 
     @GetMapping("/mau-sac")
-    public Object getMauSac() { return mauSacRepo.findAll(); }
+    public List<Map<String, Object>> getMauSac() {
+        return mauSacRepo.findAll().stream().map(this::toMap).toList();
+    }
 
     @GetMapping("/kich-thuoc")
-    public Object getKichThuoc() { return kichThuocRepo.findAll(); }
+    public List<Map<String, Object>> getKichThuoc() {
+        return kichThuocRepo.findAll().stream().map(this::toMap).toList();
+    }
 
     @GetMapping("/chat-lieu")
-    public Object getChatLieu() { return chatLieuRepo.findAll(); }
+    public List<Map<String, Object>> getChatLieu() {
+        return chatLieuRepo.findAll().stream().map(this::toMap).toList();
+    }
 
     @GetMapping("/loai-vay")
-    public Object getLoaiVay() { return loaiVayRepo.findAll(); }
+    public List<Map<String, Object>> getLoaiVay() {
+        return loaiVayRepo.findAll().stream().map(this::toMap).toList();
+    }
 
     @GetMapping("/nha-cung-cap")
     public Object getNhaCungCap() { return nhaCungCapRepo.findAll(); }
@@ -38,12 +48,48 @@ public class ThuocTinhController {
     @GetMapping
     public Map<String, Object> getAll() {
         return Map.of(
-            "mauSac", mauSacRepo.findAll(),
-            "kichThuoc", kichThuocRepo.findAll(),
-            "chatLieu", chatLieuRepo.findAll(),
-            "loaiVay", loaiVayRepo.findAll(),
+            "mauSac", mauSacRepo.findAll().stream().map(this::toMap).toList(),
+            "kichThuoc", kichThuocRepo.findAll().stream().map(this::toMap).toList(),
+            "chatLieu", chatLieuRepo.findAll().stream().map(this::toMap).toList(),
+            "loaiVay", loaiVayRepo.findAll().stream().map(this::toMap).toList(),
             "nhaCungCap", nhaCungCapRepo.findAll()
         );
+    }
+
+    private Map<String, Object> toMap(MauSac item) {
+        Map<String, Object> map = commonMap(item.getId(), item.getTrangThai(), item.getNgayTao());
+        map.put("tenMauSac", item.getTenMauSac());
+        map.put("maHex", item.getMaHex());
+        return map;
+    }
+
+    private Map<String, Object> toMap(KichThuoc item) {
+        Map<String, Object> map = commonMap(item.getId(), item.getTrangThai(), item.getNgayTao());
+        map.put("tenKichThuoc", item.getTenKichThuoc());
+        map.put("moTa", item.getMoTa());
+        return map;
+    }
+
+    private Map<String, Object> toMap(ChatLieu item) {
+        Map<String, Object> map = commonMap(item.getId(), item.getTrangThai(), item.getNgayTao());
+        map.put("tenChatLieu", item.getTenChatLieu());
+        map.put("moTa", item.getMoTa());
+        return map;
+    }
+
+    private Map<String, Object> toMap(LoaiVay item) {
+        Map<String, Object> map = commonMap(item.getId(), item.getTrangThai(), item.getNgayTao());
+        map.put("tenLoaiVay", item.getTenLoaiVay());
+        map.put("moTa", item.getMoTa());
+        return map;
+    }
+
+    private Map<String, Object> commonMap(Integer id, Byte status, LocalDateTime createdAt) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", id);
+        map.put("trangThai", status);
+        map.put("ngayTao", createdAt);
+        return map;
     }
 
     // --- Màu sắc CRUD ---

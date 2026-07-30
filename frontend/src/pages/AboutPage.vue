@@ -12,7 +12,7 @@
       <div class="container">
         <div class="row g-5 align-items-center mb-5">
           <div class="col-lg-6">
-            <img src="/images/banners/banner6.png" alt="Thiết kế Zestia" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--z-radius-lg)" />
+            <img src="/images/banners/about-story.jpg" alt="Thiết kế Zestia" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--z-radius-lg)" />
           </div>
           <div class="col-lg-6">
             <p class="lm-eyebrow mb-3">Câu Chuyện Của Chúng Tôi</p>
@@ -72,15 +72,14 @@
           </div>
         </div>
 
-        <!-- Google Maps Store Branch Integration -->
-        <div class="row g-4 align-items-center p-4 bg-light rounded border">
-          <div class="col-lg-5">
-            <div class="p-4 bg-white rounded shadow-sm border">
+        <div class="row g-4 align-items-stretch">
+          <div class="col-lg-5 d-flex">
+            <div class="z-showroom-details">
               <h4 style="font-size:16px;font-weight:700;color:var(--z-dark)" class="mb-3">
                 <i class="bi bi-geo-alt-fill text-danger me-2"></i>Zestia Flagship Showroom
               </h4>
               <p style="font-size:13px;color:var(--z-gray)" class="mb-2">
-                <strong>Địa chỉ:</strong> Trịnh Văn Bô, Nam Từ Liêm, Hà Nội
+                <strong>Địa chỉ:</strong> 39, Nguyễn Thị Duệ, Yên Hòa, Hà Nội
               </p>
               <p style="font-size:13px;color:var(--z-gray)" class="mb-2">
                 <strong>Hotline:</strong> 0869 167 207
@@ -88,16 +87,18 @@
               <p style="font-size:13px;color:var(--z-gray)" class="mb-3">
                 <strong>Giờ mở cửa:</strong> 08:00 - 22:00 (Hàng ngày)
               </p>
-              <a href="https://maps.google.com/?q=Trịnh+Văn+Bô+Nam+Từ+Liêm+Hà+Nội" target="_blank" rel="noopener noreferrer" class="lm-btn-outline w-100 text-center text-decoration-none" style="font-size:12px">
-                <i class="bi bi-map me-1"></i> Xem chỉ đường trên Google Maps
+              <a href="https://www.google.com/maps/dir/?api=1&amp;destination=39%2C%20Nguy%E1%BB%85n%20Th%E1%BB%8B%20Du%E1%BB%87%2C%20Y%C3%AAn%20H%C3%B2a%2C%20H%C3%A0%20N%E1%BB%99i" target="_blank"
+                 rel="noopener noreferrer" class="lm-btn-primary w-100 justify-content-center">
+                <i class="bi bi-map" aria-hidden="true"></i>
+                <span>Xem chỉ đường trên Google Maps</span>
               </a>
             </div>
           </div>
           <div class="col-lg-7">
-            <div class="rounded overflow-hidden shadow-sm border" style="height:320px">
+            <div class="z-showroom-map">
               <iframe
                 title="Bản đồ Showroom Zestia"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3723.863981044336!2d105.74459841540243!3d21.034716592835948!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x313454b991d80fd5%3A0x10594511244f04ee!2sTr%E1%BB%8Bnh%20V%C4%83n%20B%C3%B4!5e0!2m3!1svi!2svn!4v1689000000000!5m2!1svi!2svn"
+                src="https://www.google.com/maps?q=39%20Nguy%E1%BB%85n%20Th%E1%BB%8B%20Du%E1%BB%87%2C%20Y%C3%AAn%20H%C3%B2a%2C%20H%C3%A0%20N%E1%BB%99i&amp;output=embed"
                 width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
               </iframe>
             </div>
@@ -150,9 +151,30 @@ onMounted(async () => {
 })
 
 const contactInfo = [
-  { icon: 'bi-geo-alt-fill', label: 'Địa chỉ', value: 'FPT Polytechnic, Hà Nội' },
-  { icon: 'bi-telephone-fill', label: 'Hotline', value: '1800 9999 (miễn phí)' },
-  { icon: 'bi-envelope-fill', label: 'Email', value: 'hello@zestia.vn' },
-  { icon: 'bi-clock-fill', label: 'Giờ làm việc', value: 'T2-T7: 9:00 - 21:00' },
+  { icon: 'bi-geo-alt-fill', label: 'Địa chỉ', value: '39, Nguyễn Thị Duệ, Yên Hòa, Hà Nội' },
+  { icon: 'bi-telephone-fill', label: 'Hotline', value: '0869 167 207' },
+  { icon: 'bi-envelope-fill', label: 'Email', value: 'nguyenthanh.hn090307@gmail.com' },
+  { icon: 'bi-clock-fill', label: 'Giờ làm việc', value: 'Hàng ngày: 08:00 - 22:00' },
 ]
 </script>
+
+<style scoped>
+.z-showroom-details {
+  width: 100%;
+  padding: 32px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-bg-alt);
+}
+.z-showroom-map {
+  height: 100%;
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-bg-alt);
+}
+@media (max-width: 575px) {
+  .z-showroom-details { padding: 24px 20px; }
+}
+</style>

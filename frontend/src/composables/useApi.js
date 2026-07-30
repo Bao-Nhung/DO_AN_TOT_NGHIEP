@@ -1,3 +1,5 @@
+import { currentLocale } from '@/i18n'
+
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/$/, '')
 
 function getToken() {
@@ -5,7 +7,10 @@ function getToken() {
 }
 
 function getHeaders() {
-  const h = { 'Content-Type': 'application/json' }
+  const h = {
+    'Content-Type': 'application/json',
+    'Accept-Language': currentLocale()
+  }
   const token = getToken()
   if (token) h['Authorization'] = `Bearer ${token}`
   return h
@@ -32,7 +37,7 @@ async function request(path, options = {}) {
 }
 
 async function downloadFile(path, fallbackName) {
-  const headers = {}
+  const headers = { 'Accept-Language': currentLocale() }
   const token = getToken()
   if (token) headers.Authorization = `Bearer ${token}`
   const res = await fetch(`${API_BASE}${path}`, { headers })
@@ -113,15 +118,12 @@ export function api() {
     getVay: () => request('/vay'),
     getVayPage: (params) => request(`/vay/paged${toQuery(params)}`),
     getVayById: (id) => request(`/vay/${id}`),
-    searchVay: (q) => request(`/vay/search?q=${encodeURIComponent(q)}`),
     createVay: (data) => request('/vay', { method: 'POST', body: JSON.stringify(data) }),
     updateVay: (id, data) => request(`/vay/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    deleteVay: (id) => request(`/vay/${id}`, { method: 'DELETE' }),
-    seedVay: () => request('/vay/seed', { method: 'POST' }),
     uploadVayAnh: async (id, file) => {
       const fd = new FormData()
       fd.append('file', file)
-      const headers = {}
+      const headers = { 'Accept-Language': currentLocale() }
       const token = getToken()
       if (token) headers['Authorization'] = `Bearer ${token}`
       const res = await fetch(`${API_BASE}/vay/${id}/anh`, { method: 'POST', headers, body: fd })
@@ -131,7 +133,7 @@ export function api() {
     uploadVayColorImage: async (id, colorId, file) => {
       const fd = new FormData()
       fd.append('file', file)
-      const headers = {}
+      const headers = { 'Accept-Language': currentLocale() }
       const token = getToken()
       if (token) headers.Authorization = `Bearer ${token}`
       const res = await fetch(`${API_BASE}/vay/${id}/mau/${colorId}/anh`, { method: 'POST', headers, body: fd })
@@ -176,7 +178,7 @@ export function api() {
       if (data.refundInfo) form.append('refundInfo', data.refundInfo)
       if (data.replacementVariantId) form.append('replacementVariantId', data.replacementVariantId)
       ;(data.images || []).forEach(file => form.append('images', file))
-      const headers = {}
+      const headers = { 'Accept-Language': currentLocale() }
       const token = getToken()
       if (token) headers.Authorization = `Bearer ${token}`
       const res = await fetch(`${API_BASE}/returns/online`, { method: 'POST', headers, body: form })
@@ -200,9 +202,7 @@ export function api() {
     completeReturnRequest: (id, note) => request(`/returns/${id}/complete`, {
       method: 'PUT', body: JSON.stringify({ note: note || null })
     }),
-    getOrderAuditLog: (id) => request(`/hoa-don/${id}/audit-log`),
-      
-    // ====== API MỚI CHO TRACKING ======
+    // Tracking
     searchOrder: (params) => {
       const query = new URLSearchParams()
       if (params.maHoaDon) query.append('maHoaDon', params.maHoaDon)
@@ -212,10 +212,7 @@ export function api() {
     searchOrderByPhone: (soDienThoai) => request(`/hoa-don/search-by-phone?soDienThoai=${soDienThoai}`),
     getMyOrders: () => request('/hoa-don/my-orders'),
     getOrderTracking: (orderId) => request(`/hoa-don/${orderId}/tracking`),
-    // ==================================
-
     // Customers
-    getKhachHang: () => request('/khach-hang'),
     getKhachHangPage: (params) => request(`/khach-hang/paged${toQuery(params)}`),
     getKhachHangAddresses: (id) => request(`/khach-hang/${id}/addresses`),
     getKhachHangHistory: (id) => request(`/khach-hang/${id}/history`),
@@ -276,6 +273,8 @@ export function api() {
       method: 'POST', body: JSON.stringify({ message })
     }),
     closeStaffSupportChat: (id) => request(`/support-chat/staff/conversations/${id}/close`, { method: 'POST' }),
+    getStaffTasks: () => request('/staff/tasks'),
+    getStaffDashboard: () => request('/staff/dashboard'),
 
     // Dashboard
     getDashboardStats: () => request('/dashboard/stats'),
@@ -291,31 +290,21 @@ export function api() {
 
     // Attributes
     getThuocTinh: () => request('/thuoc-tinh'),
-    getMauSac: () => request('/thuoc-tinh/mau-sac'),
-    getKichThuoc: () => request('/thuoc-tinh/kich-thuoc'),
-    getChatLieu: () => request('/thuoc-tinh/chat-lieu'),
-    getLoaiVay: () => request('/thuoc-tinh/loai-vay'),
-    getNhaCungCap: () => request('/thuoc-tinh/nha-cung-cap'),
 
     // Attributes CRUD
     addMauSac: (data) => request('/thuoc-tinh/mau-sac', { method: 'POST', body: JSON.stringify(data) }),
-    updateMauSac: (id, data) => request(`/thuoc-tinh/mau-sac/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteMauSac: (id) => request(`/thuoc-tinh/mau-sac/${id}`, { method: 'DELETE' }),
 
     addKichThuoc: (data) => request('/thuoc-tinh/kich-thuoc', { method: 'POST', body: JSON.stringify(data) }),
-    updateKichThuoc: (id, data) => request(`/thuoc-tinh/kich-thuoc/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteKichThuoc: (id) => request(`/thuoc-tinh/kich-thuoc/${id}`, { method: 'DELETE' }),
 
     addChatLieu: (data) => request('/thuoc-tinh/chat-lieu', { method: 'POST', body: JSON.stringify(data) }),
-    updateChatLieu: (id, data) => request(`/thuoc-tinh/chat-lieu/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteChatLieu: (id) => request(`/thuoc-tinh/chat-lieu/${id}`, { method: 'DELETE' }),
 
     addLoaiVay: (data) => request('/thuoc-tinh/loai-vay', { method: 'POST', body: JSON.stringify(data) }),
-    updateLoaiVay: (id, data) => request(`/thuoc-tinh/loai-vay/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteLoaiVay: (id) => request(`/thuoc-tinh/loai-vay/${id}`, { method: 'DELETE' }),
 
     addNhaCungCap: (data) => request('/thuoc-tinh/nha-cung-cap', { method: 'POST', body: JSON.stringify(data) }),
-    updateNhaCungCap: (id, data) => request(`/thuoc-tinh/nha-cung-cap/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteNhaCungCap: (id) => request(`/thuoc-tinh/nha-cung-cap/${id}`, { method: 'DELETE' }),
 
     // Payment
@@ -333,7 +322,23 @@ export function api() {
       request('/payment/apply-voucher', { method: 'POST', body: JSON.stringify({ maGiamGia, tongTien }) }),
     getBestVoucher: (tongTien) =>
       request('/payment/best-voucher', { method: 'POST', body: JSON.stringify({ tongTien }) }),
-    getOrder: (id) => request(`/payment/order/${id}`),
+    getPosReservation: (token) => request(`/pos-reservations/${encodeURIComponent(token)}`),
+    setPosReservationItem: (token, variantId, quantity) =>
+      request('/pos-reservations/items', {
+        method: 'POST',
+        body: JSON.stringify({ token: token || null, variantId, quantity })
+      }),
+    setPosReservationVoucher: (token, maGiamGia) =>
+      request(`/pos-reservations/${encodeURIComponent(token)}/voucher`, {
+        method: 'PUT',
+        body: JSON.stringify({ maGiamGia: maGiamGia || null })
+      }),
+    reserveBestPosVoucher: (token) =>
+      request(`/pos-reservations/${encodeURIComponent(token)}/voucher/best`, { method: 'POST' }),
+    clearPosReservationVoucher: (token) =>
+      request(`/pos-reservations/${encodeURIComponent(token)}/voucher`, { method: 'DELETE' }),
+    releasePosReservation: (token) =>
+      request(`/pos-reservations/${encodeURIComponent(token)}`, { method: 'DELETE' }),
 
     // Storefront and verified customer content
     getStorefrontSummary: () => request('/storefront/summary'),
@@ -349,7 +354,7 @@ export function api() {
       form.append('stars', stars)
       form.append('content', content)
       images.forEach(image => form.append('images', image))
-      const headers = {}
+      const headers = { 'Accept-Language': currentLocale() }
       const token = getToken()
       if (token) headers.Authorization = `Bearer ${token}`
       const res = await fetch(`${API_BASE}/reviews/product/${productId}`, { method: 'POST', headers, body: form })
@@ -382,14 +387,10 @@ export function api() {
 
     // Promotion campaigns (product price remains a single base selling price)
     getPromotions: () => request('/promotions'),
-    getPromotion: (id) => request(`/promotions/${id}`),
     createPromotion: (data) => request('/promotions', { method: 'POST', body: JSON.stringify(data) }),
     updatePromotion: (id, data) => request(`/promotions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deletePromotion: (id) => request(`/promotions/${id}`, { method: 'DELETE' }),
 
-    getProfileAddress: () => request('/auth/profile/address'),
-    updateProfileAddress: (data) =>
-      request('/auth/profile/address', { method: 'PUT', body: JSON.stringify(data) }),
     getProfileAddresses: () => request('/auth/profile/addresses'),
     createProfileAddress: (data) => request('/auth/profile/addresses', {
       method: 'POST', body: JSON.stringify(data)

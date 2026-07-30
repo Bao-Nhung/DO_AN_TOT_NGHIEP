@@ -13,7 +13,7 @@
         <button :class="{ active: activeType === 'DOI' }" @click="setType('DOI')">Đổi hàng</button>
         <button :class="{ active: activeType === 'TRA' }" @click="setType('TRA')">Trả hàng</button>
       </div>
-      <select v-model="statusFilter" class="lm-input z-status-filter" @change="loadRequests">
+      <select v-model="statusFilter" class="lm-input z-status-filter" @change="changeStatus">
         <option value="">Tất cả trạng thái</option>
         <option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
       </select>
@@ -31,7 +31,7 @@
         <table class="z-table" style="min-width:1040px">
           <thead><tr><th>Yêu cầu / Đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Nguồn</th><th>Trạng thái</th><th>Ngày tạo</th><th style="width:132px"></th></tr></thead>
           <tbody>
-            <tr v-for="item in requests" :key="item.id">
+            <tr v-for="item in pagedRequests" :key="item.id">
               <td><strong>#{{ item.id }}</strong><div class="z-subtext">{{ item.orderCode }}</div></td>
               <td><strong>{{ item.customerName }}</strong><div class="z-subtext">{{ item.customerPhone }}</div></td>
               <td>
@@ -48,6 +48,18 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+    <div v-if="requests.length" class="z-list-pagination">
+      <span>
+        Hiển thị {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, requests.length) }}
+        / {{ requests.length }} yêu cầu
+      </span>
+      <PageSizeSelect v-model="pageSize" :options="[5, 10, 20, 50]" />
+      <div v-if="totalPages > 1" class="d-flex gap-2">
+        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === 1" @click="currentPage--">Trước</button>
+        <span class="z-page-label">Trang {{ currentPage }} / {{ totalPages }}</span>
+        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === totalPages" @click="currentPage++">Sau</button>
       </div>
     </div>
 
@@ -119,8 +131,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -130,6 +143,8 @@ const { confirmDialog } = useConfirm()
 const activeType = ref('DOI')
 const statusFilter = ref('')
 const requests = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 const loading = ref(false)
 const saving = ref(false)
 const detail = ref(null)
@@ -140,6 +155,16 @@ const offlineOrders = ref([])
 const offlineDetail = ref(null)
 const replacementOptions = ref([])
 const offlineForm = ref(defaultOfflineForm())
+const totalPages = computed(() => Math.max(1, Math.ceil(requests.value.length / pageSize.value)))
+const pagedRequests = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return requests.value.slice(start, start + pageSize.value)
+})
+
+watch(pageSize, () => { currentPage.value = 1 })
+watch(totalPages, total => {
+  if (currentPage.value > total) currentPage.value = total
+})
 
 const statusOptions = [
   { value: 'CHO_DUYET', label: 'Chờ duyệt' }, { value: 'CHO_NHAN_HANG', label: 'Chờ khách gửi hàng' },
@@ -162,7 +187,8 @@ async function loadRequests() {
   finally { loading.value = false }
 }
 
-function setType(type) { activeType.value = type; loadRequests() }
+function setType(type) { activeType.value = type; currentPage.value = 1; loadRequests() }
+function changeStatus() { currentPage.value = 1; loadRequests() }
 function openDetail(item) { detail.value = item }
 function openAction(type) { actionModal.value = type; actionReason.value = '' }
 
@@ -254,6 +280,6 @@ function formatCurrency(value) { return Number(value || 0).toLocaleString('vi-VN
 </script>
 
 <style scoped>
-.z-page-subtitle,.z-subtext{font-size:12px;color:var(--z-gray);margin:0}.z-return-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}.z-segmented{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--z-gray-border);background:var(--z-white);padding:3px;border-radius:var(--z-radius)}.z-segmented button{border:0;background:transparent;min-width:112px;height:34px;padding:0 14px;color:var(--z-gray);font-size:13px}.z-segmented button.active{background:var(--z-dark);color:var(--z-white)}.z-status-filter{width:210px;height:42px}.z-result-count{margin-left:auto;font-size:12px;color:var(--z-gray)}.z-empty-return{min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--z-gray)}.z-empty-return i{font-size:34px;color:var(--z-gray-light)}.z-empty-return strong{color:var(--z-dark)}.z-product-cell{display:flex;align-items:center;gap:10px;min-width:280px}.z-product-cell img,.z-product-placeholder{width:42px;height:50px;object-fit:cover;background:var(--z-bg-alt);display:grid;place-items:center;border-radius:var(--z-radius);flex:none}.z-source{font-size:11px;padding:4px 8px;border:1px solid var(--z-gray-border);border-radius:20px}.z-source.online{color:#1769aa;background:#eef7ff}.z-source.offline{color:#6b4d00;background:#fff8df}.z-status{display:inline-flex;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:600}.z-status.pending{background:#fff4d6;color:#8a5b00}.z-status.waiting{background:#eaf5ff;color:#1769aa}.z-status.processing{background:#f2edff;color:#6440a4}.z-status.rejected{background:#ffeded;color:#b42318}.z-status.done{background:#eaf8ee;color:#217a3d}.z-small-btn{height:34px;padding:6px 10px;font-size:12px}.z-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.z-modal-head h3{font-size:18px;font-weight:600;margin:0}.z-modal-head span{font-size:12px;color:var(--z-gray)}.z-return-detail-modal{max-width:860px}.z-return-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}.z-return-detail-grid section{min-width:0}.z-return-detail-grid h4,.z-evidence-section h4{font-size:13px;font-weight:700;margin:0 0 10px}.z-return-detail-grid dl{display:grid;grid-template-columns:125px 1fr;gap:7px 12px;font-size:13px}.z-return-detail-grid dt{font-weight:500;color:var(--z-gray)}.z-return-detail-grid dd{margin:0;overflow-wrap:anywhere}.z-evidence-section{border-top:1px solid var(--z-gray-border);padding-top:16px;margin-top:16px}.z-evidence-list{display:flex;gap:8px;overflow-x:auto}.z-evidence-list img{width:88px;height:104px;object-fit:cover;border:1px solid var(--z-gray-border);border-radius:var(--z-radius)}.z-process-state{display:flex;align-items:center;gap:10px;background:var(--z-bg-alt);padding:12px;margin-top:18px;font-size:12px;color:var(--z-gray)}.z-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px;padding-top:16px;border-top:1px solid var(--z-gray-border)}.z-danger-text{color:var(--z-danger)}.z-label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}.z-form-segment{display:grid;width:100%;height:42px}.z-form-segment button{height:34px;min-width:0}.z-form-segment button:not(.active){color:var(--z-gray)}
+.z-page-subtitle,.z-subtext{font-size:12px;color:var(--z-gray);margin:0}.z-return-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}.z-segmented{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--z-gray-border);background:var(--z-white);padding:3px;border-radius:var(--z-radius)}.z-segmented button{border:0;background:transparent;min-width:112px;height:34px;padding:0 14px;color:var(--z-gray);font-size:13px}.z-segmented button.active{background:var(--z-dark);color:var(--z-white)}.z-status-filter{width:210px;height:42px}.z-result-count{margin-left:auto;font-size:12px;color:var(--z-gray)}.z-empty-return{min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--z-gray)}.z-empty-return i{font-size:34px;color:var(--z-gray-light)}.z-empty-return strong{color:var(--z-dark)}.z-product-cell{display:flex;align-items:center;gap:10px;min-width:280px}.z-product-cell img,.z-product-placeholder{width:42px;height:50px;object-fit:cover;background:var(--z-bg-alt);display:grid;place-items:center;border-radius:var(--z-radius);flex:none}.z-source{font-size:11px;padding:4px 8px;border:1px solid var(--z-gray-border);border-radius:20px}.z-source.online{color:#1769aa;background:#eef7ff}.z-source.offline{color:#6b4d00;background:#fff8df}.z-status{display:inline-flex;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:600}.z-status.pending{background:#fff4d6;color:#8a5b00}.z-status.waiting{background:#eaf5ff;color:#1769aa}.z-status.processing{background:#f2edff;color:#6440a4}.z-status.rejected{background:#ffeded;color:#b42318}.z-status.done{background:#eaf8ee;color:#217a3d}.z-small-btn{height:34px;padding:6px 10px;font-size:12px}.z-list-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:var(--z-gray);font-size:12px}.z-page-button{min-width:68px;height:34px;padding:6px 12px}.z-page-label{display:inline-flex;align-items:center;padding:0 6px;color:var(--z-dark)}.z-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.z-modal-head h3{font-size:18px;font-weight:600;margin:0}.z-modal-head span{font-size:12px;color:var(--z-gray)}.z-return-detail-modal{max-width:860px}.z-return-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}.z-return-detail-grid section{min-width:0}.z-return-detail-grid h4,.z-evidence-section h4{font-size:13px;font-weight:700;margin:0 0 10px}.z-return-detail-grid dl{display:grid;grid-template-columns:125px 1fr;gap:7px 12px;font-size:13px}.z-return-detail-grid dt{font-weight:500;color:var(--z-gray)}.z-return-detail-grid dd{margin:0;overflow-wrap:anywhere}.z-evidence-section{border-top:1px solid var(--z-gray-border);padding-top:16px;margin-top:16px}.z-evidence-list{display:flex;gap:8px;overflow-x:auto}.z-evidence-list img{width:88px;height:104px;object-fit:cover;border:1px solid var(--z-gray-border);border-radius:var(--z-radius)}.z-process-state{display:flex;align-items:center;gap:10px;background:var(--z-bg-alt);padding:12px;margin-top:18px;font-size:12px;color:var(--z-gray)}.z-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px;padding-top:16px;border-top:1px solid var(--z-gray-border)}.z-danger-text{color:var(--z-danger)}.z-label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}.z-form-segment{display:grid;width:100%;height:42px}.z-form-segment button{height:34px;min-width:0}.z-form-segment button:not(.active){color:var(--z-gray)}
 @media(max-width:767px){.z-return-toolbar{align-items:stretch;flex-direction:column}.z-status-filter{width:100%}.z-result-count{margin:0}.z-return-detail-grid{grid-template-columns:1fr}.z-return-detail-modal{max-height:92vh;overflow-y:auto}.z-modal-actions{flex-wrap:wrap}.z-modal-actions button{flex:1;min-width:130px}}
 </style>

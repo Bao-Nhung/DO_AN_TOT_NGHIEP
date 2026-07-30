@@ -2,9 +2,9 @@
   <div>
     <div class="lm-page-hero" data-title="WISHLIST">
       <div class="container">
-        <p class="lm-eyebrow mb-3">Yêu Thích</p>
+        <p class="lm-eyebrow mb-3">{{ isEn ? 'Wishlist' : 'Yêu Thích' }}</p>
         <h1 class="mb-3">Bộ sưu tập <em>của bạn</em></h1>
-        <p>{{ wishlistProducts.length }} sản phẩm bạn đã lưu</p>
+        <p data-no-i18n>{{ wishlistSummaryLabel }}</p>
       </div>
     </div>
 
@@ -53,16 +53,21 @@ import { useToast } from '@/composables/useToast'
 import { useCart }  from '@/composables/useCart'
 import { useWishlist } from '@/composables/useWishlist'
 import { products, loadProducts } from '@/composables/useProducts'
+import { useI18n } from '@/composables/useI18n'
 
 onMounted(() => loadProducts())
 
 const { showToast } = useToast()
 const { formatPrice } = useCart()
 const { wishlistIds, removeFromWishlist: removeWl } = useWishlist()
+const { isEn } = useI18n()
 
 const wishlistProducts = computed(() => {
   return products.value.filter(p => wishlistIds.value.includes(p.id))
 })
+const wishlistSummaryLabel = computed(() => isEn.value
+  ? `${wishlistProducts.value.length} saved products`
+  : `${wishlistProducts.value.length} sản phẩm bạn đã lưu`)
 
 function removeFromWishlist(id) {
   removeWl(id)

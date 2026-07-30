@@ -47,11 +47,12 @@
             <i class="bi bi-search" style="font-size:32px;color:var(--z-gray-border)"></i>
             <p style="font-size:13px;color:var(--z-gray);margin-top:8px">Không tìm thấy sản phẩm</p>
           </div>
-          <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--z-gray-border)">
+          <div v-if="filteredProducts.length" class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 py-3" style="border-top:1px solid var(--z-gray-border)">
             <span style="font-size:12px;color:var(--z-gray)">
               {{ (currentPage - 1) * itemsPerPage + 1 }} - {{ Math.min(currentPage * itemsPerPage, filteredProducts.length) }} / {{ filteredProducts.length }}
             </span>
-            <div class="d-flex gap-2">
+            <PageSizeSelect v-model="itemsPerPage" />
+            <div v-if="totalPages > 1" class="d-flex gap-2">
               <button class="lm-btn-secondary" style="padding:6px 10px;font-size:12px;height:auto;border-radius:6px" :disabled="currentPage === 1" @click.stop="currentPage--">Trước</button>
               <button class="lm-btn-secondary" style="padding:6px 10px;font-size:12px;height:auto;border-radius:6px" :disabled="currentPage === totalPages" @click.stop="currentPage++">Sau</button>
             </div>
@@ -65,6 +66,16 @@
             <i class="bi bi-cart3 me-2"></i>Giỏ hàng
             <span v-if="cart.length" style="font-size:12px;color:var(--z-gray);font-weight:400"> ({{ cart.length }} sản phẩm)</span>
           </h3>
+          <div v-if="cart.length" class="z-pos-hold-status mb-3">
+            <span>
+              <i class="bi bi-shield-check me-1"></i>
+              Đã giữ tồn kho
+              <template v-if="holdCountdown">· còn {{ holdCountdown }}</template>
+            </span>
+            <button type="button" :disabled="releasingCart" @click="clearReservedCart">
+              {{ releasingCart ? 'Đang xóa...' : 'Xóa giỏ' }}
+            </button>
+          </div>
 
           <div v-if="cart.length === 0" class="text-center py-4">
             <i class="bi bi-cart-x" style="font-size:36px;color:var(--z-gray-border)"></i>
@@ -73,7 +84,7 @@
 
           <div v-else>
             <div class="d-flex flex-column gap-2 mb-3" style="max-height:300px;overflow-y:auto">
-              <div v-for="(item, i) in cart" :key="i"
+              <div v-for="item in cart" :key="item.variantId"
                    class="d-flex align-items-center gap-3 p-2" style="background:var(--z-bg-alt);border-radius:var(--z-radius)">
                 <img v-if="item.image" :src="item.image" :alt="item.name" class="z-pos-cart-image">
                 <div class="flex-grow-1">
@@ -85,11 +96,23 @@
                   </div>
                 </div>
                 <div class="d-flex align-items-center gap-1">
-                  <button type="button" class="z-qty-btn" :aria-label="item.qty > 1 ? `Giảm số lượng ${item.name}` : `Xóa ${item.name}`" @click="item.qty > 1 ? item.qty-- : removeFromCart(i)">
+                  <button
+                    type="button"
+                    class="z-qty-btn"
+                    :disabled="updatingVariantId === item.variantId"
+                    :aria-label="item.qty > 1 ? `Giảm số lượng ${item.name}` : `Xóa ${item.name}`"
+                    @click="changeCartQuantity(item, item.qty - 1)"
+                  >
                     <i class="bi" :class="item.qty > 1 ? 'bi-dash' : 'bi-trash'"></i>
                   </button>
                   <span style="width:28px;text-align:center;font-size:13px;font-weight:600">{{ item.qty }}</span>
-                  <button type="button" class="z-qty-btn" :aria-label="`Tăng số lượng ${item.name}`" @click="item.qty < item.maxQty ? item.qty++ : showToast('Đạt giới hạn tồn kho!')">
+                  <button
+                    type="button"
+                    class="z-qty-btn"
+                    :disabled="updatingVariantId === item.variantId"
+                    :aria-label="`Tăng số lượng ${item.name}`"
+                    @click="item.qty < item.maxQty ? changeCartQuantity(item, item.qty + 1) : showToast('Đạt giới hạn tồn kho!')"
+                  >
                     <i class="bi bi-plus"></i>
                   </button>
                 </div>
@@ -200,9 +223,6 @@
                 <strong :style="{ fontSize:'16px', color: change >= 0 ? '#2E7D32' : '#C62828' }">
                   {{ change >= 0 ? fmtPrice(change) : 'Thiếu ' + fmtPrice(-change) }}
                 </strong>
-              </div>
-              <div v-if="tienKhachDua > 0 && change < 0" class="mt-2 p-2 rounded text-center" style="font-size:12px;font-weight:600;background:#FFEBEE;color:#C62828;border:1px solid #FFCDD2">
-                <i class="bi bi-exclamation-triangle-fill me-1"></i>Số tiền khách đưa chưa đủ (Còn thiếu {{ fmtPrice(-change) }})
               </div>
             </div>
 
@@ -319,7 +339,14 @@
         
         <div class="d-flex gap-3">
           <button class="lm-btn-secondary flex-fill" style="height:40px;" @click="showVariantModal = false">Đóng</button>
-          <button class="lm-btn-primary flex-fill" style="height:40px;" @click="confirmAddVariant">Thêm vào giỏ</button>
+          <button
+            class="lm-btn-primary flex-fill"
+            style="height:40px;"
+            :disabled="addingVariant"
+            @click="confirmAddVariant"
+          >
+            {{ addingVariant ? 'Đang giữ hàng...' : 'Thêm vào giỏ' }}
+          </button>
         </div>
       </div>
     </div>
@@ -327,13 +354,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
 import { mapProduct, fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { createVietQrUrl, isVietQrConfigured } from '@/config/paymentConfig'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
@@ -348,6 +376,12 @@ const filters = computed(() => [
 ])
 const vouchersList = ref([])
 const cart = ref([])
+const reservationToken = ref('')
+const reservationExpiresAt = ref(null)
+const updatingVariantId = ref(null)
+const addingVariant = ref(false)
+const releasingCart = ref(false)
+const reservationClock = ref(Date.now())
 const customerName = ref('')
 const customerPhone = ref('')
 const customerEmail = ref('')
@@ -397,7 +431,6 @@ const discount = ref(0)
 const voucherMsg = ref('')
 const bestVoucherCode = ref('')
 const autoVoucherDisabled = ref(false)
-let bestVoucherRequestId = 0
 
 // QR chuyển khoản
 const transferQrSrc = ref('')
@@ -416,7 +449,85 @@ const transferMethods = [
 const availablePaymentMethods = computed(() => paymentMethods)
 const quickCash = [100000, 200000, 500000, 1000000]
 
-onMounted(async () => {
+function reservationStorageKey() {
+  const user = getUser()
+  return `zestia_pos_reservation_${user?.userId || user?.username || 'staff'}`
+}
+
+function clearReservationLocalState() {
+  sessionStorage.removeItem(reservationStorageKey())
+  reservationToken.value = ''
+  reservationExpiresAt.value = null
+  cart.value = []
+  appliedVoucher.value = ''
+  voucherCode.value = ''
+  discount.value = 0
+  voucherMsg.value = ''
+}
+
+function syncReservationState(state, adjustProductStock = true) {
+  if (!state || state.status !== 'ACTIVE') {
+    clearReservationLocalState()
+    return
+  }
+
+  const previousByProduct = new Map()
+  cart.value.forEach(item => {
+    previousByProduct.set(
+      item.id,
+      (previousByProduct.get(item.id) || 0) + Number(item.qty || 0)
+    )
+  })
+
+  const nextCart = (state.items || []).map(item => ({
+    key: `variant-${item.variantId}`,
+    id: item.productId,
+    variantId: item.variantId,
+    name: item.productName,
+    code: item.productCode,
+    price: Number(item.unitPrice || 0),
+    qty: Number(item.quantity || 0),
+    color: item.color,
+    size: item.size,
+    maxQty: Number(item.maxQuantity || item.quantity || 0),
+    image: item.image || null
+  }))
+  const nextByProduct = new Map()
+  nextCart.forEach(item => {
+    nextByProduct.set(item.id, (nextByProduct.get(item.id) || 0) + item.qty)
+  })
+  if (adjustProductStock && allProducts.value.length) {
+    allProducts.value = allProducts.value.map(product => {
+      const deltaHeld = (nextByProduct.get(product.id) || 0) - (previousByProduct.get(product.id) || 0)
+      return deltaHeld
+        ? { ...product, stock: Math.max(0, Number(product.stock || 0) - deltaHeld) }
+        : product
+    })
+  }
+
+  reservationToken.value = state.token
+  reservationExpiresAt.value = state.expiresAt || null
+  sessionStorage.setItem(reservationStorageKey(), state.token)
+  cart.value = nextCart
+  appliedVoucher.value = state.voucher?.code || ''
+  voucherCode.value = state.voucher?.code || ''
+  discount.value = Number(state.discount || 0)
+  voucherMsg.value = state.voucher
+    ? `${state.voucher.name} — đã giữ voucher, giảm ${fmtPrice(discount.value)}`
+    : ''
+}
+
+async function restoreReservation() {
+  const storedToken = sessionStorage.getItem(reservationStorageKey())
+  if (!storedToken) return
+  try {
+    syncReservationState(await api().getPosReservation(storedToken), false)
+  } catch {
+    clearReservationLocalState()
+  }
+}
+
+async function loadProducts() {
   try {
     const data = await api().getVay()
     const sortedData = [...data].sort((a, b) => {
@@ -429,12 +540,25 @@ onMounted(async () => {
       return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
     })
   } catch (e) { console.error(e) }
+}
 
+async function loadVouchers() {
   try {
     const vData = await api().getVouchers()
     vouchersList.value = vData || []
-    await applyBestVoucher(true)
   } catch (e) { console.error('Failed to load vouchers:', e) }
+}
+
+let reservationClockTimer
+onMounted(async () => {
+  await restoreReservation()
+  await Promise.all([loadProducts(), loadVouchers()])
+  if (cart.value.length && !appliedVoucher.value) {
+    await applyBestVoucher(true)
+  }
+  reservationClockTimer = window.setInterval(() => {
+    reservationClock.value = Date.now()
+  }, 1000)
 })
 
 const filteredProducts = computed(() => {
@@ -457,20 +581,34 @@ const filteredProducts = computed(() => {
 })
 
 const currentPage = ref(1)
-const itemsPerPage = 10
-const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage))
+const itemsPerPage = ref(10)
+const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage.value))
 const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredProducts.value.slice(start, start + itemsPerPage)
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredProducts.value.slice(start, start + itemsPerPage.value)
 })
 
-watch([search, activeFilter], () => {
+watch([search, activeFilter, itemsPerPage], () => {
   currentPage.value = 1
 })
 
 const cartTotal = computed(() => cart.value.reduce((s, item) => s + item.price * item.qty, 0))
 const finalTotal = computed(() => Math.max(0, cartTotal.value - discount.value))
 const change = computed(() => (Number(tienKhachDua.value) || 0) - finalTotal.value)
+const holdCountdown = computed(() => {
+  reservationClock.value
+  if (!reservationExpiresAt.value) return ''
+  const seconds = Math.max(0, Math.floor((new Date(reservationExpiresAt.value).getTime() - Date.now()) / 1000))
+  const minutes = Math.floor(seconds / 60)
+  const rest = seconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+})
+const reservationIsCurrent = computed(() => {
+  reservationClock.value
+  return !!reservationToken.value
+    && !!reservationExpiresAt.value
+    && new Date(reservationExpiresAt.value).getTime() > Date.now()
+})
 
 const vietqrUrl = computed(() => {
   return createVietQrUrl(finalTotal.value, 'ZESTIA POS')
@@ -522,7 +660,7 @@ watch([paymentMethod, transferMethod, finalTotal], () => {
 })
 
 const canPay = computed(() => {
-  if (cart.value.length === 0) return false
+  if (cart.value.length === 0 || !reservationIsCurrent.value) return false
   if (customerName.value.trim().length < 2 || !/^0[35789]\d{8}$/.test(customerPhone.value)) return false
   if (customerEmail.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.value)) return false
   if (paymentMethod.value === 'cash') return change.value >= 0
@@ -545,7 +683,7 @@ async function addToCart(p) {
   }
 }
 
-function confirmAddVariant() {
+async function confirmAddVariant() {
   if (!selectedColor.value) {
     showToast('Vui lòng chọn màu sắc!', 'warning')
     return
@@ -572,34 +710,73 @@ function confirmAddVariant() {
   
   const itemKey = `variant-${match.id}`
   const existing = cart.value.find(c => c.key === itemKey)
-  if (existing) {
-    if (existing.qty >= match.soLuong) {
-      showToast('Không thể thêm quá số lượng tồn kho!', 'warning')
-      return
-    }
-    existing.qty++
-  } else {
-    cart.value.push({
-      key: itemKey,
-      id: selectedProduct.value.id,
-      variantId: match.id,
-      name: selectedProduct.value.name,
-      code: selectedProduct.value.code,
-      price: match.giaBan || selectedProduct.value.price,
-      qty: 1,
-      color: selectedColor.value,
-      size: selectedSize.value,
-      maxQty: match.soLuong,
-      image: match.anhUrl || selectedProduct.value.image || null
-    })
+  const targetQuantity = (existing?.qty || 0) + 1
+  if (existing && targetQuantity > existing.maxQty) {
+    showToast('Không thể thêm quá số lượng tồn kho!', 'warning')
+    return
   }
-  
-  showVariantModal.value = false
-  showToast(`Đã thêm ${selectedProduct.value.name} (${selectedColor.value} / ${selectedSize.value})`)
+  addingVariant.value = true
+  try {
+    const state = await api().setPosReservationItem(
+      reservationToken.value || null,
+      match.id,
+      targetQuantity
+    )
+    syncReservationState(state)
+    showVariantModal.value = false
+    showToast(`Đã giữ ${selectedProduct.value.name} (${selectedColor.value} / ${selectedSize.value})`)
+    if (!autoVoucherDisabled.value) await applyBestVoucher(true)
+  } catch (error) {
+    showToast(error.error || error.message || 'Không thể giữ sản phẩm trong giỏ POS')
+  } finally {
+    addingVariant.value = false
+  }
 }
 
-function removeFromCart(index) {
-  cart.value.splice(index, 1)
+async function changeCartQuantity(item, targetQuantity) {
+  if (!item || updatingVariantId.value !== null) return
+  updatingVariantId.value = item.variantId
+  try {
+    const state = await api().setPosReservationItem(
+      reservationToken.value,
+      item.variantId,
+      Math.max(0, targetQuantity)
+    )
+    const voucherWasRemoved = !!appliedVoucher.value && !state.voucher
+    syncReservationState(state)
+    if (voucherWasRemoved) {
+      autoVoucherDisabled.value = false
+      voucherMsg.value = 'Voucher cũ không còn đủ điều kiện'
+    }
+    if (!autoVoucherDisabled.value && cart.value.length) await applyBestVoucher(true)
+  } catch (error) {
+    showToast(error.error || error.message || 'Không thể cập nhật giỏ POS')
+  } finally {
+    updatingVariantId.value = null
+  }
+}
+
+async function clearReservedCart() {
+  if (!reservationToken.value || releasingCart.value) return
+  const accepted = await confirmDialog({
+    title: 'Xóa giỏ POS',
+    message: 'Toàn bộ sản phẩm và voucher đang giữ sẽ được hoàn lại ngay. Bạn muốn tiếp tục?',
+    confirmText: 'Xóa giỏ',
+    variant: 'danger'
+  })
+  if (!accepted) return
+  releasingCart.value = true
+  try {
+    await api().releasePosReservation(reservationToken.value)
+    clearReservationLocalState()
+    autoVoucherDisabled.value = false
+    await loadProducts()
+    showToast('Đã hoàn tồn kho và xóa giỏ POS')
+  } catch (error) {
+    showToast(error.error || error.message || 'Không thể xóa giỏ POS')
+  } finally {
+    releasingCart.value = false
+  }
 }
 
 const activeVouchers = computed(() => {
@@ -649,80 +826,50 @@ function fmtVoucherDiscount(v) {
   return '0đ'
 }
 
-async function applyVoucher(markManual = true) {
-  if (!voucherCode.value.trim()) return showToast('Vui lòng nhập mã giảm giá')
-  if (markManual !== false) autoVoucherDisabled.value = true
+async function applyVoucher() {
+  const code = voucherCode.value.trim()
+  if (!code) return showToast('Vui lòng nhập mã giảm giá')
+  if (!reservationToken.value) return showToast('Vui lòng thêm sản phẩm trước khi dùng voucher')
+  autoVoucherDisabled.value = true
   voucherMsg.value = ''
   try {
-    const res = await api().applyVoucher(voucherCode.value.trim(), cartTotal.value)
-    if (res.valid) {
-      appliedVoucher.value = res.maGiamGia
-      discount.value = Number(res.giamGia) || 0
-      voucherMsg.value = `${res.tenGiamGia} — giảm ${fmtPrice(discount.value)}`
-    } else {
-      appliedVoucher.value = ''
-      discount.value = 0
-      voucherMsg.value = res.message || 'Mã không hợp lệ'
-      if (markManual === false) {
-        autoVoucherDisabled.value = false
-        await applyBestVoucher(true)
-      }
-    }
-  } catch (e) {
-    voucherMsg.value = e.message || 'Không áp dụng được mã'
+    const state = await api().setPosReservationVoucher(reservationToken.value, code)
+    syncReservationState(state, false)
+  } catch (error) {
+    voucherMsg.value = error.error || error.message || 'Không áp dụng được mã'
   }
 }
 
-function removeVoucher() {
+async function removeVoucher() {
+  if (!reservationToken.value) return
   autoVoucherDisabled.value = true
-  appliedVoucher.value = ''
-  discount.value = 0
-  voucherCode.value = ''
-  voucherMsg.value = ''
+  try {
+    syncReservationState(
+      await api().clearPosReservationVoucher(reservationToken.value),
+      false
+    )
+    voucherMsg.value = 'Đã hoàn lượt voucher'
+  } catch (error) {
+    showToast(error.error || error.message || 'Không thể bỏ voucher')
+  }
 }
 
 async function applyBestVoucher(force = false) {
-  if ((!force && autoVoucherDisabled.value) || cartTotal.value <= 0) return
-  const requestId = ++bestVoucherRequestId
+  if ((!force && autoVoucherDisabled.value) || cartTotal.value <= 0 || !reservationToken.value) return
   try {
-    const res = await api().getBestVoucher(cartTotal.value)
-    if (requestId !== bestVoucherRequestId || autoVoucherDisabled.value) return
-    if (!res?.valid) {
-      bestVoucherCode.value = ''
-      voucherCode.value = ''
-      appliedVoucher.value = ''
-      discount.value = 0
-      voucherMsg.value = ''
-      return
+    const state = await api().reserveBestPosVoucher(reservationToken.value)
+    syncReservationState(state, false)
+    bestVoucherCode.value = state.voucher?.code || ''
+    if (state.voucher) {
+      voucherMsg.value = `${state.voucher.name} — tự động giữ voucher tốt nhất, giảm ${fmtPrice(state.discount)}`
     }
-    bestVoucherCode.value = res.maGiamGia
-    voucherCode.value = res.maGiamGia
-    appliedVoucher.value = res.maGiamGia
-    discount.value = Number(res.giamGia) || 0
-    voucherMsg.value = `${res.tenGiamGia} — tự động giảm ${fmtPrice(discount.value)}`
-  } catch (e) {
-    console.error('Không thể tự chọn voucher:', e)
+  } catch (error) {
+    console.error('Không thể tự chọn voucher:', error)
   }
 }
 
-let voucherRefreshTimer
-watch(cartTotal, () => {
-  clearTimeout(voucherRefreshTimer)
-  voucherRefreshTimer = setTimeout(async () => {
-    if (cartTotal.value <= 0) {
-      appliedVoucher.value = ''
-      voucherCode.value = ''
-      discount.value = 0
-      voucherMsg.value = ''
-      autoVoucherDisabled.value = false
-      return
-    }
-    if (autoVoucherDisabled.value && appliedVoucher.value) {
-      await applyVoucher(false)
-    } else {
-      await applyBestVoucher()
-    }
-  }, 150)
+onBeforeUnmount(() => {
+  window.clearInterval(reservationClockTimer)
 })
 
 function paymentLabel() {
@@ -848,17 +995,19 @@ async function createOrder() {
       hinhThucNhanHang: 0,
       trangThai: 4,
       daThanhToan: true,
+      tienKhachDua: paymentMethod.value === 'cash' ? Number(tienKhachDua.value) : null,
       maGiamGia: appliedVoucher.value || null,
       nhanVienId: user?.userId || null,
       ghiChu: noteText,
       tenKhachHang: customerName.value.trim(),
       soDienThoai: customerPhone.value,
       email: customerEmail.value.trim() || null,
-      customerId: selectedCustomerId.value
+      customerId: selectedCustomerId.value,
+      posReservationToken: reservationToken.value
     }
     await api().createOrder(orderData)
     showToast('Tạo đơn & thanh toán thành công!')
-    cart.value = []
+    clearReservationLocalState()
     customerName.value = ''
     customerPhone.value = ''
     customerEmail.value = ''
@@ -868,8 +1017,9 @@ async function createOrder() {
     note.value = ''
     tienKhachDua.value = null
     paymentConfirmed.value = false
-    removeVoucher()
     autoVoucherDisabled.value = false
+    bestVoucherCode.value = ''
+    await loadProducts()
   } catch (e) {
     showToast('Lỗi: ' + (e.error || e.message || 'Không thể tạo đơn'))
   } finally {
@@ -880,6 +1030,16 @@ async function createOrder() {
 
 <style scoped>
 .z-pos-cart-image { width: 42px; height: 50px; flex: 0 0 42px; object-fit: cover; border: 1px solid var(--z-gray-border); background: var(--z-white); }
+.z-pos-hold-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 10px; border: 1px solid #bbf7d0; background: #f0fdf4;
+  color: #166534; font-size: 11px;
+}
+.z-pos-hold-status button {
+  border: 0; padding: 0; background: transparent; color: #991b1b;
+  font-size: 11px; font-weight: 600;
+}
+.z-pos-hold-status button:disabled { opacity: .55; }
 .z-customer-search { position: relative; }
 .z-customer-search > i { position: absolute; z-index: 2; left: 12px; top: 10px; color: var(--z-gray); }
 .z-customer-results {
@@ -967,7 +1127,7 @@ async function createOrder() {
   border-radius: var(--z-radius); font-size: 13px; font-weight: 600; color: #16a34a;
   cursor: pointer; transition: all 0.15s; font-family: var(--z-font-body);
 }
-.z-confirm-btn:hover { background: #dcfce7; }
+.z-confirm-btn:hover { background: #dcfce7; color: #166534; }
 .z-confirm-btn:disabled { opacity: 0.6; cursor: default; }
 .z-confirmed {
   display: flex; align-items: center; justify-content: space-between;
@@ -986,7 +1146,7 @@ async function createOrder() {
   display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0;
 }
 .z-test-card-row span { color: var(--z-gray); }
-.z-test-card-row strong { color: var(--z-dark); font-family: monospace; }
+.z-test-card-row strong { color: var(--z-dark); font-family: var(--z-font-body); font-variant-numeric: tabular-nums; }
 .z-pos-voucher-list {
   display: grid;
   gap: 6px;

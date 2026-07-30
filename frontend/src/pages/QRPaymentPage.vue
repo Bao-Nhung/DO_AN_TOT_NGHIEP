@@ -219,9 +219,10 @@ onUnmounted(() => {
   opacity: 0.85;
 }
 .z-qr-amount {
-  font-family: var(--z-font-display);
+  font-family: var(--z-font-body);
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .z-qr-body {
   padding: 28px;

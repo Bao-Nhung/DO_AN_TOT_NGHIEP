@@ -17,7 +17,17 @@ public interface SupportConversationRepository extends JpaRepository<SupportConv
 
     List<SupportConversation> findByTrangThaiInOrderByNgayCapNhatDesc(Collection<String> statuses);
 
+    long countByTrangThaiIn(Collection<String> statuses);
+
     long countByNhanVienIdAndTrangThaiIn(Integer employeeId, Collection<String> statuses);
+
+    @Query("""
+            SELECT COUNT(c) FROM SupportConversation c
+            WHERE c.trangThai IN :statuses
+              AND (c.nhanVien IS NULL OR c.nhanVien.id = :employeeId)
+            """)
+    long countActionableForEmployee(@Param("employeeId") Integer employeeId,
+                                    @Param("statuses") Collection<String> statuses);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM SupportConversation c WHERE c.id = :id")

@@ -356,7 +356,7 @@ onMounted(() => {
 .filter-box {
   background: white;
   padding: 20px;
-  border-radius: 16px;
+  border-radius: var(--z-radius-lg);
   display: flex;
   gap: 20px;
   align-items: end;
@@ -385,7 +385,7 @@ onMounted(() => {
 .card-box {
   background: white;
   padding: 22px;
-  border-radius: 16px;
+  border-radius: var(--z-radius-lg);
   border: 1px solid #eee;
 }
 .card-box span {
@@ -401,7 +401,7 @@ onMounted(() => {
 .chart-box {
   background: white;
   padding: 22px;
-  border-radius: 16px;
+  border-radius: var(--z-radius-lg);
   border: 1px solid #eee;
 }
 .chart-box h3 {

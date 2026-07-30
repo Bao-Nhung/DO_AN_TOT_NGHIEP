@@ -129,6 +129,9 @@
           </div>
 
           <!-- Pagination -->
+          <div v-if="filteredNotifs.length" class="d-flex justify-content-end mt-4">
+            <PageSizeSelect v-model="itemsPerPage" :options="[4, 8, 16, 32]" />
+          </div>
           <div v-if="totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
             <button type="button" class="lm-pagination-btn" aria-label="Trang thông báo trước" :disabled="currentPage === 1" @click="currentPage--">
               <i class="bi bi-chevron-left"></i>
@@ -160,6 +163,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import { api, useAuth } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const toast = useToast()
 const { isLoggedIn } = useAuth()
@@ -170,7 +174,7 @@ const currentTab = ref('all')
 const searchQuery = ref('')
 const expandedId = ref(null)
 const currentPage = ref(1)
-const itemsPerPage = 8
+const itemsPerPage = ref(8)
 
 const filterTabs = [
   { label: 'Tất cả', value: 'all' },
@@ -208,7 +212,7 @@ async function loadNotifications() {
 }
 
 // Watch inputs to reset pagination
-watch([currentTab, searchQuery], () => {
+watch([currentTab, searchQuery, itemsPerPage], () => {
   currentPage.value = 1
   expandedId.value = null
 })
@@ -235,10 +239,10 @@ const filteredNotifs = computed(() => {
 })
 
 // Paginated Notifications
-const totalPages = computed(() => Math.ceil(filteredNotifs.value.length / itemsPerPage))
+const totalPages = computed(() => Math.ceil(filteredNotifs.value.length / itemsPerPage.value))
 const paginatedNotifs = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage
-  return filteredNotifs.value.slice(start, start + itemsPerPage)
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  return filteredNotifs.value.slice(start, start + itemsPerPage.value)
 })
 
 // Actions

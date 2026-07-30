@@ -10,6 +10,8 @@ import '@/assets/main.css'
 
 // Root component
 import App from './App.vue'
+import { i18n } from '@/i18n'
+import { installDomTranslator } from '@/i18n/domTranslator'
 
 // Lazy-loaded pages keep the initial bundle smaller.
 const HomePage = () => import('@/pages/HomePage.vue')
@@ -28,6 +30,7 @@ const OrderTrackingPage = () => import('@/pages/OrderTrackingPage.vue')
 const LookbookPage = () => import('@/pages/LookbookPage.vue')
 const PoliciesPage = () => import('@/pages/PoliciesPage.vue')
 const ReviewsPage = () => import('@/pages/ReviewsPage.vue')
+const CompareProductsPage = () => import('@/pages/CompareProductsPage.vue')
 
 const AdminDashboard = () => import('@/pages/admin/AdminDashboard.vue')
 const AdminProducts = () => import('@/pages/admin/AdminProducts.vue')
@@ -60,6 +63,7 @@ const routes = [
   { path: '/lookbook',       component: LookbookPage,      name: 'lookbook' },
   { path: '/policies',       component: PoliciesPage,      name: 'policies' },
   { path: '/reviews',        component: ReviewsPage,       name: 'reviews' },
+  { path: '/compare',        component: CompareProductsPage, name: 'compare' },
 
   { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
   { path: '/admin/thong-ke',  component: AdminStatisticalDashboard, name: 'admin-thong-ke' },
@@ -116,7 +120,7 @@ router.beforeEach(async (to, from, next) => {
   const requiresLogin = isAdminRoute || isProfileRoute
   const user = isLoggedIn() ? getUser() : null
 
-  if (user && isStaffRole(user.role) && !isAdminRoute && (to.name === 'home' || to.name === 'login')) {
+  if (user && isStaffRole(user.role) && !isAdminRoute) {
     return next({ name: 'admin-dashboard' })
   }
 
@@ -152,5 +156,7 @@ router.beforeEach(async (to, from, next) => {
 
 const app = createApp(App)
 app.use(router)
+app.use(i18n)
+installDomTranslator(app)
 router.isReady().then(() => app.mount('#app'))
 

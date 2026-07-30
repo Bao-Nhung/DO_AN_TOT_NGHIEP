@@ -1,5 +1,7 @@
 package com.zestia.datn.zestia;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.HoaDonChiTiet;
@@ -21,6 +23,7 @@ import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import com.zestia.datn.zestia.repository.LichLamViecRepository;
 import com.zestia.datn.zestia.repository.MauSacRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
+import com.zestia.datn.zestia.repository.PosPhienGiuHangRepository;
 import com.zestia.datn.zestia.repository.VaiTroRepository;
 import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import com.zestia.datn.zestia.repository.VayRepository;
@@ -55,6 +58,7 @@ import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -67,6 +71,9 @@ class PaymentAndOrderSecurityTests {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private HoaDonRepository hoaDonRepository;
@@ -106,6 +113,9 @@ class PaymentAndOrderSecurityTests {
 
     @Autowired
     private NhanVienRepository employeeRepository;
+
+    @Autowired
+    private PosPhienGiuHangRepository posSessionRepository;
 
     @Autowired
     private LichLamViecRepository scheduleRepository;
@@ -296,6 +306,8 @@ class PaymentAndOrderSecurityTests {
         mockMvc.perform(get("/api/hoa-don/search-by-phone")
                         .param("soDienThoai", "0900000001"))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/staff/tasks"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -410,7 +422,20 @@ class PaymentAndOrderSecurityTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"tenKhachHang":"Khách POS test","soDienThoai":"%s","hinhThucThanhToan":"Tiền mặt",
-                                 "hinhThucNhanHang":0,"trangThai":4,"daThanhToan":true,
+                                 "hinhThucNhanHang":0,"trangThai":4,"daThanhToan":true,"tienKhachDua":499999,
+                                 "nhanVienId":%d,"items":[{"productId":%d,"variantId":%d,"qty":1}]}
+                                """.formatted(customerPhone, employee.getId(), product.getId(), variant.getId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Số tiền khách đưa chưa đủ. Còn thiếu 1.00đ"));
+
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(2);
+
+        mockMvc.perform(post("/api/payment/create-order")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenKhachHang":"Khách POS test","soDienThoai":"%s","hinhThucThanhToan":"Tiền mặt",
+                                 "hinhThucNhanHang":0,"trangThai":4,"daThanhToan":true,"tienKhachDua":500000,
                                  "nhanVienId":%d,"items":[{"productId":%d,"variantId":%d,"qty":1}]}
                                 """.formatted(customerPhone, employee.getId(), product.getId(), variant.getId())))
                 .andExpect(status().isOk())
@@ -425,6 +450,172 @@ class PaymentAndOrderSecurityTests {
         assertThat(saved.getKhachHang().getSoDienThoai()).isEqualTo(customerPhone);
         assertThat(saved.getDaThanhToan()).isTrue();
         assertThat(saved.getDiaChiGiaoHang()).isEqualTo("Mua trực tiếp tại cửa hàng");
+
+        mockMvc.perform(get("/api/staff/tasks")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").isNumber())
+                .andExpect(jsonPath("$.items").isArray());
+
+        mockMvc.perform(get("/api/staff/dashboard")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.todayOrderCount").value(1))
+                .andExpect(jsonPath("$.todayPosRevenue").value(500000))
+                .andExpect(jsonPath("$.recentOrders[0].maHoaDon").value(saved.getMaHoaDon()));
+    }
+
+    @Test
+    void posReservationRestoresOnClearAndExpiryThenCheckoutDoesNotDeductTwice() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        VaiTro role = roleRepository.findByTenVaiTro("NhanVien")
+                .orElseGet(() -> roleRepository.save(VaiTro.builder().tenVaiTro("NhanVien").build()));
+        NhanVien employee = employeeRepository.save(NhanVien.builder()
+                .vaiTro(role)
+                .maNhanVien("NV-HOLD-" + marker)
+                .hoVaTen("Nhan vien giu ton POS")
+                .email("pos-hold-" + marker + "@example.com")
+                .tenNguoiDung("pos-hold-" + marker)
+                .matKhau(passwordEncoder.encode("123456"))
+                .tinhTrangLamViec((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        scheduleRepository.save(LichLamViec.builder()
+                .nhanVien(employee)
+                .ngayLam(LocalDate.now())
+                .caLam("Ca kiểm thử giữ tồn POS")
+                .gioBatDau(LocalTime.MIN)
+                .gioKetThuc(LocalTime.of(23, 59, 59))
+                .trangThai((byte) 1)
+                .thoiGianXacNhan(LocalDateTime.now().minusMinutes(10))
+                .gioCheckIn(LocalDateTime.now().minusMinutes(5))
+                .ngayTao(LocalDateTime.now())
+                .build());
+        MauSac color = colorRepository.save(MauSac.builder()
+                .tenMauSac("Hold Black " + marker)
+                .trangThai((byte) 1)
+                .build());
+        KichThuoc size = sizeRepository.save(KichThuoc.builder()
+                .tenKichThuoc("HOLD-S-" + marker)
+                .trangThai((byte) 1)
+                .build());
+        Vay product = vayRepository.save(Vay.builder()
+                .maVay("V-HOLD-" + marker)
+                .tenVay("POS reservation dress")
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
+                .vay(product)
+                .mauSac(color)
+                .kichThuoc(size)
+                .maVayChiTiet("VC-HOLD-" + marker)
+                .giaBanGoc(BigDecimal.valueOf(500000))
+                .giaBan(BigDecimal.valueOf(500000))
+                .giaNhap(BigDecimal.valueOf(300000))
+                .soLuong(4)
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        GiamGia voucher = voucherRepository.save(GiamGia.builder()
+                .maGiamGia("HOLD" + marker)
+                .tenGiamGia("Voucher giữ tồn POS")
+                .gioTriGiam(BigDecimal.valueOf(50000))
+                .giaTriDonToiThieu(BigDecimal.ZERO)
+                .soLuong(2)
+                .ngayBatDau(LocalDate.now().minusDays(1))
+                .ngayKetThuc(LocalDate.now().plusDays(1))
+                .trangThai((byte) 1)
+                .build());
+        String token = jwtUtil.generateToken(employee.getTenNguoiDung(), "NhanVien", employee.getId());
+        String authorization = "Bearer " + token;
+
+        String firstSession = reservationToken(mockMvc.perform(post("/api/pos-reservations/items")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"variantId":%d,"quantity":2}
+                                """.formatted(variant.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].quantity").value(2))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        mockMvc.perform(put("/api/pos-reservations/" + firstSession + "/voucher")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"maGiamGia\":\"" + voucher.getMaGiamGia() + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.discount").value(50000));
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(2);
+        assertThat(voucherRepository.findById(voucher.getId()).orElseThrow().getSoLuong()).isEqualTo(1);
+
+        mockMvc.perform(delete("/api/pos-reservations/" + firstSession)
+                        .header("Authorization", authorization))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("RELEASED"));
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(4);
+        assertThat(voucherRepository.findById(voucher.getId()).orElseThrow().getSoLuong()).isEqualTo(2);
+
+        String expiredSession = reservationToken(mockMvc.perform(post("/api/pos-reservations/items")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"variantId":%d,"quantity":1}
+                                """.formatted(variant.getId())))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        mockMvc.perform(put("/api/pos-reservations/" + expiredSession + "/voucher")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"maGiamGia\":\"" + voucher.getMaGiamGia() + "\"}"))
+                .andExpect(status().isOk());
+        var expiring = posSessionRepository.findByMaPhien(expiredSession).orElseThrow();
+        expiring.setHetHanLuc(LocalDateTime.now().minusSeconds(1));
+        posSessionRepository.saveAndFlush(expiring);
+
+        mockMvc.perform(post("/api/pos-reservations/" + expiredSession + "/voucher/best")
+                        .header("Authorization", authorization))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Phiên giữ hàng đã hết hạn. Vui lòng tạo lại giỏ POS"));
+        assertThat(posSessionRepository.findByMaPhien(expiredSession).orElseThrow().getTrangThai()).isEqualTo("EXPIRED");
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(4);
+        assertThat(voucherRepository.findById(voucher.getId()).orElseThrow().getSoLuong()).isEqualTo(2);
+
+        String checkoutSession = reservationToken(mockMvc.perform(post("/api/pos-reservations/items")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"variantId":%d,"quantity":1}
+                                """.formatted(variant.getId())))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+        mockMvc.perform(put("/api/pos-reservations/" + checkoutSession + "/voucher")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"maGiamGia\":\"" + voucher.getMaGiamGia() + "\"}"))
+                .andExpect(status().isOk());
+
+        String customerPhone = "09" + marker.substring(Math.max(0, marker.length() - 8));
+        mockMvc.perform(post("/api/payment/create-order")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"tenKhachHang":"Khách giữ tồn POS","soDienThoai":"%s",
+                                 "hinhThucThanhToan":"Tiền mặt","hinhThucNhanHang":0,
+                                 "tienKhachDua":450000,"nhanVienId":%d,
+                                 "posReservationToken":"%s","maGiamGia":"%s",
+                                 "items":[{"productId":%d,"variantId":%d,"qty":1}]}
+                                """.formatted(
+                                customerPhone, employee.getId(), checkoutSession, voucher.getMaGiamGia(),
+                                product.getId(), variant.getId()
+                        )))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trangThai").value(4))
+                .andExpect(jsonPath("$.giamGia").value(50000));
+
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(3);
+        assertThat(voucherRepository.findById(voucher.getId()).orElseThrow().getSoLuong()).isEqualTo(1);
+        assertThat(posSessionRepository.findByMaPhien(checkoutSession).orElseThrow().getTrangThai())
+                .isEqualTo("COMPLETED");
     }
 
     @Test
@@ -843,5 +1034,10 @@ class PaymentAndOrderSecurityTests {
                 .andReturn()
                 .getResponse()
                 .getStatus();
+    }
+
+    private String reservationToken(String responseBody) throws Exception {
+        JsonNode response = objectMapper.readTree(responseBody);
+        return response.path("token").asText();
     }
 }

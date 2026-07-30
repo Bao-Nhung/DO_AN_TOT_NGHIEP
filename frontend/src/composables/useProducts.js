@@ -17,6 +17,8 @@ export function mapProduct(p, i) {
     code: p.maVay,
     name: p.tenVay,
     category: p.loaiVay || '',
+    material: p.chatLieu || '',
+    fit: p.moTaPhom || '',
     price: Number(p.giaBan),
     promotionActive: Boolean(p.coKhuyenMai),
     badge: p.coKhuyenMai ? 'Ưu đãi' : null,
@@ -25,6 +27,8 @@ export function mapProduct(p, i) {
     active: p.trangThai === 1 || p.trangThai === true,
     image: p.anhUrl || null,
     images: p.danhSachAnh || [],
+    rating: Number(p.diemDanhGia || 0),
+    reviewCount: Number(p.soDanhGia || 0),
     letter: letters[i % letters.length],
     bg: bgs[i % bgs.length],
   }

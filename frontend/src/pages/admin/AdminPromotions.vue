@@ -22,7 +22,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="campaign in campaigns" :key="campaign.id">
+            <tr v-for="campaign in pagedCampaigns" :key="campaign.id">
               <td><strong>{{ campaign.tenDot }}</strong><div class="z-subtext">{{ campaign.maDot }}</div></td>
               <td>{{ discountLabel(campaign) }}</td>
               <td>
@@ -44,6 +44,18 @@
       <div v-if="!campaigns.length" class="text-center py-5">
         <i class="bi bi-calendar2-event" style="font-size:36px;color:var(--z-gray-border)"></i>
         <p style="font-size:13px;color:var(--z-gray);margin:8px 0 0">Chưa có đợt khuyến mãi.</p>
+      </div>
+    </div>
+    <div v-if="campaigns.length" class="z-list-pagination">
+      <span>
+        Hiển thị {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, campaigns.length) }}
+        / {{ campaigns.length }} đợt
+      </span>
+      <PageSizeSelect v-model="pageSize" :options="[5, 10, 20, 50]" />
+      <div v-if="totalPages > 1" class="d-flex gap-2">
+        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === 1" @click="currentPage--">Trước</button>
+        <span class="z-page-label">Trang {{ currentPage }} / {{ totalPages }}</span>
+        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === totalPages" @click="currentPage++">Sau</button>
       </div>
     </div>
 
@@ -101,8 +113,9 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
@@ -110,11 +123,23 @@ import { useConfirm } from '@/composables/useConfirm'
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
 const campaigns = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 const products = ref([])
 const attributes = ref({ loaiVay: [], mauSac: [], kichThuoc: [] })
 const showModal = ref(false)
 const editingId = ref(null)
 const saving = ref(false)
+const totalPages = computed(() => Math.max(1, Math.ceil(campaigns.value.length / pageSize.value)))
+const pagedCampaigns = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return campaigns.value.slice(start, start + pageSize.value)
+})
+
+watch(pageSize, () => { currentPage.value = 1 })
+watch(totalPages, total => {
+  if (currentPage.value > total) currentPage.value = total
+})
 
 function emptyScope() { return { idVay: null, idLoaiVay: null, idMauSac: null, idKichThuoc: null } }
 function defaultForm() {
@@ -235,5 +260,8 @@ function scopeSummary(scopes = []) {
 .z-promotion-scopes { display:grid;gap:8px; }
 .z-promotion-scope { display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr 36px;gap:8px;padding:10px;background:var(--z-bg-alt); }
 .z-promotion-scope .lm-input { padding:8px;font-size:12px; }
+.z-list-pagination { display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:var(--z-gray);font-size:12px; }
+.z-page-button { min-width:68px;height:34px;padding:6px 12px; }
+.z-page-label { display:inline-flex;align-items:center;padding:0 6px;color:var(--z-dark); }
 @media (max-width:800px) { .z-promotion-scope { grid-template-columns:1fr; } }
 </style>

@@ -110,11 +110,10 @@
       </div>
 
       <!-- Pagination Controls -->
-      <div v-if="totalPages > 1" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
-        <span style="font-size: 13px; color: var(--z-gray)">
-          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} sản phẩm
-        </span>
-        <div class="d-flex gap-2">
+      <div v-if="totalItems > 0" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+        <span data-no-i18n style="font-size: 13px; color: var(--z-gray)">{{ productRangeLabel }}</span>
+        <PageSizeSelect v-model="itemsPerPage" />
+        <div v-if="totalPages > 1" class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
@@ -486,9 +485,12 @@ import { api } from '@/composables/useApi'
 import { mapProduct, fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { useI18n } from '@/composables/useI18n'
+import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
+const { isEn } = useI18n()
 const search = ref('')
 const activeFilter = ref('Tất cả')
 const filterStatus = ref('')
@@ -630,7 +632,7 @@ async function loadProducts() {
     const category = activeFilter.value !== 'Tất cả' ? activeFilter.value : null
     const data = await api().getVayPage({
       page: currentPage.value - 1,
-      size: itemsPerPage,
+      size: itemsPerPage.value,
       q: search.value.trim() || null,
       status: filterStatus.value || null,
       category
@@ -645,9 +647,16 @@ async function loadProducts() {
 }
 
 const currentPage = ref(1)
-const itemsPerPage = 10
+const itemsPerPage = ref(10)
 const totalItems = ref(0)
 const totalPages = ref(0)
+const productRangeLabel = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value + 1
+  const end = Math.min(currentPage.value * itemsPerPage.value, totalItems.value)
+  return isEn.value
+    ? `Showing ${start}-${end} of ${totalItems.value} products`
+    : `Hiển thị từ ${start} đến ${end} trong tổng số ${totalItems.value} sản phẩm`
+})
 const filteredProducts = computed(() => allProducts.value)
 const paginatedProducts = computed(() => allProducts.value)
 const pageNumbers = computed(() => {
@@ -663,6 +672,7 @@ watch(search, () => {
 })
 watch([activeFilter, filterStatus], resetProductPage)
 watch(currentPage, loadProducts)
+watch(itemsPerPage, resetProductPage)
 
 function resetProductPage() {
   if (currentPage.value === 1) loadProducts()
@@ -926,7 +936,7 @@ async function toggleLock(p) {
   background: rgba(0,0,0,0.55); color: #fff; border-radius: 50%; cursor: pointer;
   display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0;
 }
-.z-img-del:hover { background: var(--z-accent); }
+.z-img-del:hover { background: var(--z-accent); color: #fff; }
 .z-img-new {
   position: absolute; bottom: 0; left: 0; right: 0; background: var(--z-accent); color: #fff;
   font-size: 10px; text-align: center; padding: 1px 0;

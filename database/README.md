@@ -6,7 +6,7 @@ Thu muc nay chua file SQL chuan cho du an local.
 
 | File | Mo ta |
 |------|-------|
-| `fashion_shop.sql` | Tao schema va du lieu demo cho san pham, bien the, don hang, khach hang, nhan vien, voucher, dot khuyen mai, danh gia, doi/tra, thong bao va newsletter. |
+| `fashion_shop.sql` | Tao schema va du lieu demo cho san pham, bien the, don hang, khach hang, nhan vien, voucher, dot khuyen mai, danh gia, doi/tra, thong bao, newsletter va vong quay may man. |
 
 ## Cach chay
 

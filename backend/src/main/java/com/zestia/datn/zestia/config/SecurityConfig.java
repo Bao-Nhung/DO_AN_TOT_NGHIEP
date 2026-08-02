@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/support-chat/customer/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/support-chat/customer/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/newsletter/subscribe").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/lucky-wheel/campaign").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/lucky-wheel/check", "/api/lucky-wheel/spin").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payment/create-order", "/api/payment/apply-voucher", "/api/payment/best-voucher").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payment/momo/create", "/api/payment/zalopay/create").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/payment/momo/return", "/api/payment/zalopay/return").permitAll()
@@ -78,7 +80,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/dashboard/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers("/api/admin/**", "/api/khach-hang/**", "/api/nhan-vien/**",
                         "/api/thong-bao/**", "/api/voucher", "/api/voucher/**",
-                        "/api/promotions/**").hasAnyAuthority(ADMIN_ROLES)
+                        "/api/promotions/**", "/api/lucky-wheel/admin/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/lich-lam-viec/*/review-unavailable").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/lich-lam-viec/*/confirm", "/api/lich-lam-viec/*/unavailable",
                         "/api/lich-lam-viec/*/check-in", "/api/lich-lam-viec/*/check-out").hasAnyAuthority(STAFF_ROLES)

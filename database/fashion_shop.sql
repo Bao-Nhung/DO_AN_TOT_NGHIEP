@@ -4756,6 +4756,153 @@ SET ho_va_ten = N'Nguyễn Tiến Thành'
 WHERE ten_nguoi_dung = N'admin';
 GO
 
+-- Lucky wheel is intentionally isolated from vouchers, product stock and order
+-- history. Orders are read only to verify eligibility; all outcomes live here.
+IF OBJECT_ID(N'dbo.Vong_quay_may_man', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Vong_quay_may_man (
+        id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Vong_quay_may_man PRIMARY KEY,
+        ma_chien_dich nvarchar(50) NOT NULL,
+        ten_chien_dich nvarchar(150) NOT NULL,
+        mo_ta nvarchar(500) NULL,
+        gia_tri_don_toi_thieu decimal(15,2) NOT NULL,
+        ngay_bat_dau datetime2(7) NOT NULL,
+        ngay_ket_thuc datetime2(7) NOT NULL,
+        trang_thai tinyint NOT NULL CONSTRAINT DF_Vong_quay_trang_thai DEFAULT 1,
+        ngay_tao datetime2(7) NOT NULL CONSTRAINT DF_Vong_quay_ngay_tao DEFAULT SYSDATETIME(),
+        CONSTRAINT UQ_Vong_quay_ma UNIQUE (ma_chien_dich),
+        CONSTRAINT CK_Vong_quay_gia_tri CHECK (gia_tri_don_toi_thieu > 0),
+        CONSTRAINT CK_Vong_quay_thoi_gian CHECK (ngay_ket_thuc > ngay_bat_dau),
+        CONSTRAINT CK_Vong_quay_trang_thai CHECK (trang_thai IN (0, 1))
+    );
+END;
+
+IF OBJECT_ID(N'dbo.Phan_thuong_vong_quay', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Phan_thuong_vong_quay (
+        id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Phan_thuong_vong_quay PRIMARY KEY,
+        id_chien_dich int NOT NULL,
+        ten_phan_thuong nvarchar(150) NOT NULL,
+        loai_phan_thuong nvarchar(20) NOT NULL,
+        so_luong_ban_dau int NULL,
+        so_luong_con int NULL,
+        trong_so int NOT NULL,
+        mau_hien_thi varchar(7) NOT NULL,
+        bieu_tuong varchar(50) NOT NULL,
+        anh_bieu_tuong nvarchar(500) NULL,
+        thu_tu int NOT NULL CONSTRAINT DF_Phan_thuong_thu_tu DEFAULT 0,
+        trang_thai tinyint NOT NULL CONSTRAINT DF_Phan_thuong_trang_thai DEFAULT 1,
+        ngay_tao datetime2(7) NOT NULL CONSTRAINT DF_Phan_thuong_ngay_tao DEFAULT SYSDATETIME(),
+        CONSTRAINT FK_Phan_thuong_Vong_quay FOREIGN KEY (id_chien_dich) REFERENCES dbo.Vong_quay_may_man(id),
+        CONSTRAINT CK_Phan_thuong_loai CHECK (loai_phan_thuong IN (N'VAT_PHAM', N'KHONG_TRUNG')),
+        CONSTRAINT CK_Phan_thuong_so_luong CHECK (
+            (loai_phan_thuong = N'VAT_PHAM' AND so_luong_ban_dau >= 0 AND so_luong_con >= 0 AND so_luong_con <= so_luong_ban_dau)
+            OR (loai_phan_thuong = N'KHONG_TRUNG' AND so_luong_ban_dau IS NULL AND so_luong_con IS NULL)
+        ),
+        CONSTRAINT CK_Phan_thuong_trong_so CHECK (trong_so > 0),
+        CONSTRAINT CK_Phan_thuong_trang_thai CHECK (trang_thai IN (0, 1))
+    );
+END;
+
+IF COL_LENGTH(N'dbo.Phan_thuong_vong_quay', N'anh_bieu_tuong') IS NULL
+    ALTER TABLE dbo.Phan_thuong_vong_quay ADD anh_bieu_tuong nvarchar(500) NULL;
+GO
+
+IF OBJECT_ID(N'dbo.Luot_quay_may_man', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Luot_quay_may_man (
+        id int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Luot_quay_may_man PRIMARY KEY,
+        id_chien_dich int NOT NULL,
+        id_phan_thuong int NOT NULL,
+        ma_hoa_don nvarchar(80) NOT NULL,
+        ten_khach_hang nvarchar(150) NOT NULL,
+        so_dien_thoai nvarchar(20) NOT NULL,
+        email_khach_hang nvarchar(150) NULL,
+        gia_tri_don decimal(15,2) NOT NULL,
+        ten_ket_qua nvarchar(150) NOT NULL,
+        trung_thuong bit NOT NULL,
+        ma_nhan_thuong nvarchar(30) NOT NULL,
+        trang_thai_nhan nvarchar(20) NOT NULL,
+        ngay_quay datetime2(7) NOT NULL,
+        ngay_trao datetime2(7) NULL,
+        nguoi_trao nvarchar(150) NULL,
+        CONSTRAINT FK_Luot_quay_Chien_dich FOREIGN KEY (id_chien_dich) REFERENCES dbo.Vong_quay_may_man(id),
+        CONSTRAINT FK_Luot_quay_Phan_thuong FOREIGN KEY (id_phan_thuong) REFERENCES dbo.Phan_thuong_vong_quay(id),
+        CONSTRAINT UQ_Luot_quay_chien_dich_don UNIQUE (id_chien_dich, ma_hoa_don),
+        CONSTRAINT UQ_Luot_quay_ma_nhan UNIQUE (ma_nhan_thuong),
+        CONSTRAINT CK_Luot_quay_gia_tri CHECK (gia_tri_don >= 0),
+        CONSTRAINT CK_Luot_quay_trang_thai CHECK (trang_thai_nhan IN (N'KHONG_TRUNG', N'CHO_NHAN', N'DA_TRA'))
+    );
+END;
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Vong_quay_may_man') AND name = N'IX_Vong_quay_active_time')
+    CREATE INDEX IX_Vong_quay_active_time ON dbo.Vong_quay_may_man(trang_thai, ngay_bat_dau, ngay_ket_thuc);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Phan_thuong_vong_quay') AND name = N'IX_Phan_thuong_chien_dich')
+    CREATE INDEX IX_Phan_thuong_chien_dich ON dbo.Phan_thuong_vong_quay(id_chien_dich, trang_thai, thu_tu) INCLUDE (trong_so, so_luong_con);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Luot_quay_may_man') AND name = N'IX_Luot_quay_trang_thai')
+    CREATE INDEX IX_Luot_quay_trang_thai ON dbo.Luot_quay_may_man(id_chien_dich, trang_thai_nhan, ngay_quay DESC);
+
+MERGE dbo.Vong_quay_may_man AS target
+USING (VALUES (
+    N'VQ-THANG8-2026',
+    N'Vòng quay rực rỡ tháng 8',
+    N'Mỗi đơn đã giao thành công từ 1.000.000đ nhận một lượt quay. Quà tặng là hiện vật và nhận tại showroom Zestia.',
+    CAST(1000000 AS decimal(15,2)),
+    CAST('2026-08-01T00:00:00' AS datetime2),
+    CAST('2026-08-31T23:59:59' AS datetime2),
+    CAST(1 AS tinyint)
+)) AS source(ma_chien_dich, ten_chien_dich, mo_ta, gia_tri_don_toi_thieu, ngay_bat_dau, ngay_ket_thuc, trang_thai)
+ON target.ma_chien_dich = source.ma_chien_dich
+WHEN MATCHED THEN UPDATE SET
+    ten_chien_dich = source.ten_chien_dich,
+    mo_ta = source.mo_ta,
+    gia_tri_don_toi_thieu = source.gia_tri_don_toi_thieu,
+    ngay_bat_dau = source.ngay_bat_dau,
+    ngay_ket_thuc = source.ngay_ket_thuc,
+    trang_thai = source.trang_thai
+WHEN NOT MATCHED THEN INSERT (
+    ma_chien_dich, ten_chien_dich, mo_ta, gia_tri_don_toi_thieu,
+    ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao
+) VALUES (
+    source.ma_chien_dich, source.ten_chien_dich, source.mo_ta, source.gia_tri_don_toi_thieu,
+    source.ngay_bat_dau, source.ngay_ket_thuc, source.trang_thai, SYSDATETIME()
+);
+
+DECLARE @aug_lucky_campaign int = (
+    SELECT id FROM dbo.Vong_quay_may_man WHERE ma_chien_dich = N'VQ-THANG8-2026'
+);
+
+MERGE dbo.Phan_thuong_vong_quay AS target
+USING (VALUES
+    (@aug_lucky_campaign, N'iPhone 16', N'VAT_PHAM', 1, 1, N'#17171A', N'bi-phone', CAST(NULL AS nvarchar(500)), 1, CAST(1 AS tinyint)),
+    (@aug_lucky_campaign, N'Nước hoa mini Zestia', N'VAT_PHAM', 8, 7, N'#7C2F4A', N'bi-droplet', CAST(NULL AS nvarchar(500)), 2, CAST(1 AS tinyint)),
+    (@aug_lucky_campaign, N'Balo thời trang Zestia', N'VAT_PHAM', 12, 12, N'#C64F47', N'bi-backpack', CAST(NULL AS nvarchar(500)), 3, CAST(1 AS tinyint)),
+    (@aug_lucky_campaign, N'Túi tote Zestia', N'VAT_PHAM', 20, 16, N'#2F6F73', N'bi-bag-heart', CAST(NULL AS nvarchar(500)), 4, CAST(1 AS tinyint)),
+    (@aug_lucky_campaign, N'Khăn lụa Zestia', N'VAT_PHAM', 14, 10, N'#4F627E', N'bi-gem', CAST(NULL AS nvarchar(500)), 5, CAST(1 AS tinyint)),
+    (@aug_lucky_campaign, N'Gương trang điểm', N'VAT_PHAM', 25, 18, N'#935F79', N'bi-circle-half', CAST(NULL AS nvarchar(500)), 6, CAST(1 AS tinyint)),
+    (@aug_lucky_campaign, N'Ô gấp Zestia', N'VAT_PHAM', 30, 25, N'#5D6A58', N'bi-umbrella', CAST(NULL AS nvarchar(500)), 7, CAST(1 AS tinyint)),
+    (@aug_lucky_campaign, N'Chúc bạn may mắn lần sau', N'KHONG_TRUNG', NULL, 70, N'#A15A52', N'bi-stars', CAST(NULL AS nvarchar(500)), 8, CAST(1 AS tinyint))
+) AS source(id_chien_dich, ten_phan_thuong, loai_phan_thuong, so_luong_ban_dau, trong_so, mau_hien_thi, bieu_tuong, anh_bieu_tuong, thu_tu, trang_thai)
+ON target.id_chien_dich = source.id_chien_dich
+AND target.ten_phan_thuong = source.ten_phan_thuong
+WHEN MATCHED THEN UPDATE SET
+    loai_phan_thuong = source.loai_phan_thuong,
+    trong_so = source.trong_so,
+    mau_hien_thi = source.mau_hien_thi,
+    bieu_tuong = source.bieu_tuong,
+    thu_tu = source.thu_tu,
+    trang_thai = source.trang_thai
+WHEN NOT MATCHED THEN INSERT (
+    id_chien_dich, ten_phan_thuong, loai_phan_thuong,
+    so_luong_ban_dau, so_luong_con, trong_so, mau_hien_thi,
+    bieu_tuong, anh_bieu_tuong, thu_tu, trang_thai, ngay_tao
+) VALUES (
+    source.id_chien_dich, source.ten_phan_thuong, source.loai_phan_thuong,
+    source.so_luong_ban_dau, source.so_luong_ban_dau, source.trong_so, source.mau_hien_thi,
+    source.bieu_tuong, source.anh_bieu_tuong, source.thu_tu, source.trang_thai, SYSDATETIME()
+);
+GO
+
 -- A successful final message is emitted only after every invariant passes.
 IF (SELECT COUNT(*) FROM dbo.Vai_tro) <> 2
    OR EXISTS (SELECT 1 FROM dbo.Vai_tro WHERE ten_vai_tro NOT IN (N'Admin', N'Nhân viên'))
@@ -4831,6 +4978,37 @@ IF EXISTS (
 IF OBJECT_ID(N'dbo.Pos_phien_giu_hang', N'U') IS NULL
    OR OBJECT_ID(N'dbo.Pos_chi_tiet_giu_hang', N'U') IS NULL
     THROW 51022, N'Thiếu bảng giữ tồn cho giỏ POS.', 1;
+IF OBJECT_ID(N'dbo.Vong_quay_may_man', N'U') IS NULL
+   OR OBJECT_ID(N'dbo.Phan_thuong_vong_quay', N'U') IS NULL
+   OR OBJECT_ID(N'dbo.Luot_quay_may_man', N'U') IS NULL
+    THROW 51030, N'Thiếu cấu trúc dữ liệu vòng quay may mắn.', 1;
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.Vong_quay_may_man campaign
+    WHERE campaign.ma_chien_dich = N'VQ-THANG8-2026'
+      AND campaign.gia_tri_don_toi_thieu = 1000000
+)
+    THROW 51031, N'Dữ liệu chiến dịch vòng quay tháng 8 chưa đúng.', 1;
+IF COL_LENGTH(N'dbo.Phan_thuong_vong_quay', N'anh_bieu_tuong') IS NULL
+    THROW 51033, N'Thiếu cột ảnh biểu tượng phần thưởng vòng quay.', 1;
+IF (
+    SELECT COUNT(*)
+    FROM dbo.Phan_thuong_vong_quay prize
+    JOIN dbo.Vong_quay_may_man campaign ON campaign.id = prize.id_chien_dich
+    WHERE campaign.ma_chien_dich = N'VQ-THANG8-2026' AND prize.trang_thai = 1
+) < 8
+    THROW 51034, N'Chiến dịch vòng quay tháng 8 phải có ít nhất 8 lựa chọn quà.', 1;
+IF EXISTS (
+    SELECT 1 FROM dbo.Phan_thuong_vong_quay
+    WHERE anh_bieu_tuong IS NOT NULL
+      AND (anh_bieu_tuong NOT LIKE N'/images/lucky-wheel/%' OR anh_bieu_tuong LIKE N'%..%' OR anh_bieu_tuong LIKE N'%\%')
+)
+    THROW 51035, N'Đường dẫn ảnh biểu tượng vòng quay không hợp lệ.', 1;
+IF EXISTS (
+    SELECT 1 FROM dbo.Luot_quay_may_man
+    GROUP BY id_chien_dich, ma_hoa_don
+    HAVING COUNT(*) > 1
+)
+    THROW 51032, N'Một đơn hàng đang có nhiều hơn một lượt quay trong cùng chiến dịch.', 1;
 IF (SELECT COUNT(*) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HDAUG26%') <> 124
     THROW 51023, N'Dữ liệu tháng 8 phải có đúng 124 đơn hàng mẫu.', 1;
 IF (

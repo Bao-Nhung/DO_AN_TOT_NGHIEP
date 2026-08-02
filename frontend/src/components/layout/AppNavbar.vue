@@ -3,7 +3,8 @@
     <div class="container-fluid z-nav-shell h-100 d-flex align-items-center justify-content-between">
 
       <RouterLink class="lm-nav-logo text-decoration-none" to="/" aria-label="Zestia - Trang chủ">
-        Zest<span class="lm-gold-text">ia</span>
+        <img class="z-brand-mark" src="/images/brand/zestia-mark.png" alt="" aria-hidden="true">
+        <span>Zest<span class="lm-gold-text">ia</span></span>
       </RouterLink>
 
       <ul class="d-none d-xl-flex list-unstyled mb-0 gap-3 align-items-center">
@@ -34,6 +35,10 @@
         <button type="button" class="lm-nav-icon-btn d-none d-sm-flex" @click="$router.push('/compare')" :title="t('nav.compare')" :aria-label="t('nav.compare')">
           <i class="bi bi-columns-gap"></i>
           <span v-if="compareCount" class="lm-cart-badge">{{ compareCount }}</span>
+        </button>
+        <button type="button" class="lm-nav-icon-btn" @click="$router.push('/lucky-wheel')" :title="t('luckyWheel')" :aria-label="t('luckyWheel')">
+          <i class="bi bi-stars"></i>
+          <span class="z-new-feature-dot" aria-hidden="true"></span>
         </button>
 
         <!-- Notifications Dropdown -->
@@ -99,6 +104,7 @@
         <RouterLink class="z-mobile-link" to="/compare" @click="mobileOpen = false">
           {{ t('nav.compare') }}<span v-if="compareCount"> ({{ compareCount }})</span>
         </RouterLink>
+        <RouterLink class="z-mobile-link" to="/lucky-wheel" @click="mobileOpen = false">{{ t('luckyWheel') }}</RouterLink>
         <RouterLink class="z-mobile-link" to="/about" @click="mobileOpen = false">{{ t('about') }}</RouterLink>
         <RouterLink class="z-mobile-link" to="/profile" @click="mobileOpen = false">{{ t('account') }}</RouterLink>
         <div class="p-3 border-top mt-2 d-flex justify-content-between align-items-center">
@@ -152,7 +158,7 @@
     <div class="z-modal" style="max-width: 480px; background: var(--z-white); border-radius: var(--z-radius-lg); padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.12)">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <span :class="['z-status', getLabelClass(activeNotifDetail.loai)]">{{ getTypeName(activeNotifDetail.loai) }}</span>
-        <button type="button" class="z-icon-btn" :aria-label="t('closeNotification')" @click="activeNotifDetail = null"><i class="bi bi-x-lg"></i></button>
+        <button type="button" class="z-icon-btn z-icon-btn--close" :aria-label="t('closeNotification')" @click="activeNotifDetail = null"><i class="bi bi-x-lg"></i></button>
       </div>
       <h4 style="font-size:15px; font-weight:700; color:var(--z-dark); margin-bottom:8px;">{{ activeNotifDetail.tieuDe }}</h4>
       <div style="font-size:11px; color:var(--z-gray); margin-bottom:16px;">{{ t('publishedAt') }}: {{ formatDateTime(activeNotifDetail.ngayTao) }}</div>
@@ -454,6 +460,16 @@ function saveGuestReadIds(ids) {
   align-items: center;
   gap: 6px;
   transition: var(--z-ease);
+}
+.z-new-feature-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--z-bg);
+  border-radius: 50%;
+  background: var(--z-accent);
 }
 .lm-lang-btn:hover {
   background: var(--z-accent);

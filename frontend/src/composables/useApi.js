@@ -114,6 +114,40 @@ export function api() {
     subscribeNewsletter: (email) =>
       request('/newsletter/subscribe', { method: 'POST', body: JSON.stringify({ email }) }),
 
+    // Lucky wheel: reads eligible completed orders but stores outcomes separately.
+    getLuckyWheelCampaign: () => request('/lucky-wheel/campaign'),
+    checkLuckyWheelEligibility: (orderCode, phone) => request('/lucky-wheel/check', {
+      method: 'POST', body: JSON.stringify({ orderCode, phone })
+    }),
+    spinLuckyWheel: (orderCode, phone) => request('/lucky-wheel/spin', {
+      method: 'POST', body: JSON.stringify({ orderCode, phone })
+    }),
+    getLuckyWheelCampaignsAdmin: () => request('/lucky-wheel/admin/campaigns'),
+    createLuckyWheelCampaign: (data) => request('/lucky-wheel/admin/campaigns', {
+      method: 'POST', body: JSON.stringify(data)
+    }),
+    updateLuckyWheelCampaign: (id, data) => request(`/lucky-wheel/admin/campaigns/${id}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    }),
+    createLuckyWheelPrize: (campaignId, data) => request(`/lucky-wheel/admin/campaigns/${campaignId}/prizes`, {
+      method: 'POST', body: JSON.stringify(data)
+    }),
+    updateLuckyWheelPrize: (campaignId, prizeId, data) => request(`/lucky-wheel/admin/campaigns/${campaignId}/prizes/${prizeId}`, {
+      method: 'PUT', body: JSON.stringify(data)
+    }),
+    uploadLuckyWheelIcon: async (file) => {
+      const form = new FormData()
+      form.append('file', file)
+      const headers = { 'Accept-Language': currentLocale() }
+      const token = getToken()
+      if (token) headers.Authorization = `Bearer ${token}`
+      const res = await fetch(`${API_BASE}/lucky-wheel/admin/icons`, { method: 'POST', headers, body: form })
+      if (!res.ok) throw await res.json().catch(() => ({ error: 'Không thể tải ảnh biểu tượng' }))
+      return res.json()
+    },
+    getLuckyWheelSpinsAdmin: (params = {}) => request(`/lucky-wheel/admin/spins${toQuery(params)}`),
+    deliverLuckyWheelPrize: (spinId) => request(`/lucky-wheel/admin/spins/${spinId}/deliver`, { method: 'PUT' }),
+
     // Products
     getVay: () => request('/vay'),
     getVayPage: (params) => request(`/vay/paged${toQuery(params)}`),

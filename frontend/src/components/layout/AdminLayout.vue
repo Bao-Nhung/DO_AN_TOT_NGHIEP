@@ -2,6 +2,7 @@
   <div class="d-flex" style="min-height:100vh">
     <aside class="z-admin-sidebar" :class="{ open: sidebarOpen }">
       <RouterLink class="z-admin-logo text-decoration-none" to="/admin" aria-label="Zestia - Tổng quan quản lý">
+        <img class="z-admin-logo-mark" src="/images/brand/zestia-mark.png" alt="" aria-hidden="true">
         <span class="z-admin-logo-text">Zest<span style="color:var(--z-accent)">ia</span></span>
         <span class="z-admin-badge">{{ roleBadge }}</span>
       </RouterLink>
@@ -161,6 +162,7 @@ const allNavItems = [
   { path: '/admin/schedule', icon: 'bi-calendar-week', label: 'Lịch làm việc' },
   { path: '/admin/vouchers', icon: 'bi-tag', label: 'Voucher', adminOnly: true },
   { path: '/admin/promotions', icon: 'bi-calendar2-event', label: 'Đợt khuyến mãi', adminOnly: true },
+  { path: '/admin/lucky-wheel', icon: 'bi-stars', label: 'Vòng quay may mắn', adminOnly: true },
   { path: '/admin/notifications', icon: 'bi-bell', label: 'Thông báo khách hàng', adminOnly: true },
   { path: '/admin/settings', icon: 'bi-gear', label: 'Cài đặt', adminOnly: true },
 ]
@@ -333,6 +335,7 @@ function handleLogout() {
   gap: 10px;
 }
 .z-admin-logo-text { white-space: nowrap; }
+.z-admin-logo-mark { width: 28px; height: 28px; object-fit: contain; flex: none; }
 .z-admin-badge {
   font-family: var(--z-font-body);
   font-size: 10px;

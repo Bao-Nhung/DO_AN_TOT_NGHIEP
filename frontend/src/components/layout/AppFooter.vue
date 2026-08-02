@@ -4,7 +4,10 @@
       <div class="row gx-3 gy-5 mb-5">
 
         <div class="col-lg-3">
-          <div class="lm-footer-logo mb-3">Zest<span class="lm-gold-text">ia</span></div>
+          <RouterLink class="lm-footer-logo mb-3" to="/" aria-label="Zestia - Trang chủ">
+            <img class="z-brand-mark" src="/images/brand/zestia-mark.png" alt="" aria-hidden="true">
+            <span>Zest<span class="lm-gold-text">ia</span></span>
+          </RouterLink>
           <p style="font-size:14px;font-weight:400;color:var(--z-gray);line-height:1.7;max-width:280px">
             {{ t('footerAboutText') }}
           </p>
@@ -34,6 +37,7 @@
             <li><RouterLink class="lm-footer-link" to="/policies#policy-RETURN">{{ t('returnPolicy') }}</RouterLink></li>
             <li><RouterLink class="lm-footer-link" to="/policies#policy-SHIPPING">{{ t('shippingPolicy') }}</RouterLink></li>
             <li><RouterLink class="lm-footer-link" to="/tracking">{{ t('tracking') }}</RouterLink></li>
+            <li><RouterLink class="lm-footer-link" to="/lucky-wheel">{{ t('luckyWheel') }}</RouterLink></li>
           </ul>
         </div>
 

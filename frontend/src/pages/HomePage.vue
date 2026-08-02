@@ -166,6 +166,16 @@
       </div>
     </section>
 
+    <section v-if="luckyCampaign?.active" class="z-lucky-home-band">
+      <div class="z-lucky-home-mark"><img src="/images/brand/zestia-mark.png" alt="" aria-hidden="true"></div>
+      <div>
+        <p class="lm-eyebrow mb-2">Quà tặng tháng 8</p>
+        <h2 class="z-display">{{ luckyCampaign.tenChienDich }}</h2>
+        <p>Đơn đã giao thành công từ {{ formatMoney(luckyCampaign.giaTriDonToiThieu) }} nhận một lượt quay với quà hiện vật tại showroom.</p>
+      </div>
+      <RouterLink to="/lucky-wheel" class="lm-btn-primary"><i class="bi bi-stars"></i><span>Kiểm tra lượt quay</span></RouterLink>
+    </section>
+
     <section class="z-brand-band">
       <div>
         <p class="lm-eyebrow mb-3">Về Zestia</p>
@@ -215,6 +225,7 @@ const { showToast } = useToast()
 const newsletterEmail = ref('')
 const newsletterLoading = ref(false)
 const recentProductIds = ref([])
+const luckyCampaign = ref(null)
 const { isLoggedIn, getUser } = useAuth()
 const storefront = reactive({
   activeProductCount: 0,
@@ -261,12 +272,15 @@ const stats = computed(() => [
   { num: storefront.customerCount || 0, label: 'Tài khoản khách hàng' },
 ])
 
+function formatMoney(value) { return Number(value || 0).toLocaleString('vi-VN') + 'đ' }
+
 onMounted(async () => {
   await Promise.all([
     loadProducts(),
     api().getStorefrontSummary().then(data => Object.assign(storefront, data || {})).catch(error => {
       console.warn('Không tải được số liệu trang chủ', error)
-    })
+    }),
+    api().getLuckyWheelCampaign().then(data => { luckyCampaign.value = data }).catch(() => {})
   ])
   if (isLoggedIn() && getUser()?.role === 'KhachHang') {
     try {
@@ -487,6 +501,27 @@ async function subscribeNewsletter() {
   font-weight: 600;
 }
 
+.z-lucky-home-band {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  padding: 38px 64px;
+  border-block: 1px solid var(--z-gray-border);
+  background: var(--z-white);
+}
+.z-lucky-home-mark {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--z-accent-soft);
+}
+.z-lucky-home-mark img { width: 68px; height: 68px; object-fit: contain; }
+.z-lucky-home-band h2 { margin: 0 0 7px; color: var(--z-dark); font-size: 30px; font-weight: 500; }
+.z-lucky-home-band > div:nth-child(2) > p:last-child { margin: 0; color: var(--z-gray); font-size: 13px; line-height: 1.6; }
+
 .z-brand-band {
   display: flex;
   justify-content: space-between;
@@ -585,6 +620,10 @@ async function subscribeNewsletter() {
   .z-service-strip { grid-template-columns: repeat(2, 1fr); }
   .z-style-edit { grid-template-columns: 1fr; }
   .z-style-media { min-height: 420px; }
+  .z-lucky-home-band { grid-template-columns: 72px 1fr; padding: 34px 28px; }
+  .z-lucky-home-band > .lm-btn-primary { grid-column: 2; justify-self: start; }
+  .z-lucky-home-mark { width: 68px; height: 68px; }
+  .z-lucky-home-mark img { width: 54px; height: 54px; }
   .z-brand-band { flex-direction: column; padding: 56px 28px; }
 }
 
@@ -596,6 +635,8 @@ async function subscribeNewsletter() {
   .z-hero-proof { display: none; }
   .z-service-strip { grid-template-columns: 1fr; }
   .z-style-content { padding: 44px 24px; }
+  .z-lucky-home-band { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 38px 20px; }
+  .z-lucky-home-band > .lm-btn-primary { grid-column: 1; justify-self: stretch; justify-content: center; }
   .z-style-content h2,
   .z-brand-band h2,
   .z-newsletter h2 { font-size: 32px; }

@@ -14,11 +14,13 @@ quản trị cửa hàng và POS cho nhân viên.
 
 - Khách hàng: duyệt sản phẩm và biến thể, giỏ hàng, yêu thích, sản phẩm đã xem,
   checkout COD/MoMo/ZaloPay, voucher tốt nhất, nhiều địa chỉ, tra cứu đơn, đánh giá
-  đã xác minh, so sánh sản phẩm, đổi/trả, thông báo, ChatAI và chuyển tiếp cho nhân viên.
+  đã xác minh, so sánh sản phẩm, đổi/trả, thông báo, ChatAI, chuyển tiếp cho nhân viên
+  và vòng quay quà hiện vật theo đơn đủ điều kiện.
 - Nhân viên: xác nhận ca, báo bận, check-in/check-out, POS, xử lý đơn, đổi/trả,
   chat hỗ trợ, trung tâm việc cần xử lý, lịch sử và xuất Excel ca làm.
 - Admin: dashboard, thống kê, sản phẩm, đơn hàng online/offline, khách hàng hợp nhất,
-  nhân viên, lịch làm việc, voucher, đợt khuyến mãi, thông báo và trung tâm việc cần xử lý.
+  nhân viên, lịch làm việc, voucher, đợt khuyến mãi, thông báo, quản lý chiến dịch vòng
+  quay/kho quà/lịch sử trao thưởng và trung tâm việc cần xử lý.
 - Ngôn ngữ: Việt/Anh trên cả website khách và khu vực quản trị; locale được gửi qua
   `Accept-Language` để dịch validation, trạng thái, danh mục và dữ liệu API. Email giao
   dịch dùng nội dung song ngữ.
@@ -105,6 +107,23 @@ Voucher thường dùng:
 | `HD-2025-0001` | `0912345678` |
 | `HD-2025-0002` | `0912345678` |
 | `HD-2025-0003` | `0923456789` |
+
+## Vòng quay may mắn
+
+Chiến dịch mẫu tháng 8 cho phép mỗi đơn đã giao thành công từ 1.000.000đ quay đúng
+một lần. Người chơi xác minh bằng mã đơn và số điện thoại; vòng quay mẫu có tám lựa
+chọn gồm bảy quà hiện vật và một kết quả không trúng. Admin quản lý chiến dịch, trọng
+số, số lượng quà, lịch sử lượt quay và xác nhận đã trao quà tại `/admin/lucky-wheel`.
+Mỗi phần thưởng có thể dùng icon Bootstrap, nhập mã icon khác hoặc tải ảnh biểu tượng
+JPG/PNG/WebP/AVIF riêng tối đa 2 MB.
+
+Ba bảng `Vong_quay_may_man`, `Phan_thuong_vong_quay` và `Luot_quay_may_man` là miền
+dữ liệu riêng. Hệ thống chỉ đọc hóa đơn để xét điều kiện, lưu bản chụp thông tin người
+nhận trong lượt quay và không sửa đơn hàng, voucher hay tồn kho sản phẩm. Khóa bi quan
+trên hóa đơn và kho quà, cùng ràng buộc duy nhất theo chiến dịch + mã đơn, ngăn quay
+lặp và ngăn hai giao dịch cùng lấy phần quà cuối. Ảnh biểu tượng tùy chỉnh chỉ được lưu
+trong `frontend/public/images/lucky-wheel`; backend kiểm tra magic bytes và không nhận
+URL ngoài thư mục do ứng dụng quản lý.
 
 ## Luồng tồn kho
 

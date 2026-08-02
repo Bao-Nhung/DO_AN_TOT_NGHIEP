@@ -113,9 +113,9 @@
                   <span v-if="address.macDinh" class="z-profile-default-badge">Mặc định</span>
                 </div>
                 <div class="z-address-actions">
-                  <button v-if="!address.macDinh" type="button" class="z-icon-btn" title="Đặt làm mặc định" aria-label="Đặt địa chỉ làm mặc định" @click="setDefaultAddress(address)"><i class="bi bi-star"></i></button>
-                  <button type="button" class="z-icon-btn" title="Sửa địa chỉ" aria-label="Sửa địa chỉ" @click="startAddressEdit(address)"><i class="bi bi-pencil"></i></button>
-                  <button type="button" class="z-icon-btn" title="Xóa địa chỉ" aria-label="Xóa địa chỉ" @click="removeAddress(address)"><i class="bi bi-trash"></i></button>
+                  <button v-if="!address.macDinh" type="button" class="z-icon-btn" title="Đặt làm mặc định" aria-label="Đặt địa chỉ làm mặc định" @click="setDefaultAddress(address)"><i class="bi bi-star-fill"></i></button>
+                  <button type="button" class="z-icon-btn" title="Sửa địa chỉ" aria-label="Sửa địa chỉ" @click="startAddressEdit(address)"><i class="bi bi-pencil-square"></i></button>
+                  <button type="button" class="z-icon-btn z-icon-btn--danger" title="Xóa địa chỉ" aria-label="Xóa địa chỉ" @click="removeAddress(address)"><i class="bi bi-trash3"></i></button>
                 </div>
               </article>
             </div>
@@ -399,10 +399,10 @@ function doLogout() { logout(); showToast('Đã đăng xuất', 'info'); router.
 .z-profile-submit { min-width: 150px; justify-content: center; margin-top: 24px; }
 .z-profile-address-list { display: grid; gap: 10px; margin-bottom: 18px; }
 .z-profile-address-row { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid var(--z-gray-border); border-radius: var(--z-radius); background: var(--z-white); }
-.z-profile-address-row > i { margin-top: 2px; color: var(--z-accent); }
+.z-profile-address-row > i { display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:50%;background:var(--z-accent-soft);color:var(--z-accent); }
 .z-profile-address-row strong { display: block; color: var(--z-dark); font-size: 13px; line-height: 1.6; }
 .z-profile-default-badge { display: inline-flex; margin-top: 6px; padding: 3px 7px; border-radius: var(--z-radius); background: #eaf8ee; color: #217a3d; font-size: 10px; font-weight: 650; }
-.z-address-actions { display: flex; gap: 3px; }
+.z-address-actions { display: flex; gap: 7px; }
 .z-address-form { margin-top: 18px; }
 .z-address-form h3 { margin: 0 0 18px; font-size: 15px; font-weight: 650; }
 .z-checkbox { display: inline-flex; align-items: center; gap: 8px; color: var(--z-dark); font-size: 13px; cursor: pointer; }

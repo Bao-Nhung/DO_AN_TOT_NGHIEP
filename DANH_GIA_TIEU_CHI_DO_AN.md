@@ -1,6 +1,6 @@
 # ĐÁNH GIÁ DỰ ÁN ZESTIA THEO TIÊU CHÍ ĐỒ ÁN BÁN HÀNG
 
-Ngày rà soát: 30/07/2026
+Ngày rà soát: 01/08/2026
 
 Tài liệu này đối chiếu trực tiếp mã nguồn, test tự động và database local hiện tại với bảng tiêu chí của nhà trường. Đây là đánh giá kỹ thuật có bằng chứng, không phải cam kết điểm số.
 
@@ -8,12 +8,12 @@ Tài liệu này đối chiếu trực tiếp mã nguồn, test tự động và
 
 Zestia đáp ứng chắc nhóm chức năng cơ bản và phần lớn nhóm Khá (7-8 điểm). Dự án cũng đã có nhiều điểm thuộc nhóm Giỏi như AI, bản đồ, hỗ trợ trực tuyến, dữ liệu đơn hàng theo thời gian và trải nghiệm Vue 3 tương đối hoàn chỉnh.
 
-Hai tiêu chí chưa nên tuyên bố là đã hoàn thành:
+Tiêu chí chưa nên tuyên bố là đã hoàn thành là tích hợp kênh bán hàng bên ngoài. Dự án
+đã đặt liên kết chính thức tới Facebook Shop, TikTok Shop, Shopee và Lazada nhưng chưa
+đồng bộ sản phẩm, tồn kho hay đơn hàng vì chưa có tài khoản người bán và API credential.
 
-- Đa ngôn ngữ hiện mới dịch khung điều hướng, tìm kiếm, thông báo và footer phía khách hàng; nội dung các trang nghiệp vụ vẫn chủ yếu là tiếng Việt.
-- Chưa tích hợp kênh bán hàng bên ngoài như Facebook Shop, TikTok Shop, Shopee hoặc Lazada. Liên kết tới trang chủ mạng xã hội không được tính là tích hợp bán hàng.
-
-Ngoài ra, dự án chưa có chức năng so sánh sản phẩm. Đây là chức năng nâng cao trong nhóm Khá, nhưng rubric chỉ yêu cầu đáp ứng một số chức năng nâng cao nên không làm mất toàn bộ nhóm tiêu chí này.
+Kiến trúc i18n, so sánh sản phẩm và dữ liệu đầy đủ đến hết tháng 8/2026 đã có. Nội dung
+dịch tự động vẫn cần một lượt hiệu đính ngôn ngữ thủ công trước khi trình diễn tiếng Anh.
 
 ## 2. Đối chiếu tiêu chí
 
@@ -29,14 +29,14 @@ Ngoài ra, dự án chưa có chức năng so sánh sản phẩm. Đây là ch�
 | Nhiều đợt/đối tượng khuyến mãi | Đạt | `AdminPromotions.vue`, `PromotionPricingService.java` | Phạm vi theo toàn bộ, sản phẩm, loại, màu hoặc size |
 | Validate số lượng và chống bán vượt kho | Đạt | Khóa bi quan tại repository và xử lý transaction | Có test hai checkout đồng thời tranh sản phẩm cuối |
 | Đánh giá sản phẩm | Đạt | `ReviewsPage.vue`, `ReviewService.java` | Điểm và nội dung lấy từ DB, ràng buộc người mua và đơn đã giao |
-| So sánh nhiều sản phẩm | Chưa có | Không có route/API/component tương ứng | Có thể phát triển sau nếu cần tăng bằng chứng nhóm Khá |
+| So sánh nhiều sản phẩm | Đạt | `CompareProductsPage.vue`, dữ liệu sản phẩm/biến thể/đánh giá từ API | So sánh giá, chất liệu, phom, size và điểm đánh giá |
 | AI trên website | Đạt | `AiChatService.java`, `CustomerChatWidget.vue` | AI lấy ngữ cảnh sản phẩm, voucher và đơn hàng từ backend; model cấu hình bằng biến môi trường |
 | Hỗ trợ khách hàng trực tuyến | Đạt | `SupportChatService.java`, `AdminSupportChat.vue` | AI có thể chuyển sang nhân viên đang trong ca |
 | Trung tâm công việc nhân viên | Đạt | `StaffTaskService.java`, `StaffDashboardService.java`, `AdminLayout.vue` | Tổng hợp đơn chờ, chat, đổi/trả và cảnh báo tồn kho; mỗi mục dẫn tới đúng màn hình xử lý |
 | Bản đồ cửa hàng | Đạt | `AboutPage.vue` | Có bản đồ nhúng và liên kết chỉ đường |
-| Đa ngôn ngữ | Đạt một phần | `useI18n.js`, `AppNavbar.vue`, `AppFooter.vue` | Chưa dịch toàn bộ trang và dữ liệu nghiệp vụ; không nên trình bày là hoàn chỉnh |
+| Đa ngôn ngữ | Đạt về kiến trúc và độ phủ | Vue I18n, từ điển frontend/backend, `Accept-Language`, email song ngữ | Nên hiệu đính bản dịch tự động trước khi bảo vệ |
 | Tích hợp kênh bán hàng khác | Chưa có | Chỉ có liên kết mạng xã hội | Không có đồng bộ sản phẩm, đơn hoặc tồn kho với nền tảng ngoài |
-| Xử lý dữ liệu ít nhất một tháng | Đạt ở dữ liệu demo | 252 đơn từ 01/06/2026 đến 18/07/2026 | Cần nói rõ đây là dữ liệu demo, không phải số liệu vận hành thật |
+| Xử lý dữ liệu ít nhất một tháng | Đạt ở dữ liệu demo | 376 đơn từ 01/06/2026 đến 31/08/2026 | Cần nói rõ đây là dữ liệu demo, không phải số liệu vận hành thật |
 | Trải nghiệm người dùng | Khá | Modal giữa màn hình, toast, trạng thái tải/lỗi/rỗng, responsive | Nên có kiểm thử người dùng và audit accessibility độc lập trước khi tuyên bố mức “tuyệt vời” |
 
 ## 3. Các điểm kỹ thuật nổi bật có thể trình bày
@@ -50,6 +50,7 @@ Ngoài ra, dự án chưa có chức năng so sánh sản phẩm. Đây là ch�
 7. Báo cáo ca xuất XLSX thật và tính tiền mặt phải bàn giao.
 8. Dashboard dùng truy vấn tổng hợp; danh sách sản phẩm, đơn hàng và khách hàng trong admin dùng phân trang server thay vì tải toàn bộ để đếm ở frontend.
 9. Nhân viên có trung tâm công việc theo dữ liệu thật; ngoài ca chỉ thấy yêu cầu kiểm tra/xác nhận ca, trong ca mới được vào nghiệp vụ cửa hàng.
+10. Vòng quay may mắn có miền dữ liệu riêng, khóa kho quà khi quay, chống quay lặp bằng ràng buộc database và không sửa dữ liệu đơn/voucher/tồn kho sản phẩm.
 
 ## 4. Kết quả rà soát commit mới
 
@@ -73,7 +74,7 @@ Hai tài liệu cũ đã được thay bằng tài liệu này vì có các kh�
 
 ## 5. Kiểm thử và dữ liệu đã đối chiếu
 
-Backend hiện có 24 test: 23 test nghiệp vụ/bảo mật trong `PaymentAndOrderSecurityTests` và một test khởi động context. Các nhóm chính gồm quyền admin/nhân viên/khách, trạng thái và xác minh thanh toán, checkout đồng thời, POS, OTP hủy đơn, ca làm, đổi trả, hoàn kho/voucher, báo cáo XLSX, chat nhân viên và validate nhân viên.
+Backend hiện có 32 test: 24 test nghiệp vụ/bảo mật trong `PaymentAndOrderSecurityTests`, năm test nghiệp vụ vòng quay, hai test xác thực tệp biểu tượng và một test khởi động context. Các nhóm chính gồm quyền admin/nhân viên/khách, trạng thái và xác minh thanh toán, checkout đồng thời, POS, OTP hủy đơn, ca làm, đổi trả, hoàn kho/voucher, báo cáo XLSX, chat nhân viên, validate nhân viên, điều kiện/kho quà vòng quay và kiểm tra magic bytes của ảnh tải lên.
 
 Test dùng H2 để chạy nhanh và độc lập. H2 kiểm tra tốt logic controller/service/repository phổ thông, nhưng không thay thế hoàn toàn SQL Server đối với khóa, isolation, index và cú pháp đặc thù. Vì vậy dự án còn được kiểm tra trực tiếp trên database `fashion_shop`.
 
@@ -83,19 +84,21 @@ Trạng thái database local sau khi dọn dữ liệu thử:
 |---|---:|
 | Sản phẩm | 60 |
 | Biến thể | 548 |
-| Tổng tồn | 7.917 |
+| Tổng tồn | 7.758 |
 | Khách hàng | 13 |
-| Hóa đơn | 252 |
-| Đánh giá | 49 |
-| Voucher | 13 |
-| Đợt khuyến mãi | 1 |
-| Ca làm | 173 |
+| Hóa đơn | 376 |
+| Đánh giá | 124 |
+| Voucher | 19 |
+| Đợt khuyến mãi | 4 |
+| Ca làm | 369 |
+| Chiến dịch vòng quay | 1 |
+| Lượt quay mẫu | 1 |
 
 Các kiểm tra toàn vẹn đã đạt: không tồn kho âm, không trùng mã hóa đơn, không có chi tiết hóa đơn mồ côi và `DBCC CHECKCONSTRAINTS` không báo vi phạm.
 
 Kết quả xác minh bản hiện tại:
 
-- Backend: `24/24` test đạt.
+- Backend: `32/32` test đạt.
 - Frontend: Vite `8.1.5` build production thành công; `npm audit` không phát hiện lỗ hổng trong cây phụ thuộc hiện tại.
 - SQL Server: chỉ có hai role `Admin` và `Nhân viên`; không có role quản lý kho, tồn âm, mã hóa đơn trùng hay chi tiết hóa đơn mồ côi.
 - Giao diện: đã kiểm tra trực tiếp ở desktop và mobile cho trang chủ, giới thiệu, dashboard và trung tâm công việc; không có ảnh vỡ hoặc tràn ngang tại các màn hình này.
@@ -106,14 +109,13 @@ Kết quả xác minh bản hiện tại:
 
 1. Chạy lại kịch bản demo trên máy bảo vệ với SQL Server, email và sandbox MoMo/ZaloPay.
 2. Chuẩn bị hai tài khoản admin/nhân viên và một ca đang hoạt động để trình diễn quyền theo ca.
-3. Nói rõ đa ngôn ngữ mới ở mức nền tảng; không trình bày là đã dịch toàn bộ.
+3. Trình diễn chuyển VI/EN và nói rõ bản dịch tự động đã có độ phủ nhưng vẫn cần hiệu đính ngôn ngữ thủ công.
 4. Không gọi dữ liệu tháng 6-7 là dữ liệu khách thật; đây là dữ liệu demo có liên kết nghiệp vụ.
-5. Nếu còn thời gian, ưu tiên test end-to-end bằng trình duyệt cho checkout, POS, đổi trả và ca làm trước chức năng so sánh sản phẩm.
+5. Nếu còn thời gian, ưu tiên test end-to-end tự động cho checkout, POS, đổi trả, ca làm và vòng quay.
 
 ## 7. Hướng phát triển theo rubric
 
-1. Hoàn thiện i18n toàn bộ trang, validation, email và dữ liệu danh mục bằng `vue-i18n` hoặc kiến trúc tương đương.
+1. Hiệu đính bản dịch tiếng Anh bằng người dùng thật và bổ sung kiểm tra tự động phát hiện chuỗi chưa đưa vào i18n.
 2. Tích hợp thật một kênh bán hàng ngoài: đồng bộ sản phẩm, tồn kho và đơn hàng qua API; không chỉ đặt liên kết.
-3. Thêm so sánh sản phẩm theo giá, chất liệu, phom, size và đánh giá.
-4. Bổ sung E2E browser test, test tải đồng thời trên SQL Server và báo cáo độ phủ.
-5. Thực hiện kiểm thử người dùng có kịch bản và audit WCAG để có bằng chứng khách quan cho tiêu chí trải nghiệm.
+3. Bổ sung E2E browser test, test tải đồng thời trên SQL Server và báo cáo độ phủ.
+4. Thực hiện kiểm thử người dùng có kịch bản và audit WCAG để có bằng chứng khách quan cho tiêu chí trải nghiệm.

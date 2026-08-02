@@ -21,9 +21,10 @@
 
     <div class="d-flex align-items-center justify-content-center p-5" style="background:var(--z-bg)">
       <div style="width:100%;max-width:400px">
-        <RouterLink class="z-display d-block mb-5 text-decoration-none" to="/" aria-label="Zestia - Trang chủ"
+        <RouterLink class="z-display d-inline-flex align-items-center gap-2 mb-5 text-decoration-none" to="/" aria-label="Zestia - Trang chủ"
               style="font-size:26px;font-weight:600;letter-spacing:0;cursor:pointer;color:inherit">
-          Zest<span class="lm-gold-text">ia</span>
+          <img class="z-brand-mark" src="/images/brand/zestia-mark.png" alt="" aria-hidden="true">
+          <span>Zest<span class="lm-gold-text">ia</span></span>
         </RouterLink>
 
         <!-- Role Tabs -->

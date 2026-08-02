@@ -31,6 +31,7 @@ const LookbookPage = () => import('@/pages/LookbookPage.vue')
 const PoliciesPage = () => import('@/pages/PoliciesPage.vue')
 const ReviewsPage = () => import('@/pages/ReviewsPage.vue')
 const CompareProductsPage = () => import('@/pages/CompareProductsPage.vue')
+const LuckyWheelPage = () => import('@/pages/LuckyWheelPage.vue')
 
 const AdminDashboard = () => import('@/pages/admin/AdminDashboard.vue')
 const AdminProducts = () => import('@/pages/admin/AdminProducts.vue')
@@ -46,6 +47,7 @@ const AdminNotifications = () => import('@/pages/admin/AdminNotifications.vue')
 const AdminSupportChat = () => import('@/pages/admin/AdminSupportChat.vue')
 const AdminPromotions = () => import('@/pages/admin/AdminPromotions.vue')
 const AdminReturns = () => import('@/pages/admin/AdminReturns.vue')
+const AdminLuckyWheel = () => import('@/pages/admin/AdminLuckyWheel.vue')
 
 const routes = [
   { path: '/',               component: HomePage,       name: 'home' },
@@ -64,6 +66,7 @@ const routes = [
   { path: '/policies',       component: PoliciesPage,      name: 'policies' },
   { path: '/reviews',        component: ReviewsPage,       name: 'reviews' },
   { path: '/compare',        component: CompareProductsPage, name: 'compare' },
+  { path: '/lucky-wheel',    component: LuckyWheelPage, name: 'lucky-wheel' },
 
   { path: '/admin',           component: AdminDashboard, name: 'admin-dashboard' },
   { path: '/admin/thong-ke',  component: AdminStatisticalDashboard, name: 'admin-thong-ke' },
@@ -74,6 +77,7 @@ const routes = [
   { path: '/admin/schedule',  component: AdminSchedule,  name: 'admin-schedule' },
   { path: '/admin/vouchers',  component: AdminVouchers,  name: 'admin-vouchers' },
   { path: '/admin/promotions', component: AdminPromotions, name: 'admin-promotions' },
+  { path: '/admin/lucky-wheel', component: AdminLuckyWheel, name: 'admin-lucky-wheel' },
   { path: '/admin/returns', component: AdminReturns, name: 'admin-returns' },
   { path: '/admin/notifications', component: AdminNotifications, name: 'admin-notifications' },
   { path: '/admin/support-chat', component: AdminSupportChat, name: 'admin-support-chat' },
@@ -97,6 +101,7 @@ const adminOnlyRouteNames = new Set([
   'admin-employees',
   'admin-vouchers',
   'admin-promotions',
+  'admin-lucky-wheel',
   'admin-notifications',
   'admin-settings',
 ])

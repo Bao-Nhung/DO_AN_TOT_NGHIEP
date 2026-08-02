@@ -231,7 +231,7 @@
             <h3 style="font-size:18px;font-weight:700;margin:0;color:var(--z-dark)">Chi tiết đơn hàng</h3>
             <div style="font-size:13px;color:var(--z-gray);margin-top:2px;">Mã hóa đơn: <strong>{{ detailOrder?.maHoaDon }}</strong></div>
           </div>
-          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết đơn hàng" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn z-icon-btn--close" aria-label="Đóng chi tiết đơn hàng" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div v-if="loadingDetail" class="text-center py-5">
@@ -382,7 +382,7 @@
       <div class="z-modal" style="max-width:500px">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <h3 style="font-size:18px;font-weight:600;margin:0">Lý do huỷ đơn hàng</h3>
-          <button type="button" class="z-icon-btn" aria-label="Đóng hủy đơn hàng" @click="showCancelModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn z-icon-btn--close" aria-label="Đóng hủy đơn hàng" @click="showCancelModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
         <p style="font-size:14px;color:var(--z-gray);margin-bottom:20px">Vui lòng cho Zestia biết lý do bạn muốn huỷ đơn hàng này nhé:</p>
         
@@ -421,7 +421,7 @@
       <div class="z-modal z-customer-return-modal">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div><h3 style="font-size:18px;font-weight:600;margin:0">Yêu cầu đổi hoặc trả hàng</h3><div class="z-return-muted">{{ orderToReturn?.maHoaDon }} · Áp dụng cho đơn giao online</div></div>
-          <button type="button" class="z-icon-btn" aria-label="Đóng yêu cầu đổi trả" @click="showReturnModal = false"><i class="bi bi-x-lg"></i></button>
+          <button type="button" class="z-icon-btn z-icon-btn--close" aria-label="Đóng yêu cầu đổi trả" @click="showReturnModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <div class="z-return-type-switch mb-3">

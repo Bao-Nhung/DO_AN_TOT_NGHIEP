@@ -12,7 +12,7 @@
       <div class="container">
         <div class="row g-5 align-items-center mb-5">
           <div class="col-lg-6">
-            <img src="/images/banners/about-story.jpg" alt="Thiết kế Zestia" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--z-radius-lg)" />
+            <img src="/images/banners/about-atelier-v2.webp" alt="Không gian thiết kế và hoàn thiện váy tại Zestia" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--z-radius-lg)" />
           </div>
           <div class="col-lg-6">
             <p class="lm-eyebrow mb-3">Câu Chuyện Của Chúng Tôi</p>

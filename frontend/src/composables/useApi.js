@@ -263,7 +263,6 @@ export function api() {
     updateNhanVien: (id, data) => request(`/nhan-vien/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     updateNhanVienStatus: (id, tinhTrangLamViec) =>
       request(`/nhan-vien/${id}/trang-thai`, { method: 'PUT', body: JSON.stringify({ tinhTrangLamViec }) }),
-    deleteNhanVien: (id) => request(`/nhan-vien/${id}`, { method: 'DELETE' }),
 
     // Work schedule
     getLichLamViec: ({ startDate, endDate, nhanVienId } = {}) => {

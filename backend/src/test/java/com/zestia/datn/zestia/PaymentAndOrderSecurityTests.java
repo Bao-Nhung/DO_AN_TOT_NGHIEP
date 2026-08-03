@@ -11,6 +11,7 @@ import com.zestia.datn.zestia.entity.KichThuoc;
 import com.zestia.datn.zestia.entity.LichLamViec;
 import com.zestia.datn.zestia.entity.MauSac;
 import com.zestia.datn.zestia.entity.NhanVien;
+import com.zestia.datn.zestia.entity.SupportConversation;
 import com.zestia.datn.zestia.entity.VaiTro;
 import com.zestia.datn.zestia.entity.Vay;
 import com.zestia.datn.zestia.entity.VayChiTiet;
@@ -24,6 +25,7 @@ import com.zestia.datn.zestia.repository.LichLamViecRepository;
 import com.zestia.datn.zestia.repository.MauSacRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
 import com.zestia.datn.zestia.repository.PosPhienGiuHangRepository;
+import com.zestia.datn.zestia.repository.SupportConversationRepository;
 import com.zestia.datn.zestia.repository.VaiTroRepository;
 import com.zestia.datn.zestia.repository.VayChiTietRepository;
 import com.zestia.datn.zestia.repository.VayRepository;
@@ -134,6 +136,9 @@ class PaymentAndOrderSecurityTests {
 
     @Autowired
     private SupportChatService supportChatService;
+
+    @Autowired
+    private SupportConversationRepository supportConversationRepository;
 
     @MockitoBean
     private EmailService emailService;
@@ -1001,6 +1006,89 @@ class PaymentAndOrderSecurityTests {
         assertThat(conversation.get("employeeName")).isNotNull();
         assertThat(conversation.get("token").toString()).hasSize(32);
         assertThat((List<?>) conversation.get("messages")).hasSizeGreaterThanOrEqualTo(2);
+    }
+
+    @Test
+    void adminCanClaimWaitingSupportConversationWithoutAWorkShift() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        VaiTro adminRole = roleRepository.findByTenVaiTro("Admin")
+                .orElseGet(() -> roleRepository.save(VaiTro.builder().tenVaiTro("Admin").build()));
+        NhanVien admin = employeeRepository.save(NhanVien.builder()
+                .vaiTro(adminRole)
+                .maNhanVien("NV-ADMIN-CHAT-" + marker)
+                .hoVaTen("Nguyễn Tiến Thành")
+                .email("admin-chat-" + marker + "@example.com")
+                .tenNguoiDung("admin-chat-" + marker)
+                .matKhau(passwordEncoder.encode("Matkhau123"))
+                .tinhTrangLamViec((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        String publicToken = "support" + marker;
+        SupportConversation waiting = supportConversationRepository.save(SupportConversation.builder()
+                .publicToken(publicToken)
+                .tieuDe("Yêu cầu hỗ trợ ngoài ca")
+                .trangThai(SupportChatService.WAITING)
+                .ngayTao(LocalDateTime.now())
+                .ngayCapNhat(LocalDateTime.now())
+                .build());
+        String adminToken = jwtUtil.generateToken(admin.getTenNguoiDung(), "Admin", admin.getId());
+
+        mockMvc.perform(post("/api/support-chat/staff/conversations/" + waiting.getId() + "/claim")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(SupportChatService.ACTIVE))
+                .andExpect(jsonPath("$.employeeName").value("Nguyễn Tiến Thành"));
+
+        mockMvc.perform(get("/api/support-chat/customer/" + publicToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(SupportChatService.ACTIVE))
+                .andExpect(jsonPath("$.employeeName").value("Nguyễn Tiến Thành"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_Admin")
+    void scheduleCreateAndUpdateIgnoreDirectStatusChangesFromAdmin() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        VaiTro employeeRole = roleRepository.findByTenVaiTro("Nhân viên")
+                .orElseGet(() -> roleRepository.save(VaiTro.builder().tenVaiTro("Nhân viên").build()));
+        NhanVien employee = employeeRepository.save(NhanVien.builder()
+                .vaiTro(employeeRole)
+                .maNhanVien("NV-SHIFT-OWNER-" + marker)
+                .hoVaTen("Nhan vien tu xac nhan ca")
+                .email("shift-owner-" + marker + "@example.com")
+                .tenNguoiDung("shift-owner-" + marker)
+                .matKhau(passwordEncoder.encode("Matkhau123"))
+                .tinhTrangLamViec((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        LocalDate workDate = LocalDate.now().plusYears(3);
+
+        String createResponse = mockMvc.perform(post("/api/lich-lam-viec")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nhanVien":{"id":%d},"ngayLam":"%s","caLam":"Ca kiểm thử",
+                                 "gioBatDau":"08:00:00","gioKetThuc":"12:00:00","trangThai":1,
+                                 "ghiChu":"Admin tạo lịch"}
+                                """.formatted(employee.getId(), workDate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trangThai").value(0))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        int shiftId = objectMapper.readTree(createResponse).path("id").asInt();
+        LichLamViec confirmedShift = scheduleRepository.findById(shiftId).orElseThrow();
+        confirmedShift.setTrangThai((byte) 1);
+        confirmedShift.setThoiGianXacNhan(LocalDateTime.now());
+        scheduleRepository.save(confirmedShift);
+
+        mockMvc.perform(put("/api/lich-lam-viec/" + shiftId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nhanVien":{"id":%d},"ngayLam":"%s","caLam":"Ca kiểm thử",
+                                 "gioBatDau":"08:00:00","gioKetThuc":"12:00:00","trangThai":2,
+                                 "ghiChu":"Admin chỉ sửa ghi chú"}
+                """.formatted(employee.getId(), workDate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trangThai").value(1))
+                .andExpect(jsonPath("$.ghiChu").value("Admin chỉ sửa ghi chú"));
     }
 
     @Test

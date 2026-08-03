@@ -142,16 +142,12 @@ public class NhanVienController {
 
     @PutMapping("/{id}/trang-thai")
     public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        Integer status = parseInteger(toStringVal(body.get("tinhTrangLamViec")));
+        if (status == null || (status != 0 && status != 1)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Trạng thái nhân viên chỉ được là đang làm hoặc tạm khóa"));
+        }
         return nhanVienRepo.findById(id).map(existing -> {
-            existing.setTinhTrangLamViec(parseByte(toStringVal(body.get("tinhTrangLamViec")), existing.getTinhTrangLamViec()));
-            return ResponseEntity.ok(toMap(nhanVienRepo.save(existing)));
-        }).orElse(ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Integer id) {
-        return nhanVienRepo.findById(id).map(existing -> {
-            existing.setTinhTrangLamViec((byte) 0);
+            existing.setTinhTrangLamViec(status.byteValue());
             return ResponseEntity.ok(toMap(nhanVienRepo.save(existing)));
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -164,7 +160,9 @@ public class NhanVienController {
         if (body.containsKey("diaChi")) nv.setDiaChi(trim(toStringVal(body.get("diaChi"))));
         if (body.containsKey("ngaySinh")) nv.setNgaySinh(isBlank(toStringVal(body.get("ngaySinh"))) ? null : LocalDate.parse(toStringVal(body.get("ngaySinh"))));
         if (body.containsKey("gioiTinh")) nv.setGioiTinh(parseByte(toStringVal(body.get("gioiTinh")), null));
-        if (body.containsKey("tinhTrangLamViec")) nv.setTinhTrangLamViec(parseByte(toStringVal(body.get("tinhTrangLamViec")), (byte) 1));
+        if (create && body.containsKey("tinhTrangLamViec")) {
+            nv.setTinhTrangLamViec(parseByte(toStringVal(body.get("tinhTrangLamViec")), (byte) 1));
+        }
 
         Integer vaiTroId = parseInteger(toStringVal(body.get("vaiTroId")));
         if (vaiTroId != null) {

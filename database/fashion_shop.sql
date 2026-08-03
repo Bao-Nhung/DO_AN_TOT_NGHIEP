@@ -3296,20 +3296,32 @@ WHERE id_loai_vay IN (
       AND (ten_loai_vay LIKE N'%Ã%' OR ten_loai_vay LIKE N'%áº%' OR ten_loai_vay LIKE N'%á»%')
 );
 
-UPDATE dbo.Pham_vi_khuyen_mai
-SET id_loai_vay = @loai_du_tiec
-WHERE id_loai_vay IN (
-    SELECT id
-    FROM dbo.Loai_vay
+-- This migration also runs on a completely new database. The promotion scope
+-- table is created later, so only reference it when upgrading an older schema.
+IF OBJECT_ID(N'dbo.Pham_vi_khuyen_mai', N'U') IS NOT NULL
+BEGIN
+    UPDATE dbo.Pham_vi_khuyen_mai
+    SET id_loai_vay = @loai_du_tiec
+    WHERE id_loai_vay IN (
+        SELECT id
+        FROM dbo.Loai_vay
+        WHERE id <> @loai_du_tiec
+          AND (ten_loai_vay LIKE N'%Ã%' OR ten_loai_vay LIKE N'%áº%' OR ten_loai_vay LIKE N'%á»%')
+    );
+
+    DELETE dbo.Loai_vay
     WHERE id <> @loai_du_tiec
       AND (ten_loai_vay LIKE N'%Ã%' OR ten_loai_vay LIKE N'%áº%' OR ten_loai_vay LIKE N'%á»%')
-);
-
-DELETE dbo.Loai_vay
-WHERE id <> @loai_du_tiec
-  AND (ten_loai_vay LIKE N'%Ã%' OR ten_loai_vay LIKE N'%áº%' OR ten_loai_vay LIKE N'%á»%')
-  AND NOT EXISTS (SELECT 1 FROM dbo.Vay WHERE id_loai_vay = dbo.Loai_vay.id)
-  AND NOT EXISTS (SELECT 1 FROM dbo.Pham_vi_khuyen_mai WHERE id_loai_vay = dbo.Loai_vay.id);
+      AND NOT EXISTS (SELECT 1 FROM dbo.Vay WHERE id_loai_vay = dbo.Loai_vay.id)
+      AND NOT EXISTS (SELECT 1 FROM dbo.Pham_vi_khuyen_mai WHERE id_loai_vay = dbo.Loai_vay.id);
+END
+ELSE
+BEGIN
+    DELETE dbo.Loai_vay
+    WHERE id <> @loai_du_tiec
+      AND (ten_loai_vay LIKE N'%Ã%' OR ten_loai_vay LIKE N'%áº%' OR ten_loai_vay LIKE N'%á»%')
+      AND NOT EXISTS (SELECT 1 FROM dbo.Vay WHERE id_loai_vay = dbo.Loai_vay.id);
+END
 
 UPDATE dbo.Vay
 SET id_loai_vay = CASE
@@ -5052,8 +5064,6 @@ IF EXISTS (
 IF XACT_STATE() <> 1
     THROW 51099, N'Cài đặt dữ liệu đã bị lỗi và không thể commit. Không có thông báo thành công giả.', 1;
 COMMIT TRANSACTION;
-GO
-
 SET NOCOUNT OFF;
 PRINT N'Zestia demo data refresh completed.';
 GO

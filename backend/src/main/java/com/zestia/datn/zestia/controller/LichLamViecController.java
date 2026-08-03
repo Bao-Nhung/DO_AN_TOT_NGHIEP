@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/lich-lam-viec")
@@ -192,6 +193,8 @@ public class LichLamViecController {
         if (nhanVien == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "Nhân viên không tồn tại"));
         }
+        lich.setNhanVien(nhanVien);
+        lich.setTrangThai(ShiftAccessService.STATUS_PENDING);
         String validationError = validateSchedule(lich);
         if (validationError != null) {
             return ResponseEntity.badRequest().body(Map.of("message", validationError));
@@ -199,12 +202,8 @@ public class LichLamViecController {
         if (hasOverlap(lich, null)) {
             return ResponseEntity.status(409).body(Map.of("message", "Nhân viên đã có ca làm trùng thời gian"));
         }
-        lich.setNhanVien(nhanVien);
         lich.setNgayTao(LocalDateTime.now());
-        if (lich.getTrangThai() == null) lich.setTrangThai(ShiftAccessService.STATUS_PENDING);
-        if (lich.getTrangThai() == ShiftAccessService.STATUS_CONFIRMED && lich.getThoiGianXacNhan() == null) {
-            lich.setThoiGianXacNhan(LocalDateTime.now());
-        }
+        lich.setThoiGianXacNhan(null);
         lich.setLyDoBaoBan(null);
         lich.setPhanHoiBaoBan(null);
         lich.setThoiGianBaoBan(null);
@@ -223,22 +222,43 @@ public class LichLamViecController {
                         "message", "Không thể sửa ca đã chấm công; hãy giữ lịch sử để đối soát"
                 ));
             }
+            NhanVien requestedEmployee = existing.getNhanVien();
             if (lich.getNhanVien() != null && lich.getNhanVien().getId() != null) {
-                nhanVienRepo.findById(lich.getNhanVien().getId()).ifPresent(existing::setNhanVien);
+                requestedEmployee = nhanVienRepo.findById(lich.getNhanVien().getId()).orElse(null);
+                if (requestedEmployee == null) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Nhân viên không tồn tại"));
+                }
             }
+
+            boolean scheduleChanged = !Objects.equals(
+                    existing.getNhanVien() != null ? existing.getNhanVien().getId() : null,
+                    requestedEmployee != null ? requestedEmployee.getId() : null)
+                    || (lich.getNgayLam() != null && !Objects.equals(existing.getNgayLam(), lich.getNgayLam()))
+                    || (lich.getCaLam() != null && !Objects.equals(existing.getCaLam(), lich.getCaLam()))
+                    || (lich.getGioBatDau() != null && !Objects.equals(existing.getGioBatDau(), lich.getGioBatDau()))
+                    || (lich.getGioKetThuc() != null && !Objects.equals(existing.getGioKetThuc(), lich.getGioKetThuc()));
+
+            if (scheduleChanged && existing.getTrangThai() != null
+                    && existing.getTrangThai() == ShiftAccessService.STATUS_UNAVAILABLE_PENDING) {
+                return ResponseEntity.status(409).body(Map.of(
+                        "message", "Hãy duyệt yêu cầu báo bận trước khi thay đổi lịch làm việc"
+                ));
+            }
+
+            existing.setNhanVien(requestedEmployee);
             if (lich.getNgayLam() != null) existing.setNgayLam(lich.getNgayLam());
             if (lich.getCaLam() != null) existing.setCaLam(lich.getCaLam());
             if (lich.getGioBatDau() != null) existing.setGioBatDau(lich.getGioBatDau());
             if (lich.getGioKetThuc() != null) existing.setGioKetThuc(lich.getGioKetThuc());
             if (lich.getGhiChu() != null) existing.setGhiChu(lich.getGhiChu());
-            if (lich.getTrangThai() != null) {
-                if (!validStatus(lich.getTrangThai())) {
-                    return ResponseEntity.badRequest().body(Map.of("message", "Trạng thái ca làm không hợp lệ"));
-                }
-                existing.setTrangThai(lich.getTrangThai());
-                if (lich.getTrangThai() == ShiftAccessService.STATUS_CONFIRMED && existing.getThoiGianXacNhan() == null) {
-                    existing.setThoiGianXacNhan(LocalDateTime.now());
-                }
+            if (scheduleChanged) {
+                existing.setTrangThai(ShiftAccessService.STATUS_PENDING);
+                existing.setThoiGianXacNhan(null);
+                existing.setLyDoBaoBan(null);
+                existing.setPhanHoiBaoBan(null);
+                existing.setThoiGianBaoBan(null);
+                existing.setThoiGianDuyet(null);
+                existing.setNguoiDuyet(null);
             }
             String validationError = validateSchedule(existing);
             if (validationError != null) {
@@ -390,18 +410,19 @@ public class LichLamViecController {
     }
 
     private boolean hasOverlap(LichLamViec shift, Integer excludedId) {
-        return shift.getNhanVien() != null
-                && shift.getNhanVien().getId() != null
-                && shift.getNgayLam() != null
-                && shift.getGioBatDau() != null
-                && shift.getGioKetThuc() != null
-                && lichLamViecRepo.countOverlapping(
-                        shift.getNhanVien().getId(),
-                        shift.getNgayLam(),
-                        shift.getGioBatDau(),
-                        shift.getGioKetThuc(),
-                        excludedId
-                ) > 0;
+        if (shift.getNhanVien() == null || shift.getNhanVien().getId() == null
+                || shift.getNgayLam() == null || shift.getGioBatDau() == null
+                || shift.getGioKetThuc() == null) {
+            return false;
+        }
+        return lichLamViecRepo.findByNhanVienIdAndNgayLamOrderByGioBatDauAsc(
+                        shift.getNhanVien().getId(), shift.getNgayLam()).stream()
+                .filter(existing -> excludedId == null || !Objects.equals(existing.getId(), excludedId))
+                .filter(existing -> existing.getTrangThai() == null
+                        || existing.getTrangThai() != ShiftAccessService.STATUS_UNAVAILABLE)
+                .filter(existing -> existing.getGioBatDau() != null && existing.getGioKetThuc() != null)
+                .anyMatch(existing -> existing.getGioBatDau().isBefore(shift.getGioKetThuc())
+                        && existing.getGioKetThuc().isAfter(shift.getGioBatDau()));
     }
 
     private Map<String, Object> toMap(LichLamViec lich) {

@@ -28,6 +28,23 @@
         </div>
       </div>
 
+      <div v-if="!humanMode" class="z-ai-suggestions" aria-label="Câu hỏi gợi ý">
+        <span>Hỏi nhanh</span>
+        <div class="z-ai-suggestion-list">
+          <button
+            v-for="suggestion in suggestedQuestions"
+            :key="suggestion.label"
+            type="button"
+            :title="suggestion.question"
+            :disabled="loading"
+            @click="sendSuggestedQuestion(suggestion.question)"
+          >
+            <i class="bi" :class="suggestion.icon"></i>
+            {{ suggestion.label }}
+          </button>
+        </div>
+      </div>
+
       <div v-if="!humanMode && hasAskedAi && !loading" class="z-ai-handoff">
         <span>ChatAI chưa giải quyết được?</span>
         <button type="button" :disabled="handoffLoading" @click="requestEmployee">
@@ -72,6 +89,33 @@ const supportStatus = ref('')
 const supportEmployee = ref('')
 const humanMessages = ref([])
 let supportPoll = null
+const suggestedQuestions = [
+  {
+    label: 'Váy theo dịp',
+    icon: 'bi-stars',
+    question: 'Gợi ý cho tôi các mẫu váy còn hàng phù hợp để đi dự tiệc.'
+  },
+  {
+    label: 'Theo ngân sách',
+    icon: 'bi-wallet2',
+    question: 'Tìm giúp tôi các mẫu váy còn hàng có giá dưới 1.000.000đ.'
+  },
+  {
+    label: 'Tư vấn size',
+    icon: 'bi-rulers',
+    question: 'Tôi cần cung cấp những số đo nào để bạn tư vấn size váy phù hợp?'
+  },
+  {
+    label: 'Voucher hiện có',
+    icon: 'bi-ticket-perforated',
+    question: 'Hiện tại có những voucher nào đang áp dụng và điều kiện sử dụng ra sao?'
+  },
+  {
+    label: 'Tra cứu đơn',
+    icon: 'bi-box-seam',
+    question: 'Tôi muốn tra cứu trạng thái đơn hàng của mình.'
+  }
+]
 const messages = ref([
   {
     role: 'assistant',
@@ -83,6 +127,7 @@ const displayMessages = computed(() => humanMode.value ? humanMessages.value : m
 const hasAskedAi = computed(() => messages.value.some(message => message.role === 'user'))
 const supportStatusText = computed(() => {
   if (supportStatus.value === 'CLOSED') return 'Phiên hỗ trợ đã kết thúc'
+  if (supportStatus.value === 'WAITING') return 'Đã vào hàng chờ hỗ trợ'
   if (supportEmployee.value) return `${supportEmployee.value} đang hỗ trợ bạn`
   return 'Đang chờ nhân viên trong ca tiếp nhận'
 })
@@ -128,6 +173,12 @@ async function send() {
     loading.value = false
     await scrollToBottom()
   }
+}
+
+async function sendSuggestedQuestion(question) {
+  if (humanMode.value || loading.value) return
+  draft.value = question
+  await send()
 }
 
 async function requestEmployee() {
@@ -340,6 +391,50 @@ async function scrollToBottom() {
   text-align: center;
 }
 .z-ai-msg small { display: block; margin-bottom: 3px; color: var(--z-gray); font-size: 9px; }
+
+.z-ai-suggestions {
+  padding: 9px 12px 10px;
+  border-top: 1px solid var(--z-gray-border);
+  background: #fff;
+}
+
+.z-ai-suggestions > span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--z-gray);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.z-ai-suggestion-list {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--z-gray-border) transparent;
+}
+
+.z-ai-suggestion-list button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-bg);
+  color: var(--z-dark);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.z-ai-suggestion-list button i { margin-right: 5px; color: var(--z-accent); }
+.z-ai-suggestion-list button:hover:not(:disabled) { border-color: var(--z-dark); background: var(--z-dark); color: #fff; }
+.z-ai-suggestion-list button:hover:not(:disabled) i { color: var(--z-accent); }
+.z-ai-suggestion-list button:focus-visible { outline: 2px solid var(--z-accent); outline-offset: 1px; }
+.z-ai-suggestion-list button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .z-ai-handoff {
   padding: 9px 12px;

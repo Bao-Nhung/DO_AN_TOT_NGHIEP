@@ -43,7 +43,11 @@ public class SupportChatService {
                 .build();
         conversationRepository.save(conversation);
         saveMessage(conversation, "CUSTOMER", customerName(customer), message, now);
-        tryAssign(conversation, now);
+        if (!tryAssign(conversation, now)) {
+            saveMessage(conversation, "SYSTEM", "Zestia",
+                    "Yêu cầu của bạn đã được đưa vào hàng chờ. Admin hoặc nhân viên trong ca sẽ tiếp nhận sớm nhất.",
+                    now);
+        }
         return customerSnapshot(conversation);
     }
 
@@ -143,15 +147,16 @@ public class SupportChatService {
         return staffSnapshot(conversation);
     }
 
-    private void tryAssign(SupportConversation conversation, LocalDateTime now) {
+    private boolean tryAssign(SupportConversation conversation, LocalDateTime now) {
         NhanVien employee = findAvailableEmployee(now);
-        if (employee == null) return;
+        if (employee == null) return false;
         conversation.setNhanVien(employee);
         conversation.setTrangThai(ACTIVE);
         conversation.setNgayNhan(now);
         conversation.setNgayCapNhat(now);
         conversationRepository.save(conversation);
         saveMessage(conversation, "SYSTEM", "Zestia", employee.getHoVaTen() + " đang trực và đã tiếp nhận yêu cầu.", now);
+        return true;
     }
 
     private void refreshAssignment(SupportConversation conversation, LocalDateTime now) {
@@ -177,14 +182,14 @@ public class SupportChatService {
                 && "Admin".equalsIgnoreCase(assigned.getVaiTro().getTenVaiTro())) {
             return true;
         }
-        return scheduleRepository.findCheckedInShifts(now.toLocalDate(), now.toLocalTime()).stream()
+        return checkedInShifts(now).stream()
                 .map(LichLamViec::getNhanVien)
                 .filter(Objects::nonNull)
                 .anyMatch(employee -> Objects.equals(employee.getId(), employeeId) && isCustomerSupportRole(employee));
     }
 
     private NhanVien findAvailableEmployee(LocalDateTime now) {
-        return scheduleRepository.findCheckedInShifts(now.toLocalDate(), now.toLocalTime()).stream()
+        return checkedInShifts(now).stream()
                 .map(LichLamViec::getNhanVien)
                 .filter(Objects::nonNull)
                 .filter(employee -> employee.getTinhTrangLamViec() == null || employee.getTinhTrangLamViec() == 1)
@@ -192,6 +197,14 @@ public class SupportChatService {
                 .min(Comparator.comparingLong(employee -> conversationRepository
                         .countByNhanVienIdAndTrangThaiIn(employee.getId(), OPEN_STATUSES)))
                 .orElse(null);
+    }
+
+    private List<LichLamViec> checkedInShifts(LocalDateTime now) {
+        return scheduleRepository.findCheckedInShifts(now.toLocalDate()).stream()
+                .filter(shift -> shift.getGioBatDau() != null && shift.getGioKetThuc() != null)
+                .filter(shift -> !now.toLocalTime().isBefore(shift.getGioBatDau()))
+                .filter(shift -> !now.toLocalTime().isAfter(shift.getGioKetThuc()))
+                .toList();
     }
 
     private boolean isCustomerSupportRole(NhanVien employee) {

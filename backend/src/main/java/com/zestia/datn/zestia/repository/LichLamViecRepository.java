@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,28 +28,12 @@ public interface LichLamViecRepository extends JpaRepository<LichLamViec, Intege
               AND l.trangThai = 1
               AND l.gioCheckIn IS NOT NULL
               AND l.gioCheckOut IS NULL
-              AND l.gioBatDau <= :time
-              AND l.gioKetThuc >= :time
             ORDER BY l.gioCheckIn ASC
             """)
-    List<LichLamViec> findCheckedInShifts(@Param("date") LocalDate date, @Param("time") LocalTime time);
+    List<LichLamViec> findCheckedInShifts(@Param("date") LocalDate date);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT l FROM LichLamViec l WHERE l.id = :id")
     Optional<LichLamViec> findByIdForUpdate(@Param("id") Integer id);
 
-    @Query("""
-            SELECT COUNT(l) FROM LichLamViec l
-            WHERE l.nhanVien.id = :employeeId
-              AND l.ngayLam = :date
-              AND (:excludedId IS NULL OR l.id <> :excludedId)
-              AND COALESCE(l.trangThai, 0) <> 2
-              AND l.gioBatDau < :endTime
-              AND l.gioKetThuc > :startTime
-            """)
-    long countOverlapping(@Param("employeeId") Integer employeeId,
-                          @Param("date") LocalDate date,
-                          @Param("startTime") LocalTime startTime,
-                          @Param("endTime") LocalTime endTime,
-                          @Param("excludedId") Integer excludedId);
 }

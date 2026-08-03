@@ -370,19 +370,9 @@
             </div>
           </div>
 
-          <div class="row g-3">
-            <div class="col-5">
-              <label class="z-label">Trạng thái</label>
-              <select v-model.number="form.trangThai" class="lm-input">
-                <option :value="0">Chờ xác nhận</option>
-                <option :value="1">Đã xác nhận</option>
-                <option :value="2">Nghỉ phép</option>
-              </select>
-            </div>
-            <div class="col-7">
-              <label class="z-label">Ghi chú</label>
-              <input v-model="form.ghiChu" class="lm-input" placeholder="VD: hỗ trợ kiểm kho, đổi ca...">
-            </div>
+          <div>
+            <label class="z-label">Ghi chú</label>
+            <input v-model="form.ghiChu" class="lm-input" placeholder="VD: hỗ trợ kiểm kho, đổi ca...">
           </div>
         </div>
 
@@ -684,7 +674,6 @@ function openEdit(item) {
     caLam: item.caLam || 'Ca sáng',
     gioBatDau: shortTime(item.gioBatDau),
     gioKetThuc: shortTime(item.gioKetThuc),
-    trangThai: item.trangThai ?? 1,
     ghiChu: item.ghiChu || ''
   }
   showModal.value = true
@@ -707,7 +696,6 @@ async function saveSchedule() {
     caLam: form.value.caLam,
     gioBatDau: form.value.gioBatDau,
     gioKetThuc: form.value.gioKetThuc,
-    trangThai: form.value.trangThai,
     ghiChu: form.value.ghiChu
   }
 
@@ -780,7 +768,6 @@ function defaultForm() {
     caLam: 'Ca sáng',
     gioBatDau: '08:00',
     gioKetThuc: '12:00',
-    trangThai: 0,
     ghiChu: ''
   }
 }

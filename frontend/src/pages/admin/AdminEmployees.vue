@@ -119,7 +119,6 @@
                 <button type="button" class="z-icon-btn" title="Khoá / mở khoá" :aria-label="Number(nv.tinhTrangLamViec) === 1 ? 'Khóa nhân viên' : 'Mở khóa nhân viên'" @click="toggleStatus(nv)">
                   <i class="bi" :class="Number(nv.tinhTrangLamViec) === 1 ? 'bi-lock' : 'bi-unlock'"></i>
                 </button>
-                <button type="button" class="z-icon-btn" title="Tạm khoá" aria-label="Tạm khóa nhân viên" style="color:var(--z-accent)" @click="deleteEmployee(nv)"><i class="bi bi-person-x"></i></button>
               </div>
             </td>
           </tr>
@@ -214,7 +213,7 @@
           </div>
 
           <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="z-label">Giới tính</label>
               <select v-model="form.gioiTinh" class="lm-input">
                 <option value="">Chưa chọn</option>
@@ -222,17 +221,10 @@
                 <option value="0">Nữ</option>
               </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
               <label class="z-label">Ngày sinh</label>
               <input v-model="form.ngaySinh" type="date" class="lm-input" :class="{ 'is-invalid': formErrors.ngaySinh }" :max="adultMaximumDate" @change="clearFieldError('ngaySinh')">
               <div v-if="formErrors.ngaySinh" class="z-field-error">{{ formErrors.ngaySinh }}</div>
-            </div>
-            <div class="col-md-4">
-              <label class="z-label">Trạng thái</label>
-              <select v-model="form.tinhTrangLamViec" class="lm-input">
-                <option value="1">Đang làm</option>
-                <option value="0">Tạm khoá</option>
-              </select>
             </div>
           </div>
 
@@ -435,7 +427,6 @@ function openEdit(nv) {
     soDienThoai: nv.soDienThoai || '',
     gioiTinh: nv.gioiTinh ?? '',
     ngaySinh: nv.ngaySinh || '',
-    tinhTrangLamViec: nv.tinhTrangLamViec ?? 1,
     diaChi: nv.diaChi || ''
   }
   showModal.value = true
@@ -487,22 +478,6 @@ async function toggleStatus(nv) {
     await loadEmployees()
   } catch (e) {
     showToast('Không thể cập nhật trạng thái')
-  }
-}
-
-async function deleteEmployee(nv) {
-  if (!await confirmDialog({
-    title: 'Tạm khóa nhân viên',
-    message: `Tạm khóa tài khoản nhân viên "${nv.hoVaTen}"?`,
-    confirmText: 'Tạm khóa',
-    variant: 'danger'
-  })) return
-  try {
-    await api().deleteNhanVien(nv.id)
-    showToast('Đã tạm khoá nhân viên')
-    await loadEmployees()
-  } catch (e) {
-    showToast('Không thể tạm khoá nhân viên')
   }
 }
 
@@ -571,7 +546,6 @@ function defaultForm() {
     soDienThoai: '',
     gioiTinh: '',
     ngaySinh: '',
-    tinhTrangLamViec: 1,
     diaChi: ''
   }
 }

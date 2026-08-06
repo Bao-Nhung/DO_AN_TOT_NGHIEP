@@ -83,7 +83,7 @@
             <td style="font-weight:600">{{ o.total }}</td>
             <td>
               <div>{{ o.payment }}</div>
-              <span v-if="o.raw.phuongThucThanhToanOnline === 'FAILED' || (o.statusValue === '5' && (o.payment === 'MOMO' || o.payment === 'ZALOPAY') && !o.paid)" 
+              <span v-if="o.raw?.phuongThucThanhToanOnline === 'FAILED' || (o.statusValue === '5' && (o.payment === 'MOMO' || o.payment === 'ZALOPAY') && !o.paid)"
                     class="z-pay-badge unpaid" style="background:#fee2e2; color:#b91c1c; border-color:#fee2e2">
                 <i class="bi bi-x-circle-fill"></i>
                 Thanh toán thất bại
@@ -323,19 +323,19 @@
           </div>
 
           <div class="d-flex justify-content-end gap-2 mt-2 pt-3" style="border-top:1px solid var(--z-gray-border)">
-             <button v-if="detailData.trangThai === 3" class="z-btn-action z-btn-danger" 
-                     @click="confirmFail(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
+             <button v-if="detailData.trangThai === 3 && detailActionOrder" class="z-btn-action z-btn-danger"
+                     @click="confirmFail(detailActionOrder)">
               <i class="bi bi-x-circle me-1"></i> Giao thất bại
             </button>
               
-            <button v-if="canCancel({ statusValue: detailData.trangThai })" class="z-btn-action z-btn-danger" 
-                    @click="confirmCancel(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai) })">
+            <button v-if="detailActionOrder && canCancel(detailActionOrder)" class="z-btn-action z-btn-danger"
+                    @click="confirmCancel(detailActionOrder)">
               <i class="bi bi-trash me-1"></i> Huỷ đơn
             </button>
             
-            <button v-if="detailData.hinhThucNhanHang !== 0 && canAdvance({ statusValue: detailData.trangThai })" class="z-btn-action z-btn-primary"
-                    @click="confirmAdvance(allOrders.find(o => o.dbId === detailData.id) || { id: detailData.maHoaDon, dbId: detailData.id, statusValue: String(detailData.trangThai), isCod: (detailData.hinhThucThanhToan || '').toUpperCase().includes('COD'), paid: detailData.daThanhToan })">
-              <i class="bi bi-check-circle me-1"></i> {{ nextStatusLabel({ statusValue: detailData.trangThai }) }}
+            <button v-if="detailData.hinhThucNhanHang !== 0 && detailActionOrder && canAdvance(detailActionOrder)" class="z-btn-action z-btn-primary"
+                    @click="confirmAdvance(detailActionOrder)">
+              <i class="bi bi-check-circle me-1"></i> {{ nextStatusLabel(detailActionOrder) }}
             </button>
           </div>
         </div>
@@ -374,9 +374,9 @@
             Huỷ bỏ
           </button>
           <button class="z-btn-action flex-fill" style="height: 44px;" @click="executeAction"
-                  :class="confirmType === 'cancel' || confirmType === 'fail' ? 'z-btn-danger' : 'z-btn-primary'"
-                  :disabled="((confirmType === 'cancel' || confirmType === 'fail') && !cancelNote.trim()) || (needPaidConfirm && !confirmPaid)">
-            {{ confirmType === 'cancel' ? 'Xác nhận huỷ' : (confirmType === 'fail' ? 'Xác nhận thất bại' : 'Xác nhận') }}
+                   :class="confirmType === 'cancel' || confirmType === 'fail' ? 'z-btn-danger' : 'z-btn-primary'"
+                   :disabled="actionSubmitting || ((confirmType === 'cancel' || confirmType === 'fail') && !cancelNote.trim()) || (needPaidConfirm && !confirmPaid)">
+            {{ actionSubmitting ? 'Đang xử lý...' : (confirmType === 'cancel' ? 'Xác nhận huỷ' : (confirmType === 'fail' ? 'Xác nhận thất bại' : 'Xác nhận')) }}
           </button>
         </div>
       </div>
@@ -449,6 +449,7 @@ const confirmNewStatus = ref(0)
 const cancelNote = ref('')
 const actionNote = ref('')
 const confirmPaid = ref(false)
+const actionSubmitting = ref(false)
 
 let pollingInterval = null
 
@@ -457,6 +458,18 @@ const needPaidConfirm = computed(() =>
   confirmNewStatus.value === 4 && // 4 là Hoàn thành mới
   confirmOrder.value && confirmOrder.value.isCod && !confirmOrder.value.paid
 )
+
+const detailActionOrder = computed(() => {
+  const detail = detailData.value
+  if (!detail) return null
+  return allOrders.value.find(order => order.dbId === detail.id) || {
+    id: detail.maHoaDon || detail.id,
+    dbId: detail.id,
+    statusValue: String(detail.trangThai ?? 0),
+    isCod: isCodPayment(detail.hinhThucThanhToan),
+    paid: detail.daThanhToan === true
+  }
+})
 
 onMounted(async () => {
   await loadOrders()
@@ -516,7 +529,7 @@ function processOrderData(data) {
         id: o.maHoaDon, dbId: o.id, customer: o.khachHang || 'Khách lẻ', phone: o.soDienThoai || '',
         items: o.soSanPham || 0, total: fmtPrice(o.tongTien), payment: method,
         paid: o.daThanhToan === true,
-        isCod: method.toUpperCase().includes('COD') || method.toUpperCase().includes('TIỀN MẶT') || method.toLowerCase().includes('nhận hàng'),
+        isCod: isCodPayment(method),
         status: displayStatus.text, statusClass: displayStatus.cls, statusValue: String(o.trangThai ?? 0),
         date: o.ngayTao ? new Date(o.ngayTao).toLocaleDateString('vi-VN') : '',
         raw: o
@@ -561,13 +574,19 @@ function resetOrderPage() {
 }
 
 function canAdvance(o) {
-  const v = Number(o.statusValue)
+  const v = Number(o?.statusValue)
   return v >= 0 && v < 4 // Có 4 bước chuyển trạng thái (0->1->2->3->4)
 }
 
 function canCancel(o) {
-  const v = Number(o.statusValue)
-  return v === 0
+  const status = Number(o?.statusValue)
+  if (o?.paid) return false
+  if (status === 0) return true
+  return (status === 1 || status === 2) && o?.isCod === true
+}
+
+function isCodPayment(method) {
+  return String(method || '').trim().toUpperCase() === 'COD'
 }
 
 function nextStatusLabel(o) {
@@ -630,34 +649,61 @@ function offlineOrderTableStatus(order) {
 }
 
 async function executeAction() {
+  if (actionSubmitting.value) return
   const note = (confirmType.value === 'cancel' || confirmType.value === 'fail') ? cancelNote.value.trim() : actionNote.value.trim()
   if ((confirmType.value === 'cancel' || confirmType.value === 'fail') && !note) {
     showToast(`Vui lòng nhập lý do ${confirmType.value === 'cancel' ? 'huỷ đơn' : 'thất bại'}`)
     return
   }
   
-  const daThanhToan = needPaidConfirm.value && confirmPaid.value ? true : undefined
-  try {
-    await api().updateOrderStatus(confirmOrder.value.dbId, confirmNewStatus.value, note || null, daThanhToan)
-    showToast('Cập nhật trạng thái thành công!')
+  const targetOrderId = confirmOrder.value?.dbId
+  if (!targetOrderId) {
+    showToast('Không xác định được đơn hàng cần cập nhật')
     showConfirm.value = false
+    return
+  }
+
+  const refreshOpenDetail = showDetail.value && detailData.value?.id === targetOrderId
+  actionSubmitting.value = true
+  try {
+    await api().updateOrderStatus(targetOrderId, confirmNewStatus.value, note || null)
+    showConfirm.value = false
+    showToast('Cập nhật trạng thái thành công!')
     await loadOrders()
-    
-    if(showDetail.value && detailData.value) {
-       await openDetail(allOrders.value.find(o => o.dbId === detailData.value.id));
+
+    if (refreshOpenDetail) {
+      try {
+        detailData.value = await api().getHoaDonById(targetOrderId)
+      } catch (refreshError) {
+        console.warn('Đã cập nhật trạng thái nhưng không thể tải lại chi tiết đơn hàng:', refreshError)
+        showDetail.value = false
+      }
     }
+    confirmOrder.value = null
   } catch (e) {
-    showToast('Lỗi: ' + (e.message || 'Không thể cập nhật'))
+    showToast('Lỗi: ' + (e?.error || e?.message || 'Không thể cập nhật'))
+  } finally {
+    actionSubmitting.value = false
   }
 }
 
 async function openDetail(o) {
+  if (!o?.dbId) {
+    showToast('Không tìm thấy đơn hàng để hiển thị chi tiết')
+    return
+  }
   showDetail.value = true
   loadingDetail.value = true
   try {
     detailData.value = await api().getHoaDonById(o.dbId)
   } catch (e) {
-    detailData.value = o.raw
+    if (o.raw) {
+      detailData.value = o.raw
+    } else {
+      detailData.value = null
+      showDetail.value = false
+      showToast('Không thể tải chi tiết đơn hàng')
+    }
   } finally {
     loadingDetail.value = false
   }

@@ -1,7 +1,7 @@
 <template>
   <div>
     <section class="z-home-hero">
-      <img id="hero-parallax" class="z-home-hero-img" src="/images/banners/banner1.png" alt="Zestia Fashion">
+      <img id="hero-parallax" class="z-home-hero-img" src="/images/banners/banner1-clean.png" alt="Người mẫu trong bộ sưu tập Zestia 2026">
       <div class="z-home-hero-shade"></div>
 
       <div class="container z-home-hero-content">

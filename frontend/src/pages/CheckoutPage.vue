@@ -269,16 +269,16 @@
 
     <!-- Confirm Payment Modal -->
     <div v-if="showConfirmModal" class="z-modal-overlay" @click.self="showConfirmModal = false" style="z-index: 2000; backdrop-filter: blur(2px);">
-      <div class="z-modal" style="max-width:400px; text-align:center">
+      <div class="z-modal z-payment-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="payment-confirm-title">
         <div class="mb-3" style="font-size:48px; color:var(--z-accent)">
           <i class="bi bi-question-circle"></i>
         </div>
-        <h4 class="z-display mb-3" style="font-size:18px; font-weight:600">Xác nhận thanh toán</h4>
+        <h4 id="payment-confirm-title" class="z-display mb-3" style="font-size:18px; font-weight:600">Xác nhận thanh toán</h4>
         <p style="font-size:14px; color:var(--z-gray); margin-bottom:24px">Bạn có chắc chắn muốn thanh toán đơn hàng này?</p>
-        <div class="d-flex gap-3">
-          <button class="lm-btn-secondary flex-fill" style="height:40px;" @click="showConfirmModal = false">Hủy</button>
-          <button class="lm-btn-primary flex-fill" style="height:40px;" @click="confirmAndPlaceOrder" :disabled="loading">
-            {{ loading ? 'Đang xử lý...' : 'Xác nhận' }}
+        <div class="z-payment-confirm-actions">
+          <button class="lm-btn-secondary z-payment-confirm-button z-payment-confirm-cancel" @click="showConfirmModal = false">Hủy</button>
+          <button class="lm-btn-primary z-payment-confirm-button" @click="confirmAndPlaceOrder" :disabled="loading">
+            <span>{{ loading ? 'Đang xử lý...' : 'Xác nhận' }}</span>
           </button>
         </div>
       </div>
@@ -1045,5 +1045,32 @@ function isValidEmail(value) {
   background: var(--z-white); border-radius: var(--z-radius-lg);
   padding: 28px; width: 100%; max-height: 90vh; overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.z-payment-confirm-modal {
+  max-width: 400px;
+  text-align: center;
+}
+.z-payment-confirm-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.z-payment-confirm-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  justify-content: center;
+  padding: 10px 16px;
+  line-height: 1.2;
+}
+.z-payment-confirm-cancel {
+  border: 1px solid var(--z-gray-border);
+  background: var(--z-white);
+}
+.z-payment-confirm-cancel:hover:not(:disabled) {
+  border-color: var(--z-accent);
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
 }
 </style>

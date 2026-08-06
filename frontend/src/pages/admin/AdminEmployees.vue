@@ -78,7 +78,7 @@
             <th>Vai trò</th>
             <th>Ngày tạo</th>
             <th>Trạng thái</th>
-            <th style="width:120px">Thao tác</th>
+            <th style="width:150px">Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -115,6 +115,7 @@
             </td>
             <td>
               <div class="d-flex gap-1">
+                <button type="button" class="z-icon-btn" title="Xem chi tiết" aria-label="Xem chi tiết nhân viên" @click="openDetails(nv)"><i class="bi bi-eye"></i></button>
                 <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa nhân viên" @click="openEdit(nv)"><i class="bi bi-pencil"></i></button>
                 <button type="button" class="z-icon-btn" title="Khoá / mở khoá" :aria-label="Number(nv.tinhTrangLamViec) === 1 ? 'Khóa nhân viên' : 'Mở khóa nhân viên'" @click="toggleStatus(nv)">
                   <i class="bi" :class="Number(nv.tinhTrangLamViec) === 1 ? 'bi-lock' : 'bi-unlock'"></i>
@@ -154,7 +155,7 @@
     </div>
 
     <div v-if="showModal" class="z-modal-overlay" @click.self="showModal = false">
-      <div class="z-modal" :style="editingId ? 'max-width: 980px;' : 'max-width: 600px;'">
+      <div class="z-modal" style="max-width:600px">
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h3 style="font-size:18px;font-weight:600;margin:0">{{ editingId ? 'Cập nhật nhân viên' : 'Thêm nhân viên mới' }}</h3>
@@ -164,7 +165,7 @@
         </div>
 
         <div class="row">
-          <div :class="editingId ? 'col-md-7 border-end pe-4' : 'col-md-12'">
+          <div class="col-12">
             <div class="d-flex flex-column gap-3">
           <div class="row g-3">
             <div class="col-md-6">
@@ -243,51 +244,73 @@
           </div>
         </div>
 
-        <div class="col-md-5 ps-4" v-if="editingId">
-            <h4 style="font-size:14px;font-weight:600;margin-bottom:16px; color: var(--z-dark); text-transform:uppercase; letter-spacing:0;">Báo cáo hiệu suất & ca làm</h4>
-            <div v-if="loadingPerf" class="text-center py-5">
-              <div class="spinner-border spinner-border-sm text-secondary"></div>
-              <p style="color:var(--z-gray);font-size:12px;margin-top:8px">Đang tính toán hiệu suất...</p>
-            </div>
-            <div v-else-if="perfStats" class="d-flex flex-column gap-3">
-              <div class="z-stat-box" style="background:#f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--z-radius); padding: 16px; display:flex; align-items:center; gap:12px;">
-                <div style="width:36px;height:36px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;color:#15803d;font-size:18px"><i class="bi bi-cash-coin"></i></div>
-                <div>
-                  <div style="font-size:11px;color:#166534">Doanh số POS (Tại quầy)</div>
-                  <strong style="font-size:16px;color:#14532d">{{ fmtPrice(perfStats.totalSales) }}</strong>
-                </div>
-              </div>
+        </div>
+      </div>
+    </div>
 
-              <div class="z-stat-box" style="background:#fffbeb; border: 1px solid #fde68a; border-radius: var(--z-radius); padding: 16px; display:flex; align-items:center; gap:12px;">
-                <div style="width:36px;height:36px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;color:#b45309;font-size:18px"><i class="bi bi-receipt"></i></div>
-                <div>
-                  <div style="font-size:11px;color:#92400e">Đơn hàng thành công</div>
-                  <strong style="font-size:16px;color:#78350f">{{ perfStats.completedOrders }} / {{ perfStats.totalOrders }} đơn</strong>
-                </div>
-              </div>
-
-              <div class="row g-2">
-                <div class="col-6">
-                  <div class="p-3 bg-light rounded text-center" style="border: 1px solid var(--z-gray-border)">
-                    <div style="font-size:11px;color:var(--z-gray)">Số ca làm tuần này</div>
-                    <strong style="font-size:18px;color:var(--z-dark)" class="d-block mt-1">{{ perfStats.shiftCount }} ca</strong>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="p-3 bg-light rounded text-center" style="border: 1px solid var(--z-gray-border)">
-                    <div style="font-size:11px;color:var(--z-gray)">Tổng giờ làm dự kiến</div>
-                    <strong style="font-size:18px;color:var(--z-dark)" class="d-block mt-1">{{ perfStats.totalHours }}h</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div class="p-3 rounded" style="background:var(--z-bg-alt); border-left:4px solid var(--z-accent); font-size:12px; line-height:1.45;">
-                <i class="bi bi-star-fill text-warning me-1"></i>
-                <span v-if="perfStats.totalSales > 10000000" style="color:var(--z-dark); font-weight:600">Nhân viên xuất sắc!</span>
-                <span v-else style="color:var(--z-gray)">Hiệu suất làm việc được cập nhật trực tiếp dựa trên lịch phân ca và đơn hàng bán tại POS.</span>
-              </div>
+    <div v-if="showDetailModal && selectedEmployee" class="z-modal-overlay" @click.self="closeDetails">
+      <div class="z-modal z-employee-detail-modal" role="dialog" aria-modal="true" aria-labelledby="employee-detail-title">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+          <div class="d-flex align-items-center gap-3">
+            <div class="z-detail-avatar">{{ (selectedEmployee.hoVaTen || 'N').charAt(0) }}</div>
+            <div>
+              <div class="z-detail-eyebrow">HỒ SƠ NHÂN VIÊN</div>
+              <h3 id="employee-detail-title" class="z-detail-title">{{ selectedEmployee.hoVaTen }}</h3>
+              <p class="z-detail-caption">{{ selectedEmployee.maNhanVien }} · {{ selectedEmployee.tenVaiTro || 'Nhân viên' }}</p>
             </div>
           </div>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết nhân viên" @click="closeDetails"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="z-employee-info-grid">
+          <div><span>Tên đăng nhập</span><strong>{{ selectedEmployee.tenNguoiDung }}</strong></div>
+          <div><span>Trạng thái</span><strong>{{ Number(selectedEmployee.tinhTrangLamViec) === 1 ? 'Đang làm việc' : 'Tạm khóa' }}</strong></div>
+          <div><span>Email</span><strong>{{ selectedEmployee.email || 'Chưa cập nhật' }}</strong></div>
+          <div><span>Số điện thoại</span><strong>{{ selectedEmployee.soDienThoai || 'Chưa cập nhật' }}</strong></div>
+          <div><span>Ngày sinh</span><strong>{{ formatDate(selectedEmployee.ngaySinh) || 'Chưa cập nhật' }}</strong></div>
+          <div><span>Ngày tạo tài khoản</span><strong>{{ formatDate(selectedEmployee.ngayTao) || 'Chưa cập nhật' }}</strong></div>
+          <div class="z-info-full"><span>Địa chỉ</span><strong>{{ selectedEmployee.diaChi || 'Chưa cập nhật' }}</strong></div>
+        </div>
+
+        <div class="z-performance-header">
+          <div>
+            <h4>Hiệu suất và ca làm</h4>
+            <p>Dữ liệu được tổng hợp từ lịch phân ca và đơn POS của nhân viên.</p>
+          </div>
+          <i class="bi bi-bar-chart-line"></i>
+        </div>
+
+        <div v-if="loadingPerf" class="text-center py-5">
+          <div class="spinner-border spinner-border-sm text-secondary"></div>
+          <p style="color:var(--z-gray);font-size:12px;margin-top:8px">Đang tính toán hiệu suất...</p>
+        </div>
+        <div v-else-if="perfStats" class="z-performance-grid">
+          <div class="z-performance-metric featured">
+            <span>Doanh số POS thành công</span>
+            <strong>{{ fmtPrice(perfStats.totalSales) }}</strong>
+            <i class="bi bi-cash-stack"></i>
+          </div>
+          <div class="z-performance-metric">
+            <span>Đơn hàng thành công</span>
+            <strong>{{ perfStats.completedOrders }} / {{ perfStats.totalOrders }} đơn</strong>
+            <i class="bi bi-receipt"></i>
+          </div>
+          <div class="z-performance-metric">
+            <span>Tổng số ca được xếp</span>
+            <strong>{{ perfStats.shiftCount }} ca</strong>
+            <i class="bi bi-calendar2-week"></i>
+          </div>
+          <div class="z-performance-metric">
+            <span>Tổng giờ làm dự kiến</span>
+            <strong>{{ formatHours(perfStats.totalHours) }}</strong>
+            <i class="bi bi-clock-history"></i>
+          </div>
+        </div>
+        <div v-else class="z-performance-empty">Không thể tải dữ liệu hiệu suất của nhân viên này.</div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button class="lm-btn-secondary" @click="closeDetails">Đóng</button>
+          <button class="lm-btn-primary" @click="editFromDetails"><i class="bi bi-pencil me-1"></i><span>Chỉnh sửa thông tin</span></button>
         </div>
       </div>
     </div>
@@ -300,6 +323,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
+import { fmtPrice } from '@/composables/useProducts'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const { showToast } = useToast()
@@ -308,6 +332,8 @@ const { confirmDialog } = useConfirm()
 const loading = ref(false)
 const saving = ref(false)
 const showModal = ref(false)
+const showDetailModal = ref(false)
+const selectedEmployee = ref(null)
 const showPassword = ref(false)
 const editingId = ref(null)
 const loadingPerf = ref(false)
@@ -430,7 +456,24 @@ function openEdit(nv) {
     diaChi: nv.diaChi || ''
   }
   showModal.value = true
+}
+
+function openDetails(nv) {
+  selectedEmployee.value = nv
+  showDetailModal.value = true
   loadPerformance(nv.id)
+}
+
+function closeDetails() {
+  showDetailModal.value = false
+  selectedEmployee.value = null
+  perfStats.value = null
+}
+
+function editFromDetails() {
+  const employee = selectedEmployee.value
+  closeDetails()
+  if (employee) openEdit(employee)
 }
 
 async function saveEmployee() {
@@ -553,6 +596,11 @@ function defaultForm() {
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString('vi-VN') : ''
 }
+
+function formatHours(value) {
+  const hours = Number(value || 0)
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)} giờ`
+}
 </script>
 
 <style scoped>
@@ -603,4 +651,45 @@ function formatDate(value) {
 }
 .lm-input.is-invalid { border-color: #dc2626; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.08); }
 .z-field-error { margin-top: 5px; color: #b91c1c; font-size: 11px; line-height: 1.35; }
+.z-employee-detail-modal { max-width: 720px; }
+.z-detail-avatar {
+  width: 48px; height: 48px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--z-dark); color: var(--z-white);
+  font-size: 18px; font-weight: 650;
+}
+.z-detail-eyebrow { margin-bottom: 4px; color: var(--z-accent); font-size: 10px; font-weight: 700; }
+.z-detail-title { margin: 0; color: var(--z-dark); font-size: 20px; font-weight: 650; }
+.z-detail-caption { margin: 4px 0 0; color: var(--z-gray); font-size: 12px; }
+.z-employee-info-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px; border: 1px solid var(--z-gray-border); background: var(--z-gray-border);
+}
+.z-employee-info-grid > div { min-width: 0; padding: 12px 14px; background: var(--z-white); }
+.z-employee-info-grid .z-info-full { grid-column: 1 / -1; }
+.z-employee-info-grid span,
+.z-employee-info-grid strong { display: block; }
+.z-employee-info-grid span { margin-bottom: 4px; color: var(--z-gray); font-size: 10px; text-transform: uppercase; }
+.z-employee-info-grid strong { overflow-wrap: anywhere; color: var(--z-dark); font-size: 12px; }
+.z-performance-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  margin-top: 22px; padding-bottom: 10px; border-bottom: 1px solid var(--z-gray-border);
+}
+.z-performance-header h4 { margin: 0; color: var(--z-dark); font-size: 15px; font-weight: 650; }
+.z-performance-header p { margin: 3px 0 0; color: var(--z-gray); font-size: 11px; }
+.z-performance-header > i { color: var(--z-accent); font-size: 20px; }
+.z-performance-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.z-performance-metric { position: relative; min-height: 92px; padding: 14px; overflow: hidden; border: 1px solid var(--z-gray-border); background: var(--z-bg-alt); }
+.z-performance-metric.featured { border-left: 3px solid #15803d; background: #f0fdf4; }
+.z-performance-metric span,
+.z-performance-metric strong { display: block; max-width: calc(100% - 34px); }
+.z-performance-metric span { color: var(--z-gray); font-size: 10px; }
+.z-performance-metric strong { margin-top: 8px; color: var(--z-dark); font-size: 16px; }
+.z-performance-metric > i { position: absolute; right: 14px; bottom: 14px; color: var(--z-accent); font-size: 20px; opacity: 0.8; }
+.z-performance-empty { margin-top: 14px; padding: 20px; background: var(--z-bg-alt); color: var(--z-gray); text-align: center; font-size: 12px; }
+@media (max-width: 640px) {
+  .z-employee-info-grid,
+  .z-performance-grid { grid-template-columns: 1fr; }
+  .z-employee-info-grid .z-info-full { grid-column: auto; }
+}
 </style>

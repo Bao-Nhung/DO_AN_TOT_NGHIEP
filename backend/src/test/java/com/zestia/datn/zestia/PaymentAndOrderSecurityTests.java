@@ -336,6 +336,64 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
+    @WithMockUser(authorities = "ROLE_Admin")
+    void adminCanCancelConfirmedCodAndRestoreStockAndVoucherOnlyOnce() throws Exception {
+        CancelableOrderFixture fixture = createCancelableCodOrder((byte) 1, 5, 8, 2);
+
+        mockMvc.perform(put("/api/hoa-don/" + fixture.order().getId() + "/trang-thai")
+                        .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"trangThai\":5,\"ghiChu\":\"Khách đề nghị hủy trước khi đóng gói\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trangThai").value(5));
+
+        assertThat(hoaDonRepository.findById(fixture.order().getId()).orElseThrow().getDaHoanTonKho()).isTrue();
+        assertThat(variantRepository.findById(fixture.variant().getId()).orElseThrow().getSoLuong()).isEqualTo(7);
+        assertThat(voucherRepository.findById(fixture.voucher().getId()).orElseThrow().getSoLuong()).isEqualTo(9);
+
+        mockMvc.perform(put("/api/hoa-don/" + fixture.order().getId() + "/trang-thai")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"trangThai\":5,\"ghiChu\":\"Yêu cầu lặp lại\"}"))
+                .andExpect(status().isOk());
+
+        assertThat(variantRepository.findById(fixture.variant().getId()).orElseThrow().getSoLuong()).isEqualTo(7);
+        assertThat(voucherRepository.findById(fixture.voucher().getId()).orElseThrow().getSoLuong()).isEqualTo(9);
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_NhanVien")
+    void employeeCanCancelPreparingCodAndRestoreReservation() throws Exception {
+        CancelableOrderFixture fixture = createCancelableCodOrder((byte) 2, 4, 6, 1);
+
+        mockMvc.perform(put("/api/hoa-don/" + fixture.order().getId() + "/trang-thai")
+                        .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"trangThai\":5,\"ghiChu\":\"Khách đổi ý trước khi giao\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trangThai").value(5));
+
+        assertThat(hoaDonRepository.findById(fixture.order().getId()).orElseThrow().getDaHoanTonKho()).isTrue();
+        assertThat(variantRepository.findById(fixture.variant().getId()).orElseThrow().getSoLuong()).isEqualTo(5);
+        assertThat(voucherRepository.findById(fixture.voucher().getId()).orElseThrow().getSoLuong()).isEqualTo(7);
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_Admin")
+    void confirmedNonCodOrderCannotUseCodCancellationFlow() throws Exception {
+        CancelableOrderFixture fixture = createCancelableCodOrder((byte) 1, 5, 8, 2);
+        fixture.order().setHinhThucThanhToan("MOMO");
+        hoaDonRepository.save(fixture.order());
+
+        mockMvc.perform(put("/api/hoa-don/" + fixture.order().getId() + "/trang-thai")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"trangThai\":5,\"ghiChu\":\"Không được đi vòng luồng COD\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Chỉ đơn COD mới được hủy ở bước đã xác nhận hoặc đang chuẩn bị"));
+
+        assertThat(hoaDonRepository.findById(fixture.order().getId()).orElseThrow().getTrangThai()).isEqualTo((byte) 1);
+        assertThat(variantRepository.findById(fixture.variant().getId()).orElseThrow().getSoLuong()).isEqualTo(5);
+        assertThat(voucherRepository.findById(fixture.voucher().getId()).orElseThrow().getSoLuong()).isEqualTo(8);
+    }
+
+    @Test
     void checkoutRequiresCustomerIdentityAtBackend() throws Exception {
         mockMvc.perform(post("/api/payment/create-order")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -1047,7 +1105,7 @@ class PaymentAndOrderSecurityTests {
 
     @Test
     @WithMockUser(authorities = "ROLE_Admin")
-    void scheduleCreateAndUpdateIgnoreDirectStatusChangesFromAdmin() throws Exception {
+    void confirmedScheduleCannotBeUpdatedOrDeletedByAdmin() throws Exception {
         String marker = String.valueOf(System.nanoTime());
         VaiTro employeeRole = roleRepository.findByTenVaiTro("Nhân viên")
                 .orElseGet(() -> roleRepository.save(VaiTro.builder().tenVaiTro("Nhân viên").build()));
@@ -1086,9 +1144,136 @@ class PaymentAndOrderSecurityTests {
                                  "gioBatDau":"08:00:00","gioKetThuc":"12:00:00","trangThai":2,
                                  "ghiChu":"Admin chỉ sửa ghi chú"}
                 """.formatted(employee.getId(), workDate)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Chỉ có thể sửa ca đang chờ xác nhận và chưa được nhân viên phản hồi"));
+
+        mockMvc.perform(delete("/api/lich-lam-viec/" + shiftId))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("Chỉ có thể xóa ca đang chờ xác nhận và chưa được nhân viên phản hồi"));
+
+        LichLamViec unchanged = scheduleRepository.findById(shiftId).orElseThrow();
+        assertThat(unchanged.getGhiChu()).isEqualTo("Admin tạo lịch");
+        assertThat(unchanged.getTrangThai()).isEqualTo((byte) 1);
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_Admin")
+    void morningAndAfternoonAreMergedIntoOneFullDayShift() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        NhanVien employee = createScheduleStaff("Nhân viên", "NV-MERGE-", marker);
+        LocalDate workDate = LocalDate.now().plusYears(4)
+                .plusDays(Math.floorMod(marker.hashCode(), 300));
+
+        mockMvc.perform(post("/api/lich-lam-viec")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nhanVien":{"id":%d},"ngayLam":"%s","caLam":"Ca sáng",
+                                 "gioBatDau":"08:00:00","gioKetThuc":"12:00:00","ghiChu":"Trực sáng"}
+                                """.formatted(employee.getId(), workDate)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.trangThai").value(1))
-                .andExpect(jsonPath("$.ghiChu").value("Admin chỉ sửa ghi chú"));
+                .andExpect(jsonPath("$.trangThai").value(0));
+
+        mockMvc.perform(post("/api/lich-lam-viec")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nhanVien":{"id":%d},"ngayLam":"%s","caLam":"Ca chiều",
+                                 "gioBatDau":"13:00:00","gioKetThuc":"17:00:00","ghiChu":"Trực chiều"}
+                                """.formatted(employee.getId(), workDate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.autoMerged").value(true))
+                .andExpect(jsonPath("$.caLam").value("Cả ngày"))
+                .andExpect(jsonPath("$.gioBatDau").value("08:00:00"))
+                .andExpect(jsonPath("$.gioKetThuc").value("17:00:00"));
+
+        List<LichLamViec> merged = scheduleRepository
+                .findByNhanVienIdAndNgayLamOrderByGioBatDauAsc(employee.getId(), workDate);
+        assertThat(merged).hasSize(1);
+        assertThat(merged.getFirst().getCaLam()).isEqualTo("Cả ngày");
+        assertThat(merged.getFirst().getGhiChu()).contains("Trực sáng", "Trực chiều");
+
+        mockMvc.perform(post("/api/lich-lam-viec")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nhanVien":{"id":%d},"ngayLam":"%s","caLam":"Ca sáng",
+                                 "gioBatDau":"08:00:00","gioKetThuc":"12:00:00"}
+                                """.formatted(employee.getId(), workDate)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Nhân viên đã có ca làm trùng thời gian"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_Admin")
+    void untouchedPendingScheduleIsDeletedFromDatabase() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        NhanVien employee = createScheduleStaff("Nhân viên", "NV-DELETE-", marker);
+        LichLamViec shift = scheduleRepository.save(LichLamViec.builder()
+                .nhanVien(employee)
+                .ngayLam(LocalDate.now().plusYears(5))
+                .caLam("Ca sáng")
+                .gioBatDau(LocalTime.of(8, 0))
+                .gioKetThuc(LocalTime.of(12, 0))
+                .trangThai((byte) 0)
+                .ngayTao(LocalDateTime.now())
+                .build());
+
+        mockMvc.perform(delete("/api/lich-lam-viec/" + shift.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deleted").value(true))
+                .andExpect(jsonPath("$.id").value(shift.getId()));
+
+        assertThat(scheduleRepository.existsById(shift.getId())).isFalse();
+    }
+
+    @Test
+    @WithMockUser(authorities = "ROLE_Admin")
+    void everyBusyRequestRequiresAdminReviewAndLocksTheSchedule() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        NhanVien employee = createScheduleStaff("Nhân viên", "NV-BUSY-", marker);
+        NhanVien admin = createScheduleStaff("Admin", "NV-REVIEW-", marker);
+        LichLamViec shift = scheduleRepository.save(LichLamViec.builder()
+                .nhanVien(employee)
+                .ngayLam(LocalDate.now().plusYears(5).plusDays(1))
+                .caLam("Ca sáng")
+                .gioBatDau(LocalTime.of(8, 0))
+                .gioKetThuc(LocalTime.of(12, 0))
+                .trangThai((byte) 0)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        String employeeToken = jwtUtil.generateToken(employee.getTenNguoiDung(), "Nhân viên", employee.getId());
+        String adminToken = jwtUtil.generateToken(admin.getTenNguoiDung(), "Admin", admin.getId());
+        String busyReason = "Có lịch khám bệnh đã đặt trước nên không thể tham gia ca";
+
+        mockMvc.perform(post("/api/lich-lam-viec/" + shift.getId() + "/unavailable")
+                        .header("Authorization", "Bearer " + employeeToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("lyDo", busyReason))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trangThai").value(3))
+                .andExpect(jsonPath("$.lyDoBaoBan").value(busyReason))
+                .andExpect(jsonPath("$.canAdminModify").value(false));
+
+        mockMvc.perform(put("/api/lich-lam-viec/" + shift.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"ghiChu":"Không được phép sửa khi đang chờ duyệt"}
+                                """))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/lich-lam-viec/" + shift.getId() + "/review-unavailable")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"approved":true,"phanHoi":"Đã đọc lý do và đồng ý cho nhân viên nghỉ"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.trangThai").value(2))
+                .andExpect(jsonPath("$.nguoiDuyet").value(admin.getTenNguoiDung()))
+                .andExpect(jsonPath("$.canAdminModify").value(false));
+
+        mockMvc.perform(delete("/api/lich-lam-viec/" + shift.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -1103,6 +1288,80 @@ class PaymentAndOrderSecurityTests {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Email không đúng định dạng hoặc vượt quá 150 ký tự"));
+    }
+
+    private NhanVien createScheduleStaff(String roleName, String codePrefix, String marker) {
+        VaiTro role = roleRepository.findByTenVaiTro(roleName)
+                .orElseGet(() -> roleRepository.save(VaiTro.builder().tenVaiTro(roleName).build()));
+        String normalizedPrefix = codePrefix.toLowerCase().replaceAll("[^a-z0-9]", "");
+        return employeeRepository.save(NhanVien.builder()
+                .vaiTro(role)
+                .maNhanVien(codePrefix + marker)
+                .hoVaTen(roleName + " kiểm thử lịch làm")
+                .email(normalizedPrefix + marker + "@example.com")
+                .tenNguoiDung(normalizedPrefix + marker)
+                .matKhau(passwordEncoder.encode("Matkhau123"))
+                .tinhTrangLamViec((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+    }
+
+    private CancelableOrderFixture createCancelableCodOrder(byte status, int stock, int voucherQuantity, int quantity) {
+        String marker = String.valueOf(System.nanoTime());
+        MauSac color = colorRepository.save(MauSac.builder()
+                .tenMauSac("Cancel COD color " + marker)
+                .trangThai((byte) 1)
+                .build());
+        KichThuoc size = sizeRepository.save(KichThuoc.builder()
+                .tenKichThuoc("CANCEL-COD-" + marker)
+                .trangThai((byte) 1)
+                .build());
+        Vay product = vayRepository.save(Vay.builder()
+                .maVay("V-CANCEL-COD-" + marker)
+                .tenVay("Cancelable COD dress")
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
+                .vay(product)
+                .mauSac(color)
+                .kichThuoc(size)
+                .maVayChiTiet("VC-CANCEL-COD-" + marker)
+                .giaBanGoc(BigDecimal.valueOf(650000))
+                .giaBan(BigDecimal.valueOf(650000))
+                .giaNhap(BigDecimal.valueOf(400000))
+                .soLuong(stock)
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        GiamGia voucher = voucherRepository.save(GiamGia.builder()
+                .maGiamGia("CANCELCOD" + marker)
+                .tenGiamGia("Voucher hủy COD test")
+                .gioTriGiam(BigDecimal.valueOf(30000))
+                .soLuong(voucherQuantity)
+                .trangThai((byte) 1)
+                .build());
+        HoaDon order = hoaDonRepository.save(HoaDon.builder()
+                .maHoaDon("HD-CANCEL-COD-" + marker)
+                .giamGia(voucher)
+                .tongTien(BigDecimal.valueOf(650000L * quantity - 30000))
+                .hinhThucNhanHang((byte) 1)
+                .hinhThucThanhToan("COD")
+                .trangThai(status)
+                .daThanhToan(false)
+                .daHoanTonKho(false)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        orderDetailRepository.save(HoaDonChiTiet.builder()
+                .hoaDon(order)
+                .vayChiTiet(variant)
+                .soLuong(quantity)
+                .donGia(BigDecimal.valueOf(650000))
+                .build());
+        return new CancelableOrderFixture(order, variant, voucher);
+    }
+
+    private record CancelableOrderFixture(HoaDon order, VayChiTiet variant, GiamGia voucher) {
     }
 
     private int performCheckout(VayChiTiet variant, String suffix, String phone,

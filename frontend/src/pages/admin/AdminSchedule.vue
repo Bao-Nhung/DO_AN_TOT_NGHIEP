@@ -142,9 +142,9 @@
                 <i class="bi bi-plus-lg"></i>
               </button>
               <div v-if="cellSchedules(day.value, shift).length" class="d-flex flex-column gap-2">
-                <div v-for="item in cellSchedules(day.value, shift)" :key="item.id"
-                     class="z-schedule-chip" :class="statusClass(item.trangThai)"
-                     @click="isAdmin && openEdit(item)">
+                 <div v-for="item in cellSchedules(day.value, shift)" :key="item.id"
+                      class="z-schedule-chip" :class="statusClass(item.trangThai)"
+                      @click="openScheduleDetails(item)">
                   <div class="d-flex justify-content-between align-items-start gap-2">
                     <div style="font-weight:600;line-height:1.25">{{ item.tenNhanVien || 'Chưa rõ' }}</div>
                     <span style="font-size:11px;white-space:nowrap">{{ shortTime(item.gioBatDau) }}-{{ shortTime(item.gioKetThuc) }}</span>
@@ -204,12 +204,14 @@
             </td>
             <td>
               <div v-if="isAdmin" class="d-flex gap-1 flex-wrap">
+                <button type="button" class="z-icon-btn" title="Xem chi tiết" aria-label="Xem chi tiết ca làm" @click="openScheduleDetails(item)"><i class="bi bi-eye"></i></button>
                 <button v-if="Number(item.trangThai) === 3" type="button" class="z-icon-btn z-approve-btn" title="Duyệt báo bận" aria-label="Duyệt báo bận" @click="approveUnavailable(item)"><i class="bi bi-check-lg"></i></button>
                 <button v-if="Number(item.trangThai) === 3" type="button" class="z-icon-btn z-reject-btn" title="Từ chối báo bận" aria-label="Từ chối báo bận" @click="openRejectUnavailable(item)"><i class="bi bi-x-lg"></i></button>
-                <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa ca làm" @click="openEdit(item)"><i class="bi bi-pencil"></i></button>
-                <button type="button" class="z-icon-btn" title="Xóa" aria-label="Xóa ca làm" style="color:var(--z-accent)" @click="deleteSchedule(item)"><i class="bi bi-trash"></i></button>
+                <button v-if="canModifySchedule(item)" type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa ca làm" @click="openEdit(item)"><i class="bi bi-pencil"></i></button>
+                <button v-if="canModifySchedule(item)" type="button" class="z-icon-btn" title="Xóa" aria-label="Xóa ca làm" style="color:var(--z-accent)" @click="deleteSchedule(item)"><i class="bi bi-trash"></i></button>
               </div>
               <div v-else class="d-flex gap-1 flex-wrap">
+                <button type="button" class="z-icon-btn" title="Xem chi tiết" aria-label="Xem chi tiết ca làm" @click="openScheduleDetails(item)"><i class="bi bi-eye"></i></button>
                 <button v-if="Number(item.trangThai) === 0" class="z-row-action" @click="confirmOwnShift(item)">Xác nhận</button>
                 <button v-if="[0, 1].includes(Number(item.trangThai)) && !item.gioCheckIn" class="z-row-action secondary" @click="openUnavailable(item)">Báo bận</button>
                 <button v-if="item.canCheckIn" class="z-row-action" @click="checkIn(item)">Check-in</button>
@@ -327,6 +329,69 @@
       </div>
     </div>
 
+    <div v-if="detailShift" class="z-modal-overlay" @click.self="detailShift = null">
+      <div class="z-modal z-shift-detail-modal" role="dialog" aria-modal="true" aria-labelledby="shift-detail-title">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+          <div>
+            <div class="z-detail-eyebrow">THÔNG TIN CA LÀM</div>
+            <h3 id="shift-detail-title" class="z-detail-title">{{ detailShift.tenNhanVien || 'Nhân viên' }}</h3>
+            <p class="z-detail-caption">{{ detailShift.maNhanVien || '' }} · {{ formatDate(detailShift.ngayLam) }}</p>
+          </div>
+          <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết ca làm" @click="detailShift = null"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="z-shift-detail-status">
+          <span class="z-status" :class="statusClass(detailShift.trangThai)">{{ statusText(detailShift.trangThai) }}</span>
+          <span>{{ detailShift.caLam || shiftName(detailShift.gioBatDau) }} · {{ shortTime(detailShift.gioBatDau) }} - {{ shortTime(detailShift.gioKetThuc) }}</span>
+        </div>
+
+        <div class="z-shift-detail-grid">
+          <div><span>Ngày làm</span><strong>{{ weekdayLabel(detailShift.ngayLam) }}, {{ formatDate(detailShift.ngayLam) }}</strong></div>
+          <div><span>Thời gian tạo</span><strong>{{ formatDateTime(detailShift.ngayTao) || 'Chưa ghi nhận' }}</strong></div>
+          <div><span>Xác nhận ca</span><strong>{{ formatDateTime(detailShift.thoiGianXacNhan) || 'Chưa xác nhận' }}</strong></div>
+          <div><span>Chấm công</span><strong>{{ attendanceText(detailShift) }}</strong></div>
+        </div>
+
+        <div class="z-shift-detail-section">
+          <span class="z-shift-detail-label">Ghi chú công việc</span>
+          <p>{{ detailShift.ghiChu || 'Không có ghi chú.' }}</p>
+        </div>
+
+        <div v-if="detailShift.lyDoBaoBan" class="z-shift-detail-section z-busy-detail">
+          <span class="z-shift-detail-label">Lý do nhân viên báo bận</span>
+          <p>{{ detailShift.lyDoBaoBan }}</p>
+          <div class="z-review-meta">
+            Gửi lúc {{ formatDateTime(detailShift.thoiGianBaoBan) || 'chưa ghi nhận' }}
+          </div>
+          <template v-if="detailShift.thoiGianDuyet || detailShift.phanHoiBaoBan">
+            <div class="z-review-divider"></div>
+            <span class="z-shift-detail-label">Kết quả duyệt</span>
+            <p>{{ detailShift.phanHoiBaoBan || 'Yêu cầu đã được chấp nhận.' }}</p>
+            <div class="z-review-meta">
+              {{ detailShift.nguoiDuyet || 'Admin' }} · {{ formatDateTime(detailShift.thoiGianDuyet) || 'chưa ghi nhận thời gian' }}
+            </div>
+          </template>
+        </div>
+
+        <div v-if="isAdmin && !canModifySchedule(detailShift)" class="z-locked-notice">
+          <i class="bi bi-lock"></i>
+          <span>{{ modificationLockText(detailShift) }}</span>
+        </div>
+
+        <div class="z-shift-detail-actions">
+          <template v-if="isAdmin && Number(detailShift.trangThai) === 3">
+            <button class="lm-btn-secondary" @click="openRejectUnavailable(detailShift)">Từ chối báo bận</button>
+            <button class="lm-btn-primary" @click="approveUnavailable(detailShift)"><span>Duyệt báo bận</span></button>
+          </template>
+          <template v-else-if="isAdmin && canModifySchedule(detailShift)">
+            <button class="lm-btn-secondary" @click="deleteSchedule(detailShift)"><i class="bi bi-trash me-1"></i>Xóa ca</button>
+            <button class="lm-btn-primary" @click="openEdit(detailShift)"><i class="bi bi-pencil me-1"></i><span>Chỉnh sửa</span></button>
+          </template>
+          <button v-else class="lm-btn-secondary" @click="detailShift = null">Đóng</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showModal" class="z-modal-overlay" @click.self="showModal = false">
       <div class="z-modal">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -372,7 +437,8 @@
 
           <div>
             <label class="z-label">Ghi chú</label>
-            <input v-model="form.ghiChu" class="lm-input" placeholder="VD: hỗ trợ kiểm kho, đổi ca...">
+            <input v-model="form.ghiChu" class="lm-input" maxlength="255" placeholder="VD: hỗ trợ kiểm kho, đổi ca...">
+            <p class="z-form-hint">Ca sáng và ca chiều của cùng nhân viên trong một ngày sẽ tự động gộp thành ca cả ngày.</p>
           </div>
         </div>
 
@@ -392,7 +458,7 @@
           <button type="button" class="z-icon-btn" aria-label="Đóng biểu mẫu lý do" @click="closeReasonModal"><i class="bi bi-x-lg"></i></button>
         </div>
         <p style="font-size:13px;color:var(--z-gray)">
-          {{ reasonModalMode === 'reject' ? 'Nhập lý do để nhân viên biết vì sao yêu cầu chưa được chấp nhận.' : 'Trình bày rõ lý do không thể tham gia ca. Ca đã xác nhận sẽ chờ admin duyệt.' }}
+          {{ reasonModalMode === 'reject' ? 'Nhập lý do để nhân viên biết vì sao yêu cầu chưa được chấp nhận.' : 'Trình bày rõ lý do không thể tham gia ca. Mọi yêu cầu báo bận đều phải chờ admin duyệt.' }}
         </p>
         <textarea v-model="actionReason" class="lm-input" rows="4" maxlength="500" :placeholder="reasonModalMode === 'reject' ? 'Lý do từ chối...' : 'Lý do báo bận...'"></textarea>
         <div class="d-flex justify-content-end gap-2 mt-4">
@@ -428,6 +494,7 @@ const shiftHistory = ref([])
 const historyLoading = ref(false)
 const exporting = ref(false)
 const activityShift = ref(null)
+const detailShift = ref(null)
 const workStatus = ref({ canOperate: false, reason: '', relevantShift: null, activeShift: null })
 const showReasonModal = ref(false)
 const reasonModalMode = ref('unavailable')
@@ -531,6 +598,9 @@ async function loadSchedules() {
     ])
     schedules.value = scheduleData
     shiftHistory.value = historyData
+    if (detailShift.value) {
+      detailShift.value = scheduleData.find(item => item.id === detailShift.value.id) || null
+    }
   } catch (e) {
     showToast('Không thể tải lịch làm việc')
   } finally {
@@ -624,9 +694,14 @@ async function submitReasonAction() {
 }
 
 async function approveUnavailable(item) {
-  if (!await confirmDialog({ title: 'Duyệt báo bận', message: `Chấp nhận báo bận của ${item.tenNhanVien || 'nhân viên'}?`, confirmText: 'Duyệt' })) return
+  const reason = item.lyDoBaoBan || 'Không có lý do được ghi nhận'
+  if (!await confirmDialog({
+    title: 'Duyệt báo bận',
+    message: `Lý do của ${item.tenNhanVien || 'nhân viên'}: ${reason}. Xác nhận cho nhân viên nghỉ ca này?`,
+    confirmText: 'Duyệt nghỉ'
+  })) return
   try {
-    await api().reviewShiftUnavailable(item.id, true, 'Admin đã chấp nhận yêu cầu')
+    await api().reviewShiftUnavailable(item.id, true, 'Admin đã đọc lý do và chấp nhận yêu cầu báo bận')
     showToast('Đã duyệt yêu cầu báo bận')
     await loadSchedules()
   } catch (e) { showToast(e.error || 'Không thể duyệt yêu cầu') }
@@ -667,6 +742,11 @@ function openAddFor(day, shift) {
 
 function openEdit(item) {
   if (!isAdmin.value) return
+  if (!canModifySchedule(item)) {
+    showToast(modificationLockText(item))
+    return
+  }
+  detailShift.value = null
   editingId.value = item.id
   form.value = {
     nhanVienId: item.nhanVienId || '',
@@ -689,6 +769,15 @@ async function saveSchedule() {
     showToast('Giờ kết thúc phải sau giờ bắt đầu')
     return
   }
+  if (form.value.ghiChu.trim().length > 255) {
+    showToast('Ghi chú ca làm không được vượt quá 255 ký tự')
+    return
+  }
+  const conflictMessage = validateScheduleConflict()
+  if (conflictMessage) {
+    showToast(conflictMessage)
+    return
+  }
 
   const payload = {
     nhanVien: { id: Number(form.value.nhanVienId) },
@@ -705,13 +794,13 @@ async function saveSchedule() {
       await api().updateLichLamViec(editingId.value, payload)
       showToast('Cập nhật ca làm thành công!')
     } else {
-      await api().addLichLamViec(payload)
-      showToast('Thêm ca làm thành công!')
+      const result = await api().addLichLamViec(payload)
+      showToast(result?.autoMerged ? result.message : 'Thêm ca làm thành công!')
     }
     showModal.value = false
     await loadSchedules()
   } catch (e) {
-    showToast(e.message || 'Lưu lịch làm việc thất bại')
+    showToast(e.error || e.message || 'Lưu lịch làm việc thất bại')
   } finally {
     saving.value = false
   }
@@ -719,6 +808,10 @@ async function saveSchedule() {
 
 async function deleteSchedule(item) {
   if (!isAdmin.value) return
+  if (!canModifySchedule(item)) {
+    showToast(modificationLockText(item))
+    return
+  }
   if (!await confirmDialog({
     title: 'Xóa ca làm',
     message: `Xóa ca làm của ${item.tenNhanVien || 'nhân viên'} ngày ${formatDate(item.ngayLam)}?`,
@@ -727,11 +820,77 @@ async function deleteSchedule(item) {
   })) return
   try {
     await api().deleteLichLamViec(item.id)
+    schedules.value = schedules.value.filter(schedule => schedule.id !== item.id)
+    if (detailShift.value?.id === item.id) detailShift.value = null
     showToast('Đã xóa ca làm!')
     await loadSchedules()
   } catch (e) {
-    showToast('Lỗi khi xóa ca làm')
+    showToast(e.error || e.message || 'Lỗi khi xóa ca làm')
   }
+}
+
+function openScheduleDetails(item) {
+  detailShift.value = item
+}
+
+function canModifySchedule(item) {
+  if (!item) return false
+  if (typeof item.canAdminModify === 'boolean') return item.canAdminModify
+  return Number(item.trangThai ?? 0) === 0 &&
+    !item.thoiGianXacNhan && !item.lyDoBaoBan && !item.thoiGianBaoBan &&
+    !item.gioCheckIn && !item.gioCheckOut
+}
+
+function modificationLockText(item) {
+  const status = Number(item?.trangThai)
+  if (status === 1 || item?.thoiGianXacNhan) return 'Ca đã được nhân viên xác nhận nên không thể chỉnh sửa hoặc xóa.'
+  if (status === 3) return 'Nhân viên đang chờ duyệt báo bận; hãy xử lý yêu cầu trước.'
+  if (status === 2) return 'Nhân viên đã được duyệt nghỉ nên thông tin ca đã được khóa.'
+  if (item?.lyDoBaoBan || item?.thoiGianBaoBan) return 'Ca đã có phản hồi của nhân viên nên không thể chỉnh sửa hoặc xóa.'
+  if (item?.gioCheckIn || item?.gioCheckOut) return 'Ca đã chấm công nên không thể chỉnh sửa hoặc xóa.'
+  return 'Chỉ ca đang chờ xác nhận và chưa có phản hồi mới được chỉnh sửa hoặc xóa.'
+}
+
+function validateScheduleConflict() {
+  const employeeId = Number(form.value.nhanVienId)
+  const start = timeToMinutes(form.value.gioBatDau)
+  const end = timeToMinutes(form.value.gioKetThuc)
+  const sameDay = schedules.value.filter(item =>
+    item.id !== editingId.value &&
+    Number(item.nhanVienId) === employeeId &&
+    item.ngayLam === form.value.ngayLam
+  )
+
+  const isMorning = start === 8 * 60 && end === 12 * 60
+  const isAfternoon = start === 13 * 60 && end === 17 * 60
+  const complementary = sameDay.find(item => {
+    const itemStart = timeToMinutes(item.gioBatDau)
+    const itemEnd = timeToMinutes(item.gioKetThuc)
+    return (isMorning && itemStart === 13 * 60 && itemEnd === 17 * 60) ||
+      (isAfternoon && itemStart === 8 * 60 && itemEnd === 12 * 60)
+  })
+
+  if (!editingId.value && complementary) {
+    if (!canModifySchedule(complementary)) {
+      return 'Không thể gộp thành ca cả ngày vì ca sáng hoặc ca chiều đã được nhân viên phản hồi.'
+    }
+    const otherConflict = sameDay.some(item => item.id !== complementary.id &&
+      timeRangesOverlap(8 * 60, 17 * 60, timeToMinutes(item.gioBatDau), timeToMinutes(item.gioKetThuc)))
+    return otherConflict ? 'Không thể gộp ca vì đang có ca khác trùng trong khoảng 08:00 - 17:00.' : ''
+  }
+
+  const overlap = sameDay.some(item =>
+    timeRangesOverlap(start, end, timeToMinutes(item.gioBatDau), timeToMinutes(item.gioKetThuc)))
+  return overlap ? 'Nhân viên đã có ca làm trùng thời gian trong ngày này.' : ''
+}
+
+function timeToMinutes(value) {
+  const [hours, minutes] = shortTime(value).split(':').map(Number)
+  return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : 0
+}
+
+function timeRangesOverlap(start, end, otherStart, otherEnd) {
+  return start < otherEnd && end > otherStart
 }
 
 async function moveWeek(direction) {
@@ -859,6 +1018,17 @@ function statusClass(status) {
 
 function formatClock(value) {
   return value ? new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''
+}
+
+function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : ''
+}
+
+function attendanceText(item) {
+  if (!item?.gioCheckIn) return 'Chưa check-in'
+  return item.gioCheckOut
+    ? `${formatClock(item.gioCheckIn)} - ${formatClock(item.gioCheckOut)}`
+    : `Check-in ${formatClock(item.gioCheckIn)}, chưa check-out`
 }
 
 function formatMoney(value) {
@@ -1050,9 +1220,38 @@ function diffHours(start, end) {
 .z-activity-dot { position: absolute; top: 2px; left: -5px; width: 9px; height: 9px; border-radius: 50%; background: var(--z-accent); }
 .z-activity-row strong { color: var(--z-dark); font-size: 12px; }
 .z-activity-row p { margin: 4px 0 0; color: var(--z-gray); font-size: 12px; }
+.z-shift-detail-modal { max-width: 650px; }
+.z-detail-eyebrow { margin-bottom: 5px; color: var(--z-accent); font-size: 10px; font-weight: 700; }
+.z-detail-title { margin: 0; color: var(--z-dark); font-size: 20px; font-weight: 650; }
+.z-detail-caption { margin: 4px 0 0; color: var(--z-gray); font-size: 12px; }
+.z-shift-detail-status {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 16px; padding: 12px 14px;
+  border: 1px solid var(--z-gray-border); background: var(--z-bg-alt);
+  color: var(--z-dark); font-size: 13px; font-weight: 600;
+}
+.z-shift-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin-bottom: 16px; background: var(--z-gray-border); border: 1px solid var(--z-gray-border); }
+.z-shift-detail-grid > div { min-width: 0; padding: 12px 14px; background: var(--z-white); }
+.z-shift-detail-grid span,
+.z-shift-detail-grid strong { display: block; }
+.z-shift-detail-grid span { margin-bottom: 4px; color: var(--z-gray); font-size: 10px; text-transform: uppercase; }
+.z-shift-detail-grid strong { overflow-wrap: anywhere; color: var(--z-dark); font-size: 12px; }
+.z-shift-detail-section { margin-top: 12px; padding: 14px; border: 1px solid var(--z-gray-border); }
+.z-shift-detail-label { display: block; margin-bottom: 6px; color: var(--z-gray); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.z-shift-detail-section p { margin: 0; color: var(--z-dark); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.z-busy-detail { border-left: 3px solid var(--z-accent); background: var(--z-accent-soft); }
+.z-review-meta { margin-top: 6px; color: var(--z-gray); font-size: 10px; }
+.z-review-divider { margin: 12px 0; border-top: 1px solid var(--z-gray-border); }
+.z-locked-notice { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; padding: 11px 12px; background: #fffbeb; color: #92400e; font-size: 12px; line-height: 1.45; }
+.z-shift-detail-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.z-form-hint { margin: 6px 0 0; color: var(--z-gray); font-size: 11px; line-height: 1.4; }
 @media (max-width: 760px) { .z-my-shift-card { align-items: flex-start; flex-direction: column; } }
 @media (max-width: 760px) {
   .z-history-header { align-items: flex-start; flex-direction: column; }
   .z-cash-total { width: 100%; padding: 12px 0 0; border-top: 1px solid var(--z-gray-border); border-left: 0; text-align: left; }
+  .z-shift-detail-grid { grid-template-columns: 1fr; }
+  .z-shift-detail-status { align-items: flex-start; flex-direction: column; }
+  .z-shift-detail-actions { align-items: stretch; flex-direction: column-reverse; }
+  .z-shift-detail-actions button { width: 100%; justify-content: center; }
 }
 </style>

@@ -246,7 +246,7 @@
           </div>
 
           <!-- Progress timeline -->
-          <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
+          <div class="z-order-status-progress d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid var(--z-gray-border);overflow-x:auto">
             <template v-if="detailOrder.trangThai === 5 || detailOrder.trangThai === 7">
                <div class="z-step active">
                   <div class="z-step-dot" style="background: var(--z-danger);"></div>
@@ -1007,6 +1007,9 @@ function formatDateTime(val) {
 }
 
 /* Tracking Step elements */
+.z-order-status-progress {
+  padding-top: 8px;
+}
 .z-step {
   display: flex;
   flex-direction: column;

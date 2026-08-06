@@ -50,6 +50,10 @@ public class OrderStatusService {
         if (newStatus == STATUS_CANCELLED && Boolean.TRUE.equals(order.getDaThanhToan())) {
             throw new IllegalStateException("Đơn đã thanh toán không thể hủy trực tiếp. Vui lòng xử lý qua quy trình trả hàng và hoàn tiền");
         }
+        if (newStatus == STATUS_CANCELLED && (oldStatus == 1 || oldStatus == 2)
+                && !"COD".equalsIgnoreCase(order.getHinhThucThanhToan())) {
+            throw new IllegalStateException("Chỉ đơn COD mới được hủy ở bước đã xác nhận hoặc đang chuẩn bị");
+        }
 
         String trackingStatus = trackingStatus(newStatus);
         String description = note != null && !note.isBlank() ? note.trim() : defaultDescription(newStatus);

@@ -20,6 +20,16 @@ public interface LichLamViecRepository extends JpaRepository<LichLamViec, Intege
 
     List<LichLamViec> findByNhanVienIdAndNgayLamOrderByGioBatDauAsc(Integer nhanVienId, LocalDate ngayLam);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT l FROM LichLamViec l
+            WHERE l.nhanVien.id = :nhanVienId
+              AND l.ngayLam = :ngayLam
+            ORDER BY l.gioBatDau ASC
+            """)
+    List<LichLamViec> findEmployeeDayForUpdate(@Param("nhanVienId") Integer nhanVienId,
+                                                @Param("ngayLam") LocalDate ngayLam);
+
     @Query("""
             SELECT l FROM LichLamViec l
             JOIN FETCH l.nhanVien n

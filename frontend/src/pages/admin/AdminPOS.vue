@@ -577,9 +577,34 @@ const filteredProducts = computed(() => {
   let result = allProducts.value.filter(p => p.active)
 
   if (activeFilter.value !== 'Tất cả') {
-    result = result.filter(p =>
-      p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
-    )
+    result = result.filter(p => {
+      const cat = (p.category || p.loaiVay || '').toLowerCase()
+      const code = (p.code || p.maVay || '').toUpperCase()
+      const filter = activeFilter.value.toLowerCase()
+
+      if (filter.includes('khoác') || filter.includes('blazer')) {
+        return cat.includes('khoác') || cat.includes('blazer') || code.startsWith('AKH')
+      }
+      if (filter.includes('quần') || filter.includes('jeans')) {
+        return cat.includes('quần') || cat.includes('jeans') || code.startsWith('QTY') || code.startsWith('QJN')
+      }
+      if (filter.includes('phụ kiện')) {
+        return cat.includes('phụ kiện') || code.startsWith('PKT')
+      }
+      if (filter.includes('công sở')) {
+        return cat.includes('công sở') || code.startsWith('TCS')
+      }
+      if (filter.includes('dự tiệc')) {
+        return cat.includes('dự tiệc') || code.startsWith('DTP')
+      }
+      if (filter.includes('váy') || filter.includes('đầm')) {
+        return cat.includes('váy') || cat.includes('đầm') || code.startsWith('VDH') || code.startsWith('DTP')
+      }
+      if (filter.includes('áo')) {
+        return (cat.includes('áo') && !cat.includes('khoác')) || code.startsWith('ASM')
+      }
+      return cat.includes(filter)
+    })
   }
 
   if (search.value) {
@@ -695,6 +720,24 @@ async function addToCart(p) {
   }
 }
 
+function playBarcodeBeepSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(1046.5, ctx.currentTime)
+    gain.gain.setValueAtTime(0.1, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.1)
+  } catch (_) {}
+}
+
 async function confirmAddVariant() {
   if (!selectedColor.value) {
     showToast('Vui lòng chọn màu sắc!', 'warning')
@@ -719,6 +762,8 @@ async function confirmAddVariant() {
     showToast('Biến thể này đã hết hàng!', 'warning')
     return
   }
+
+  playBarcodeBeepSound()
   
   const itemKey = `variant-${match.id}`
   const existing = cart.value.find(c => c.key === itemKey)

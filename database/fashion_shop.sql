@@ -83,7 +83,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Nhan_vien])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Nhan_vien] ON;
 INSERT INTO [dbo].[Nhan_vien] ([id], [id_vai_tro], [ma_nhan_vien], [ho_va_ten], [gioi_tinh], [ngay_sinh], [so_dien_thoai], [dia_chi], [email], [ten_nguoi_dung], [mat_khau], [tinh_trang_lam_viec], [ngay_tao]) VALUES
-(1, 1, N'NV001', N'Nguyễn Tiến Thành', NULL, NULL, NULL, NULL, N'admin@zestia.vn', N'admin', N'$2a$10$1319tfuwROs5099h0RHfbeEV.RarbCu15eZh09TwTuRsFznGC0Zze', 1, '2026-06-10T23:44:29.193'),
+(1, 1, N'NV001', N'Admin', NULL, NULL, NULL, NULL, N'admin@zestia.vn', N'admin', N'$2a$10$1319tfuwROs5099h0RHfbeEV.RarbCu15eZh09TwTuRsFznGC0Zze', 1, '2026-06-10T23:44:29.193'),
 (2, 2, N'NV002', N'Trần Minh Tuấn', NULL, NULL, N'0901234567', NULL, N'tuan@zestia.vn', N'tuannv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.200'),
 (3, 2, N'NV003', N'Lê Hoàng Phúc', 1, '1997-09-12', N'0907654321', N'Quận 1, TP.HCM', N'phuc@zestia.vn', N'phucnv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-23T09:00:00.000');
 SET IDENTITY_INSERT [dbo].[Nhan_vien] OFF;

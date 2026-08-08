@@ -5,8 +5,8 @@
            @keydown.enter="$router.push('/product/' + product.id)"
            @keydown.space.prevent="$router.push('/product/' + product.id)">
     <div class="lm-product-image">
-      <div v-if="product.image" class="lm-product-img-inner">
-        <img :src="product.image" :alt="product.name" loading="lazy" />
+      <div v-if="imgSrc" class="lm-product-img-inner">
+        <img :src="imgSrc" :alt="product.name" loading="lazy" @error="onImgError" />
       </div>
       <div v-else class="lm-product-img-inner" :style="{ background: product.bg }">
         {{ product.letter }}
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 import { useWishlist } from '@/composables/useWishlist'
@@ -51,6 +51,18 @@ import { useCompare } from '@/composables/useCompare'
 const props = defineProps({
   product: { type: Object, required: true }
 })
+
+const imgSrc = ref(props.product.image)
+watch(() => props.product.image, newImg => { imgSrc.value = newImg })
+
+function onImgError() {
+  const cat = String(props.product.category || props.product.loaiVay || '').toLowerCase()
+  if (cat.includes('quần') || cat.includes('jeans')) imgSrc.value = '/images/products/pants1.jpg'
+  else if (cat.includes('áo khoác') || cat.includes('blazer')) imgSrc.value = '/images/products/shirt5.jpg'
+  else if (cat.includes('áo') || cat.includes('sơ mi')) imgSrc.value = '/images/products/shirt1.jpg'
+  else if (cat.includes('phụ kiện')) imgSrc.value = '/images/products/accessories1.jpg'
+  else imgSrc.value = '/images/products/dress1.jpg'
+}
 
 // Bỏ hàm addItem, chỉ giữ lại formatPrice
 const { formatPrice } = useCart()

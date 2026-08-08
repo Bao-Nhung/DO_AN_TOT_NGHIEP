@@ -214,7 +214,32 @@ const filteredProducts = computed(() => {
       result = result.filter(p => p.promotionActive)
     } else {
       result = result.filter(p => {
-        return p.category && p.category.toLowerCase().includes(activeFilter.value.toLowerCase())
+        const cat = (p.category || p.loaiVay || '').toLowerCase()
+        const code = (p.code || p.maVay || '').toUpperCase()
+        const filter = activeFilter.value.toLowerCase()
+
+        if (filter.includes('khoác') || filter.includes('blazer')) {
+          return cat.includes('khoác') || cat.includes('blazer') || code.startsWith('AKH')
+        }
+        if (filter.includes('quần') || filter.includes('jeans')) {
+          return cat.includes('quần') || cat.includes('jeans') || code.startsWith('QTY') || code.startsWith('QJN')
+        }
+        if (filter.includes('phụ kiện')) {
+          return cat.includes('phụ kiện') || code.startsWith('PKT')
+        }
+        if (filter.includes('công sở')) {
+          return cat.includes('công sở') || code.startsWith('TCS')
+        }
+        if (filter.includes('dự tiệc')) {
+          return cat.includes('dự tiệc') || code.startsWith('DTP')
+        }
+        if (filter.includes('váy') || filter.includes('đầm')) {
+          return cat.includes('váy') || cat.includes('đầm') || code.startsWith('VDH') || code.startsWith('DTP')
+        }
+        if (filter.includes('áo')) {
+          return (cat.includes('áo') && !cat.includes('khoác')) || code.startsWith('ASM')
+        }
+        return cat.includes(filter)
       })
     }
   }

@@ -327,15 +327,17 @@ async function doLogin() {
   try {
     const data = await api().login(username.value, password.value)
     saveLogin(data)
-    showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
     
     const isStaff = ['Admin', 'NhanVien', 'Nhân viên'].includes(data.role)
     const redirectPath = route.query.redirect ? String(route.query.redirect) : ''
     if (isStaff) {
+      showToast('Đăng nhập thành công — Chào mừng đến với Admin!')
       await router.replace('/admin')
     } else if (redirectPath && !redirectPath.startsWith('/admin')) {
+      showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
       await router.replace(redirectPath)
     } else {
+      showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
       await router.replace('/profile')
     }
   } catch (e) {

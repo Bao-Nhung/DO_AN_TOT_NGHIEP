@@ -520,8 +520,15 @@ public class AiChatService {
                         safe(g.getMaGiamGia()), safe(g.getTenGiamGia()),
                         g.getSoTienGiam() != null ? g.getSoTienGiam() : BigDecimal.ZERO,
                         g.getDonToiThieu() != null ? g.getDonToiThieu() : BigDecimal.ZERO));
+                cards.add(Map.of(
+                        "type", "voucher",
+                        "code", safe(g.getMaGiamGia()),
+                        "discount", g.getSoTienGiam() != null ? g.getSoTienGiam() : BigDecimal.ZERO,
+                        "minOrder", g.getDonToiThieu() != null ? g.getDonToiThieu() : BigDecimal.ZERO,
+                        "description", safe(g.getTenGiamGia())
+                ));
             }
-            return Map.of("reply", sb.toString(), "configured", true);
+            return Map.of("reply", sb.toString(), "configured", true, "cards", cards);
         }
 
         if (msg.contains("soạn") || msg.contains("trả lời") || msg.contains("xin lỗi") || msg.contains("cskh")) {

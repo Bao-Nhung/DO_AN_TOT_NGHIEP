@@ -302,6 +302,14 @@ const galleryImages = computed(() => {
     : null
   const productImages = [product.value.anhUrl, ...(product.value.danhSachAnh || [])].filter(Boolean)
   const uniqueImages = [...new Set([colorImage, ...productImages].filter(Boolean))]
+  if (uniqueImages.length === 0) {
+    const cat = String(product.value.loaiVay || '').toLowerCase()
+    if (cat.includes('quần') || cat.includes('jeans')) uniqueImages.push('/images/products/pants1.jpg')
+    else if (cat.includes('áo khoác') || cat.includes('blazer')) uniqueImages.push('/images/products/shirt5.jpg')
+    else if (cat.includes('áo') || cat.includes('sơ mi')) uniqueImages.push('/images/products/shirt1.jpg')
+    else if (cat.includes('phụ kiện')) uniqueImages.push('/images/products/accessories1.jpg')
+    else uniqueImages.push('/images/products/dress1.jpg')
+  }
   while (uniqueImages.length < 4) uniqueImages.push(null)
   return uniqueImages.slice(0, 4)
 })

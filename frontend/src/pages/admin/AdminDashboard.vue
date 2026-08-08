@@ -99,6 +99,23 @@
       <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Tổng quan</h1>
       <p style="font-size:14px;color:var(--z-gray);margin-bottom:24px">Chào mừng trở lại, Admin. Đây là tình hình cửa hàng hôm nay.</p>
 
+      <div v-if="lowStockVariants.length" class="z-admin-card mb-4" style="background:#FFFBEB;border:1px solid #FCD34D;padding:14px 20px">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-3">
+            <div style="width:38px;height:38px;border-radius:50%;background:#F59E0B;color:#fff" class="d-flex align-items-center justify-content-center">
+              <i class="bi bi-exclamation-triangle-fill" style="font-size:18px"></i>
+            </div>
+            <div>
+              <strong style="font-size:14px;color:#92400E">Cảnh báo tồn kho: Có {{ lowStockVariants.length }} sản phẩm/biến thể sắp hết hàng (dưới 5 chiếc)</strong>
+              <div style="font-size:12px;color:#B45309">Vui lòng kiểm tra kho và cập nhật số lượng để đảm bảo duy trì bán hàng POS & Online.</div>
+            </div>
+          </div>
+          <RouterLink to="/admin/products" class="btn btn-warning btn-sm fw-bold" style="font-size:12px;color:#78350F">
+            <i class="bi bi-box-seam me-1"></i>Kiểm tra kho ngay
+          </RouterLink>
+        </div>
+      </div>
+
       <div class="row g-3 mb-4">
         <div v-for="stat in stats" :key="stat.label" class="col-12 col-sm-6 col-xl-3">
           <div class="z-stat-card">

@@ -440,7 +440,9 @@ export function api() {
     markAllCustomerNotificationsRead: () => request('/customer-notifications/read-all', { method: 'PUT' }),
     addThongBao: (data) => request('/thong-bao', { method: 'POST', body: JSON.stringify(data) }),
     updateThongBao: (id, data) => request(`/thong-bao/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    deleteThongBao: (id) => request(`/thong-bao/${id}`, { method: 'DELETE' })
+    deleteThongBao: (id) => request(`/thong-bao/${id}`, { method: 'DELETE' }),
+    postAiChat: (message, history = []) =>
+      request('/ai-chat', { method: 'POST', body: JSON.stringify({ message, history }) })
   }
 }
 

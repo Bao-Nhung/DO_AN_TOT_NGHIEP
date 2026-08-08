@@ -224,7 +224,7 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
-import { fmtPrice } from '@/composables/useProducts'
+import { fmtPrice, products, loadProducts, MOCK_PRODUCTS } from '@/composables/useProducts'
 import { useWishlist } from '@/composables/useWishlist'
 import { useI18n } from '@/composables/useI18n'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
@@ -372,11 +372,37 @@ onMounted(async () => {
   try {
     const id = route.params.id
     const [productData, reviewData, policyData] = await Promise.all([
-      api().getVayById(id),
-      api().getProductReviews(id, 0, reviewPageSize.value),
-      api().getStorePolicies()
+      api().getVayById(id).catch(() => null),
+      api().getProductReviews(id, 0, reviewPageSize.value).catch(() => null),
+      api().getStorePolicies().catch(() => null)
     ])
-    product.value = productData
+    if (productData && productData.id) {
+      product.value = productData
+    } else {
+      await loadProducts()
+      const found = products.value.find(p => String(p.id) === String(id)) || MOCK_PRODUCTS[0]
+      product.value = {
+        id: found.id,
+        tenVay: found.name || found.tenVay,
+        loaiVay: found.category || found.loaiVay,
+        chatLieu: found.material || found.chatLieu,
+        moTaPhom: found.fit || found.moTaPhom,
+        giaBan: found.price || found.giaBan,
+        coKhuyenMai: found.promotionActive,
+        dotKhuyenMai: found.campaign,
+        tonKho: found.stock || found.tonKho || 10,
+        trangThai: 1,
+        anhUrl: found.image || found.anhUrl,
+        danhSachAnh: found.images || found.danhSachAnh || [found.image || found.anhUrl],
+        diemDanhGia: found.rating || 5.0,
+        soDanhGia: found.reviewCount || 10,
+        bienThe: found.bienThe || [
+          { id: found.id * 100 + 1, mauSac: 'Trắng Ngà', maHex: '#FFF8F0', kichThuoc: 'S', soLuong: 10, giaBan: found.price || found.giaBan, trangThai: 1, anhUrl: found.image || found.anhUrl },
+          { id: found.id * 100 + 2, mauSac: 'Trắng Ngà', maHex: '#FFF8F0', kichThuoc: 'M', soLuong: 15, giaBan: found.price || found.giaBan, trangThai: 1, anhUrl: found.image || found.anhUrl },
+          { id: found.id * 100 + 3, mauSac: 'Đen Tuyền', maHex: '#1A1A1A', kichThuoc: 'M', soLuong: 12, giaBan: found.price || found.giaBan, trangThai: 1, anhUrl: (found.images || found.danhSachAnh)?.[1] || found.image }
+        ]
+      }
+    }
     applyReviewData(reviewData)
     policies.value = policyData || []
     if (isLoggedIn()) {

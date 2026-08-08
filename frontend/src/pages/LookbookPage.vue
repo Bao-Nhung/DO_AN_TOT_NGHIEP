@@ -4,7 +4,7 @@
       <img src="/images/banners/banner5.png" alt="Lookbook Zestia theo dịp" />
       <div class="z-lookbook-intro container">
         <p class="lm-eyebrow mb-3">Zestia Lookbook</p>
-        <h1>Chọn váy theo <em>khoảnh khắc</em></h1>
+        <h1>Chọn trang phục theo <em>khoảnh khắc</em></h1>
         <p>Bốn gợi ý bắt đầu nhanh, dẫn thẳng tới những sản phẩm đang bán phù hợp với từng dịp.</p>
       </div>
     </header>
@@ -31,10 +31,10 @@
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 const occasions = [
-  { key: 'work', eyebrow: 'Ngày làm việc', title: 'Thanh lịch và linh hoạt', image: '/images/banners/banner2.jpg', description: 'Phom gọn, màu dễ phối và độ dài phù hợp cho lịch họp, gặp khách hàng hoặc một ngày làm việc dài.' },
+  { key: 'work', eyebrow: 'Ngày làm việc', title: 'Thanh lịch và linh hoạt', image: '/images/banners/banner2.jpg', description: 'Phom gọn, màu dễ phối và kiểu dáng phù hợp cho lịch họp, gặp khách hàng hoặc một ngày làm việc dài.' },
   { key: 'party', eyebrow: 'Tiệc tối', title: 'Điểm nhấn vừa đủ', image: '/images/banners/banner8.png', description: 'Chất liệu có độ rủ, chi tiết bắt sáng và phom tôn dáng dành cho những buổi tối cần một ấn tượng rõ ràng.' },
-  { key: 'wedding', eyebrow: 'Cưới hỏi', title: 'Trang trọng mà vẫn là bạn', image: '/images/banners/banner9.png', description: 'Những lựa chọn dành cho cô dâu, phù dâu và khách mời, cân bằng giữa nét trang trọng và khả năng vận động.' },
-  { key: 'date', eyebrow: 'Hẹn hò', title: 'Mềm mại, không gắng gượng', image: '/images/banners/banner7.png', description: 'Màu sắc gần gũi, đường nét nhẹ và những chiếc váy có thể đi cùng bạn từ buổi cà phê đến bữa tối.' }
+  { key: 'wedding', eyebrow: 'Cưới hỏi & Lễ hội', title: 'Trang trọng mà vẫn là bạn', image: '/images/banners/banner9.png', description: 'Những lựa chọn trang phục cao cấp cân bằng giữa nét trang trọng và khả năng vận động tự nhiên.' },
+  { key: 'date', eyebrow: 'Hẹn hò & Dạo phố', title: 'Mềm mại, không gắng gượng', image: '/images/banners/banner7.png', description: 'Màu sắc gần gũi, đường nét nhẹ và những bộ trang phục có thể đi cùng bạn từ buổi cà phê đến bữa tối.' }
 ]
 </script>
 

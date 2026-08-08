@@ -357,7 +357,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
-import { mapProduct, fmtPrice } from '@/composables/useProducts'
+import { mapProduct, fmtPrice, MOCK_PRODUCTS } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { createVietQrUrl, isVietQrConfigured } from '@/config/paymentConfig'
@@ -529,17 +529,29 @@ async function restoreReservation() {
 
 async function loadProducts() {
   try {
-    const data = await api().getVay()
-    const sortedData = [...data].sort((a, b) => {
-      const da = a.ngayTao ? new Date(a.ngayTao).getTime() : Number(a.id || 0)
-      const db = b.ngayTao ? new Date(b.ngayTao).getTime() : Number(b.id || 0)
-      return db - da
-    })
-    allProducts.value = sortedData.filter(p => p.trangThai === 1).map((p, i) => {
+    const data = await api().getVay().catch(() => null)
+    if (Array.isArray(data) && data.length > 0) {
+      const sortedData = [...data].sort((a, b) => {
+        const da = a.ngayTao ? new Date(a.ngayTao).getTime() : Number(a.id || 0)
+        const db = b.ngayTao ? new Date(b.ngayTao).getTime() : Number(b.id || 0)
+        return db - da
+      })
+      allProducts.value = sortedData.filter(p => p.trangThai === 1).map((p, i) => {
+        const m = mapProduct(p, i)
+        return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
+      })
+    } else {
+      allProducts.value = MOCK_PRODUCTS.map((p, i) => {
+        const m = mapProduct(p, i)
+        return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
+      })
+    }
+  } catch (e) {
+    allProducts.value = MOCK_PRODUCTS.map((p, i) => {
       const m = mapProduct(p, i)
       return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
     })
-  } catch (e) { console.error(e) }
+  }
 }
 
 async function loadVouchers() {

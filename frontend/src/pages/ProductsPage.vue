@@ -4,7 +4,7 @@
       <div class="container">
         <p class="lm-eyebrow mb-3">Bộ Sưu Tập</p>
         <h1 class="mb-3">Tất cả <em>sản phẩm</em></h1>
-        <p style="max-width:480px">Khám phá bộ sưu tập váy độc quyền từ Zestia — nơi mỗi thiết kế đều mang một câu chuyện riêng.</p>
+        <p style="max-width:480px">Khám phá bộ sưu tập thời trang độc quyền từ Zestia — nơi mỗi thiết kế đều mang một câu chuyện riêng.</p>
       </div>
     </div>
 
@@ -15,8 +15,13 @@
           <span style="font-size:13px;font-weight:600;color:var(--z-dark);flex-shrink:0">Lọc:</span>
           <div class="d-flex gap-2 flex-wrap">
             <button v-for="f in filters" :key="f"
-                    class="lm-filter-tag" :class="{ active: activeFilter === f }"
-                    @click="activeFilter = f">{{ f }}</button>
+                    class="lm-filter-tag d-inline-flex align-items-center gap-2" :class="{ active: activeFilter === f }"
+                    @click="activeFilter = f">
+              <img v-if="getFilterImage(f)" :src="getFilterImage(f)" :alt="f"
+                   style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid rgba(0,0,0,0.12);flex-shrink:0" />
+              <i v-else-if="f === 'Tất cả'" class="bi bi-grid-fill" style="font-size:12px"></i>
+              <span>{{ f }}</span>
+            </button>
           </div>
           <div class="ms-auto d-flex align-items-center gap-3">
             <div class="d-flex align-items-center gap-2">
@@ -158,6 +163,18 @@ const filters = computed(() => [
   ...new Set(products.value.map(p => p.category).filter(Boolean)),
   'Ưu đãi'
 ])
+
+function getFilterImage(f) {
+  const name = String(f || '').toLowerCase()
+  if (name.includes('quần') || name.includes('jeans') || name.includes('short')) return '/images/products/pants1.jpg'
+  if (name.includes('áo khoác') || name.includes('blazer')) return '/images/products/shirt5.jpg'
+  if (name.includes('áo') || name.includes('sơ mi') || name.includes('thun') || name.includes('polo')) return '/images/products/shirt1.jpg'
+  if (name.includes('váy') || name.includes('đầm') || name.includes('tiệc')) return '/images/products/dress1.jpg'
+  if (name.includes('phụ kiện') || name.includes('túi') || name.includes('ví') || name.includes('mũ') || name.includes('khăn') || name.includes('thắt lưng')) return '/images/products/accessories1.jpg'
+  if (name.includes('công sở')) return '/images/products/shirt14.jpg'
+  if (name.includes('ưu đãi')) return '/images/products/shirt5.jpg'
+  return null
+}
 const activeFilter = ref('Tất cả')
 const priceRange = ref('all')
 const sortBy = ref('newest')

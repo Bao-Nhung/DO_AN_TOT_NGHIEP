@@ -12,13 +12,13 @@
       <div class="container">
         <div class="row g-5 align-items-center mb-5">
           <div class="col-lg-6">
-            <img src="/images/banners/about-atelier-v2.webp" alt="Không gian thiết kế và hoàn thiện váy tại Zestia" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--z-radius-lg)" />
+            <img src="/images/banners/about-atelier-v2.webp" alt="Không gian thiết kế và hoàn thiện thời trang tại Zestia" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--z-radius-lg)" />
           </div>
           <div class="col-lg-6">
             <p class="lm-eyebrow mb-3">Câu Chuyện Của Chúng Tôi</p>
             <h2 class="lm-section-title mb-4">Toả sáng theo <em>cách của bạn</em></h2>
             <p style="font-size:14px;line-height:1.8;color:var(--z-gray);margin-bottom:20px">
-              Zestia được thành lập với sứ mệnh mang đến những thiết kế váy độc đáo cho phụ nữ Việt Nam.
+              Zestia được thành lập với sứ mệnh mang đến những thiết kế thời trang & trang phục độc đáo cho người Việt Nam.
               Chúng tôi tin rằng thời trang không chỉ là trang phục — đó là cách bạn kể câu chuyện của chính mình.
             </p>
             <p style="font-size:14px;line-height:1.8;color:var(--z-gray);margin-bottom:20px">

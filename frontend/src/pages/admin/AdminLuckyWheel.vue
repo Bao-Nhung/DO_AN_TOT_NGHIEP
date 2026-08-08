@@ -136,7 +136,7 @@
     <div v-if="campaignModal" class="z-modal-overlay" @click.self="campaignModal = false">
       <div class="z-modal z-lucky-modal">
         <div class="z-modal-header">
-          <div><h3>{{ campaignForm.id ? 'Chỉnh sửa chiến dịch' : 'Tạo chiến dịch vòng quay' }}</h3><p>Điều kiện chỉ đọc từ đơn đã hoàn tất; không tạo voucher hay thay đổi tồn kho váy.</p></div>
+          <div><h3>{{ campaignForm.id ? 'Chỉnh sửa chiến dịch' : 'Tạo chiến dịch vòng quay' }}</h3><p>Điều kiện chỉ đọc từ đơn đã hoàn tất; không tạo voucher hay thay đổi tồn kho sản phẩm.</p></div>
           <button type="button" class="z-icon-btn" aria-label="Đóng" @click="campaignModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
         <form @submit.prevent="saveCampaign">

@@ -117,6 +117,9 @@
 
       <slot />
     </main>
+
+    <!-- Zestia Staff AI Copilot Widget -->
+    <AdminAiCopilot />
   </div>
 </template>
 
@@ -125,6 +128,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api, useAuth } from '@/composables/useApi'
 import { useI18n } from '@/composables/useI18n'
+import AdminAiCopilot from '@/components/admin/AdminAiCopilot.vue'
 
 const pendingCount = ref(0)
 const shiftCanOperate = ref(false)

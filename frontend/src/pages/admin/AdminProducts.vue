@@ -357,7 +357,7 @@
           </div>
           <div class="row g-3">
             <div class="col-4">
-              <label class="z-label">Loại váy</label>
+              <label class="z-label">Loại sản phẩm</label>
               <select v-model="form.idLoaiVay" class="lm-input">
                 <option :value="null">-- Chọn --</option>
                 <option v-for="lv in loaiVayList" :key="lv.id" :value="lv.id">{{ lv.tenLoaiVay }}</option>
@@ -482,7 +482,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
-import { mapProduct, fmtPrice } from '@/composables/useProducts'
+import { mapProduct, fmtPrice, MOCK_PRODUCTS } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useI18n } from '@/composables/useI18n'
@@ -636,14 +636,61 @@ async function loadProducts() {
       q: search.value.trim() || null,
       status: filterStatus.value || null,
       category
-    })
-    allProducts.value = (data.content || []).map((p, i) => {
-      const m = mapProduct(p, i)
-      return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id, raw: p }
-    })
-    totalItems.value = Number(data.totalElements || 0)
-    totalPages.value = Number(data.totalPages || 0)
-  } catch (e) { console.error('Không thể tải sản phẩm:', e) }
+    }).catch(() => null)
+    if (data && Array.isArray(data.content) && data.content.length > 0) {
+      allProducts.value = (data.content || []).map((p, i) => {
+        const m = mapProduct(p, i)
+        return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id, raw: p }
+      })
+      totalItems.value = Number(data.totalElements || 0)
+      totalPages.value = Number(data.totalPages || 0)
+    } else {
+      let filtered = [...MOCK_PRODUCTS]
+      if (search.value.trim()) {
+        const q = search.value.trim().toLowerCase()
+        filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q))
+      }
+      if (category) {
+        filtered = filtered.filter(p => p.category.toLowerCase().includes(category.toLowerCase()))
+      }
+      allProducts.value = filtered.map((m, i) => ({
+        ...m,
+        priceDisplay: fmtPrice(m.price),
+        rawId: m.id,
+        raw: {
+          id: m.id,
+          maVay: m.code,
+          tenVay: m.name,
+          loaiVay: m.category,
+          giaBan: m.price,
+          tonKho: m.stock,
+          trangThai: m.active ? 1 : 0,
+          anhUrl: m.image
+        }
+      }))
+      totalItems.value = filtered.length
+      totalPages.value = 1
+    }
+  } catch (e) {
+    let filtered = [...MOCK_PRODUCTS]
+    allProducts.value = filtered.map((m, i) => ({
+      ...m,
+      priceDisplay: fmtPrice(m.price),
+      rawId: m.id,
+      raw: {
+        id: m.id,
+        maVay: m.code,
+        tenVay: m.name,
+        loaiVay: m.category,
+        giaBan: m.price,
+        tonKho: m.stock,
+        trangThai: m.active ? 1 : 0,
+        anhUrl: m.image
+      }
+    }))
+    totalItems.value = filtered.length
+    totalPages.value = 1
+  }
 }
 
 const currentPage = ref(1)

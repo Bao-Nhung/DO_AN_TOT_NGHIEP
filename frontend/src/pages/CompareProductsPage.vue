@@ -65,7 +65,7 @@
                 </td>
               </tr>
               <tr>
-                <th scope="row">Loại váy</th>
+                <th scope="row">Loại sản phẩm</th>
                 <td v-for="product in comparedProducts" :key="`category-${product.id}`">
                   {{ product.loaiVay || 'N/A' }}
                 </td>

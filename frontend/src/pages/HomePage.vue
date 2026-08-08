@@ -7,10 +7,10 @@
       <div class="container z-home-hero-content">
         <p class="lm-eyebrow mb-3">Zestia Collection 2026</p>
         <h1 class="z-display mb-4">
-          Váy dành cho những khoảnh khắc bạn muốn được nhớ đến
+          Trang phục dành cho những khoảnh khắc bạn muốn được tỏa sáng
         </h1>
         <p class="z-home-hero-copy mb-5">
-          Từ dáng công sở thanh lịch đến váy dự tiệc nổi bật, Zestia chọn màu sắc, chất liệu và phom dáng để bạn bước vào ngày của mình với sự tự tin rất riêng.
+          Từ áo sơ mi, quần tây công sở thanh lịch đến váy đầm dự tiệc và phụ kiện cao cấp, Zestia chọn màu sắc, chất liệu và phom dáng để bạn tự tin trong mọi xuất hiện.
         </p>
         <div class="d-flex gap-3 align-items-center flex-wrap">
           <RouterLink to="/collections" class="lm-btn-primary"><span>Khám phá bộ sưu tập</span></RouterLink>
@@ -41,8 +41,8 @@
       <div class="container">
         <div class="d-flex justify-content-between align-items-end mb-5 lm-reveal flex-wrap gap-3">
           <div>
-            <p class="lm-eyebrow mb-2">Danh mục</p>
-            <h2 class="lm-section-title">Chọn váy theo <em>khoảnh khắc</em></h2>
+            <p class="lm-eyebrow mb-2">Danh mục thời trang</p>
+            <h2 class="lm-section-title">Khám phá theo <em>phong cách</em></h2>
           </div>
           <RouterLink to="/collections" class="lm-btn-secondary flex-shrink-0">
             Tất cả sản phẩm <i class="bi bi-arrow-right ms-1"></i>
@@ -51,16 +51,16 @@
 
         <div class="row g-3">
           <div class="col-lg-5 lm-reveal">
-            <CollectionCard label="Lễ kỷ niệm" name="Váy Dự Lễ" letter="Z"
-                            image="/images/products/dress6.jpg"
-                            bg="linear-gradient(160deg,#F3E8E6,#D4A99E 40%,#C08B7E)" to="/lookbook" tall />
+            <CollectionCard label="Thời trang nữ" name="Áo Thời Trang" letter="Z"
+                            image="/images/products/shirt1.jpg"
+                            bg="linear-gradient(160deg,#F3E8E6,#D4A99E 40%,#C08B7E)" to="/collections" tall />
           </div>
           <div class="col-lg-7">
             <div class="row g-3">
-              <div class="col-6 lm-reveal"><CollectionCard label="Hẹn hò" name="Váy Hẹn Hò" letter="e" image="/images/products/dress17.jpg" bg="linear-gradient(160deg,#E8DDD6,#C4A98E)" to="/lookbook" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Dự tiệc" name="Váy Dự Tiệc" letter="s" image="/images/products/dress9.jpg" bg="linear-gradient(160deg,#E6E0DA,#A8A49E)" to="/collections?occasion=party" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Cưới hỏi" name="Váy Cưới" letter="t" image="/images/products/dress11.jpg" bg="linear-gradient(160deg,#F0E8E0,#D4C0A8)" to="/collections?occasion=wedding" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Đi làm" name="Váy Đi Làm" letter="ia" image="/images/products/dress19.jpg" bg="linear-gradient(160deg,#E4DDD2,#C0B49E)" to="/collections?occasion=work" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Cá tính" name="Quần & Jeans" letter="e" image="/images/products/pants1.jpg" bg="linear-gradient(160deg,#E8DDD6,#C4A98E)" to="/collections" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Quyến rũ" name="Váy & Đầm" letter="s" image="/images/products/dress1.jpg" bg="linear-gradient(160deg,#E6E0DA,#A8A49E)" to="/collections" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Điểm nhấn" name="Phụ Kiện" letter="t" image="/images/products/accessories1.jpg" bg="linear-gradient(160deg,#F0E8E0,#D4C0A8)" to="/collections" /></div>
+              <div class="col-6 lm-reveal"><CollectionCard label="Thanh lịch" name="Đồ Công Sở" letter="ia" image="/images/products/shirt6.jpg" bg="linear-gradient(160deg,#E4DDD2,#C0B49E)" to="/collections" /></div>
             </div>
           </div>
         </div>
@@ -73,9 +73,9 @@
       </div>
       <div class="z-style-content">
         <p class="lm-eyebrow mb-3">Style Edit</p>
-        <h2 class="z-display">Một chiếc váy đúng có thể đổi cả tinh thần của ngày hôm đó</h2>
+        <h2 class="z-display">Một bộ trang phục chuẩn có thể đổi cả tinh thần của ngày hôm đó</h2>
         <p>
-          Zestia gợi ý sản phẩm theo hoàn cảnh sử dụng: gặp khách hàng, dự tiệc tối, chụp ảnh kỷ niệm hay những ngày bạn chỉ muốn thật nhẹ nhàng.
+          Zestia gợi ý sản phẩm theo hoàn cảnh sử dụng: gặp khách hàng, đi làm công sở, dự tiệc tối, dạo phố hay những ngày bạn muốn thật thoải mái.
         </p>
         <div class="z-style-tags">
           <span>Công sở</span>

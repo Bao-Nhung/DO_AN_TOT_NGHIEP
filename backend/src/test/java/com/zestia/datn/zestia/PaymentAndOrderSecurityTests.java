@@ -13,8 +13,8 @@ import com.zestia.datn.zestia.entity.MauSac;
 import com.zestia.datn.zestia.entity.NhanVien;
 import com.zestia.datn.zestia.entity.SupportConversation;
 import com.zestia.datn.zestia.entity.VaiTro;
-import com.zestia.datn.zestia.entity.Vay;
-import com.zestia.datn.zestia.entity.VayChiTiet;
+import com.zestia.datn.zestia.entity.SanPham;
+import com.zestia.datn.zestia.entity.SanPhamChiTiet;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.GiamGiaRepository;
@@ -27,8 +27,8 @@ import com.zestia.datn.zestia.repository.NhanVienRepository;
 import com.zestia.datn.zestia.repository.PosPhienGiuHangRepository;
 import com.zestia.datn.zestia.repository.SupportConversationRepository;
 import com.zestia.datn.zestia.repository.VaiTroRepository;
-import com.zestia.datn.zestia.repository.VayChiTietRepository;
-import com.zestia.datn.zestia.repository.VayRepository;
+import com.zestia.datn.zestia.repository.SanPhamChiTietRepository;
+import com.zestia.datn.zestia.repository.SanPhamRepository;
 import com.zestia.datn.zestia.repository.YeuCauDoiTraRepository;
 import com.zestia.datn.zestia.service.EmailService;
 import com.zestia.datn.zestia.service.GatewayPaymentResultService;
@@ -102,10 +102,10 @@ class PaymentAndOrderSecurityTests {
     private LichSuThanhToanRepository paymentHistoryRepository;
 
     @Autowired
-    private VayRepository vayRepository;
+    private SanPhamRepository vayRepository;
 
     @Autowired
-    private VayChiTietRepository variantRepository;
+    private SanPhamChiTietRepository variantRepository;
 
     @Autowired
     private MauSacRepository colorRepository;
@@ -254,15 +254,15 @@ class PaymentAndOrderSecurityTests {
     void productPaginationReturnsOnlyTheRequestedServerPage() throws Exception {
         String marker = "Paged dress " + System.nanoTime();
         for (int index = 0; index < 12; index++) {
-            vayRepository.save(Vay.builder()
-                    .maVay("V-PAGED-" + System.nanoTime() + "-" + index)
-                    .tenVay(marker + " " + index)
+            vayRepository.save(SanPham.builder()
+                    .maSanPham("V-PAGED-" + System.nanoTime() + "-" + index)
+                    .tenSanPham(marker + " " + index)
                     .trangThai((byte) 1)
                     .ngayTao(LocalDateTime.now().plusNanos(index))
                     .build());
         }
 
-        mockMvc.perform(get("/api/vay/paged")
+        mockMvc.perform(get("/api/san-pham/paged")
                         .param("q", marker)
                         .param("page", "1")
                         .param("size", "5"))
@@ -289,9 +289,9 @@ class PaymentAndOrderSecurityTests {
                 .tinhTrangLamViec((byte) 0)
                 .ngayTao(LocalDateTime.now())
                 .build());
-        Vay lockedProduct = vayRepository.save(Vay.builder()
-                .maVay("V-LOCKED-" + marker)
-                .tenVay("Locked product " + marker)
+        SanPham lockedProduct = vayRepository.save(SanPham.builder()
+                .maSanPham("V-LOCKED-" + marker)
+                .tenSanPham("Locked product " + marker)
                 .trangThai((byte) 0)
                 .ngayTao(LocalDateTime.now())
                 .build());
@@ -459,17 +459,17 @@ class PaymentAndOrderSecurityTests {
                 .build());
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("POS Black " + marker).trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("POS-S-" + marker).trangThai((byte) 1).build());
-        Vay product = vayRepository.save(Vay.builder()
-                .maVay("V-POS-" + marker)
-                .tenVay("POS checkout dress")
+        SanPham product = vayRepository.save(SanPham.builder()
+                .maSanPham("V-POS-" + marker)
+                .tenSanPham("POS checkout dress")
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
                 .build());
-        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
-                .vay(product)
+        SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
+                .sanPham(product)
                 .mauSac(color)
                 .kichThuoc(size)
-                .maVayChiTiet("VC-POS-" + marker)
+                .maSanPhamChiTiet("VC-POS-" + marker)
                 .giaBanGoc(BigDecimal.valueOf(600000))
                 .giaBan(BigDecimal.valueOf(500000))
                 .giaNhap(BigDecimal.valueOf(300000))
@@ -562,17 +562,17 @@ class PaymentAndOrderSecurityTests {
                 .tenKichThuoc("HOLD-S-" + marker)
                 .trangThai((byte) 1)
                 .build());
-        Vay product = vayRepository.save(Vay.builder()
-                .maVay("V-HOLD-" + marker)
-                .tenVay("POS reservation dress")
+        SanPham product = vayRepository.save(SanPham.builder()
+                .maSanPham("V-HOLD-" + marker)
+                .tenSanPham("POS reservation dress")
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
                 .build());
-        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
-                .vay(product)
+        SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
+                .sanPham(product)
                 .mauSac(color)
                 .kichThuoc(size)
-                .maVayChiTiet("VC-HOLD-" + marker)
+                .maSanPhamChiTiet("VC-HOLD-" + marker)
                 .giaBanGoc(BigDecimal.valueOf(500000))
                 .giaBan(BigDecimal.valueOf(500000))
                 .giaNhap(BigDecimal.valueOf(300000))
@@ -685,17 +685,17 @@ class PaymentAndOrderSecurityTests {
     void concurrentCheckoutCannotOversellTheLastVariant() throws Exception {
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("Concurrency Black").trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("CONCURRENT-S").trangThai((byte) 1).build());
-        Vay product = vayRepository.save(Vay.builder()
-                .maVay("V-CONCURRENT-" + System.nanoTime())
-                .tenVay("Concurrent checkout dress")
+        SanPham product = vayRepository.save(SanPham.builder()
+                .maSanPham("V-CONCURRENT-" + System.nanoTime())
+                .tenSanPham("Concurrent checkout dress")
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
                 .build());
-        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
-                .vay(product)
+        SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
+                .sanPham(product)
                 .mauSac(color)
                 .kichThuoc(size)
-                .maVayChiTiet("VC-CONCURRENT-" + System.nanoTime())
+                .maSanPhamChiTiet("VC-CONCURRENT-" + System.nanoTime())
                 .giaBanGoc(BigDecimal.valueOf(600000))
                 .giaBan(BigDecimal.valueOf(500000))
                 .giaNhap(BigDecimal.valueOf(300000))
@@ -837,13 +837,13 @@ class PaymentAndOrderSecurityTests {
                 .build());
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("Return Black " + marker).trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("RETURN-S-" + marker).trangThai((byte) 1).build());
-        Vay product = vayRepository.save(Vay.builder().maVay("V-RETURN-" + marker).tenVay("Return dress").trangThai((byte) 1).ngayTao(LocalDateTime.now()).build());
-        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
-                .vay(product).mauSac(color).kichThuoc(size).maVayChiTiet("VC-RETURN-" + marker)
+        SanPham product = vayRepository.save(SanPham.builder().maSanPham("V-RETURN-" + marker).tenSanPham("Return dress").trangThai((byte) 1).ngayTao(LocalDateTime.now()).build());
+        SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
+                .sanPham(product).mauSac(color).kichThuoc(size).maSanPhamChiTiet("VC-RETURN-" + marker)
                 .giaBanGoc(BigDecimal.valueOf(700000)).giaBan(BigDecimal.valueOf(700000))
                 .soLuong(2).trangThai((byte) 1).ngayTao(LocalDateTime.now()).build());
         HoaDonChiTiet detail = orderDetailRepository.save(HoaDonChiTiet.builder()
-                .hoaDon(order).vayChiTiet(variant).soLuong(1).donGia(BigDecimal.valueOf(700000)).build());
+                .hoaDon(order).sanPhamChiTiet(variant).soLuong(1).donGia(BigDecimal.valueOf(700000)).build());
         String token = jwtUtil.generateToken(customer.getEmail(), "KhachHang", customer.getId());
         MockMultipartFile image = new MockMultipartFile("images", "condition.png", "image/png",
                 java.util.Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
@@ -922,17 +922,17 @@ class PaymentAndOrderSecurityTests {
         String marker = String.valueOf(System.nanoTime());
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("Failed Black " + marker).trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("FAILED-S-" + marker).trangThai((byte) 1).build());
-        Vay product = vayRepository.save(Vay.builder()
-                .maVay("V-FAILED-" + marker)
-                .tenVay("Delivery failed dress")
+        SanPham product = vayRepository.save(SanPham.builder()
+                .maSanPham("V-FAILED-" + marker)
+                .tenSanPham("Delivery failed dress")
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
                 .build());
-        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
-                .vay(product)
+        SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
+                .sanPham(product)
                 .mauSac(color)
                 .kichThuoc(size)
-                .maVayChiTiet("VC-FAILED-" + marker)
+                .maSanPhamChiTiet("VC-FAILED-" + marker)
                 .giaBanGoc(BigDecimal.valueOf(800000))
                 .giaBan(BigDecimal.valueOf(700000))
                 .soLuong(3)
@@ -958,7 +958,7 @@ class PaymentAndOrderSecurityTests {
                 .build());
         orderDetailRepository.save(HoaDonChiTiet.builder()
                 .hoaDon(order)
-                .vayChiTiet(variant)
+                .sanPhamChiTiet(variant)
                 .soLuong(2)
                 .donGia(BigDecimal.valueOf(700000))
                 .build());
@@ -1316,17 +1316,17 @@ class PaymentAndOrderSecurityTests {
                 .tenKichThuoc("CANCEL-COD-" + marker)
                 .trangThai((byte) 1)
                 .build());
-        Vay product = vayRepository.save(Vay.builder()
-                .maVay("V-CANCEL-COD-" + marker)
-                .tenVay("Cancelable COD dress")
+        SanPham product = vayRepository.save(SanPham.builder()
+                .maSanPham("V-CANCEL-COD-" + marker)
+                .tenSanPham("Cancelable COD dress")
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
                 .build());
-        VayChiTiet variant = variantRepository.save(VayChiTiet.builder()
-                .vay(product)
+        SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
+                .sanPham(product)
                 .mauSac(color)
                 .kichThuoc(size)
-                .maVayChiTiet("VC-CANCEL-COD-" + marker)
+                .maSanPhamChiTiet("VC-CANCEL-COD-" + marker)
                 .giaBanGoc(BigDecimal.valueOf(650000))
                 .giaBan(BigDecimal.valueOf(650000))
                 .giaNhap(BigDecimal.valueOf(400000))
@@ -1354,17 +1354,17 @@ class PaymentAndOrderSecurityTests {
                 .build());
         orderDetailRepository.save(HoaDonChiTiet.builder()
                 .hoaDon(order)
-                .vayChiTiet(variant)
+                .sanPhamChiTiet(variant)
                 .soLuong(quantity)
                 .donGia(BigDecimal.valueOf(650000))
                 .build());
         return new CancelableOrderFixture(order, variant, voucher);
     }
 
-    private record CancelableOrderFixture(HoaDon order, VayChiTiet variant, GiamGia voucher) {
+    private record CancelableOrderFixture(HoaDon order, SanPhamChiTiet variant, GiamGia voucher) {
     }
 
-    private int performCheckout(VayChiTiet variant, String suffix, String phone,
+    private int performCheckout(SanPhamChiTiet variant, String suffix, String phone,
                                 CountDownLatch ready, CountDownLatch start) throws Exception {
         ready.countDown();
         start.await();
@@ -1374,7 +1374,7 @@ class PaymentAndOrderSecurityTests {
                  "hinhThucThanhToan":"COD","checkoutRequestId":"CHECKOUT-CONCURRENT-%s",
                  "items":[{"productId":%d,"variantId":%d,"qty":1}]}
                 """.formatted(suffix, phone, suffix.toLowerCase(), suffix,
-                variant.getVay().getId(), variant.getId());
+                variant.getSanPham().getId(), variant.getId());
         return mockMvc.perform(post("/api/payment/create-order")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))

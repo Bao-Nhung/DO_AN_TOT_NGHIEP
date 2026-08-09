@@ -45,7 +45,7 @@ public class AiChatService {
     private final GiamGiaRepository giamGiaRepository;
     private final HoaDonRepository hoaDonRepository;
     private final PromotionPricingService promotionPricingService;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private ObjectMapper mapper = new ObjectMapper();
 
     @Value("${openai.api-key:}")
     private String apiKey;
@@ -56,7 +56,7 @@ public class AiChatService {
     @Value("${openai.timeout-seconds:30}")
     private long timeoutSeconds;
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private HttpClient httpClient = HttpClient.newHttpClient();
 
     /**
      * Main entry point.
@@ -776,6 +776,13 @@ public class AiChatService {
             "cards", cards, "configured", false
         );
     }
+
+    private List<Map<String, Object>> buildCardsForOpenAiReply(String message, String mode) {
+        String msg = message != null ? message.toLowerCase().trim() : "";
+        List<Map<String, Object>> cards = new ArrayList<>();
+        boolean wantsProducts = msg.contains("sản phẩm") || msg.contains("váy") || msg.contains("đầm") || msg.contains("áo") || msg.contains("quần")
+                || msg.contains("set") || msg.contains("outfit") || msg.contains("phối") || msg.contains("mặc");
+        boolean wantsVoucher = msg.contains("voucher") || msg.contains("mã giảm") || msg.contains("khuyến mãi");
 
         if (wantsVoucher) {
             giamGiaRepository.findAll().stream().filter(this::activeVoucher).limit(3).forEach(v ->

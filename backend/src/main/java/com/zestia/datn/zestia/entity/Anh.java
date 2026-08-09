@@ -30,4 +30,7 @@ public class Anh {
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
+
+    public SanPham getVay() { return sanPham; }
+    public void setVay(SanPham sp) { this.sanPham = sp; }
 }

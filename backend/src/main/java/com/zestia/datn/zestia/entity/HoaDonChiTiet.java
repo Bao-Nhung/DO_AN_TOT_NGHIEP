@@ -37,4 +37,7 @@ public class HoaDonChiTiet {
 
     @Column(name = "phan_tram_giam")
     private BigDecimal phanTramGiam;
+
+    public SanPhamChiTiet getVayChiTiet() { return sanPhamChiTiet; }
+    public void setVayChiTiet(SanPhamChiTiet val) { this.sanPhamChiTiet = val; }
 }

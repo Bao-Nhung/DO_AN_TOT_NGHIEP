@@ -73,4 +73,11 @@ public class SanPham {
     @JsonIgnore
     @OneToMany(mappedBy = "sanPham")
     private List<Anh> danhSachAnh;
+
+    public String getTenVay() { return tenSanPham; }
+    public void setTenVay(String val) { this.tenSanPham = val; }
+    public String getMaVay() { return maSanPham; }
+    public void setMaVay(String val) { this.maSanPham = val; }
+    public LoaiSanPham getLoaiVay() { return loaiSanPham; }
+    public void setLoaiVay(LoaiSanPham val) { this.loaiSanPham = val; }
 }

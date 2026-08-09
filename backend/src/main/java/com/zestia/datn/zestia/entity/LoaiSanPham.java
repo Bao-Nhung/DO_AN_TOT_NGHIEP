@@ -29,4 +29,7 @@ public class LoaiSanPham {
 
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
+
+    public String getTenLoaiVay() { return tenLoaiSanPham; }
+    public void setTenLoaiVay(String val) { this.tenLoaiSanPham = val; }
 }

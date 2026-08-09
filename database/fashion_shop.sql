@@ -1455,6 +1455,34 @@ SET IDENTITY_INSERT [dbo].[Anh] OFF;
 END
 GO
 
+-- Tự động bổ sung ảnh cho tất cả sản phẩm bị thiếu trong bảng Anh
+INSERT INTO [dbo].[Anh] ([id_san_pham], [anh_url], [trang_thai], [ngay_tao])
+SELECT sp.id,
+       CASE 
+         WHEN sp.ma_san_pham LIKE 'ASM%' OR sp.ma_san_pham LIKE 'AKH%' THEN N'/images/products/shirt' + CAST(((sp.id % 20) + 1) AS NVARCHAR) + N'.jpg'
+         WHEN sp.ma_san_pham LIKE 'QJN%' OR sp.ma_san_pham LIKE 'QTY%' THEN N'/images/products/pants' + CAST(((sp.id % 20) + 1) AS NVARCHAR) + N'.jpg'
+         WHEN sp.ma_san_pham LIKE 'PKT%' THEN N'/images/products/accessories' + CAST(((sp.id % 20) + 1) AS NVARCHAR) + N'.jpg'
+         ELSE N'/images/products/dress' + CAST(((sp.id % 20) + 1) AS NVARCHAR) + N'.jpg'
+       END,
+       1,
+       GETDATE()
+FROM [dbo].[san_pham] sp
+WHERE NOT EXISTS (SELECT 1 FROM [dbo].[Anh] a WHERE a.id_san_pham = sp.id AND a.trang_thai = 1);
+GO
+
+-- Cập nhật anh_url cho san_pham_chi_tiet nếu đang bị NULL
+UPDATE vct
+SET vct.anh_url = a.anh_url
+FROM [dbo].[san_pham_chi_tiet] vct
+JOIN (
+    SELECT id_san_pham, MIN(anh_url) AS anh_url
+    FROM [dbo].[Anh]
+    WHERE trang_thai = 1
+    GROUP BY id_san_pham
+) a ON a.id_san_pham = vct.id_san_pham
+WHERE vct.anh_url IS NULL;
+GO
+
 -- ===== Gio_hang =====
 IF OBJECT_ID(N'dbo.Gio_hang','U') IS NULL
 BEGIN

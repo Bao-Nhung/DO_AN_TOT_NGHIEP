@@ -666,10 +666,13 @@ public class SanPhamController {
         map.put("diemDanhGia", averageRating != null ? averageRating : 0);
         map.put("soDanhGia", reviewCount != null ? reviewCount : 0);
 
-        if (!anhs.isEmpty()) {
-            map.put("anhUrl", anhs.get(0).getAnhUrl());
-            map.put("danhSachAnh", anhs.stream().map(Anh::getAnhUrl).toList());
-        }
+        String primaryImage = !anhs.isEmpty() ? anhs.get(0).getAnhUrl() : getFallbackImage(v);
+        List<String> imageList = !anhs.isEmpty()
+                ? anhs.stream().map(Anh::getAnhUrl).toList()
+                : List.of(primaryImage);
+
+        map.put("anhUrl", primaryImage);
+        map.put("danhSachAnh", imageList);
         map.put("anhList", anhs.stream().map(a -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", a.getId());
@@ -685,6 +688,7 @@ public class SanPhamController {
                 .toList();
         List<Anh> anhs = anhRepo.findBySanPhamIdAndTrangThai(v.getId(), (byte) 1);
         Map<String, Object> map = toMap(v, bienThe, anhs, danhGiaRepo.summarizeProduct(v.getId()));
+        String defaultImage = (String) map.get("anhUrl");
         List<Map<String, Object>> variants = new ArrayList<>();
         for (SanPhamChiTiet bt : bienThe) {
             PromotionPricingService.PriceQuote quote = promotionPricingService.quote(bt);
@@ -703,7 +707,7 @@ public class SanPhamController {
             btMap.put("dotKhuyenMai", quote.campaignName());
             btMap.put("maDotKhuyenMai", quote.campaignCode());
             btMap.put("soLuong", bt.getSoLuong());
-            btMap.put("anhUrl", bt.getAnhUrl());
+            btMap.put("anhUrl", bt.getAnhUrl() != null && !bt.getAnhUrl().isBlank() ? bt.getAnhUrl() : defaultImage);
             btMap.put("trangThai", bt.getTrangThai());
             variants.add(btMap);
         }
@@ -865,5 +869,21 @@ public class SanPhamController {
         response.put("totalElements", result.getTotalElements());
         response.put("totalPages", result.getTotalPages());
         return response;
+    }
+
+    public static String getFallbackImage(SanPham v) {
+        if (v == null) return "/images/products/shirt1.jpg";
+        String code = v.getMaSanPham() != null ? v.getMaSanPham().toUpperCase(Locale.ROOT) : "";
+        int id = v.getId() != null ? Math.abs(v.getId()) : 1;
+        int index = (id % 20) + 1;
+        if (code.startsWith("ASM") || code.startsWith("AKH")) {
+            return "/images/products/shirt" + index + ".jpg";
+        } else if (code.startsWith("QJN") || code.startsWith("QTY")) {
+            return "/images/products/pants" + index + ".jpg";
+        } else if (code.startsWith("PKT")) {
+            return "/images/products/accessories" + index + ".jpg";
+        } else {
+            return "/images/products/dress" + index + ".jpg";
+        }
     }
 }

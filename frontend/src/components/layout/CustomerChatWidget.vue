@@ -11,7 +11,7 @@
     >
       <div class="z-ai-pulse"></div>
       <i class="bi bi-stars z-ai-icon-stars"></i>
-      <span class="z-ai-badge-text">Zestia AI</span>
+      <span class="z-ai-badge-text">Zestia AI 2.0</span>
     </button>
 
     <!-- Khung Chat AI Assistant chính -->
@@ -26,11 +26,14 @@
             </div>
             <div>
               <div class="d-flex align-items-center gap-2">
-                <strong class="z-ai-title">{{ humanMode ? 'Nhân viên Zestia CSKH' : (activeTab === 'stylist' ? 'Zestia AI Stylist' : 'Zestia AI Assistant') }}</strong>
-                <span class="badge bg-danger-subtle text-danger" style="font-size:10px;padding:2px 6px">PRO</span>
+                <strong class="z-ai-title">
+                  {{ humanMode ? 'Nhân viên Zestia CSKH' : (activeTab === 'stylist' ? 'Zestia AI Stylist' : (activeTab === 'size' ? 'Zestia Size Advisor' : 'Zestia AI Assistant')) }}
+                </strong>
+                <span class="badge bg-danger-subtle text-danger fw-bold" style="font-size:10px;padding:2px 6px">PRO 2.0</span>
               </div>
               <span class="z-ai-subtitle" v-if="humanMode">{{ supportStatusText }}</span>
-              <span class="z-ai-subtitle" v-else-if="activeTab === 'stylist'">Gợi ý outfit phối đồ chuẩn gu & dịp</span>
+              <span class="z-ai-subtitle" v-else-if="activeTab === 'stylist'">Gợi ý Outfit phối đồ chuẩn gu & dịp</span>
+              <span class="z-ai-subtitle" v-else-if="activeTab === 'size'">Tính Size chuẩn vóc dáng theo chiều cao/cân nặng</span>
               <span class="z-ai-subtitle" v-else>Tư vấn sản phẩm, size, voucher & đơn hàng</span>
             </div>
           </div>
@@ -50,11 +53,41 @@
         <!-- Thanh chuyển chế độ (Tabs) -->
         <div class="z-ai-tabs" v-if="!humanMode">
           <button type="button" class="z-ai-tab" :class="{ active: activeTab === 'assistant' }" @click="activeTab = 'assistant'">
-            <i class="bi bi-chat-left-dots"></i> Tư vấn Mua sắm
+            <i class="bi bi-chat-left-dots"></i> Tư vấn
           </button>
           <button type="button" class="z-ai-tab" :class="{ active: activeTab === 'stylist' }" @click="activeTab = 'stylist'">
-            <i class="bi bi-magic"></i> AI Stylist Phối Đồ
+            <i class="bi bi-magic"></i> AI Stylist
           </button>
+          <button type="button" class="z-ai-tab" :class="{ active: activeTab === 'size' }" @click="activeTab = 'size'">
+            <i class="bi bi-ruler"></i> Tính Size
+          </button>
+        </div>
+
+        <!-- BỘ TÍNH SIZE CHUẨN KHI Ở TAB SIZE -->
+        <div v-if="activeTab === 'size' && !humanMode" class="z-size-calculator-panel">
+          <div class="z-size-calc-header">
+            <i class="bi bi-stars text-danger me-1"></i>
+            <strong>Tính Size Chuẩn Theo Vóc Dáng</strong>
+          </div>
+          <div class="row g-2 mt-1">
+            <div class="col-6">
+              <label class="z-calc-label">Chiều cao: <strong class="text-danger">{{ sizeHeight }} cm</strong></label>
+              <input type="range" v-model.number="sizeHeight" min="145" max="185" class="form-range custom-range" />
+            </div>
+            <div class="col-6">
+              <label class="z-calc-label">Cân nặng: <strong class="text-danger">{{ sizeWeight }} kg</strong></label>
+              <input type="range" v-model.number="sizeWeight" min="38" max="85" class="form-range custom-range" />
+            </div>
+          </div>
+          <div class="z-size-result-bar mt-2">
+            <div class="z-size-badge-val">
+              Size khuyên dùng: <span class="z-size-tag">{{ calculatedSizeInfo.size }}</span>
+              <small class="ms-2 text-success">Vừa vặn {{ calculatedSizeInfo.score }}%</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-dark z-calc-submit-btn" @click="askAiForSize">
+              <i class="bi bi-send-fill me-1"></i> Tư vấn sản phẩm
+            </button>
+          </div>
         </div>
 
         <!-- Body Khung Chat -->
@@ -69,13 +102,18 @@
                 <small v-if="humanMode && msg.senderName" class="d-block text-muted mb-1">{{ msg.senderName }}</small>
                 <div class="z-ai-text" v-html="formatMarkdown(msg.content)"></div>
 
-                <!-- Action copy cho tin nhắn AI -->
-                <button v-if="msg.role === 'assistant' && msg.content" class="z-ai-copy-btn" title="Sao chép câu trả lời" @click="copyText(msg.content)">
-                  <i class="bi bi-clipboard"></i>
-                </button>
+                <!-- Các nút hỗ trợ phụ (Copy & Text-to-Speech) -->
+                <div v-if="msg.role === 'assistant' && msg.content" class="z-ai-msg-actions">
+                  <button type="button" class="z-ai-action-sub-btn" title="Đọc câu trả lời" @click="speakText(msg.content)">
+                    <i class="bi bi-volume-up"></i>
+                  </button>
+                  <button type="button" class="z-ai-action-sub-btn" title="Sao chép câu trả lời" @click="copyText(msg.content)">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </div>
               </div>
 
-              <!-- THẺ DỮ LIỆU SẢN PHẨM TRỰC QUAN (PRODUCT CARDS) -->
+              <!-- THẺ DỮ LIỆU TRỰC QUAN (CARDS) -->
               <div v-if="msg.cards && msg.cards.length" class="z-ai-cards-container">
                 <div class="z-ai-cards-scroll">
                   <div
@@ -84,8 +122,40 @@
                     class="z-ai-card-item"
                     :class="card.type"
                   >
+                    <!-- THẺ OUTFIT LOOKBOOK (Full Set Match) -->
+                    <template v-if="card.type === 'outfit'">
+                      <div class="z-outfit-card">
+                        <div class="z-outfit-header">
+                          <span class="z-outfit-badge"><i class="bi bi-stars me-1"></i> LOOKBOOK OUTFIT</span>
+                          <strong class="z-outfit-title">{{ card.title }}</strong>
+                          <span v-if="card.occasion" class="z-outfit-sub">{{ card.occasion }}</span>
+                        </div>
+                        <div class="z-outfit-items-grid">
+                          <div v-for="(item, iIdx) in card.items" :key="iIdx" class="z-outfit-mini-item" @click="goToProduct(item.id)">
+                            <img :src="item.image || '/images/products/shirt1.jpg'" :alt="item.name" @error="onCardImgError" />
+                            <div class="z-outfit-mini-info">
+                              <span class="z-outfit-mini-name">{{ item.name }}</span>
+                              <span class="z-outfit-mini-price">{{ formatPrice(item.price) }}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="z-outfit-footer">
+                          <div class="d-flex align-items-center justify-content-between">
+                            <div class="z-outfit-pricing">
+                              <span class="z-outfit-combo-price">{{ formatPrice(card.comboPrice || card.totalPrice) }}</span>
+                              <span class="z-outfit-old-price ms-1" v-if="card.totalPrice && card.totalPrice > card.comboPrice">{{ formatPrice(card.totalPrice) }}</span>
+                            </div>
+                            <span class="badge bg-danger-subtle text-danger font-monospace" v-if="card.discountPercent">-{{ card.discountPercent }}% Set</span>
+                          </div>
+                          <button type="button" class="btn btn-sm btn-danger w-100 mt-2 z-outfit-add-btn" @click="addOutfitToCart(card)">
+                            <i class="bi bi-bag-check-fill me-1"></i> Thêm cả Set vào Giỏ hàng
+                          </button>
+                        </div>
+                      </div>
+                    </template>
+
                     <!-- THẺ SẢN PHẨM -->
-                    <template v-if="card.type === 'product'">
+                    <template v-else-if="card.type === 'product'">
                       <div class="z-card-img-wrapper" @click="goToProduct(card.id)">
                         <img :src="card.image || '/images/products/shirt1.jpg'" :alt="card.name" @error="onCardImgError" />
                         <span v-if="card.category" class="z-card-cat-badge">{{ card.category }}</span>
@@ -171,13 +241,39 @@
           </button>
         </div>
 
+        <!-- Input ẩn cho Visual Search Tải Ảnh -->
+        <input type="file" ref="fileInputRef" accept="image/*" class="d-none" @change="handleImageUpload" />
+
         <!-- Form nhập tin nhắn -->
         <form v-if="!humanMode || supportStatus !== 'CLOSED'" class="z-ai-form" @submit.prevent="send">
+          <!-- Nút Tải ảnh / Visual Search -->
+          <button
+            type="button"
+            class="z-ai-media-btn"
+            title="Tìm sản phẩm bằng hình ảnh (AI Visual Search)"
+            :disabled="loading"
+            @click="triggerImageUpload"
+          >
+            <i class="bi bi-camera-fill"></i>
+          </button>
+
+          <!-- Nút Nói / Voice Input -->
+          <button
+            type="button"
+            class="z-ai-mic-btn"
+            :class="{ listening: isListening }"
+            :title="isListening ? 'Đang lắng nghe...' : 'Nói với AI bằng giọng nói'"
+            :disabled="loading"
+            @click="toggleVoiceInput"
+          >
+            <i class="bi" :class="isListening ? 'bi-mic-fill text-danger' : 'bi-mic'"></i>
+          </button>
+
           <input
             v-model="draft"
             ref="inputRef"
             class="z-ai-input"
-            :placeholder="humanMode ? 'Nhắn cho nhân viên đang trực...' : (activeTab === 'stylist' ? 'Nhập dịp đi chơi, chiều cao, cân nặng...' : 'Hỏi về mẫu váy, size, voucher...')"
+            :placeholder="humanMode ? 'Nhắn cho nhân viên đang trực...' : (activeTab === 'stylist' ? 'Nhập dịp đi chơi, phong cách...' : (activeTab === 'size' ? 'Hỏi chi tiết về size vóc dáng...' : 'Hỏi về mẫu áo, váy, size, voucher...'))"
             :disabled="loading"
             maxlength="1000"
           />
@@ -206,10 +302,17 @@ const open = ref(false)
 const loading = ref(false)
 const handoffLoading = ref(false)
 const soundEnabled = ref(true)
-const activeTab = ref('assistant') // 'assistant' | 'stylist'
+const activeTab = ref('assistant') // 'assistant' | 'stylist' | 'size'
 const draft = ref('')
 const bodyRef = ref(null)
 const inputRef = ref(null)
+const fileInputRef = ref(null)
+
+const sizeHeight = ref(160)
+const sizeWeight = ref(50)
+
+const isListening = ref(false)
+let recognition = null
 
 const humanMode = ref(false)
 const supportToken = ref('')
@@ -218,55 +321,202 @@ const supportEmployee = ref('')
 const humanMessages = ref([])
 let supportPoll = null
 
-// Danh sách gợi ý theo tab Assistant
-const assistantChips = [
-  { label: '💃 Váy đi tiệc', icon: 'bi-stars', question: 'Gợi ý cho tôi các mẫu váy dự tiệc sang trọng và tôn dáng nhất.' },
-  { label: '💼 Đồ công sở', icon: 'bi-briefcase', question: 'Tìm giúp tôi các mẫu áo sơ mi và quần tây công sở thanh lịch.' },
-  { label: '📏 Tư vấn size', icon: 'bi-rulers', question: 'Tôi cao 1m62 nặng 48kg thì mặc size váy nào vừa đẹp?' },
-  { label: '🎟️ Mã giảm giá', icon: 'bi-ticket-perforated', question: 'Hiện tại cửa hàng có những voucher giảm giá nào đang áp dụng?' },
-  { label: '📦 Trạng thái đơn', icon: 'bi-box-seam', question: 'Tôi muốn tra cứu thông tin đơn hàng vừa đặt.' }
-]
-
-// Danh sách gợi ý theo tab AI Stylist
-const stylistChips = [
-  { label: '✨ Phối set đi tiệc tối', icon: 'bi-gem', question: 'Hãy phối cho tôi một set đồ đi tiệc đêm sang trọng kèm phụ kiện.' },
-  { label: '☕ Phối set hẹn hò cafe', icon: 'bi-cup-hot', question: 'Gợi ý phối đồ nhẹ nhàng nữ tính cho buổi hẹn hò cuối tuần.' },
-  { label: '🏖️ Phối set du lịch', icon: 'bi-sun', question: 'Phối giúp tôi set đồ đũi thoáng mát năng động đi du lịch.' },
-  { label: '💰 Set đồ dưới 1.5tr', icon: 'bi-wallet2', question: 'Gợi ý một set outfit hoàn chỉnh giá dưới 1.500.000đ.' }
-]
-
-const currentChips = computed(() => activeTab.value === 'stylist' ? stylistChips : assistantChips)
+const hasAskedAi = ref(false)
 
 const messages = ref([
   {
+    id: 1,
     role: 'assistant',
-    content: '✨ **Xin chào! Mình là Zestia AI Fashion Assistant & Stylist.**\n\nMình có thể giúp bạn chọn mẫu váy tôn dáng, tư vấn chuẩn size số đo, gợi ý phối đồ outfit theo dịp hoặc áp dụng voucher ưu đãi hot nhất hôm nay!',
+    content: '✨ **Xin chào! Mình là Zestia AI Fashion Assistant & Stylist 2.0.**\n\nMình có thể giúp bạn chọn trang phục tôn dáng, phối đồ Outfit trọn bộ theo dịp, tìm đồ qua hình ảnh, hoặc tính Size chuẩn vóc dáng!',
     cards: []
   }
 ])
 
 const displayMessages = computed(() => humanMode.value ? humanMessages.value : messages.value)
-const hasAskedAi = computed(() => messages.value.some(m => m.role === 'user'))
+
+const assistantChips = [
+  { label: '🔥 Mẫu hot nhất', question: 'Mẫu sản phẩm nào đang bán chạy nhất?', icon: 'bi-fire' },
+  { label: '🎟️ Mã giảm giá', question: 'Có mã giảm giá hoặc voucher nào hôm nay?', icon: 'bi-ticket-perforated' },
+  { label: '📐 Tư vấn chọn size', question: 'Tư vấn cho mình cách chọn size chuẩn', icon: 'bi-ruler' },
+  { label: '🚚 Tra cứu đơn hàng', question: 'Cho mình tra cứu trạng thái đơn hàng', icon: 'bi-truck' }
+]
+
+const stylistChips = [
+  { label: '🥂 Outfit đi tiệc', question: 'Gợi ý cho mình set đồ đi tiệc sang trọng tôn dáng', icon: 'bi-balloon-heart' },
+  { label: '💼 Set đồ công sở', question: 'Tư vấn outfit công sở thanh lịch lịch sự', icon: 'bi-briefcase' },
+  { label: '☕ Cafe dạo phố', question: 'Gợi ý set đồ dạo phố nhẹ nhàng cá tính', icon: 'bi-cup-hot' },
+  { label: '🏖️ Outfit du lịch', question: 'Gợi ý set đồ du lịch thoáng mát trẻ trung', icon: 'bi-sun' }
+]
+
+const sizeChips = [
+  { label: '✨ Cao 1m55 - 45kg', question: 'Mình cao 1m55 nặng 45kg mặc size gì vừa vặn?', icon: 'bi-person' },
+  { label: '✨ Cao 1m62 - 52kg', question: 'Mình cao 1m62 nặng 52kg mặc size gì?', icon: 'bi-person' },
+  { label: '✨ Cao 1m68 - 60kg', question: 'Mình cao 1m68 nặng 60kg chọn size nào chuẩn?', icon: 'bi-person' }
+]
+
+const currentChips = computed(() => {
+  if (activeTab.value === 'stylist') return stylistChips
+  if (activeTab.value === 'size') return sizeChips
+  return assistantChips
+})
+
+const calculatedSizeInfo = computed(() => {
+  const h = sizeHeight.value
+  const w = sizeWeight.value
+  let size = 'M'
+  let score = 96
+  if (h < 155 && w < 48) { size = 'S'; score = 98; }
+  else if (h >= 155 && h <= 165 && w >= 48 && w <= 56) { size = 'M'; score = 97; }
+  else if (w > 56 && w <= 65) { size = 'L'; score = 95; }
+  else if (w > 65) { size = 'XL'; score = 92; }
+  return { size, score }
+})
+
 const supportStatusText = computed(() => {
+  if (supportStatus.value === 'PENDING') return 'Đang chờ nhân viên phản hồi...'
+  if (supportStatus.value === 'CLAIMED') return `Đang trò chuyện với NV ${supportEmployee.value || ''}`
   if (supportStatus.value === 'CLOSED') return 'Phiên hỗ trợ đã kết thúc'
-  if (supportStatus.value === 'WAITING') return 'Đã vào hàng chờ hỗ trợ'
-  if (supportEmployee.value) return `${supportEmployee.value} đang trực tuyến`
-  return 'Đang chờ nhân viên hỗ trợ'
+  return 'Hỗ trợ trực tiếp'
 })
 
-onMounted(async () => {
-  const savedToken = localStorage.getItem('zestia_support_chat_token') || ''
-  if (!savedToken) return
+function playChimeSound() {
+  if (!soundEnabled.value) return
   try {
-    const snapshot = await api().getCustomerSupportChat(savedToken)
-    applySupportSnapshot(snapshot)
-    if (supportStatus.value !== 'CLOSED') startSupportPoll()
-  } catch (_) {
-    localStorage.removeItem('zestia_support_chat_token')
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime) // D5
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15) // A5
+    gain.gain.setValueAtTime(0.08, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.2)
+  } catch (e) {
+    // Ignore audio play errors
   }
-})
+}
 
-onBeforeUnmount(stopSupportPoll)
+function speakText(text) {
+  if (!('speechSynthesis' in window)) {
+    showToast('Trình duyệt không hỗ trợ phát âm thanh văn bản.')
+    return
+  }
+  window.speechSynthesis.cancel()
+  const clean = text.replace(/[*_#`~]/g, '')
+  const utterance = new SpeechSynthesisUtterance(clean)
+  utterance.lang = 'vi-VN'
+  utterance.rate = 1.0
+  window.speechSynthesis.speak(utterance)
+}
+
+function toggleVoiceInput() {
+  if (isListening.value) {
+    if (recognition) recognition.stop()
+    isListening.value = false
+    return
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    showToast('Trình duyệt không hỗ trợ nhận diện giọng nói Voice Input.')
+    return
+  }
+
+  recognition = new SpeechRecognition()
+  recognition.lang = 'vi-VN'
+  recognition.continuous = false
+  recognition.interimResults = false
+
+  recognition.onstart = () => {
+    isListening.value = true
+    showToast('Đang lắng nghe giọng nói...')
+  }
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    if (transcript) {
+      draft.value = transcript
+    }
+    isListening.value = false
+  }
+
+  recognition.onerror = () => {
+    isListening.value = false
+    showToast('Không nghe rõ, vui lòng thử lại!')
+  }
+
+  recognition.onend = () => {
+    isListening.value = false
+  }
+
+  recognition.start()
+}
+
+function triggerImageUpload() {
+  fileInputRef.value?.click()
+}
+
+async function handleImageUpload(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  e.target.value = ''
+
+  if (!file.type.startsWith('image/')) {
+    showToast('Vui lòng chọn tệp hình ảnh valid.')
+    return
+  }
+
+  messages.value.push({
+    id: Date.now(),
+    role: 'user',
+    content: '📷 [Đã gửi 1 hình ảnh để AI phân tích trang phục]'
+  })
+  scrollToBottom()
+  loading.value = true
+
+  try {
+    const res = await api().visualSearch(file)
+    playChimeSound()
+    const found = res.data || []
+    let reply = `🔍 **AI Visual Search đã phân tích hình ảnh!**\n\nMình tìm thấy ${found.length} mẫu trang phục phong cách tương tự tại Zestia:`
+    if (!found.length) {
+      reply = '🔍 **AI Visual Search**: Không tìm thấy sản phẩm hoàn toàn giống hệt, nhưng đây là các mẫu gợi ý thời trang mới nhất:'
+    }
+    const cards = (found.length ? found : MOCK_PRODUCTS.slice(0, 3)).map(p => ({
+      type: 'product',
+      id: p.id,
+      name: p.tenSanPham || p.tenVay || p.name,
+      price: p.giaBan || p.price,
+      image: p.anhUrl || p.image,
+      category: p.loaiSanPham || p.category || 'Thời trang'
+    }))
+
+    messages.value.push({
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: reply,
+      cards
+    })
+  } catch (err) {
+    messages.value.push({
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: 'Không thể phân tích ảnh lúc này. Bạn có thể tả bằng lời mẫu áo/váy bạn đang muốn tìm nhé!',
+      cards: []
+    })
+  } finally {
+    loading.value = false
+    scrollToBottom()
+  }
+}
+
+function askAiForSize() {
+  const q = `Mình cao ${sizeHeight.value}cm nặng ${sizeWeight.value}kg. Cho mình xin tư vấn chọn size và sản phẩm vừa vặn nhé!`
+  sendSuggestedQuestion(q)
+}
 
 function toggleOpen() {
   open.value = !open.value
@@ -276,252 +526,148 @@ function toggleOpen() {
   }
 }
 
-function clearHistory() {
-  messages.value = [
-    {
-      role: 'assistant',
-      content: '🧹 Đã làm sạch lịch sử hội thoại. Mình có thể hỗ trợ gì khác cho bạn?',
-      cards: []
+function scrollToBottom() {
+  nextTick(() => {
+    if (bodyRef.value) {
+      bodyRef.value.scrollTop = bodyRef.value.scrollHeight
     }
-  ]
-  showToast('Đã làm sạch lịch sử hội thoại')
-}
-
-// Âm thanh phản hồi Web Audio Synthesizer
-function playChimeSound() {
-  if (!soundEnabled.value) return
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext
-    if (!AudioCtx) return
-    const ctx = new AudioCtx()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime) // D5
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15) // A5
-    gain.gain.setValueAtTime(0.08, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.start()
-    osc.stop(ctx.currentTime + 0.3)
-  } catch (_) {}
-}
-
-function formatMarkdown(text) {
-  if (!text) return ''
-  let html = text
-    // Code blocks
-    .replace(/```([\s\S]*?)```/g, '<pre class="z-ai-code"><code>$1</code></pre>')
-    // Inline code
-    .replace(/`([^`]+)`/g, '<code class="z-ai-inline-code">$1</code>')
-    // Bold
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    // Italic
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    // Bullet lists (• or - or *)
-    .replace(/^[•\-\*]\s+(.+)$/gm, '<li>$1</li>')
-    // Numbered lists
-    .replace(/^(\d+)\.\s+(.+)$/gm, '<li><span class="z-list-num">$1.</span> $2</li>')
-    // Newlines to <br>, but not inside <pre>
-    .replace(/\n/g, '<br>')
-  // Wrap consecutive <li> items in <ul>
-  html = html.replace(/((?:<li>.*?<\/li><br>?)+)/g, (match) => {
-    const items = match.replace(/<br>/g, '')
-    return `<ul class="z-ai-list">${items}</ul>`
   })
-  return html
-}
-
-function copyText(text) {
-  const plainText = text.replace(/<[^>]*>/g, '')
-  navigator.clipboard.writeText(plainText)
-  showToast('Đã sao chép nội dung!')
 }
 
 function onCardImgError(e) {
-  e.target.src = '/images/products/dress1.jpg'
+  e.target.src = '/images/products/shirt1.jpg'
 }
 
 function goToProduct(id) {
+  if (!id) return
   open.value = false
-  router.push('/product/' + id)
+  router.push(`/products/${id}`)
 }
 
 function quickAddToCart(card) {
   addItem({
     id: card.id,
     name: card.name,
-    price: Number(card.price || 0),
-    image: card.image || '/images/products/dress1.jpg',
-    qty: 1,
-    selectedSize: 'M',
-    selectedColor: 'Tiêu chuẩn'
+    price: card.price,
+    image: card.image
   })
   showToast(`Đã thêm "${card.name}" vào giỏ hàng!`)
 }
 
+function addOutfitToCart(outfitCard) {
+  if (!outfitCard || !outfitCard.items || !outfitCard.items.length) return
+  outfitCard.items.forEach(item => {
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image
+    })
+  })
+  showToast(`🎉 Đã thêm trọn bộ Set Outfit (${outfitCard.items.length} món) vào giỏ hàng!`)
+}
+
 function applyVoucherCode(code) {
+  if (!code) return
   navigator.clipboard.writeText(code)
-  showToast(`Đã sao chép mã voucher "${code}"!`)
+  showToast(`Đã sao chép mã "${code}"! Nhập mã ở bước thanh toán nhé.`)
+}
+
+function copyText(text) {
+  if (!text) return
+  navigator.clipboard.writeText(text.replace(/[*_#`~]/g, ''))
+  showToast('Đã sao chép câu trả lời AI!')
+}
+
+function clearHistory() {
+  messages.value = [
+    {
+      id: Date.now(),
+      role: 'assistant',
+      content: '✨ **Lịch sử chat đã được làm mới.**\n\nMình có thể giúp gì cho bạn hôm nay?',
+      cards: []
+    }
+  ]
+  hasAskedAi.value = false
+}
+
+function sendSuggestedQuestion(questionText) {
+  draft.value = questionText
+  send()
 }
 
 async function send() {
   const text = draft.value.trim()
-  if (text.length < 2 || loading.value) return
-  if (humanMode.value) return sendHumanMessage(text)
+  if (!text || loading.value) return
 
-  messages.value.push({ role: 'user', content: text, cards: [] })
   draft.value = ''
+  hasAskedAi.value = true
+
+  if (humanMode.value) {
+    await sendHumanMessage(text)
+    return
+  }
+
+  messages.value.push({
+    id: Date.now(),
+    role: 'user',
+    content: text
+  })
+  scrollToBottom()
   loading.value = true
-  await scrollToBottom()
 
   try {
-    const history = messages.value
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .slice(-8)
-      .map(m => ({ role: m.role, content: m.content }))
+    const historyPayload = messages.value.slice(-6).map(m => ({
+      role: m.role,
+      content: m.content
+    }))
 
     const res = await api().sendAiChat({
       message: text,
-      history,
-      mode: activeTab.value // 'assistant' | 'stylist'
-    }).catch(() => null)
+      history: historyPayload,
+      mode: activeTab.value
+    })
 
-    let replyText = res?.reply
-    let cards = res?.cards || []
-
-    // Nếu offline hoặc không có reply từ API -> Dùng client smart fallback AI engine
-    if (!replyText) {
-      const localRes = generateClientAiResponse(text)
-      replyText = localRes.reply
-      cards = localRes.cards || []
-    }
-
-    // Thêm tin nhắn với streaming reveal effect
-    const newMsg = { role: 'assistant', content: '', cards: [] }
-    messages.value.push(newMsg)
     playChimeSound()
-    loading.value = false
-    await scrollToBottom()
-    // Typewriter-like reveal
-    await streamText(newMsg, replyText)
-    newMsg.cards = cards
-    await scrollToBottom()
-  } catch (e) {
-    const localRes = generateClientAiResponse(text)
-    const newMsg = { role: 'assistant', content: '', cards: [] }
-    messages.value.push(newMsg)
-    playChimeSound()
-    loading.value = false
-    await streamText(newMsg, localRes.reply)
-    newMsg.cards = localRes.cards || []
-    await scrollToBottom()
+
+    messages.value.push({
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: res.reply || 'Zestia AI đã ghi nhận.',
+      cards: res.cards || []
+    })
+  } catch (err) {
+    messages.value.push({
+      id: Date.now() + 1,
+      role: 'assistant',
+      content: 'Rất tiếc, AI tạm thời không phản hồi. Bạn có thể nhấn nút "Gặp NV CSKH" bên dưới để trò chuyện trực tiếp nhé!',
+      cards: []
+    })
   } finally {
     loading.value = false
-    await scrollToBottom()
-  }
-}
-
-async function sendSuggestedQuestion(question) {
-  if (humanMode.value || loading.value) return
-  draft.value = question
-  await send()
-}
-
-// BỘ ĐỘNG CƠ PHẢN HỒI THÔNG MINH CLIENT ENGINE (KHI OFFLINE / PREVIEW)
-function generateClientAiResponse(query) {
-  const q = query.toLowerCase()
-  
-  if (q.includes('dự tiệc') || q.includes('đi tiệc') || q.includes('dạ hội')) {
-    const dresses = MOCK_PRODUCTS.filter(p => p.category?.includes('Váy') || p.name?.includes('Đầm')).slice(0, 3)
-    const cards = dresses.map(p => ({
-      type: 'product',
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      image: p.image,
-      category: p.category,
-      stock: 12
-    }))
-    return {
-      reply: '👗 **GỢI Ý VÁY DỰ TIỆC SANG TRỌNG & TÔN DÁNG**\n\nDưới đây là 3 mẫu váy dạ hội & dự tiệc thiết kế cao cấp nhất tại Zestia dành cho bạn:',
-      cards: cards
-    }
-  }
-
-  if (q.includes('công sở') || q.includes('đi làm') || q.includes('sơ mi')) {
-    const officeItems = MOCK_PRODUCTS.filter(p => p.category?.includes('Áo') || p.category?.includes('Quần') || p.category?.includes('Công sở')).slice(0, 3)
-    const cards = officeItems.map(p => ({
-      type: 'product',
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      image: p.image,
-      category: p.category,
-      stock: 15
-    }))
-    return {
-      reply: '💼 **OUTFIT CÔNG SỞ THANH LỊCH & CHUYÊN NGHIỆP**\n\nZestia đề xuất set áo sơ mi lụa mềm kết hợp quần tây phom đứng chuẩn Hàn Quốc:',
-      cards: cards
-    }
-  }
-
-  if (q.includes('voucher') || q.includes('mã') || q.includes('giảm giá') || q.includes('khuyến mãi')) {
-    return {
-      reply: '🎟️ **DANH SÁCH VOUCHER HOT ĐANG ÁP DỤNG TẠI ZESTIA**\n\nBấm nút **"Áp dụng"** để sao chép mã và dùng ngay khi thanh toán nhé:',
-      cards: [
-        { type: 'voucher', code: 'ZESTIA10', discount: 100000, minOrder: 500000, description: 'Giảm 100.000đ cho đơn hàng từ 500.000đ' },
-        { type: 'voucher', code: 'VIPMEM20', discount: 200000, minOrder: 1000000, description: 'Giảm 200.000đ cho đơn hàng từ 1.000.000đ' },
-        { type: 'voucher', code: 'FREESHIP', discount: 30000, minOrder: 300000, description: 'Miễn phí vận chuyển toàn quốc' }
-      ]
-    }
-  }
-
-  if (q.includes('size') || q.includes('số đo') || q.includes('cân nặng') || q.includes('kg') || q.includes('m6')) {
-    return {
-      reply: '📏 **BẢNG TƯ VẤN SIZE CHUẨN ZESTIA**\n\n' +
-             '• **Size S**: 40kg - 48kg | Ngực 82-85cm, Eo 62-66cm\n' +
-             '• **Size M**: 49kg - 55kg | Ngực 86-90cm, Eo 67-71cm\n' +
-             '• **Size L**: 56kg - 62kg | Ngực 91-95cm, Eo 72-76cm\n\n' +
-             '💡 *Mẹo nhỏ: Nếu bạn muốn mặc ôm dáng vừa vặn hãy chọn đúng size, nếu muốn thoải mái nhẹ nhàng hãy chọn nhích 1 size nhé!*',
-      cards: []
-    }
-  }
-
-  if (q.includes('đơn') || q.includes('trạng thái') || q.includes('tra cứu')) {
-    return {
-      reply: '📦 **TRA CỨU ĐƠN HÀNG**\n\n' +
-             'Bạn có thể tra cứu nhanh trạng thái đơn hàng của mình bằng cách vào mục **"Đơn hàng của tôi"** ở trang cá nhân hoặc nhập mã đơn hàng (ví dụ: `HD001234`) kèm số điện thoại mua hàng tại đây!',
-      cards: []
-    }
-  }
-
-  // Mặc định gợi ý sản phẩm bán chạy
-  const featured = MOCK_PRODUCTS.slice(0, 3)
-  return {
-    reply: '✨ **SẢN PHẨM NỔI BẬT ĐƯỢC YÊU THÍCH NHẤT**\n\nXem ngay các thiết kế mới cập bến tuần này tại Zestia:',
-    cards: featured.map(p => ({ type: 'product', id: p.id, name: p.name, price: p.price, image: p.image, category: p.category, stock: 20 }))
+    scrollToBottom()
   }
 }
 
 async function requestEmployee() {
-  if (handoffLoading.value) return
-  const lastQuestion = [...messages.value].reverse().find(m => m.role === 'user')?.content
-  if (!lastQuestion) return
   handoffLoading.value = true
   try {
-    const snapshot = await api().requestHumanSupport(lastQuestion)
-    applySupportSnapshot(snapshot)
-    localStorage.setItem('zestia_support_chat_token', supportToken.value)
-    startSupportPoll()
-    await scrollToBottom()
-  } catch (error) {
-    messages.value.push({
-      role: 'assistant',
-      content: error.error || 'Hiện chưa thể kết nối với nhân viên. Bạn vui lòng thử lại sau.',
-      cards: []
-    })
+    const firstMsg = messages.value.find(m => m.role === 'user')?.content || 'Cần hỗ trợ tư vấn trực tiếp'
+    const res = await api().requestHumanSupport(firstMsg)
+    supportToken.value = res.token
+    supportStatus.value = res.status
+    supportEmployee.value = res.employeeName || ''
+    humanMessages.value = (res.messages || []).map(m => ({
+      id: m.id,
+      role: m.senderRole === 'CUSTOMER' ? 'user' : 'assistant',
+      senderName: m.senderName,
+      content: m.content
+    }))
+    humanMode.value = true
+    startSupportPolling()
+    showToast('Đã tạo kết nối với nhân viên CSKH!')
+  } catch (err) {
+    showToast(err.error || 'Không thể kết nối nhân viên lúc này.')
   } finally {
     handoffLoading.value = false
   }
@@ -529,121 +675,105 @@ async function requestEmployee() {
 
 async function sendHumanMessage(text) {
   if (!supportToken.value) return
-  loading.value = true
-  draft.value = ''
   try {
-    applySupportSnapshot(await api().sendCustomerSupportMessage(supportToken.value, text))
-  } catch (error) {
-    humanMessages.value.push({ role: 'assistant', content: error.error || 'Không thể gửi tin nhắn lúc này.', cards: [] })
-  } finally {
-    loading.value = false
-    await scrollToBottom()
+    const res = await api().sendCustomerSupportMessage(supportToken.value, text)
+    humanMessages.value = (res.messages || []).map(m => ({
+      id: m.id,
+      role: m.senderRole === 'CUSTOMER' ? 'user' : 'assistant',
+      senderName: m.senderName,
+      content: m.content
+    }))
+    scrollToBottom()
+  } catch (err) {
+    showToast('Gửi tin nhắn thất bại.')
   }
 }
 
-function applySupportSnapshot(snapshot) {
-  if (!snapshot?.token) return
-  humanMode.value = true
-  supportToken.value = snapshot.token
-  supportStatus.value = snapshot.status || 'WAITING'
-  supportEmployee.value = snapshot.employeeName || ''
-  humanMessages.value = (snapshot.messages || []).map(m => ({
-    id: m.id,
-    role: m.senderType === 'CUSTOMER' ? 'user' : m.senderType === 'SYSTEM' ? 'system' : 'assistant',
-    senderName: m.senderName,
-    content: m.content
-  }))
-}
-
-function startSupportPoll() {
-  stopSupportPoll()
-  supportPoll = window.setInterval(async () => {
-    if (!supportToken.value || supportStatus.value === 'CLOSED') {
-      stopSupportPoll() // Tự dừng khi phiên đóng
-      return
-    }
+function startSupportPolling() {
+  stopSupportPolling()
+  supportPoll = setInterval(async () => {
+    if (!supportToken.value || !humanMode.value) return
     try {
-      applySupportSnapshot(await api().getCustomerSupportChat(supportToken.value))
-      await scrollToBottom()
-    } catch (_) {}
+      const data = await api().getCustomerSupportChat(supportToken.value)
+      supportStatus.value = data.status
+      supportEmployee.value = data.employeeName || ''
+      humanMessages.value = (data.messages || []).map(m => ({
+        id: m.id,
+        role: m.senderRole === 'CUSTOMER' ? 'user' : 'assistant',
+        senderName: m.senderName,
+        content: m.content
+      }))
+    } catch {
+      // Ignore poll error
+    }
   }, 4000)
 }
 
-function stopSupportPoll() {
-  if (supportPoll) window.clearInterval(supportPoll)
-  supportPoll = null
+function stopSupportPolling() {
+  if (supportPoll) {
+    clearInterval(supportPoll)
+    supportPoll = null
+  }
 }
 
 function backToAi() {
-  stopSupportPoll()
   humanMode.value = false
   supportToken.value = ''
-  supportStatus.value = ''
-  supportEmployee.value = ''
-  humanMessages.value = []
-  localStorage.removeItem('zestia_support_chat_token')
+  stopSupportPolling()
 }
 
-// Streaming typewriter reveal – hi\u1ec7n text t\u1eebng chunk nh\u1ecf
-async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 18) {
-  if (!fullText) return
-  msgObj.content = ''
-  let i = 0
-  while (i < fullText.length) {
-    msgObj.content += fullText.slice(i, i + chunkSize)
-    i += chunkSize
-    await new Promise(resolve => setTimeout(resolve, delayMs))
-    await scrollToBottom()
-  }
-  msgObj.content = fullText // ensure exact final
+function formatMarkdown(text) {
+  if (!text) return ''
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
+  html = html.replace(/`(.*?)`/g, '<code>$1</code>')
+  html = html.replace(/\n/g, '<br>')
+  return html
 }
 
-async function scrollToBottom() {
-  await nextTick()
-  if (bodyRef.value) bodyRef.value.scrollTop = bodyRef.value.scrollHeight
-}
+onBeforeUnmount(() => {
+  stopSupportPolling()
+  if (recognition) recognition.stop()
+})
 </script>
 
 <style scoped>
 .z-customer-ai {
   position: fixed;
-  right: 22px;
   bottom: 24px;
-  z-index: 1200;
-  font-family: var(--z-font-body);
+  right: 24px;
+  z-index: 9999;
+  font-family: var(--z-font-base, system-ui, -apple-system, sans-serif);
 }
 
-/* NÚT TOGGLE NỔI BẤM MỞ AI */
 .z-ai-toggle-btn {
   position: relative;
-  height: 52px;
-  padding: 0 20px 0 16px;
-  border: none;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #1A1A1A 0%, #333333 50%, #D4564E 100%);
-  color: #fff;
   display: flex;
   align-items: center;
-  gap: 10px;
-  box-shadow: 0 12px 32px rgba(212, 86, 78, 0.35);
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 32px;
+  background: linear-gradient(135deg, #1A1A1A 0%, #333333 100%);
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .z-ai-toggle-btn:hover {
-  transform: translateY(-4px) scale(1.03);
-  box-shadow: 0 16px 40px rgba(212, 86, 78, 0.45);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
 }
 
 .z-ai-icon-stars {
   font-size: 20px;
   color: #FFD700;
-  animation: z-spin-slow 6s linear infinite;
-}
-
-@keyframes z-spin-slow {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 .z-ai-badge-text {
@@ -666,15 +796,15 @@ async function scrollToBottom() {
   100% { transform: scale(0.95); opacity: 0; }
 }
 
-/* KHUNG CHAT AI PANEL */
+/* KHUNG CHAT AI PANEL GLASSMORPHISM */
 .z-ai-window {
-  width: min(390px, calc(100vw - 28px));
-  height: min(600px, calc(100vh - 100px));
+  width: min(420px, calc(100vw - 28px));
+  height: min(640px, calc(100vh - 100px));
   background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 20px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -683,7 +813,7 @@ async function scrollToBottom() {
 /* HEADER */
 .z-ai-header {
   padding: 14px 18px;
-  background: linear-gradient(135deg, #1A1A1A 0%, #2A2A2A 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
   color: #fff;
   display: flex;
   align-items: center;
@@ -759,7 +889,47 @@ async function scrollToBottom() {
 .z-ai-tab.active {
   background: #fff;
   color: var(--z-dark);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* SIZE CALCULATOR PANEL */
+.z-size-calculator-panel {
+  background: #FFF9F9;
+  padding: 12px 16px;
+  border-bottom: 1px solid #FFEBEB;
+}
+.z-size-calc-header {
+  font-size: 12px;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+.z-calc-label {
+  font-size: 11px;
+  color: #555;
+}
+.custom-range {
+  height: 4px;
+}
+.z-size-result-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #FFD6D6;
+}
+.z-size-badge-val {
+  font-size: 12px;
+}
+.z-size-tag {
+  background: #D4564E;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
 }
 
 /* CHAT BODY */
@@ -775,7 +945,7 @@ async function scrollToBottom() {
 .z-ai-msg-group {
   display: flex;
   gap: 10px;
-  max-width: 92%;
+  max-width: 94%;
 }
 
 .z-ai-msg-group.user {
@@ -798,7 +968,7 @@ async function scrollToBottom() {
 
 .z-ai-msg-bubble {
   position: relative;
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-radius: 16px;
   font-size: 13px;
   line-height: 1.5;
@@ -806,27 +976,39 @@ async function scrollToBottom() {
 
 .z-ai-msg-group.assistant .z-ai-msg-bubble {
   background: #F4F4F6;
-  color: #1F2937;
+  color: #1A1A1A;
   border-top-left-radius: 4px;
 }
 
 .z-ai-msg-group.user .z-ai-msg-bubble {
-  background: var(--z-dark);
+  background: linear-gradient(135deg, #1A1A1A, #333333);
   color: #fff;
   border-top-right-radius: 4px;
 }
 
-.z-ai-copy-btn {
-  position: absolute;
-  bottom: 4px; right: 6px;
-  border: none; background: transparent;
-  font-size: 11px; color: #9CA3AF;
-  opacity: 0; transition: opacity 0.2s;
+.z-ai-msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
 }
-.z-ai-msg-bubble:hover .z-ai-copy-btn { opacity: 1; }
-.z-ai-copy-btn:hover { color: var(--z-accent); }
 
-/* CARDS STYLING */
+.z-ai-action-sub-btn {
+  border: none;
+  background: rgba(0,0,0,0.05);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 11px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.z-ai-action-sub-btn:hover { background: rgba(0,0,0,0.1); color: #000; }
+
+/* CARDS SCROLL */
 .z-ai-cards-container {
   margin-top: 10px;
   width: 100%;
@@ -835,24 +1017,97 @@ async function scrollToBottom() {
   display: flex;
   gap: 12px;
   overflow-x: auto;
-  padding-bottom: 8px;
-  scroll-snap-type: x mandatory;
+  padding-bottom: 6px;
 }
-.z-ai-card-item {
-  flex: 0 0 200px;
+
+/* THẺ OUTFIT SET LOOKBOOK */
+.z-outfit-card {
+  width: 280px;
+  flex-shrink: 0;
   background: #fff;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #EAEAEA;
+  border-radius: 14px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.z-outfit-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: #D4564E;
+  letter-spacing: 0.5px;
+}
+.z-outfit-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+.z-outfit-sub {
+  font-size: 11px;
+  color: #777;
+}
+.z-outfit-items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+}
+.z-outfit-mini-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #F9F9FB;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.z-outfit-mini-item img {
+  width: 36px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.z-outfit-mini-name {
+  font-size: 10px;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.z-outfit-mini-price {
+  font-size: 10px;
+  color: #D4564E;
+  font-weight: 700;
+}
+.z-outfit-combo-price {
+  font-size: 14px;
+  font-weight: 800;
+  color: #D4564E;
+}
+.z-outfit-old-price {
+  font-size: 11px;
+  text-decoration: line-through;
+  color: #999;
+}
+
+/* THẺ SẢN PHẨM SINGLE */
+.z-ai-card-item {
+  width: 170px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #EAEAEA;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  scroll-snap-align: start;
 }
+
 .z-card-img-wrapper {
-  height: 140px;
   position: relative;
+  aspect-ratio: 3/4;
   cursor: pointer;
   overflow: hidden;
-  background: #f9f9f9;
 }
 .z-card-img-wrapper img {
   width: 100%;
@@ -860,150 +1115,220 @@ async function scrollToBottom() {
   object-fit: cover;
   transition: transform 0.3s;
 }
-.z-card-img-wrapper:hover img { transform: scale(1.05); }
-.z-card-cat-badge {
-  position: absolute; top: 6px; left: 6px;
-  background: rgba(0,0,0,0.6); color: #fff;
-  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+.z-card-img-wrapper:hover img {
+  transform: scale(1.05);
 }
-.z-card-info { padding: 10px; }
+.z-card-cat-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.z-card-info {
+  padding: 8px 10px;
+}
 .z-card-name {
-  font-size: 12px; font-weight: 700; color: #111;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
-.z-card-price { font-size: 13px; font-weight: 700; color: var(--z-accent); }
-.z-card-stock { font-size: 10px; color: #6B7280; }
+.z-card-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #D4564E;
+}
+.z-card-stock {
+  font-size: 10px;
+  color: #888;
+}
 
-/* VOUCHER CARD STYLING */
+/* THẺ VOUCHER */
 .z-voucher-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  width: 220px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #FFF9F9, #FFEBEB);
+  border: 1px dashed #D4564E;
+  border-radius: 12px;
   padding: 10px 12px;
-  background: #FFF8F6;
-  border: 1px dashed var(--z-accent);
-  border-radius: 10px;
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.z-voucher-icon { font-size: 20px; color: var(--z-accent); }
-.z-voucher-details { flex: 1; }
-.z-voucher-code { font-size: 13px; font-weight: 800; color: var(--z-dark); }
-.z-voucher-desc { font-size: 10px; color: #666; margin-top: 2px; }
+.z-voucher-code {
+  font-size: 14px;
+  color: #D4564E;
+}
+.z-voucher-desc {
+  font-size: 11px;
+  color: #555;
+}
 .z-voucher-apply-btn {
-  border: none; background: var(--z-accent); color: #fff;
-  font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px;
-  cursor: pointer; transition: background 0.2s;
+  align-self: flex-end;
+  border: none;
+  background: #D4564E;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
 }
-.z-voucher-apply-btn:hover { background: #B8433C; }
 
 /* TYPING INDICATOR */
 .z-ai-typing-bubble {
-  display: flex; align-items: center; gap: 4px; padding: 10px 16px;
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
 }
 .z-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: #9CA3AF;
-  animation: z-bounce 1.4s infinite ease-in-out both;
+  width: 6px;
+  height: 6px;
+  background: #888;
+  border-radius: 50%;
+  animation: z-typing 1.4s infinite ease-in-out;
 }
-.z-dot:nth-child(1) { animation-delay: -0.32s; }
-.z-dot:nth-child(2) { animation-delay: -0.16s; }
-@keyframes z-bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+.z-dot:nth-child(1) { animation-delay: 0s; }
+.z-dot:nth-child(2) { animation-delay: 0.2s; }
+.z-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes z-typing {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
 }
 
 /* QUICK CHIPS */
 .z-ai-quick-section {
-  padding: 8px 12px;
+  padding: 6px 12px;
   background: #FAFAFA;
   border-top: 1px solid #F0F0F0;
 }
 .z-ai-chips-scroll {
-  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
 }
 .z-ai-chip-btn {
-  white-space: nowrap; border: 1px solid #E4E4E7; border-radius: 16px;
-  background: #fff; color: #3F3F46; font-size: 11px; font-weight: 600;
-  padding: 6px 12px; cursor: pointer; transition: all 0.2s;
-  display: flex; align-items: center; gap: 6px;
+  flex-shrink: 0;
+  border: 1px solid #E0E0E0;
+  background: #fff;
+  color: #444;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
 }
 .z-ai-chip-btn:hover {
-  background: var(--z-dark); color: #fff; border-color: var(--z-dark);
+  background: #1A1A1A;
+  color: #fff;
+  border-color: #1A1A1A;
 }
 
 /* HANDOFF BAR */
 .z-ai-handoff-bar {
-  padding: 8px 14px; background: #FFF7ED; border-top: 1px solid #FFEDD5;
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: 11px; color: #C2410C;
+  padding: 8px 14px;
+  background: #FFF5F5;
+  border-top: 1px solid #FFEBEB;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #666;
 }
 .z-handoff-btn {
-  border: none; background: #EA580C; color: #fff;
-  font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 6px;
+  border: none;
+  background: #1A1A1A;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
 /* FORM INPUT */
 .z-ai-form {
-  padding: 12px 14px;
+  padding: 10px 14px;
   background: #fff;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #EAEAEA;
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 6px;
 }
-.z-ai-input {
-  flex: 1; border: 1px solid #E5E7EB; border-radius: 20px;
-  padding: 8px 16px; font-size: 13px; outline: none; transition: border-color 0.2s;
+.z-ai-media-btn, .z-ai-mic-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: #F4F4F6;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
-.z-ai-input:focus { border-color: var(--z-dark); }
-.z-ai-send-btn {
-  width: 36px; height: 36px; border: none; border-radius: 50%;
-  background: var(--z-dark); color: #fff; font-size: 14px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background 0.2s;
+.z-ai-media-btn:hover, .z-ai-mic-btn:hover {
+  background: #EAEAEA;
+  color: #1A1A1A;
 }
-.z-ai-send-btn:disabled { background: #D1D5DB; cursor: not-allowed; }
-.z-ai-send-btn:not(:disabled):hover { background: var(--z-accent); }
+.z-ai-mic-btn.listening {
+  background: #FFEBEB;
+  animation: z-mic-pulse 1.2s infinite;
+}
+@keyframes z-mic-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
 
-/* ANIMATION SLIDE UP */
+.z-ai-input {
+  flex: 1;
+  border: 1px solid #E5E5E5;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.z-ai-input:focus {
+  border-color: #1A1A1A;
+}
+
+.z-ai-send-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1A1A1A, #333333);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+.z-ai-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* TRANSITIONS */
 .z-slide-up-enter-active, .z-slide-up-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 .z-slide-up-enter-from, .z-slide-up-leave-to {
-  opacity: 0; transform: translateY(20px) scale(0.95);
-}
-/* MARKDOWN ELEMENTS */
-.z-ai-list {
-  margin: 4px 0;
-  padding-left: 18px;
-  list-style: disc;
-}
-.z-ai-list li {
-  margin: 3px 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.z-list-num {
-  font-weight: 700;
-  color: var(--z-accent);
-}
-.z-ai-code {
-  background: #1e1e2e;
-  color: #cdd6f4;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  overflow-x: auto;
-  margin: 6px 0;
-  white-space: pre;
-}
-.z-ai-inline-code {
-  background: #F1F5F9;
-  color: #D4564E;
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 12px;
+  transform: translateY(20px);
+  opacity: 0;
 }
 </style>

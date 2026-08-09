@@ -599,10 +599,14 @@ public class HoaDonController {
                         ? ct.getSanPhamChiTiet().getKichThuoc().getTenKichThuoc() : null);
                 
                 if (ct.getSanPhamChiTiet().getSanPham() != null) {
+                    var sp = ct.getSanPhamChiTiet().getSanPham();
                     String variantImage = cleanText(ct.getSanPhamChiTiet().getAnhUrl());
-                    item.put("anhUrl", variantImage != null
+                    String img = variantImage != null
                             ? variantImage
-                            : firstImages.get(ct.getSanPhamChiTiet().getSanPham().getId()));
+                            : (firstImages.get(sp.getId()) != null
+                                    ? firstImages.get(sp.getId())
+                                    : SanPhamController.getFallbackImage(sp));
+                    item.put("anhUrl", img);
                 }
             }
             item.put("soLuong", ct.getSoLuong());

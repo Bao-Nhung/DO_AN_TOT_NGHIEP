@@ -755,19 +755,16 @@ public class AiChatService {
         if (acc != null && cards.size() < 3) cards.add(productCardSimple(acc));
         if (cards.isEmpty()) allActive.stream().limit(3).forEach(v -> cards.add(productCardSimple(v)));
 
+        Map<String, Object> outfitCard = buildOutfitCard("Set Outfit Zestia " + occasion, styleNote, allActive);
+        if (!outfitCard.isEmpty()) {
+            cards.add(0, outfitCard);
+        }
+
         return Map.of(
             "reply", String.format("✨ **GỢI Ý PHỐI ĐỒ – %s**\n\n%s\n\nDưới đây là set đồ Zestia Stylist đề xuất riêng cho bạn:", occasion, styleNote),
             "cards", cards, "configured", false
         );
     }
-
-    private List<Map<String, Object>> buildCardsForOpenAiReply(String message, String mode) {
-        String msg = message.toLowerCase().trim();
-        List<Map<String, Object>> cards = new ArrayList<>();
-
-        boolean wantsProducts = msg.contains("sản phẩm") || msg.contains("váy") || msg.contains("đầm") || msg.contains("áo") || msg.contains("quần")
-                || msg.contains("set") || msg.contains("outfit") || msg.contains("phối") || msg.contains("mặc");
-        boolean wantsVoucher = msg.contains("voucher") || msg.contains("mã giảm") || msg.contains("khuyến mãi");
 
         if (wantsVoucher) {
             giamGiaRepository.findAll().stream().filter(this::activeVoucher).limit(3).forEach(v ->
@@ -779,11 +776,48 @@ public class AiChatService {
                     "description", safe(v.getTenGiamGia())
                 )))
             );
+        } else if ("stylist".equals(mode) || msg.contains("set") || msg.contains("outfit") || msg.contains("phối")) {
+            List<SanPham> products = sanPhamRepository.findActiveForAi(PageRequest.of(0, 20));
+            Map<String, Object> outfit = buildOutfitCard("Set Lookbook Phối Đồ Cao Cấp Zestia", "Xu hướng thời trang 2026", products);
+            if (!outfit.isEmpty()) cards.add(outfit);
         } else if (wantsProducts) {
             List<SanPham> products = sanPhamRepository.findActiveForAi(PageRequest.of(0, 20));
             products.stream().limit(3).forEach(v -> cards.add(productCardSimple(v)));
         }
         return cards;
+    }
+
+    private Map<String, Object> buildOutfitCard(String title, String occasion, List<SanPham> products) {
+        if (products == null || products.isEmpty()) return Map.of();
+        SanPham top = products.stream().filter(p -> p.getMaSanPham() != null && (p.getMaSanPham().startsWith("ASM") || p.getMaSanPham().startsWith("AKH"))).findFirst().orElse(null);
+        SanPham bottom = products.stream().filter(p -> p.getMaSanPham() != null && (p.getMaSanPham().startsWith("QJN") || p.getMaSanPham().startsWith("QTY"))).findFirst().orElse(null);
+        SanPham dress = products.stream().filter(p -> p.getMaSanPham() != null && (p.getMaSanPham().startsWith("VDH") || p.getMaSanPham().startsWith("DTP"))).findFirst().orElse(null);
+        SanPham acc = products.stream().filter(p -> p.getMaSanPham() != null && p.getMaSanPham().startsWith("PKT")).findFirst().orElse(null);
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        if (top != null) items.add(productCardSimple(top));
+        if (bottom != null) items.add(productCardSimple(bottom));
+        if (items.size() < 2 && dress != null) items.add(productCardSimple(dress));
+        if (acc != null) items.add(productCardSimple(acc));
+
+        if (items.isEmpty()) {
+            products.stream().limit(3).forEach(p -> items.add(productCardSimple(p)));
+        }
+
+        BigDecimal totalPrice = items.stream()
+                .map(i -> (BigDecimal) i.getOrDefault("price", BigDecimal.ZERO))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal comboPrice = totalPrice.multiply(BigDecimal.valueOf(0.9)).setScale(0, java.math.RoundingMode.HALF_UP);
+
+        Map<String, Object> outfit = new java.util.HashMap<>();
+        outfit.put("type", "outfit");
+        outfit.put("title", title);
+        outfit.put("occasion", occasion);
+        outfit.put("items", items);
+        outfit.put("totalPrice", totalPrice);
+        outfit.put("comboPrice", comboPrice);
+        outfit.put("discountPercent", 10);
+        return outfit;
     }
 
     private Map<String, Object> productCardSimple(SanPham v) {

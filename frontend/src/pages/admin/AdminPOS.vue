@@ -1081,7 +1081,18 @@ async function applyBestVoucher(force = false) {
   }
 }
 
+function handlePosAddItemEvent(e) {
+  if (e.detail) {
+    addToCart(e.detail)
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('pos-add-item', handlePosAddItemEvent)
+})
+
 onBeforeUnmount(() => {
+  window.removeEventListener('pos-add-item', handlePosAddItemEvent)
   window.clearInterval(reservationClockTimer)
 })
 

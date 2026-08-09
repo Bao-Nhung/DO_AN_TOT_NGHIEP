@@ -6,14 +6,14 @@
       :class="{ active: isOpen }"
       type="button"
       @click="toggleCopilot"
-      title="Bật/Tắt Zestia AI (Phím tắt: Alt + A hoặc Ctrl + K)"
+      title="Bật/Tắt Zestia Staff AI (Phím tắt: Alt + A hoặc Ctrl + K)"
     >
       <div v-if="!isOpen" class="z-ai-pulse"></div>
       <div class="z-copilot-trigger-icon">
         <i v-if="!isOpen" class="bi bi-stars z-ai-icon-stars"></i>
         <i v-else class="bi bi-x-lg"></i>
       </div>
-      <span class="z-copilot-trigger-text d-none d-md-inline">Zestia AI</span>
+      <span class="z-copilot-trigger-text d-none d-md-inline">Zestia AI PRO</span>
     </button>
 
     <!-- Slide-over Copilot Panel -->
@@ -29,9 +29,9 @@
             <div>
               <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
                 Zestia Staff AI Copilot
-                <span class="z-pill-ai">v2.5 Pro</span>
+                <span class="z-pill-ai">v3.0 PRO</span>
               </h6>
-              <small class="text-muted" style="font-size: 11px">Trợ lý quản trị & Bán hàng POS thông minh</small>
+              <small class="text-muted" style="font-size: 11px">Trợ lý quản trị, tồn kho & bán hàng POS thông minh</small>
             </div>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -75,17 +75,70 @@
             </div>
             <div class="z-msg-bubble">
               <div class="z-msg-header" v-if="msg.role === 'assistant'">
-                <span class="z-msg-author">Zestia Copilot</span>
-                <span class="z-msg-time">{{ msg.time }}</span>
+                <span class="z-msg-author">Zestia Copilot 3.0</span>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="z-msg-time">{{ msg.time }}</span>
+                  <button type="button" class="z-speech-btn" title="Đọc phát âm" @click="speakText(msg.text)">
+                    <i class="bi bi-volume-up"></i>
+                  </button>
+                </div>
               </div>
               <div class="z-msg-text" v-html="formatMessageText(msg.text)"></div>
 
               <!-- Render Interactive Rich Cards -->
               <div v-if="msg.cards?.length" class="z-msg-cards mt-2">
                 <div v-for="(card, cIdx) in msg.cards" :key="cIdx" class="z-rich-card">
+                  <!-- Low Stock Warning Card -->
+                  <div v-if="card.type === 'low_stock'" class="z-low-stock-card">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <strong class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ card.title }}</strong>
+                      <span class="badge bg-danger">{{ card.count }} sản phẩm</span>
+                    </div>
+                    <div class="z-low-stock-list">
+                      <div v-for="(item, iIdx) in card.items" :key="iIdx" class="z-low-stock-item">
+                        <img :src="item.image || '/images/products/shirt1.jpg'" :alt="item.name" class="z-mini-thumb" @error="onCardImgError" />
+                        <div class="z-mini-info flex-grow-1">
+                          <div class="fw-bold z-mini-title">{{ item.name }}</div>
+                          <div class="z-mini-sub">{{ item.code }} · {{ item.color }} / {{ item.size }}</div>
+                        </div>
+                        <span class="badge bg-danger-subtle text-danger font-monospace fw-bold">Còn {{ item.stock }}</span>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-2" @click="goToAdminProducts">
+                      <i class="bi bi-box-seam me-1"></i> Chuyển tới Quản lý Sản Phẩm
+                    </button>
+                  </div>
+
+                  <!-- Outfit Set POS Card -->
+                  <div v-else-if="card.type === 'outfit'" class="z-outfit-pos-card">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <span class="badge bg-purple text-white"><i class="bi bi-stars me-1"></i> GỢI Ý PHỐI ĐỒ POS</span>
+                      <small class="text-muted">{{ card.occasion || 'Cross-sell tại quầy' }}</small>
+                    </div>
+                    <strong class="d-block mb-1">{{ card.title }}</strong>
+                    <div class="z-outfit-mini-grid">
+                      <div v-for="(item, iIdx) in card.items" :key="iIdx" class="z-outfit-mini-box" @click="addSingleToPos(item)">
+                        <img :src="item.image || '/images/products/shirt1.jpg'" :alt="item.name" @error="onCardImgError" />
+                        <div class="z-mini-box-text">
+                          <div class="z-mini-box-name">{{ item.name }}</div>
+                          <div class="z-mini-box-price">{{ fmtPrice(item.price) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
+                      <div>
+                        <span class="fw-bold text-danger me-1">{{ fmtPrice(card.comboPrice || card.totalPrice) }}</span>
+                        <small class="text-muted text-decoration-line-through" v-if="card.totalPrice > card.comboPrice">{{ fmtPrice(card.totalPrice) }}</small>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-dark" @click="addOutfitToPos(card)">
+                        <i class="bi bi-cart-plus-fill me-1"></i> Thêm vào POS
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Product Card -->
-                  <div v-if="card.type === 'product'" class="z-product-card-mini">
-                    <img :src="card.image || '/images/products/shirt1.jpg'" :alt="card.name" class="z-mini-thumb" />
+                  <div v-else-if="card.type === 'product'" class="z-product-card-mini">
+                    <img :src="card.image || '/images/products/shirt1.jpg'" :alt="card.name" class="z-mini-thumb" @error="onCardImgError" />
                     <div class="z-mini-info">
                       <div class="fw-bold z-mini-title">{{ card.name }}</div>
                       <div class="z-mini-sub">{{ card.code }} · <span class="z-stock-tag">Tồn: {{ card.stock ?? 'Sẵn hàng' }}</span></div>
@@ -147,12 +200,24 @@
         <!-- Input Bar -->
         <footer class="z-copilot-footer">
           <form @submit.prevent="sendMessage" class="d-flex align-items-center gap-2">
+            <!-- Nút Nói bằng Giọng Nói Voice Input -->
+            <button
+              type="button"
+              class="z-mic-btn"
+              :class="{ listening: isListening }"
+              :title="isListening ? 'Đang lắng nghe...' : 'Nói lệnh với Zestia AI'"
+              :disabled="loading"
+              @click="toggleVoiceInput"
+            >
+              <i class="bi" :class="isListening ? 'bi-mic-fill text-danger' : 'bi-mic'"></i>
+            </button>
+
             <input
               v-model="inputQuery"
               ref="inputRef"
               type="text"
               class="lm-input z-copilot-input"
-              placeholder="Hỏi AI về tồn kho, phối đồ POS, doanh thu..."
+              placeholder="Hỏi AI về tồn kho, cảnh báo hết hàng, phối đồ POS..."
               :disabled="loading"
             />
             <button type="submit" class="lm-btn-primary z-send-btn" :disabled="loading || !inputQuery.trim()">
@@ -160,7 +225,7 @@
             </button>
           </form>
           <div class="d-flex align-items-center justify-content-between mt-2 px-1" style="font-size: 11px; color: var(--z-gray)">
-            <span>Gợi ý: Thử gõ <i>"Phối đồ với quần jeans"</i> hoặc <i>"Báo cáo kho"</i></span>
+            <span>Gợi ý: Thử gõ <i>"Cảnh báo tồn kho"</i> hoặc <i>"Phối đồ POS"</i></span>
             <span class="d-none d-sm-inline">Alt + A</span>
           </div>
         </footer>
@@ -186,18 +251,21 @@ const soundEnabled = ref(true)
 const chatContainer = ref(null)
 const inputRef = ref(null)
 
+const isListening = ref(false)
+let recognition = null
+
 const quickChips = [
-  { label: 'Doanh thu hôm nay', icon: 'bi-graph-up', prompt: 'Báo cáo doanh thu và tổng số đơn hàng hôm nay' },
-  { label: 'Tra cứu tồn kho', icon: 'bi-box-seam', prompt: 'Báo cáo tra cứu tồn kho sản phẩm hiện tại' },
-  { label: 'Gợi ý phối đồ POS', icon: 'bi-magic', prompt: 'Gợi ý phối đồ tư vấn bán hàng POS' },
-  { label: 'Voucher giảm giá', icon: 'bi-ticket-perforated', prompt: 'Tra cứu danh sách voucher đang áp dụng' },
-  { label: 'Mẫu trả lời CSKH', icon: 'bi-chat-heart', prompt: 'Soạn tin mẫu trả lời xin lỗi và tri ân khách hàng' }
+  { label: '⚠️ Cảnh báo tồn kho', icon: 'bi-exclamation-triangle', prompt: 'Báo cáo cảnh báo tồn kho các sản phẩm sắp hết hàng' },
+  { label: '🥂 Phối đồ POS', icon: 'bi-magic', prompt: 'Gợi ý phối đồ bán hàng POS' },
+  { label: '📊 Doanh thu hôm nay', icon: 'bi-graph-up', prompt: 'Báo cáo doanh thu và tổng số đơn hàng hôm nay' },
+  { label: '🎟️ Tra cứu Voucher', icon: 'bi-ticket-perforated', prompt: 'Tra cứu danh sách voucher đang áp dụng' },
+  { label: '✍️ Mẫu CSKH Xin lỗi', icon: 'bi-chat-heart', prompt: 'Soạn tin mẫu trả lời xin lỗi và tri ân khách hàng' }
 ]
 
 const messages = ref([
   {
     role: 'assistant',
-    text: 'Xin chào! Tôi là **Zestia AI Copilot** hỗ trợ Quản trị & Bán hàng POS.\n\nBạn có thể yêu cầu tôi **tra cứu tồn kho theo size/màu**, **gợi ý phối đồ cross-sell cho khách tại quầy**, hoặc **xem nhanh báo cáo doanh thu**!',
+    text: 'Xin chào! Tôi là **Zestia Staff AI Copilot v3.0 PRO**.\n\nTôi có thể giúp bạn **cảnh báo tồn kho sắp hết**, **tư vấn phối đồ POS trọn bộ**, **báo cáo doanh thu thời gian thực**, hoặc **soạn mẫu trả lời CSKH**!',
     time: getCurrentTime(),
     cards: []
   }
@@ -206,6 +274,62 @@ const messages = ref([
 function getCurrentTime() {
   const d = new Date()
   return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0')
+}
+
+function speakText(text) {
+  if (!('speechSynthesis' in window)) {
+    showToast('Trình duyệt không hỗ trợ phát âm thanh.')
+    return
+  }
+  window.speechSynthesis.cancel()
+  const clean = text.replace(/[*_#`~]/g, '')
+  const utterance = new SpeechSynthesisUtterance(clean)
+  utterance.lang = 'vi-VN'
+  utterance.rate = 1.0
+  window.speechSynthesis.speak(utterance)
+}
+
+function toggleVoiceInput() {
+  if (isListening.value) {
+    if (recognition) recognition.stop()
+    isListening.value = false
+    return
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    showToast('Trình duyệt không hỗ trợ nhận diện giọng nói Voice Input.')
+    return
+  }
+
+  recognition = new SpeechRecognition()
+  recognition.lang = 'vi-VN'
+  recognition.continuous = false
+  recognition.interimResults = false
+
+  recognition.onstart = () => {
+    isListening.value = true
+    showToast('Đang lắng nghe câu lệnh Admin...')
+  }
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript
+    if (transcript) {
+      inputQuery.value = transcript
+    }
+    isListening.value = false
+  }
+
+  recognition.onerror = () => {
+    isListening.value = false
+    showToast('Không nghe rõ, vui lòng thử lại!')
+  }
+
+  recognition.onend = () => {
+    isListening.value = false
+  }
+
+  recognition.start()
 }
 
 function toggleCopilot() {
@@ -241,11 +365,36 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
+  if (recognition) recognition.stop()
 })
 
 function sendQuickPrompt(promptText) {
   inputQuery.value = promptText
   sendMessage()
+}
+
+function onCardImgError(e) {
+  e.target.src = '/images/products/shirt1.jpg'
+}
+
+function goToAdminProducts() {
+  isOpen.value = false
+  router.push('/admin/products')
+}
+
+function addSingleToPos(item) {
+  window.dispatchEvent(new CustomEvent('pos-add-item', { detail: item }))
+  showToast(`Đã thêm "${item.name}" vào đơn POS!`)
+  router.push('/admin/pos')
+}
+
+function addOutfitToPos(outfitCard) {
+  if (!outfitCard || !outfitCard.items) return
+  outfitCard.items.forEach(item => {
+    window.dispatchEvent(new CustomEvent('pos-add-item', { detail: item }))
+  })
+  showToast(`🎉 Đã thêm cả Set Outfit (${outfitCard.items.length} món) vào đơn POS!`)
+  router.push('/admin/pos')
 }
 
 async function sendMessage() {
@@ -283,7 +432,6 @@ async function sendMessage() {
       newMsg.cards = replyCards
       scrollToBottom()
     } else {
-      // Fallback local
       const localResp = generateLocalStaffResponse(query)
       const newMsg = { role: 'assistant', text: '', time: replyTime, cards: [], copyable: localResp.copyable || false }
       messages.value.push(newMsg)
@@ -309,16 +457,34 @@ async function sendMessage() {
 
 function generateLocalStaffResponse(query) {
   const q = query.toLowerCase()
-  if (q.includes('doanh thu') || q.includes('báo cáo') || q.includes('thống kê') || q.includes('đơn hàng')) {
+  if (q.includes('cảnh báo') || q.includes('sắp hết') || (q.includes('tồn kho') && q.includes('hết'))) {
     return {
-      text: '📊 **BÁO CÁO NHANH THỜI GIAN THỰC ZESTIA**\n\n• **Doanh thu hôm nay**: 128.500.000đ\n• **Tổng đơn hoàn tất**: 142 đơn hàng\n• **Sản phẩm đang kinh doanh**: 62 mã sản phẩm\n• **Trạng thái hệ thống**: Hoạt động bình thường.',
+      text: '⚠️ **CẢNH BÁO TỒN KHO DƯỚI NGƯỠNG (Zestia Alert)**\n\nPhát hiện các sản phẩm có số lượng tồn kho $\\le 5$ chiếc cần bổ sung kho khẩn cấp:',
       cards: [
-        { type: 'stats', title: 'Thống kê tổng quan hệ thống', totalProducts: 62, totalOrders: 142 }
+        {
+          type: 'low_stock',
+          title: 'CẢNH BÁO KHO SẮP HẾT (Số lượng <= 5)',
+          count: 3,
+          items: [
+            { id: 1, code: 'ASM001', name: 'Áo Sơ Mi Lụa Cổ Điển', color: 'Trắng Ngà', size: 'S', stock: 2, image: '/images/products/shirt1.jpg' },
+            { id: 2, code: 'QJN001', name: 'Quần Jeans Wide Leg', color: 'Xanh Vintage', size: 'M', stock: 3, image: '/images/products/pants1.jpg' },
+            { id: 3, code: 'VDH001', name: 'Váy Dạ Hội Gấm Hoàng Gia', color: 'Đỏ Đô', size: 'S', stock: 1, image: '/images/products/dress1.jpg' }
+          ]
+        }
       ]
     }
   }
 
-  if (q.includes('kho') || q.includes('tồn kho') || q.includes('hết hàng') || q.includes('còn bao nhiêu')) {
+  if (q.includes('doanh thu') || q.includes('báo cáo') || q.includes('thống kê') || q.includes('đơn hàng')) {
+    return {
+      text: '📊 **BÁO CÁO NHANH THỜI GIAN THỰC ZESTIA**\n\n• **Doanh thu hôm nay**: 128.500.000đ\n• **Tổng đơn hoàn tất**: 142 đơn hàng\n• **Sản phẩm đang kinh doanh**: 62 mã sản phẩm\n• **Trạng thái hệ thống**: Hoạt động bình thường.',
+      cards: [
+        { type: 'stats', title: 'Thống kê tổng quan hệ thống', totalProducts: 62, totalOrders: 142, totalStock: 1240 }
+      ]
+    }
+  }
+
+  if (q.includes('kho') || q.includes('tồn kho') || q.includes('còn bao nhiêu')) {
     const sampleProducts = MOCK_PRODUCTS.slice(0, 3)
     return {
       text: '📦 **BÁO CÁO TRA CỨU TỒN KHO THỜI GIAN THỰC**\n\nCác sản phẩm đang có số lượng tồn kho tốt nhất tại cửa hàng:',
@@ -334,22 +500,23 @@ function generateLocalStaffResponse(query) {
     }
   }
 
-  if (q.includes('phối đồ') || q.includes('tư vấn') || q.includes('outfit') || q.includes('cross-sell')) {
+  if (q.includes('phối đồ') || q.includes('tư vấn') || q.includes('outfit') || q.includes('cross-sell') || q.includes('pos')) {
     const top = MOCK_PRODUCTS.find(p => p.category === 'Áo thời trang') || MOCK_PRODUCTS[0]
     const bottom = MOCK_PRODUCTS.find(p => p.category === 'Quần & Jeans') || MOCK_PRODUCTS[1]
     const acc = MOCK_PRODUCTS.find(p => p.category === 'Phụ kiện thời trang') || MOCK_PRODUCTS[3]
 
     return {
-      text: '💡 **GỢI Ý PHỐI ĐỒ CHUYÊN NGHIỆP CHO NHÂN VIÊN POS (STYLIST COPILOT)**\n\nSet đồ kết hợp cực chuẩn dáng cho khách hàng:',
-      cards: [top, bottom, acc].map(p => ({
-        type: 'product',
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        price: p.price,
-        stock: p.stock,
-        image: p.image
-      }))
+      text: '💡 **GỢI Ý PHỐI ĐỒ CHUYÊN NGHIỆP CHO NHÂN VIÊN POS (STYLIST COPILOT v3.0)**\n\nSet đồ kết hợp cực chuẩn dáng cho khách hàng:',
+      cards: [
+        {
+          type: 'outfit',
+          title: 'Set Outfit Thanh Lịch Công Sở Zestia',
+          occasion: 'Tư vấn Cross-sell POS tại quầy',
+          totalPrice: top.price + bottom.price + acc.price,
+          comboPrice: Math.round((top.price + bottom.price + acc.price) * 0.9),
+          items: [top, bottom, acc].map(p => ({ id: p.id, name: p.name, price: p.price, image: p.image }))
+        }
+      ]
     }
   }
 
@@ -372,8 +539,7 @@ function generateLocalStaffResponse(query) {
 }
 
 function handleCardAction(card) {
-  showToast(`Đã chọn sản phẩm [${card.code}] ${card.name}`)
-  router.push('/admin/pos')
+  addSingleToPos(card)
 }
 
 function copyText(text) {
@@ -411,21 +577,13 @@ function scrollToBottom() {
 function formatMessageText(text) {
   if (!text) return ''
   let html = text
-    // Code blocks
     .replace(/```([\s\S]*?)```/g, '<pre class="z-copilot-code"><code>$1</code></pre>')
-    // Inline code
     .replace(/`([^`]+)`/g, '<code class="z-copilot-inline-code">$1</code>')
-    // Bold
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    // Italic
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    // Bullet lists
     .replace(/^[•\-\*]\s+(.+)$/gm, '<li>$1</li>')
-    // Numbered lists
     .replace(/^(\d+)\.\s+(.+)$/gm, '<li class="z-num-li"><span class="z-num">$1.</span> $2</li>')
-    // Newlines
     .replace(/\n/g, '<br/>')
-  // Wrap li in ul
   html = html.replace(/((?:<li[^>]*>.*?<\/li><br\/?>?)+)/g, (match) => {
     const items = match.replace(/<br\/?>/g, '')
     return `<ul class="z-copilot-list">${items}</ul>`
@@ -433,7 +591,6 @@ function formatMessageText(text) {
   return html
 }
 
-// Streaming typewriter reveal
 async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
   if (!fullText) return
   msgObj.text = ''
@@ -475,7 +632,6 @@ async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
 .z-copilot-trigger:hover {
   transform: translateY(-4px) scale(1.03);
   box-shadow: 0 16px 40px rgba(212, 86, 78, 0.45);
-  background: linear-gradient(135deg, #1A1A1A 0%, #333333 50%, #D4564E 100%);
 }
 
 .z-copilot-trigger-icon {
@@ -520,14 +676,14 @@ async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
   position: fixed;
   right: 24px;
   bottom: 86px;
-  width: min(420px, calc(100vw - 32px));
-  height: 580px;
+  width: min(440px, calc(100vw - 32px));
+  height: 600px;
   max-height: calc(100vh - 110px);
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px);
   border: 1px solid var(--z-gray-border, #e5e7eb);
   border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -541,8 +697,8 @@ async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
 
 .z-copilot-header {
   padding: 12px 16px;
-  background: var(--z-bg-alt, #f9fafb);
-  border-bottom: 1px solid var(--z-gray-border, #e5e7eb);
+  background: #1A1A1A;
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -553,7 +709,7 @@ async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--z-accent, #c08b7e), #7c3aed);
+  background: linear-gradient(135deg, #D4564E, #7c3aed);
   color: #fff;
   display: flex;
   align-items: center;
@@ -569,90 +725,84 @@ async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
   height: 10px;
   border-radius: 50%;
   background: #10b981;
-  border: 2px solid #fff;
+  border: 2px solid #1A1A1A;
 }
 
 .z-pill-ai {
   font-size: 10px;
-  padding: 1px 6px;
-  background: rgba(124, 58, 237, 0.12);
-  color: #7c3aed;
+  padding: 2px 6px;
+  background: rgba(212, 86, 78, 0.2);
+  color: #FF8A80;
   border-radius: 10px;
   font-weight: 700;
 }
 
 .z-icon-btn {
   border: none;
-  background: transparent;
-  color: var(--z-gray, #6b7280);
+  background: rgba(255,255,255,0.1);
+  color: #fff;
   font-size: 14px;
-  padding: 4px 6px;
-  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .z-icon-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--z-dark, #111827);
+  background: rgba(255,255,255,0.2);
 }
 
 .z-copilot-chips {
   padding: 10px 14px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   overflow-x: auto;
-  white-space: nowrap;
-  background: #fff;
-  border-bottom: 1px solid var(--z-gray-border, #f3f4f6);
-}
-
-.z-copilot-chips::-webkit-scrollbar {
-  height: 3px;
-}
-
-.z-copilot-chips::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
 }
 
 .z-chip-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 11px;
-  border-radius: 16px;
-  border: 1px solid var(--z-gray-border, #e5e7eb);
-  background: #f9fafb;
-  font-size: 12px;
-  color: var(--z-dark, #374151);
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
 }
 
 .z-chip-btn:hover {
-  background: var(--z-accent-soft, #f4ebe8);
-  border-color: var(--z-accent, #c08b7e);
-  color: var(--z-accent, #c08b7e);
+  background: #1A1A1A;
+  color: #fff;
+  border-color: #1A1A1A;
 }
 
 .z-copilot-body {
   flex: 1;
-  padding: 16px;
+  padding: 14px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  background: #fafafa;
 }
 
 .z-chat-row {
   display: flex;
   gap: 10px;
-  max-width: 92%;
+  max-width: 94%;
 }
 
 .z-chat-row.user {
-  margin-left: auto;
+  align-self: flex-end;
   flex-direction: row-reverse;
 }
 
@@ -660,218 +810,226 @@ async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--z-dark, #1f2937);
-  color: #f59e0b;
+  background: linear-gradient(135deg, #1A1A1A, #D4564E);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   flex-shrink: 0;
 }
 
 .z-msg-bubble {
+  background: #f3f4f6;
   padding: 10px 14px;
   border-radius: 14px;
   font-size: 13px;
   line-height: 1.5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.z-chat-row.assistant .z-msg-bubble {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-top-left-radius: 4px;
   color: #1f2937;
 }
 
 .z-chat-row.user .z-msg-bubble {
-  background: var(--z-dark, #1f2937);
+  background: #1A1A1A;
   color: #fff;
-  border-top-right-radius: 4px;
 }
 
 .z-msg-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 4px;
-}
-
-.z-msg-author {
   font-size: 11px;
-  font-weight: 700;
-  color: var(--z-accent, #c08b7e);
+  color: #6b7280;
 }
 
-.z-msg-time {
-  font-size: 10px;
-  color: #9ca3af;
+.z-speech-btn {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
 }
+.z-speech-btn:hover { color: #111; }
 
-.z-product-card-mini {
+/* LOW STOCK CARD */
+.z-low-stock-card {
+  background: #FFF5F5;
+  border: 1px solid #FEE2E2;
+  border-radius: 12px;
+  padding: 12px;
+}
+.z-low-stock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.z-low-stock-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px;
+  gap: 8px;
+  background: #fff;
+  padding: 6px 8px;
   border-radius: 8px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  margin-top: 6px;
+  border: 1px solid #FEE2E2;
 }
 
-.z-mini-thumb {
-  width: 44px;
-  height: 44px;
+/* OUTFIT POS CARD */
+.z-outfit-pos-card {
+  background: #FDF4FF;
+  border: 1px solid #F5D0FE;
+  border-radius: 12px;
+  padding: 12px;
+}
+.z-outfit-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.z-outfit-mini-box {
+  background: #fff;
   border-radius: 6px;
+  padding: 4px;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid #F0ABFC;
+}
+.z-outfit-mini-box img {
+  width: 100%;
+  height: 48px;
   object-fit: cover;
+  border-radius: 4px;
 }
-
-.z-mini-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.z-mini-title {
-  font-size: 12px;
+.z-mini-box-name {
+  font-size: 9px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.z-mini-sub {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.z-stock-tag {
-  color: #059669;
-  font-weight: 600;
-}
-
-.z-mini-price {
-  font-size: 12px;
+.z-mini-box-price {
+  font-size: 9px;
+  color: #D4564E;
   font-weight: 700;
-  color: var(--z-accent, #c08b7e);
 }
 
-.z-mini-btn {
-  padding: 4px 8px !important;
-  font-size: 11px !important;
-  min-height: 28px !important;
-  white-space: nowrap;
+/* MINI PRODUCT CARD */
+.z-product-card-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  border-radius: 10px;
 }
-
-.z-stat-box {
-  background: #f3f4f6;
-  padding: 6px;
+.z-mini-thumb {
+  width: 42px;
+  height: 52px;
+  object-fit: cover;
   border-radius: 6px;
 }
+.z-mini-info { flex: 1; }
+.z-mini-title { font-size: 12px; }
+.z-mini-sub { font-size: 10px; color: #6b7280; }
+.z-stock-tag { color: #10b981; font-weight: 600; }
+.z-mini-price { font-size: 12px; font-weight: 700; color: #D4564E; }
+.z-mini-btn { font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; background: #1A1A1A; color: #fff; cursor: pointer; }
 
-.z-stat-box small {
-  font-size: 10px;
-  color: #6b7280;
-  display: block;
+/* STATS CARD */
+.z-stats-card-mini {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 10px;
+  border-radius: 10px;
 }
-
-.z-stat-box div {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--z-dark, #111827);
+.z-stat-box {
+  background: #fff;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
 }
+.z-stat-box small { font-size: 10px; color: #6b7280; }
+.z-stat-box div { font-size: 13px; font-weight: 700; color: #111827; }
 
 .z-copy-btn {
   border: none;
-  background: rgba(192, 139, 126, 0.1);
-  color: var(--z-accent, #c08b7e);
+  background: #e5e7eb;
+  color: #374151;
   font-size: 11px;
-  font-weight: 600;
   padding: 4px 10px;
-  border-radius: 12px;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-.z-copy-btn:hover {
-  background: var(--z-accent, #c08b7e);
-  color: #fff;
+/* TYPING */
+.z-typing {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 12px 16px;
 }
-
 .z-typing span {
-  display: inline-block;
   width: 6px;
   height: 6px;
   background: #9ca3af;
   border-radius: 50%;
-  margin-right: 4px;
-  animation: z-blink 1.4s infinite ease-in-out both;
+  animation: z-bounce 1.4s infinite ease-in-out;
+}
+.z-typing span:nth-child(1) { animation-delay: 0s; }
+.z-typing span:nth-child(2) { animation-delay: 0.2s; }
+.z-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes z-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 
-.z-typing span:nth-child(1) { animation-delay: -0.32s; }
-.z-typing span:nth-child(2) { animation-delay: -0.16s; }
-
-@keyframes z-blink {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
-}
-
+/* FOOTER INPUT */
 .z-copilot-footer {
   padding: 12px;
   background: #fff;
-  border-top: 1px solid var(--z-gray-border, #e5e7eb);
+  border-top: 1px solid #e5e7eb;
 }
-
-.z-copilot-input {
-  border-radius: 20px !important;
-  padding: 8px 16px !important;
-  font-size: 13px !important;
-}
-
-.z-send-btn {
-  border-radius: 50% !important;
-  width: 38px;
-  height: 38px;
-  padding: 0 !important;
+.z-mic-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #f3f4f6;
+  color: #4b5563;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  cursor: pointer;
 }
-
-/* Markdown elements */
-.z-copilot-list {
-  margin: 4px 0;
-  padding-left: 18px;
-  list-style: disc;
+.z-mic-btn.listening {
+  background: #FEE2E2;
+  animation: z-mic-pulse 1.2s infinite;
 }
-.z-copilot-list li {
-  margin: 3px 0;
+@keyframes z-mic-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.z-copilot-input {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 20px;
+  padding: 8px 14px;
   font-size: 13px;
-  line-height: 1.5;
+  outline: none;
 }
-.z-num { font-weight: 700; color: var(--z-accent, #c08b7e); }
-.z-copilot-code {
-  background: #1e1e2e;
-  color: #cdd6f4;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  overflow-x: auto;
-  margin: 6px 0;
-  white-space: pre;
+.z-copilot-input:focus { border-color: #1A1A1A; }
+.z-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #1A1A1A;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
-.z-copilot-inline-code {
-  background: #f3f4f6;
-  color: var(--z-accent, #c08b7e);
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 12px;
-}
-
-/* Chip disabled state */
-.z-chip-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  pointer-events: none;
-}
+.z-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

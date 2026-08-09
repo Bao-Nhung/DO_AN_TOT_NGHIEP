@@ -522,15 +522,48 @@ public class AiChatService {
             return Map.of("reply", replyText, "configured", true, "cards", cards);
         }
 
-        if (msg.contains("kho") || msg.contains("tồn kho") || msg.contains("hết hàng") || msg.contains("còn bao nhiêu")) {
+        if (msg.contains("kho") || msg.contains("tồn kho") || msg.contains("hết hàng") || msg.contains("cảnh báo")) {
+            List<SanPhamChiTiet> lowStockVariants = sanPhamChiTietRepository.findAll().stream()
+                    .filter(this::activeVariant)
+                    .filter(v -> v.getSoLuong() != null && v.getSoLuong() <= 5)
+                    .limit(6)
+                    .toList();
+
+            List<Map<String, Object>> lowStockList = new ArrayList<>();
+            for (SanPhamChiTiet vct : lowStockVariants) {
+                SanPham sp = vct.getSanPham();
+                if (sp == null) continue;
+                Map<String, Object> item = new java.util.HashMap<>();
+                item.put("id", sp.getId());
+                item.put("code", safe(sp.getMaSanPham()));
+                item.put("name", safe(sp.getTenSanPham()));
+                item.put("variantCode", safe(vct.getMaSanPhamChiTiet()));
+                item.put("color", vct.getMauSac() != null ? safe(vct.getMauSac().getTenMauSac()) : "N/A");
+                item.put("size", vct.getKichThuoc() != null ? safe(vct.getKichThuoc().getTenKichThuoc()) : "N/A");
+                item.put("stock", vct.getSoLuong() != null ? vct.getSoLuong() : 0);
+                item.put("image", vct.getAnhUrl() != null && !vct.getAnhUrl().isBlank() ? vct.getAnhUrl() : "/images/products/shirt1.jpg");
+                lowStockList.add(item);
+            }
+
+            if (!lowStockList.isEmpty()) {
+                cards.add(Map.of(
+                    "type", "low_stock",
+                    "title", "⚠️ CẢNH BÁO TỒN KHO DƯỚI NGƯỠNG (KHO SẮP HẾT)",
+                    "count", lowStockList.size(),
+                    "items", lowStockList
+                ));
+            }
+
             List<SanPham> items = sanPhamRepository.findActiveForAi(PageRequest.of(0, 5));
-            StringBuilder sb = new StringBuilder("📦 **BÁO CÁO TRA CỨU TỒN KHO THỜI GIAN THỰC**\n\n");
+            StringBuilder sb = new StringBuilder("📦 **BÁO CÁO TRA CỨU TỒN KHO CHUYÊN SÂU ZESTIA AI PRO**\n\n");
+            if (!lowStockList.isEmpty()) {
+                sb.append(String.format("⚠️ **CẢNH BÁO**: Phát hiện %d biến thể sản phẩm có tồn kho $\\le 5$ chiếc cần nhập thêm ngay!\n\n", lowStockList.size()));
+            }
             for (SanPham v : items) {
                 List<SanPhamChiTiet> variants = activeVariants(v);
                 int stock = totalStock(variants);
-                String mainImg = productImage(variants, "/images/products/shirt1.jpg");
                 BigDecimal price = lowestPrice(variants);
-                sb.append(String.format("• **[%s] %s**: Tồn kho %d chiếc (Giá từ: %,.0fđ)\n", v.getMaSanPham(), v.getTenSanPham(), stock, price));
+                sb.append(String.format("• **[%s] %s**: Tổng tồn kho %d chiếc (Giá từ: %,.0fđ)\n", v.getMaSanPham(), v.getTenSanPham(), stock, price));
                 cards.add(Map.of(
                         "type", "product",
                         "id", v.getId(),
@@ -538,44 +571,22 @@ public class AiChatService {
                         "name", safe(v.getTenSanPham()),
                         "price", price,
                         "stock", stock,
-                        "image", mainImg,
+                        "image", productImage(variants, "/images/products/shirt1.jpg"),
                         "category", v.getLoaiSanPham() != null ? safe(v.getLoaiSanPham().getTenLoaiSanPham()) : "Thời trang"
                 ));
             }
             return Map.of("reply", sb.toString(), "configured", true, "cards", cards);
         }
 
-        if (msg.contains("phối đồ") || msg.contains("tư vấn") || msg.contains("outfit") || msg.contains("cross-sell") || msg.contains("kết hợp")) {
+        if (msg.contains("phối đồ") || msg.contains("tư vấn") || msg.contains("outfit") || msg.contains("cross-sell") || msg.contains("kết hợp") || msg.contains("pos")) {
             List<SanPham> activeList = sanPhamRepository.findActiveForAi(PageRequest.of(0, 10));
-            SanPham shirt = activeList.stream().filter(v -> v.getLoaiSanPham() != null && v.getLoaiSanPham().getTenLoaiSanPham().contains("Áo")).findFirst().orElse(null);
-            SanPham pants = activeList.stream().filter(v -> v.getLoaiSanPham() != null && v.getLoaiSanPham().getTenLoaiSanPham().contains("Quần")).findFirst().orElse(null);
-            SanPham acc = activeList.stream().filter(v -> v.getLoaiSanPham() != null && v.getLoaiSanPham().getTenLoaiSanPham().contains("Phụ kiện")).findFirst().orElse(null);
+            Map<String, Object> outfitCard = buildOutfitCard("Set Lookbook Cross-sell POS Bán Hàng", "Gợi ý phối trọn bộ cho khách tại quầy", activeList);
+            if (!outfitCard.isEmpty()) {
+                cards.add(outfitCard);
+            }
 
-            StringBuilder sb = new StringBuilder("💡 **GỢI Ý PHỐI ĐỒ CHUYÊN NGHIỆP CHO NHÂN VIÊN POS (STYLIST COPILOT)**\n\n");
-            sb.append("Bộ trang phục đề xuất phối màu hoàn hảo cho khách hàng:\n");
-
-            if (shirt != null) {
-                List<SanPhamChiTiet> variants = activeVariants(shirt);
-                String img = productImage(variants, "/images/products/shirt1.jpg");
-                BigDecimal price = lowestPrice(variants);
-                sb.append(String.format("1. **Áo phối (Top)**: %s - %,.0fđ\n", shirt.getTenSanPham(), price));
-                cards.add(Map.of("type", "product", "id", shirt.getId(), "code", safe(shirt.getMaSanPham()), "name", safe(shirt.getTenSanPham()), "price", price, "image", img));
-            }
-            if (pants != null) {
-                List<SanPhamChiTiet> variants = activeVariants(pants);
-                String img = productImage(variants, "/images/products/pants1.jpg");
-                BigDecimal price = lowestPrice(variants);
-                sb.append(String.format("2. **Quần tôn dáng (Bottom)**: %s - %,.0fđ\n", pants.getTenSanPham(), price));
-                cards.add(Map.of("type", "product", "id", pants.getId(), "code", safe(pants.getMaSanPham()), "name", safe(pants.getTenSanPham()), "price", price, "image", img));
-            }
-            if (acc != null) {
-                List<SanPhamChiTiet> variants = activeVariants(acc);
-                String img = productImage(variants, "/images/products/accessories1.jpg");
-                BigDecimal price = lowestPrice(variants);
-                sb.append(String.format("3. **Phụ kiện điểm nhấn (Accessory)**: %s - %,.0fđ\n", acc.getTenSanPham(), price));
-                cards.add(Map.of("type", "product", "id", acc.getId(), "code", safe(acc.getMaSanPham()), "name", safe(acc.getTenSanPham()), "price", price, "image", img));
-            }
-            sb.append("\n*Gợi ý tư vấn tại quầy: Giới thiệu cho khách mua thêm phụ kiện hoặc áo sơ mi để được áp dụng mã giảm giá voucher tốt hơn.*");
+            StringBuilder sb = new StringBuilder("💡 **GỢI Ý PHỐI ĐỒ POS CHUYÊN NGHIỆP (STYLIST COPILOT v3.0)**\n\n");
+            sb.append("Dưới đây là Set Outfit được AI Stylist thiết kế tối ưu cho nhân viên tư vấn bán chéo (Cross-sell) tại quầy thu ngân:\n");
             return Map.of("reply", sb.toString(), "configured", true, "cards", cards);
         }
 

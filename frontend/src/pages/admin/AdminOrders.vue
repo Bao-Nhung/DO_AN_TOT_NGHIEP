@@ -80,6 +80,9 @@
                 <button type="button" class="btn btn-sm btn-light border py-0 px-1" style="font-size:10px" title="Sao chép mã đơn" @click.stop="copyOrderCode(o.id)">
                   <i class="bi bi-clipboard"></i>
                 </button>
+                <span v-if="o.raw?.yeuCauVat" class="badge bg-danger ms-1" style="font-size: 10px;" title="Khách yêu cầu Hóa Đơn VAT">
+                  <i class="bi bi-file-earmark-text"></i> VAT
+                </span>
               </div>
             </td>
             <td>
@@ -103,6 +106,9 @@
             <td><span class="z-status" :class="o.statusClass">{{ o.status }}</span></td>
             <td style="color:var(--z-gray)">{{ o.date }}</td>
             <td @click.stop style="text-align: right; padding-right: 20px;">
+              <button v-if="o.raw?.yeuCauVat || o.raw?.soHoaDonVat" type="button" class="btn btn-sm btn-outline-danger me-1 py-1 px-2" style="font-size:11px;" title="Xem / Xuất Hóa Đơn Điện Tử VAT" @click="openEInvoiceModal(o.id)">
+                <i class="bi bi-receipt me-1"></i> VAT
+              </button>
               <button type="button" class="z-action-btn d-inline-block" title="Xem & Xử lý" :aria-label="`Xem và xử lý đơn ${o.maHoaDon || o.id}`" @click="openDetail(o)">
                 <i class="bi bi-pencil-square"></i>
               </button>
@@ -220,6 +226,28 @@
                     <div v-if="detailData.diaChiGiaoHang && detailData.hinhThucNhanHang !== 0" class="col-12 mt-2">
                       <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Địa chỉ giao hàng</div>
                       <div style="font-size:14px;font-weight:500"><i class="bi bi-geo-alt me-1"></i>{{ detailData.diaChiGiaoHang }}</div>
+                    </div>
+                  </div>
+
+                  <!-- VAT Enterprise Information Box -->
+                  <div v-if="detailData.yeuCauVat || detailData.soHoaDonVat" class="mb-4 p-3 border border-danger rounded bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <strong class="text-danger"><i class="bi bi-file-earmark-text me-1"></i>Hóa Đơn Điện Tử VAT Doanh Nghiệp</strong>
+                      <button type="button" class="btn btn-sm btn-danger py-1 px-3 fw-bold" @click="openEInvoiceModal(detailData.id)">
+                        <i class="bi bi-receipt me-1"></i> {{ detailData.trangThaiVat === 'DA_PHAT_HANH' ? 'Xem Hóa Đơn' : 'Phát Hành VAT' }}
+                      </button>
+                    </div>
+                    <div style="font-size: 13px;">
+                      <div><strong>Tên công ty:</strong> {{ detailData.tenCongTyVat || detailData.tenKhachHang }}</div>
+                      <div><strong>Mã số thuế:</strong> {{ detailData.maSoThueVat || 'Không cung cấp' }}</div>
+                      <div><strong>Email nhận HD:</strong> {{ detailData.emailVat || detailData.emailKhachHang }}</div>
+                      <div><strong>Địa chỉ:</strong> {{ detailData.diaChiVat || detailData.diaChiGiaoHang }}</div>
+                      <div class="mt-2">
+                        <strong>Trạng thái VAT: </strong>
+                        <span :class="detailData.trangThaiVat === 'DA_PHAT_HANH' ? 'badge bg-success' : 'badge bg-warning text-dark'">
+                          {{ detailData.trangThaiVat === 'DA_PHAT_HANH' ? 'Đã Phát Hành' : 'Chờ Phát Hành' }}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -388,17 +416,41 @@
         </div>
       </div>
     </div>
+
+    <!-- E-Invoice Modal -->
+    <EInvoiceModal :show="showEInvoiceModal" :invoice="eInvoiceData" :orderId="selectedEInvoiceOrderId" @close="showEInvoiceModal = false" @updated="onEInvoiceUpdated" />
   </AdminLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import EInvoiceModal from '@/components/EInvoiceModal.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
+
+const showEInvoiceModal = ref(false)
+const selectedEInvoiceOrderId = ref(null)
+const eInvoiceData = ref(null)
+
+async function openEInvoiceModal(orderId) {
+  selectedEInvoiceOrderId.value = orderId
+  try {
+    eInvoiceData.value = await api().getEInvoice(orderId)
+    showEInvoiceModal.value = true
+  } catch (error) {
+    showToast(error.error || 'Không thể lấy dữ liệu Hóa Đơn Điện Tử')
+  }
+}
+
+function onEInvoiceUpdated(updated) {
+  eInvoiceData.value = updated
+  showToast('Đã phát hành Hóa Đơn Điện Tử VAT thành công!')
+  fetchOrders()
+}
 
 const { showToast } = useToast()
 const { isEn } = useI18n()

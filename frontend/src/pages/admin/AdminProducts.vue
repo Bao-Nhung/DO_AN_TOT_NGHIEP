@@ -1,6 +1,6 @@
 <template>
   <AdminLayout>
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Quản lý sản phẩm</h1>
         <p style="font-size:14px;color:var(--z-gray);margin:0">{{ totalItems }} sản phẩm</p>
@@ -17,121 +17,205 @@
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="z-admin-card mb-3" style="padding:14px 20px">
-      <div class="d-flex flex-column gap-3">
-        <!-- Row 1: Search & Status -->
-        <div class="d-flex align-items-center gap-3 flex-wrap">
-          <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width:320px; border-bottom: 1px solid var(--z-gray-border); padding-bottom: 4px;">
-            <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
-            <input v-model="search" class="lm-input" placeholder="Tìm kiếm sản phẩm..." style="border:none;padding:8px 0;box-shadow:none">
+    <!-- Main Navigation Tabs -->
+    <div class="d-flex gap-2 mb-3">
+      <button class="btn btn-sm" :class="activeMainTab === 'products' ? 'btn-dark font-weight-bold' : 'btn-outline-secondary'" @click="activeMainTab = 'products'">
+        <i class="bi bi-box-seam me-1"></i> Danh sách sản phẩm ({{ totalItems }})
+      </button>
+      <button class="btn btn-sm" :class="activeMainTab === 'logs' ? 'btn-dark font-weight-bold' : 'btn-outline-secondary'" @click="activeMainTab = 'logs'; fetchStockLogs(0)">
+        <i class="bi bi-clock-history me-1"></i> Nhật ký biến động tồn kho
+      </button>
+    </div>
+
+    <div v-if="activeMainTab === 'products'">
+      <!-- Filters -->
+      <div class="z-admin-card mb-3" style="padding:14px 20px">
+        <div class="d-flex flex-column gap-3">
+          <!-- Row 1: Search & Status -->
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width:320px; border-bottom: 1px solid var(--z-gray-border); padding-bottom: 4px;">
+              <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
+              <input v-model="search" class="lm-input" placeholder="Tìm kiếm sản phẩm..." style="border:none;padding:8px 0;box-shadow:none">
+            </div>
+            <div class="ms-auto">
+              <select v-model="filterStatus" class="lm-input" style="width:auto;padding:8px 16px;font-size:13px">
+                <option value="">Tất cả trạng thái</option>
+                <option value="1">Đang bán</option>
+                <option value="0">Ngừng bán</option>
+              </select>
+            </div>
           </div>
-          <div class="ms-auto">
-            <select v-model="filterStatus" class="lm-input" style="width:auto;padding:8px 16px;font-size:13px">
-              <option value="">Tất cả trạng thái</option>
-              <option value="1">Đang bán</option>
-              <option value="0">Ngừng bán</option>
-            </select>
+
+          <!-- Row 2: Categories (phân loại sản phẩm theo mục giống trang khách hàng) -->
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span style="font-size:13px;font-weight:600;color:var(--z-gray);flex-shrink:0">Mục:</span>
+            <div class="d-flex gap-2 flex-wrap">
+              <button v-for="f in filters" :key="f"
+                      class="lm-filter-tag" :class="{ active: activeFilter === f }"
+                      style="padding: 4px 12px; font-size: 12px;"
+                      @click="activeFilter = f">{{ f }}</button>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Row 2: Categories (phân loại sản phẩm theo mục giống trang khách hàng) -->
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span style="font-size:13px;font-weight:600;color:var(--z-gray);flex-shrink:0">Mục:</span>
-          <div class="d-flex gap-2 flex-wrap">
-            <button v-for="f in filters" :key="f"
-                    class="lm-filter-tag" :class="{ active: activeFilter === f }"
-                    style="padding: 4px 12px; font-size: 12px;"
-                    @click="activeFilter = f">{{ f }}</button>
+      <!-- Table -->
+      <div class="z-admin-card" style="padding:0;overflow:hidden">
+        <div class="table-responsive">
+        <table class="z-table" style="min-width:900px">
+          <thead>
+            <tr>
+              <th style="width:50px"><input type="checkbox"></th>
+              <th>Sản phẩm</th>
+              <th>Loại</th>
+              <th>Giá</th>
+              <th>Tồn kho</th>
+              <th>Trạng thái</th>
+              <th style="width:120px">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in paginatedProducts" :key="p.id" class="z-clickable-row" @click="openProductDetail(p)">
+              <td @click.stop><input type="checkbox"></td>
+              <td>
+                <div class="d-flex align-items-center gap-3">
+                  <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
+                    <img v-if="p.image" :src="p.image" style="width:100%;height:100%;object-fit:cover">
+                    <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
+                         :style="{ background: p.bg, fontFamily:'var(--z-font-display)', fontSize:'14px', color:'rgba(255,255,255,0.3)' }">
+                      {{ p.letter }}
+                    </div>
+                  </div>
+                  <div>
+                    <div style="font-weight:500">{{ p.name }}</div>
+                    <div style="font-size:12px;color:var(--z-gray)">{{ p.code }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{ p.category }}</td>
+              <td style="font-weight:500">{{ p.priceDisplay }}</td>
+              <td>
+                <span :style="{ color: p.stock < 10 ? 'var(--z-accent)' : 'var(--z-dark)', fontWeight: p.stock < 10 ? 600 : 400 }">
+                  {{ p.stock }}
+                </span>
+              </td>
+              <td><span class="z-status" :class="p.active ? 'success' : 'pending'">{{ p.active ? 'Đang bán' : 'Ngừng' }}</span></td>
+              <td @click.stop>
+                <div class="d-flex gap-1">
+                  <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa sản phẩm" @click="openEdit(p)"><i class="bi bi-pencil"></i></button>
+                  <button type="button" class="z-icon-btn" title="Chi tiết" aria-label="Xem chi tiết sản phẩm" @click="openProductDetail(p)"><i class="bi bi-eye"></i></button>
+                  <button type="button" class="z-icon-btn" :title="p.active ? 'Khóa' : 'Mở khóa'" :aria-label="p.active ? 'Khóa sản phẩm' : 'Mở khóa sản phẩm'"
+                          :style="{ color: p.active ? 'var(--z-accent)' : '#16a34a' }"
+                          @click="toggleLock(p)">
+                    <i class="bi" :class="p.active ? 'bi-lock' : 'bi-unlock'"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <div v-if="totalItems === 0" class="text-center py-5">
+          <i class="bi bi-inbox" style="font-size:36px;color:var(--z-gray-border)"></i>
+          <p style="color:var(--z-gray);font-size:14px;margin-top:8px">Không có sản phẩm nào</p>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div v-if="totalItems > 0" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+          <span data-no-i18n style="font-size: 13px; color: var(--z-gray)">{{ productRangeLabel }}</span>
+          <PageSizeSelect v-model="itemsPerPage" />
+          <div v-if="totalPages > 1" class="d-flex gap-2">
+            <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
+              Trước
+            </button>
+            <button v-for="page in pageNumbers" :key="page"
+                    class="lm-btn-secondary" 
+                    :style="{
+                      padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
+                      background: currentPage === page ? 'var(--z-dark)' : '',
+                      color: currentPage === page ? '#fff' : '',
+                      borderColor: currentPage === page ? 'var(--z-dark)' : ''
+                    }"
+                    @click="currentPage = page">
+              {{ page }}
+            </button>
+            <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === totalPages" @click="currentPage++">
+              Sau
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="z-admin-card" style="padding:0;overflow:hidden">
-      <div class="table-responsive">
-      <table class="z-table" style="min-width:900px">
-        <thead>
-          <tr>
-            <th style="width:50px"><input type="checkbox"></th>
-            <th>Sản phẩm</th>
-            <th>Loại</th>
-            <th>Giá</th>
-            <th>Tồn kho</th>
-            <th>Trạng thái</th>
-            <th style="width:120px">Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="p in paginatedProducts" :key="p.id" class="z-clickable-row" @click="openProductDetail(p)">
-            <td @click.stop><input type="checkbox"></td>
-            <td>
-              <div class="d-flex align-items-center gap-3">
-                <div style="width:48px;height:56px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
-                  <img v-if="p.image" :src="p.image" style="width:100%;height:100%;object-fit:cover">
-                  <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
-                       :style="{ background: p.bg, fontFamily:'var(--z-font-display)', fontSize:'14px', color:'rgba(255,255,255,0.3)' }">
-                    {{ p.letter }}
-                  </div>
-                </div>
-                <div>
-                  <div style="font-weight:500">{{ p.name }}</div>
-                  <div style="font-size:12px;color:var(--z-gray)">{{ p.code }}</div>
-                </div>
-              </div>
-            </td>
-            <td>{{ p.category }}</td>
-            <td style="font-weight:500">{{ p.priceDisplay }}</td>
-            <td>
-              <span :style="{ color: p.stock < 10 ? 'var(--z-accent)' : 'var(--z-dark)', fontWeight: p.stock < 10 ? 600 : 400 }">
-                {{ p.stock }}
-              </span>
-            </td>
-            <td><span class="z-status" :class="p.active ? 'success' : 'pending'">{{ p.active ? 'Đang bán' : 'Ngừng' }}</span></td>
-            <td @click.stop>
-              <div class="d-flex gap-1">
-                <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa sản phẩm" @click="openEdit(p)"><i class="bi bi-pencil"></i></button>
-                <button type="button" class="z-icon-btn" title="Chi tiết" aria-label="Xem chi tiết sản phẩm" @click="openProductDetail(p)"><i class="bi bi-eye"></i></button>
-                <button type="button" class="z-icon-btn" :title="p.active ? 'Khóa' : 'Mở khóa'" :aria-label="p.active ? 'Khóa sản phẩm' : 'Mở khóa sản phẩm'"
-                        :style="{ color: p.active ? 'var(--z-accent)' : '#16a34a' }"
-                        @click="toggleLock(p)">
-                  <i class="bi" :class="p.active ? 'bi-lock' : 'bi-unlock'"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      </div>
-      <div v-if="totalItems === 0" class="text-center py-5">
-        <i class="bi bi-inbox" style="font-size:36px;color:var(--z-gray-border)"></i>
-        <p style="color:var(--z-gray);font-size:14px;margin-top:8px">Không có sản phẩm nào</p>
+    <!-- Stock Movement Logs Tab -->
+    <div v-else-if="activeMainTab === 'logs'" class="z-admin-card" style="padding:20px">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width:360px; border-bottom: 1px solid var(--z-gray-border); padding-bottom: 4px;">
+          <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
+          <input v-model="stockLogSearch" class="lm-input" placeholder="Tìm nhật ký tồn kho..." style="border:none;padding:8px 0;box-shadow:none" @keyup.enter="fetchStockLogs(0)">
+        </div>
+        <button class="lm-btn-secondary" @click="fetchStockLogs(0)">
+          <i class="bi bi-search me-1"></i> Lọc
+        </button>
+        <span class="ms-auto text-muted" style="font-size:13px">Tổng số: {{ stockLogTotalElements }} bản ghi</span>
       </div>
 
-      <!-- Pagination Controls -->
-      <div v-if="totalItems > 0" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
-        <span data-no-i18n style="font-size: 13px; color: var(--z-gray)">{{ productRangeLabel }}</span>
-        <PageSizeSelect v-model="itemsPerPage" />
-        <div v-if="totalPages > 1" class="d-flex gap-2">
-          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
-            Trước
-          </button>
-          <button v-for="page in pageNumbers" :key="page"
-                  class="lm-btn-secondary" 
-                  :style="{
-                    padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
-                    background: currentPage === page ? 'var(--z-dark)' : '',
-                    color: currentPage === page ? '#fff' : '',
-                    borderColor: currentPage === page ? 'var(--z-dark)' : ''
-                  }"
-                  @click="currentPage = page">
-            {{ page }}
-          </button>
-          <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === totalPages" @click="currentPage++">
-            Sau
-          </button>
-        </div>
+      <div class="table-responsive">
+        <table class="z-table" style="min-width:900px">
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Sản phẩm</th>
+              <th>Biến thể</th>
+              <th class="text-center">Tồn trước</th>
+              <th class="text-center">Biến động</th>
+              <th class="text-center">Tồn sau</th>
+              <th>Loại biến động</th>
+              <th>Mã tham chiếu</th>
+              <th>Người thực hiện</th>
+              <th>Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="loadingStockLogs">
+              <td colspan="10" class="text-center py-4">Đang tải nhật ký...</td>
+            </tr>
+            <tr v-else-if="stockLogs.length === 0">
+              <td colspan="10" class="text-center py-4 text-muted">Chưa có nhật ký biến động tồn kho nào</td>
+            </tr>
+            <tr v-for="log in stockLogs" :key="log.id">
+              <td style="font-size:12px;color:var(--z-gray)">{{ formatDate(log.ngayTao) }}</td>
+              <td>
+                <div style="font-weight:500">{{ log.tenVay || 'N/A' }}</div>
+                <div style="font-size:11px;color:var(--z-gray)">{{ log.maVay }}</div>
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border">
+                  {{ log.mauSac || '' }} / {{ log.kichThuoc || '' }}
+                </span>
+              </td>
+              <td class="text-center">{{ log.soLuongTruoc }}</td>
+              <td class="text-center" :style="{ color: log.soLuongThayDoi > 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }">
+                {{ log.soLuongThayDoi > 0 ? '+' + log.soLuongThayDoi : log.soLuongThayDoi }}
+              </td>
+              <td class="text-center" style="font-weight:600">{{ log.soLuongSau }}</td>
+              <td>
+                <span class="badge" :class="getMovementTypeBadgeClass(log.loaiBienDong)">
+                  {{ log.loaiBienDong }}
+                </span>
+              </td>
+              <td style="font-size:12px;font-family:monospace">{{ log.maThamChieu || '-' }}</td>
+              <td style="font-size:13px">{{ log.nguoiThucHien || 'System' }}</td>
+              <td style="font-size:12px;color:var(--z-gray);max-width:200px" class="text-truncate">{{ log.ghiChu || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="stockLogTotalPages > 1" class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+        <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="stockLogPage === 0" @click="fetchStockLogs(stockLogPage - 1)">Trang trước</button>
+        <span style="font-size:13px;color:var(--z-gray)">Trang {{ stockLogPage + 1 }} / {{ stockLogTotalPages }}</span>
+        <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="stockLogPage >= stockLogTotalPages - 1" @click="fetchStockLogs(stockLogPage + 1)">Trang sau</button>
       </div>
     </div>
 
@@ -491,6 +575,51 @@ import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
 const { isEn } = useI18n()
+
+// Tabs navigation
+const activeMainTab = ref('products')
+const stockLogs = ref([])
+const stockLogPage = ref(0)
+const stockLogTotalPages = ref(1)
+const stockLogTotalElements = ref(0)
+const stockLogSearch = ref('')
+const loadingStockLogs = ref(false)
+
+async function fetchStockLogs(page = 0) {
+  loadingStockLogs.value = true
+  stockLogPage.value = page
+  try {
+    const res = await api().getStockMovements({
+      page,
+      size: 15,
+      q: stockLogSearch.value.trim() || undefined
+    })
+    if (res && res.content) {
+      stockLogs.value = res.content
+      stockLogTotalPages.value = res.totalPages || 1
+      stockLogTotalElements.value = res.totalElements || 0
+    }
+  } catch (err) {
+    console.error('Lỗi lấy nhật ký biến động tồn kho:', err)
+  } finally {
+    loadingStockLogs.value = false
+  }
+}
+
+function getMovementTypeBadgeClass(type) {
+  if (!type) return 'bg-secondary'
+  const t = type.toUpperCase()
+  if (t.includes('POS') || t.includes('CHECKOUT') || t.includes('BAN')) return 'bg-primary'
+  if (t.includes('HUY') || t.includes('EXPIRE') || t.includes('HOAN')) return 'bg-warning text-dark'
+  if (t.includes('DOI') || t.includes('TRA')) return 'bg-info text-dark'
+  return 'bg-secondary'
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleString('vi-VN')
+}
+
 const search = ref('')
 const activeFilter = ref('Tất cả')
 const filterStatus = ref('')

@@ -23,8 +23,8 @@ public class HoaDonChiTiet {
     private HoaDon hoaDon;
 
     @ManyToOne
-    @JoinColumn(name = "id_vay_chi_tiet")
-    private VayChiTiet vayChiTiet;
+    @JoinColumn(name = "id_san_pham_chi_tiet")
+    private SanPhamChiTiet sanPhamChiTiet;
 
     @Column(name = "so_luong")
     private Integer soLuong;

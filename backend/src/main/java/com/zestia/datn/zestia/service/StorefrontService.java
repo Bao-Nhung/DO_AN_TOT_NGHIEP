@@ -14,8 +14,8 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class StorefrontService {
-    private final VayRepository productRepo;
-    private final LoaiVayRepository categoryRepo;
+    private final SanPhamRepository productRepo;
+    private final LoaiSanPhamRepository categoryRepo;
     private final KhachHangRepository customerRepo;
     private final HoaDonRepository orderRepo;
     private final HoaDonChiTietRepository orderDetailRepo;

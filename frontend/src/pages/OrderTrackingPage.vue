@@ -39,6 +39,20 @@
         <!-- Lộ trình vận chuyển -->
         <OrderTrackingCard :order="currentOrder" />
 
+        <!-- Banner Vòng quay may mắn -->
+        <div v-if="currentOrder.trangThai === 4 && ((currentOrder.tongTien || currentOrder.thanhTien || 0) >= 1000000)" class="p-3 rounded-3 border text-start" style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f6 100%); border-color: #fcc2d7 !important;">
+          <div class="d-flex align-items-center gap-3">
+            <div style="font-size: 32px;">🎉</div>
+            <div class="flex-grow-1">
+              <div style="font-weight: 600; font-size: 14px; color: #c92a2a;">Đơn hàng này đủ điều kiện Tham Gia Vòng Quay!</div>
+              <div style="font-size: 12px; color: #495057;">Đơn đã giao từ 1.000.000đ nhận ngay 1 lượt quay may mắn 100% trúng quà.</div>
+            </div>
+            <RouterLink :to="`/lucky-wheel?orderCode=${currentOrder.maHoaDon}&phone=${currentOrder.soDienThoai || ''}`" class="btn btn-sm btn-danger px-3 py-2 fw-bold text-nowrap shadow-sm">
+              Quay Ngay <i class="bi bi-arrow-right ms-1"></i>
+            </RouterLink>
+          </div>
+        </div>
+
         <!-- Chi tiết đơn hàng -->
         <div class="z-order-details p-4">
           <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2">

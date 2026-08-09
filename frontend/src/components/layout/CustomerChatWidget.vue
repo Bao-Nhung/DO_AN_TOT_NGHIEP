@@ -310,10 +310,27 @@ function playChimeSound() {
 
 function formatMarkdown(text) {
   if (!text) return ''
-  return text
+  let html = text
+    // Code blocks
+    .replace(/```([\s\S]*?)```/g, '<pre class="z-ai-code"><code>$1</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code class="z-ai-inline-code">$1</code>')
+    // Bold
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Italic
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    // Bullet lists (• or - or *)
+    .replace(/^[•\-\*]\s+(.+)$/gm, '<li>$1</li>')
+    // Numbered lists
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<li><span class="z-list-num">$1.</span> $2</li>')
+    // Newlines to <br>, but not inside <pre>
     .replace(/\n/g, '<br>')
+  // Wrap consecutive <li> items in <ul>
+  html = html.replace(/((?:<li>.*?<\/li><br>?)+)/g, (match) => {
+    const items = match.replace(/<br>/g, '')
+    return `<ul class="z-ai-list">${items}</ul>`
+  })
+  return html
 }
 
 function copyText(text) {
@@ -365,8 +382,12 @@ async function send() {
       .slice(-8)
       .map(m => ({ role: m.role, content: m.content }))
 
-    const res = await api().sendAiChat({ message: text, history }).catch(() => null)
-    
+    const res = await api().sendAiChat({
+      message: text,
+      history,
+      mode: activeTab.value // 'assistant' | 'stylist'
+    }).catch(() => null)
+
     let replyText = res?.reply
     let cards = res?.cards || []
 
@@ -377,20 +398,25 @@ async function send() {
       cards = localRes.cards || []
     }
 
-    messages.value.push({
-      role: 'assistant',
-      content: replyText,
-      cards: cards
-    })
+    // Thêm tin nhắn với streaming reveal effect
+    const newMsg = { role: 'assistant', content: '', cards: [] }
+    messages.value.push(newMsg)
     playChimeSound()
+    loading.value = false
+    await scrollToBottom()
+    // Typewriter-like reveal
+    await streamText(newMsg, replyText)
+    newMsg.cards = cards
+    await scrollToBottom()
   } catch (e) {
     const localRes = generateClientAiResponse(text)
-    messages.value.push({
-      role: 'assistant',
-      content: localRes.reply,
-      cards: localRes.cards || []
-    })
+    const newMsg = { role: 'assistant', content: '', cards: [] }
+    messages.value.push(newMsg)
     playChimeSound()
+    loading.value = false
+    await streamText(newMsg, localRes.reply)
+    newMsg.cards = localRes.cards || []
+    await scrollToBottom()
   } finally {
     loading.value = false
     await scrollToBottom()
@@ -532,7 +558,10 @@ function applySupportSnapshot(snapshot) {
 function startSupportPoll() {
   stopSupportPoll()
   supportPoll = window.setInterval(async () => {
-    if (!supportToken.value || supportStatus.value === 'CLOSED') return
+    if (!supportToken.value || supportStatus.value === 'CLOSED') {
+      stopSupportPoll() // Tự dừng khi phiên đóng
+      return
+    }
     try {
       applySupportSnapshot(await api().getCustomerSupportChat(supportToken.value))
       await scrollToBottom()
@@ -553,6 +582,20 @@ function backToAi() {
   supportEmployee.value = ''
   humanMessages.value = []
   localStorage.removeItem('zestia_support_chat_token')
+}
+
+// Streaming typewriter reveal – hi\u1ec7n text t\u1eebng chunk nh\u1ecf
+async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 18) {
+  if (!fullText) return
+  msgObj.content = ''
+  let i = 0
+  while (i < fullText.length) {
+    msgObj.content += fullText.slice(i, i + chunkSize)
+    i += chunkSize
+    await new Promise(resolve => setTimeout(resolve, delayMs))
+    await scrollToBottom()
+  }
+  msgObj.content = fullText // ensure exact final
 }
 
 async function scrollToBottom() {
@@ -928,5 +971,39 @@ async function scrollToBottom() {
 }
 .z-slide-up-enter-from, .z-slide-up-leave-to {
   opacity: 0; transform: translateY(20px) scale(0.95);
+}
+/* MARKDOWN ELEMENTS */
+.z-ai-list {
+  margin: 4px 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+.z-ai-list li {
+  margin: 3px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.z-list-num {
+  font-weight: 700;
+  color: var(--z-accent);
+}
+.z-ai-code {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  overflow-x: auto;
+  margin: 6px 0;
+  white-space: pre;
+}
+.z-ai-inline-code {
+  background: #F1F5F9;
+  color: #D4564E;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
 }
 </style>

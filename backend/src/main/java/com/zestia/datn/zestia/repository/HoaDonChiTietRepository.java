@@ -14,7 +14,7 @@ public interface HoaDonChiTietRepository extends JpaRepository<HoaDonChiTiet, In
 
     List<HoaDonChiTiet> findByHoaDonIdIn(List<Integer> hoaDonIds);
 
-    List<HoaDonChiTiet> findByVayChiTietId(Integer vayChiTietId);
+    List<HoaDonChiTiet> findBySanPhamChiTietId(Integer sanPhamChiTietId);
 
     void deleteByHoaDonId(Integer hoaDonId);
 
@@ -27,7 +27,7 @@ public interface HoaDonChiTietRepository extends JpaRepository<HoaDonChiTiet, In
             SELECT DISTINCT h.id FROM HoaDonChiTiet ct
             JOIN ct.hoaDon h
             WHERE h.khachHang.id = :customerId
-              AND ct.vayChiTiet.vay.id = :productId
+              AND ct.sanPhamChiTiet.sanPham.id = :productId
               AND h.trangThai = 4
             ORDER BY h.id DESC
             """)
@@ -35,24 +35,24 @@ public interface HoaDonChiTietRepository extends JpaRepository<HoaDonChiTiet, In
                                                               @Param("productId") Integer productId);
 
     @Query("""
-            SELECT ct.vayChiTiet.vay.id, SUM(ct.soLuong)
+            SELECT ct.sanPhamChiTiet.sanPham.id, SUM(ct.soLuong)
             FROM HoaDonChiTiet ct
             JOIN ct.hoaDon h
             WHERE h.trangThai = 4
-              AND ct.vayChiTiet.vay.trangThai = 1
-            GROUP BY ct.vayChiTiet.vay.id
+              AND ct.sanPhamChiTiet.sanPham.trangThai = 1
+            GROUP BY ct.sanPhamChiTiet.sanPham.id
             ORDER BY SUM(ct.soLuong) DESC
             """)
     List<Object[]> findTopSellingProducts(Pageable pageable);
 
     @Query("""
-            SELECT ct.vayChiTiet.vay.id, ct.vayChiTiet.vay.maVay,
-                   ct.vayChiTiet.vay.tenVay, SUM(ct.soLuong),
-                   SUM(ct.donGia * ct.soLuong), MIN(ct.vayChiTiet.anhUrl)
+            SELECT ct.sanPhamChiTiet.sanPham.id, ct.sanPhamChiTiet.sanPham.maSanPham,
+                   ct.sanPhamChiTiet.sanPham.tenSanPham, SUM(ct.soLuong),
+                   SUM(ct.donGia * ct.soLuong), MIN(ct.sanPhamChiTiet.anhUrl)
             FROM HoaDonChiTiet ct
             JOIN ct.hoaDon h
             WHERE h.trangThai = 4
-            GROUP BY ct.vayChiTiet.vay.id, ct.vayChiTiet.vay.maVay, ct.vayChiTiet.vay.tenVay
+            GROUP BY ct.sanPhamChiTiet.sanPham.id, ct.sanPhamChiTiet.sanPham.maSanPham, ct.sanPhamChiTiet.sanPham.tenSanPham
             ORDER BY SUM(ct.soLuong) DESC
             """)
     List<Object[]> findTopSellingProductStats(Pageable pageable);

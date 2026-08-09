@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface SanPhamYeuThichRepository extends JpaRepository<SanPhamYeuThich, Integer> {
     List<SanPhamYeuThich> findByKhachHangIdOrderByNgayTaoDesc(Integer khachHangId);
 
-    Optional<SanPhamYeuThich> findByKhachHangIdAndVayId(Integer khachHangId, Integer vayId);
+    Optional<SanPhamYeuThich> findByKhachHangIdAndSanPhamId(Integer khachHangId, Integer sanPhamId);
 
-    void deleteByKhachHangIdAndVayId(Integer khachHangId, Integer vayId);
+    void deleteByKhachHangIdAndSanPhamId(Integer khachHangId, Integer sanPhamId);
 }

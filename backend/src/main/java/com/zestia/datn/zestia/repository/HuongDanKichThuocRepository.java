@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface HuongDanKichThuocRepository extends JpaRepository<HuongDanKichThuoc, Integer> {
-    List<HuongDanKichThuoc> findByVayIdOrderByKichThuocId(Integer vayId);
+    List<HuongDanKichThuoc> findBySanPhamIdOrderByKichThuocId(Integer sanPhamId);
 
-    Optional<HuongDanKichThuoc> findByVayIdAndKichThuocId(Integer vayId, Integer kichThuocId);
+    Optional<HuongDanKichThuoc> findBySanPhamIdAndKichThuocId(Integer sanPhamId, Integer kichThuocId);
 
-    void deleteByVayId(Integer vayId);
+    void deleteBySanPhamId(Integer sanPhamId);
 }

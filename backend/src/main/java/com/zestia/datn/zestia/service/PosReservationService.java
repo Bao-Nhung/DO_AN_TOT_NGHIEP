@@ -26,7 +26,7 @@ public class PosReservationService {
 
     private final PosPhienGiuHangRepository sessionRepository;
     private final PosChiTietGiuHangRepository itemRepository;
-    private final VayChiTietRepository variantRepository;
+    private final SanPhamChiTietRepository variantRepository;
     private final GiamGiaRepository voucherRepository;
     private final NhanVienRepository employeeRepository;
     private final PromotionPricingService pricingService;
@@ -54,7 +54,7 @@ public class PosReservationService {
         PosPhienGiuHang session = findOrCreateActiveSession(token, employeeId);
         List<PosChiTietGiuHang> currentItems = itemRepository.findByPhienIdOrderById(session.getId());
         PosChiTietGiuHang existing = currentItems.stream()
-                .filter(item -> Objects.equals(item.getVayChiTiet().getId(), variantId))
+                .filter(item -> Objects.equals(item.getSanPhamChiTiet().getId(), variantId))
                 .findFirst()
                 .orElse(null);
         int currentQuantity = existing != null && existing.getSoLuong() != null ? existing.getSoLuong() : 0;
@@ -71,7 +71,7 @@ public class PosReservationService {
         }
 
         if (delta != 0) {
-            VayChiTiet variant = variantRepository.findByIdForUpdate(variantId)
+            SanPhamChiTiet variant = variantRepository.findByIdForUpdate(variantId)
                     .orElseThrow(() -> new IllegalArgumentException("Biến thể sản phẩm không tồn tại"));
             requireOrderable(variant);
 
@@ -100,7 +100,7 @@ public class PosReservationService {
             } else if (existing == null) {
                 itemRepository.save(PosChiTietGiuHang.builder()
                         .phien(session)
-                        .vayChiTiet(variant)
+                        .sanPhamChiTiet(variant)
                         .soLuong(targetQuantity)
                         .donGia(pricingService.quote(variant).effectivePrice())
                         .ngayTao(now)
@@ -204,7 +204,7 @@ public class PosReservationService {
         Map<Integer, Integer> heldQuantities = new LinkedHashMap<>();
         Map<Integer, BigDecimal> heldPrices = new LinkedHashMap<>();
         for (PosChiTietGiuHang item : itemRepository.findByPhienIdOrderById(session.getId())) {
-            Integer variantId = item.getVayChiTiet().getId();
+            Integer variantId = item.getSanPhamChiTiet().getId();
             heldQuantities.put(variantId, item.getSoLuong());
             heldPrices.put(variantId, item.getDonGia());
         }
@@ -315,12 +315,12 @@ public class PosReservationService {
         return session;
     }
 
-    private void requireOrderable(VayChiTiet variant) {
-        if (variant.getVay() == null
+    private void requireOrderable(SanPhamChiTiet variant) {
+        if (variant.getSanPham() == null
                 || variant.getMauSac() == null
                 || variant.getKichThuoc() == null
                 || (variant.getTrangThai() != null && variant.getTrangThai() != 1)
-                || (variant.getVay().getTrangThai() != null && variant.getVay().getTrangThai() != 1)) {
+                || (variant.getSanPham().getTrangThai() != null && variant.getSanPham().getTrangThai() != 1)) {
             throw new IllegalArgumentException("Biến thể sản phẩm đã ngừng bán hoặc không hợp lệ");
         }
     }
@@ -359,9 +359,9 @@ public class PosReservationService {
     private void releaseInternal(PosPhienGiuHang session, String targetStatus, String note) {
         List<PosChiTietGiuHang> items = itemRepository.findByPhienIdOrderById(session.getId());
         items.stream()
-                .sorted(Comparator.comparing(item -> item.getVayChiTiet().getId()))
+                .sorted(Comparator.comparing(item -> item.getSanPhamChiTiet().getId()))
                 .forEach(item -> {
-                    VayChiTiet variant = variantRepository.findByIdForUpdate(item.getVayChiTiet().getId())
+                    SanPhamChiTiet variant = variantRepository.findByIdForUpdate(item.getSanPhamChiTiet().getId())
                             .orElse(null);
                     if (variant == null) return;
                     int before = Optional.ofNullable(variant.getSoLuong()).orElse(0);
@@ -422,8 +422,8 @@ public class PosReservationService {
         List<Map<String, Object>> items = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
         for (PosChiTietGiuHang heldItem : itemRepository.findByPhienIdOrderById(session.getId())) {
-            VayChiTiet variant = heldItem.getVayChiTiet();
-            Vay product = variant.getVay();
+            SanPhamChiTiet variant = heldItem.getSanPhamChiTiet();
+            SanPham product = variant.getSanPham();
             int quantity = Optional.ofNullable(heldItem.getSoLuong()).orElse(0);
             BigDecimal lineTotal = heldItem.getDonGia().multiply(BigDecimal.valueOf(quantity));
             subtotal = subtotal.add(lineTotal);
@@ -431,8 +431,10 @@ public class PosReservationService {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("variantId", variant.getId());
             item.put("productId", product.getId());
-            item.put("productCode", product.getMaVay());
-            item.put("productName", product.getTenVay());
+            item.put("productCode", product.getMaSanPham());
+            item.put("maVay", product.getMaSanPham());
+            item.put("productName", product.getTenSanPham());
+            item.put("tenVay", product.getTenSanPham());
             item.put("color", variant.getMauSac().getTenMauSac());
             item.put("size", variant.getKichThuoc().getTenKichThuoc());
             item.put("quantity", quantity);

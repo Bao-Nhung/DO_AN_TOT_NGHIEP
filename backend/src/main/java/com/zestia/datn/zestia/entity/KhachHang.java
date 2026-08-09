@@ -43,6 +43,18 @@ public class KhachHang {
     @Column(name = "mat_khau", length = 255)
     private String matKhau;
 
+    @Column(name = "diem_tich_luy")
+    @Builder.Default
+    private Integer diemTichLuy = 0;
+
+    @Column(name = "tong_chi_tieu")
+    @Builder.Default
+    private java.math.BigDecimal tongChiTieu = java.math.BigDecimal.ZERO;
+
+    @Column(name = "hang_thanh_vien", length = 50)
+    @Builder.Default
+    private String hangThanhVien = "Đồng";
+
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
 

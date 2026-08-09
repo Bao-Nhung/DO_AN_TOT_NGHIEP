@@ -45,6 +45,7 @@ public class OrderTrackingDTO {
     @Builder
     public static class OrderItemDTO {
         private Integer id;
+        private String tenSanPham;
         private String tenVay;
         private String mauSac;
         private String maHex;

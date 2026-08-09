@@ -122,17 +122,17 @@ public class KhachHangController {
         Map<Integer, List<HoaDonChiTiet>> detailsByOrder = details.stream()
                 .collect(Collectors.groupingBy(detail -> detail.getHoaDon().getId()));
         List<Integer> productIds = details.stream()
-                .map(HoaDonChiTiet::getVayChiTiet)
+                .map(HoaDonChiTiet::getSanPhamChiTiet)
                 .filter(Objects::nonNull)
-                .map(detail -> detail.getVay())
+                .map(detail -> detail.getSanPham())
                 .filter(Objects::nonNull)
                 .map(product -> product.getId())
                 .distinct()
                 .toList();
         Map<Integer, String> firstImages = new HashMap<>();
         if (!productIds.isEmpty()) {
-            for (Anh image : anhRepo.findByVayIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
-                firstImages.putIfAbsent(image.getVay().getId(), image.getAnhUrl());
+            for (Anh image : anhRepo.findBySanPhamIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
+                firstImages.putIfAbsent(image.getSanPham().getId(), image.getAnhUrl());
             }
         }
 
@@ -164,14 +164,16 @@ public class KhachHangController {
         map.put("id", detail.getId());
         map.put("soLuong", detail.getSoLuong());
         map.put("donGia", detail.getDonGia());
-        if (detail.getVayChiTiet() != null) {
-            var variant = detail.getVayChiTiet();
-            var product = variant.getVay();
+        if (detail.getSanPhamChiTiet() != null) {
+            var variant = detail.getSanPhamChiTiet();
+            var product = variant.getSanPham();
             map.put("variantId", variant.getId());
-            map.put("maBienThe", variant.getMaVayChiTiet());
+            map.put("maBienThe", variant.getMaSanPhamChiTiet());
             map.put("productId", product != null ? product.getId() : null);
-            map.put("maSanPham", product != null ? product.getMaVay() : null);
-            map.put("tenSanPham", product != null ? product.getTenVay() : null);
+            map.put("maSanPham", product != null ? product.getMaSanPham() : null);
+            map.put("maVay", product != null ? product.getMaSanPham() : null);
+            map.put("tenSanPham", product != null ? product.getTenSanPham() : null);
+            map.put("tenVay", product != null ? product.getTenSanPham() : null);
             map.put("mauSac", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
             map.put("kichThuoc", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
             map.put("anhUrl", variant.getAnhUrl() != null ? variant.getAnhUrl()
@@ -187,6 +189,8 @@ public class KhachHangController {
         map.put("hoVaTen", customer.getHoVaTen());
         map.put("soDienThoai", customer.getSoDienThoai());
         map.put("email", customer.getEmail());
+        map.put("diemTichLuy", customer.getDiemTichLuy() != null ? customer.getDiemTichLuy() : 0);
+        map.put("hangThanhVien", customer.getHangThanhVien() != null ? customer.getHangThanhVien() : "Đồng");
         return map;
     }
 
@@ -204,6 +208,8 @@ public class KhachHangController {
         map.put("soDienThoai", kh.getSoDienThoai());
         map.put("email", kh.getEmail());
         map.put("gioiTinh", kh.getGioiTinh());
+        map.put("diemTichLuy", kh.getDiemTichLuy() != null ? kh.getDiemTichLuy() : 0);
+        map.put("hangThanhVien", kh.getHangThanhVien() != null ? kh.getHangThanhVien() : "Đồng");
         map.put("tongDon", kh.getTongDon() != null ? kh.getTongDon() : 0);
         map.put("tongChiTieu", kh.getTongChiTieu());
         map.put("ngayTao", kh.getNgayTao());

@@ -24,6 +24,10 @@
             </button>
           </div>
           <div class="ms-auto d-flex align-items-center gap-3">
+            <button type="button" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-2 px-3 py-2 fw-bold shadow-sm" style="border-radius:20px;" @click="showVisualModal = true">
+              <i class="bi bi-camera-fill"></i> Tìm bằng ảnh AI
+            </button>
+
             <div class="d-flex align-items-center gap-2">
               <span style="font-size:13px;color:var(--z-gray);white-space:nowrap">Giá:</span>
               <select v-model="priceRange" class="lm-input" style="width:auto;padding:8px 12px;font-size:13px">
@@ -43,6 +47,24 @@
                 <option value="name">Tên A-Z</option>
               </select>
             </div>
+          </div>
+        </div>
+
+        <!-- AI Vision Search Active Banner -->
+        <div v-if="aiVisualResults" class="p-3 mt-3 rounded-3 border border-danger bg-light text-start">
+          <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2 text-danger fw-bold" style="font-size:14px;">
+              <i class="bi bi-magic fs-5"></i>
+              <span>Kết quả Phân Tích AI Vision (Tìm thấy {{ aiVisualResults.results?.length || 0 }} sản phẩm phù hợp)</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-3" style="font-size:12px;" @click="clearAiVisualSearch">
+              <i class="bi bi-x-circle me-1"></i> Xóa kết quả ảnh
+            </button>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <span v-for="tag in aiVisualResults.detectedTags" :key="tag" class="badge bg-danger">
+              <i class="bi bi-tag-fill me-1"></i>{{ tag }}
+            </span>
           </div>
         </div>
 
@@ -122,6 +144,34 @@
         </RouterLink>
       </div>
     </Transition>
+
+    <!-- AI Image Search Modal -->
+    <div v-if="showVisualModal" class="z-modal-overlay" @click.self="showVisualModal = false" style="z-index:2000; backdrop-filter:blur(2px);">
+      <div class="z-modal" style="max-width:550px">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 style="font-size:18px;font-weight:600;margin:0" class="text-danger">
+            <i class="bi bi-camera-fill me-2"></i>Tìm kiếm sản phẩm bằng ảnh AI
+          </h3>
+          <button type="button" class="z-icon-btn" @click="showVisualModal = false"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <p style="font-size:13px; color:var(--z-gray);" class="mb-3">
+          Tải lên hình ảnh trang phục mẫu bạn yêu thích. AI sẽ phân tích kiểu dáng, màu sắc và tìm các mẫu tương tự trong kho Zestia.
+        </p>
+
+        <div class="p-4 border-2 rounded-3 text-center mb-3" style="border: 2px dashed #fcc2d7; background: #fff5f5; cursor: pointer;" @click="$refs.visualFileInput.click()">
+          <i class="bi bi-cloud-arrow-up text-danger" style="font-size: 36px;"></i>
+          <div style="font-size: 14px; font-weight: 600;" class="mt-2 text-danger">Tải ảnh mẫu lên hoặc Kéo thả vào đây</div>
+          <div style="font-size: 11px; color: var(--z-gray);">Hỗ trợ file ảnh JPG, PNG, WEBP (Tối đa 10MB)</div>
+          <input ref="visualFileInput" type="file" accept="image/*" class="d-none" @change="handleVisualFileSelected" />
+        </div>
+
+        <div v-if="analyzingVisual" class="text-center py-3">
+          <div class="spinner-border text-danger mb-2"></div>
+          <div style="font-size: 13px; font-weight: 500;" class="text-danger">AI Vision đang phân tích kiểu dáng và màu sắc...</div>
+        </div>
+      </div>
+    </div>
 
     <AppFooter />
   </div>
@@ -257,7 +307,45 @@ const filteredProducts = computed(() => {
   return result
 })
 
+const showVisualModal = ref(false)
+const analyzingVisual = ref(false)
+const aiVisualResults = ref(null)
+
+async function handleVisualFileSelected(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  analyzingVisual.value = true
+  try {
+    const res = await api().visualSearch(file)
+    aiVisualResults.value = res
+    showVisualModal.value = false
+  } catch (error) {
+    alert(error.error || 'Không thể phân tích hình ảnh AI')
+  } finally {
+    analyzingVisual.value = false
+  }
+}
+
+function clearAiVisualSearch() {
+  aiVisualResults.value = null
+}
+
 const sortedProducts = computed(() => {
+  if (aiVisualResults.value && Array.isArray(aiVisualResults.value.results)) {
+    return aiVisualResults.value.results.map(item => {
+      const original = products.value.find(p => p.id === item.id)
+      return {
+        id: item.id,
+        name: item.tenVay || item.name,
+        code: item.maVay || item.code,
+        price: Number(item.giaCuoi || item.price || item.giaGoc || 0),
+        category: item.danhMuc || original?.category || 'Thời trang',
+        image: item.anhChinh || original?.image || '/images/products/dress1.jpg',
+        badge: `${item.matchScore}% Khớp AI`
+      }
+    })
+  }
+
   const arr = [...filteredProducts.value]
   if (sortBy.value === 'price-asc') arr.sort((a, b) => a.price - b.price)
   if (sortBy.value === 'price-desc') arr.sort((a, b) => b.price - a.price)

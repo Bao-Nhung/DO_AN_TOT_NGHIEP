@@ -19,8 +19,8 @@ public class Anh {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "id_vay")
-    private Vay vay;
+    @JoinColumn(name = "id_san_pham")
+    private SanPham sanPham;
 
     @Column(name = "anh_url")
     private String anhUrl;

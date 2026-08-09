@@ -59,6 +59,7 @@
             :key="chip.label"
             class="z-chip-btn"
             type="button"
+            :disabled="loading"
             @click="sendQuickPrompt(chip.prompt)"
           >
             <i class="bi" :class="chip.icon"></i>
@@ -99,19 +100,25 @@
                   <div v-else-if="card.type === 'stats'" class="z-stats-card-mini">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                       <strong style="color:var(--z-accent)"><i class="bi bi-graph-up-arrow me-1"></i>{{ card.title }}</strong>
-                      <span class="badge bg-success">Live</span>
+                      <span class="badge bg-success">Dữ liệu thực</span>
                     </div>
                     <div class="row g-2 text-center">
-                      <div class="col-6">
+                      <div class="col-4">
                         <div class="z-stat-box">
                           <small>Sản phẩm</small>
                           <div>{{ card.totalProducts }}</div>
                         </div>
                       </div>
-                      <div class="col-6">
+                      <div class="col-4">
                         <div class="z-stat-box">
                           <small>Đơn hàng</small>
                           <div>{{ card.totalOrders }}</div>
+                        </div>
+                      </div>
+                      <div v-if="card.totalStock" class="col-4">
+                        <div class="z-stat-box">
+                          <small>Tồn kho</small>
+                          <div>{{ card.totalStock }}</div>
                         </div>
                       </div>
                     </div>
@@ -260,36 +267,40 @@ async function sendMessage() {
       content: m.text
     }))
 
-    const res = await api().postAiChat(query, historyPayload).catch(() => null)
+    const res = await api().postAiChat(query, historyPayload, 'staff').catch(() => null)
 
-    if (res && res.reply) {
-      messages.value.push({
-        role: 'assistant',
-        text: res.reply,
-        time: getCurrentTime(),
-        cards: res.cards || [],
-        copyable: res.copyable || false
-      })
+    const replyText = res?.reply || null
+    const replyCards = res?.cards || []
+    const replyTime = getCurrentTime()
+
+    if (replyText) {
+      const newMsg = { role: 'assistant', text: '', time: replyTime, cards: [], copyable: res?.copyable || false }
+      messages.value.push(newMsg)
+      playChime()
+      loading.value = false
+      scrollToBottom()
+      await streamText(newMsg, replyText)
+      newMsg.cards = replyCards
+      scrollToBottom()
     } else {
-      // Fallback local smart response for offline testing
+      // Fallback local
       const localResp = generateLocalStaffResponse(query)
-      messages.value.push({
-        role: 'assistant',
-        text: localResp.text,
-        time: getCurrentTime(),
-        cards: localResp.cards || [],
-        copyable: localResp.copyable || false
-      })
+      const newMsg = { role: 'assistant', text: '', time: replyTime, cards: [], copyable: localResp.copyable || false }
+      messages.value.push(newMsg)
+      playChime()
+      loading.value = false
+      scrollToBottom()
+      await streamText(newMsg, localResp.text)
+      newMsg.cards = localResp.cards || []
+      scrollToBottom()
     }
-    playChime()
   } catch (e) {
     const localResp = generateLocalStaffResponse(query)
-    messages.value.push({
-      role: 'assistant',
-      text: localResp.text,
-      time: getCurrentTime(),
-      cards: localResp.cards || []
-    })
+    const newMsg = { role: 'assistant', text: '', time: getCurrentTime(), cards: [] }
+    messages.value.push(newMsg)
+    loading.value = false
+    await streamText(newMsg, localResp.text)
+    newMsg.cards = localResp.cards || []
   } finally {
     loading.value = false
     scrollToBottom()
@@ -400,10 +411,40 @@ function scrollToBottom() {
 function formatMessageText(text) {
   if (!text) return ''
   let html = text
+    // Code blocks
+    .replace(/```([\s\S]*?)```/g, '<pre class="z-copilot-code"><code>$1</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code class="z-copilot-inline-code">$1</code>')
+    // Bold
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Italic
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    // Bullet lists
+    .replace(/^[•\-\*]\s+(.+)$/gm, '<li>$1</li>')
+    // Numbered lists
+    .replace(/^(\d+)\.\s+(.+)$/gm, '<li class="z-num-li"><span class="z-num">$1.</span> $2</li>')
+    // Newlines
     .replace(/\n/g, '<br/>')
+  // Wrap li in ul
+  html = html.replace(/((?:<li[^>]*>.*?<\/li><br\/?>?)+)/g, (match) => {
+    const items = match.replace(/<br\/?>/g, '')
+    return `<ul class="z-copilot-list">${items}</ul>`
+  })
   return html
+}
+
+// Streaming typewriter reveal
+async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
+  if (!fullText) return
+  msgObj.text = ''
+  let i = 0
+  while (i < fullText.length) {
+    msgObj.text += fullText.slice(i, i + chunkSize)
+    i += chunkSize
+    await new Promise(resolve => setTimeout(resolve, delayMs))
+    scrollToBottom()
+  }
+  msgObj.text = fullText
 }
 </script>
 
@@ -793,5 +834,44 @@ function formatMessageText(text) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* Markdown elements */
+.z-copilot-list {
+  margin: 4px 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+.z-copilot-list li {
+  margin: 3px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.z-num { font-weight: 700; color: var(--z-accent, #c08b7e); }
+.z-copilot-code {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  overflow-x: auto;
+  margin: 6px 0;
+  white-space: pre;
+}
+.z-copilot-inline-code {
+  background: #f3f4f6;
+  color: var(--z-accent, #c08b7e);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+/* Chip disabled state */
+.z-chip-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 </style>

@@ -76,6 +76,18 @@ export const messages = {
       rating: 'Đánh giá',
       stock: 'Tồn kho',
     },
+    validation: {
+      selectColor: 'Vui lòng chọn màu sắc sản phẩm',
+      selectSize: 'Vui lòng chọn kích thước sản phẩm',
+      invalidPhone: 'Số điện thoại Việt Nam không hợp lệ',
+      emptyAddress: 'Vui lòng nhập đầy đủ địa chỉ giao hàng',
+      invalidVoucher: 'Mã giảm giá không hợp lệ hoặc đã hết hạn',
+      maxImageSize: 'Mỗi tệp ảnh không được vượt quá 5MB',
+      invalidImageFormat: 'Chỉ chấp nhận định dạng ảnh JPG, PNG hoặc WebP',
+      requiredField: 'Trường thông tin này là bắt buộc',
+      outOfStock: 'Sản phẩm đã hết hàng hoặc không đủ tồn kho',
+      cartEmpty: 'Giỏ hàng của bạn hiện đang trống',
+    },
   },
   en: {
     nav: {
@@ -153,6 +165,18 @@ export const messages = {
       sizes: 'Sizes',
       rating: 'Rating',
       stock: 'Stock',
+    },
+    validation: {
+      selectColor: 'Please select a garment color option',
+      selectSize: 'Please select a size option',
+      invalidPhone: 'Invalid Vietnamese phone number format',
+      emptyAddress: 'Please enter a complete delivery address',
+      invalidVoucher: 'Voucher code is invalid or has expired',
+      maxImageSize: 'Each uploaded image must not exceed 5 MB',
+      invalidImageFormat: 'Only JPG, PNG, or WebP image formats are accepted',
+      requiredField: 'This field is required',
+      outOfStock: 'Item is out of stock or insufficient inventory available',
+      cartEmpty: 'Your shopping cart is currently empty',
     },
   },
 }

@@ -33,6 +33,8 @@ public class OrderStatusService {
     private final HoaDonAuditLogRepository auditLogRepo;
     private final OrderInventoryService inventoryService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
+    private final LoyaltyService loyaltyService;
 
     @Transactional
     public HoaDon transition(Integer orderId, byte newStatus, String note, String actorName, String actorRole) {
@@ -62,6 +64,7 @@ public class OrderStatusService {
         if (newStatus == 4) {
             order.setNgayGiaoHangThucTe(LocalDateTime.now());
             if ("COD".equalsIgnoreCase(order.getHinhThucThanhToan())) order.setDaThanhToan(true);
+            loyaltyService.earnPointsOnOrderCompletion(order);
         }
         if (newStatus == STATUS_CANCELLED || newStatus == STATUS_DELIVERY_FAILED) {
             inventoryService.restoreReservation(order);
@@ -86,7 +89,15 @@ public class OrderStatusService {
                 .ngayTao(LocalDateTime.now())
                 .build());
 
-        afterCommit(() -> sendStatusEmail(order, newStatus, description));
+        afterCommit(() -> {
+            sendStatusEmail(order, newStatus, description);
+            notificationService.createNotification(
+                    "Cập nhật đơn hàng #" + order.getMaHoaDon(),
+                    "Đơn hàng #" + order.getMaHoaDon() + " đã chuyển sang trạng thái: " + label(newStatus) + ". " + description,
+                    "DonHang",
+                    (byte) 1
+            );
+        });
         return order;
     }
 

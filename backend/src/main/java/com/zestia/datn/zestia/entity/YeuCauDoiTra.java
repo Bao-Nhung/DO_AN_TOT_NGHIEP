@@ -29,7 +29,7 @@ public class YeuCauDoiTra {
 
     @ManyToOne
     @JoinColumn(name = "id_bien_the_doi")
-    private VayChiTiet bienTheDoi;
+    private SanPhamChiTiet bienTheDoi;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_khach_hang", nullable = false)

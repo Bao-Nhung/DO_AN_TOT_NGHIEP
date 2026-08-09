@@ -13,6 +13,24 @@
       </div>
     </div>
 
+    <!-- 5-Step Visual Stepper -->
+    <div v-if="!isCancelledOrFailed" class="mb-4 pb-3 border-bottom">
+      <div class="d-flex justify-content-between align-items-center position-relative px-2">
+        <div class="position-absolute top-50 start-0 end-0 translate-middle-y bg-light" style="height:4px; z-index:1; margin: 0 30px;">
+          <div class="bg-success h-100 transition-all" :style="{ width: stepProgressPercent + '%' }"></div>
+        </div>
+        <div v-for="(step, idx) in progressSteps" :key="step.key" class="position-relative text-center" style="z-index:2;">
+          <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-1"
+               :class="idx <= currentStepIndex ? 'bg-success text-white shadow-sm' : 'bg-light text-muted border'"
+               style="width: 32px; height: 32px; font-size: 13px; font-weight: 600;">
+            <i v-if="idx < currentStepIndex" class="bi bi-check-lg"></i>
+            <span v-else>{{ idx + 1 }}</span>
+          </div>
+          <span style="font-size: 11px;" :class="idx <= currentStepIndex ? 'text-dark fw-bold' : 'text-muted'">{{ step.label }}</span>
+        </div>
+      </div>
+    </div>
+
     <div class="z-timeline mt-4">
       <div v-for="(track, index) in displayHistory" :key="index" class="z-timeline-item">
         <div :class="['z-timeline-dot', `z-timeline-dot-${track.trangThai}`]"></div>
@@ -55,6 +73,23 @@ const computedTrackingStatus = computed(() => {
   }
   return mapTrangThai[props.order.trangThai] || 'pending';
 })
+
+const progressSteps = [
+  { key: 'pending', label: 'Đặt hàng' },
+  { key: 'confirmed', label: 'Xác nhận' },
+  { key: 'processing', label: 'Chuẩn bị' },
+  { key: 'shipped', label: 'Đang giao' },
+  { key: 'delivered', label: 'Hoàn tất' }
+]
+
+const currentStepIndex = computed(() => {
+  const status = computedTrackingStatus.value
+  const map = { pending: 0, confirmed: 1, processing: 2, shipped: 3, delivered: 4 }
+  return map[status] ?? 0
+})
+
+const stepProgressPercent = computed(() => (currentStepIndex.value / (progressSteps.length - 1)) * 100)
+const isCancelledOrFailed = computed(() => ['cancelled', 'failed', 'payment_failed', 'return_requested', 'refunded'].includes(computedTrackingStatus.value))
 
 const statusClass = computed(() => {
   const map = {

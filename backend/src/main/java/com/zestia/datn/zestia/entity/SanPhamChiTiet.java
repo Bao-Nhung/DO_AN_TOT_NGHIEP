@@ -7,21 +7,21 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Vay_chi_tiet")
+@Table(name = "San_pham_chi_tiet")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class VayChiTiet {
+public class SanPhamChiTiet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "id_vay")
-    private Vay vay;
+    @JoinColumn(name = "id_san_pham")
+    private SanPham sanPham;
 
     @ManyToOne
     @JoinColumn(name = "id_mau_sac")
@@ -31,8 +31,8 @@ public class VayChiTiet {
     @JoinColumn(name = "id_kich_thuoc")
     private KichThuoc kichThuoc;
 
-    @Column(name = "ma_vay_chi_tiet")
-    private String maVayChiTiet;
+    @Column(name = "ma_san_pham_chi_tiet")
+    private String maSanPhamChiTiet;
 
     @Column(name = "gia_ban_goc")
     private BigDecimal giaBanGoc;

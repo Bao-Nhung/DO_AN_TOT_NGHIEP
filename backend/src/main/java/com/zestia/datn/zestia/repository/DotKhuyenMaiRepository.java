@@ -16,7 +16,7 @@ public interface DotKhuyenMaiRepository extends JpaRepository<DotKhuyenMai, Inte
     Optional<DotKhuyenMai> findByMaDotIgnoreCase(String maDot);
 
     @EntityGraph(attributePaths = {
-            "phamVis", "phamVis.vay", "phamVis.loaiVay", "phamVis.mauSac", "phamVis.kichThuoc"
+            "phamVis", "phamVis.sanPham", "phamVis.loaiSanPham", "phamVis.mauSac", "phamVis.kichThuoc"
     })
     @Query("""
             SELECT DISTINCT campaign FROM DotKhuyenMai campaign
@@ -28,13 +28,13 @@ public interface DotKhuyenMaiRepository extends JpaRepository<DotKhuyenMai, Inte
     List<DotKhuyenMai> findActiveAt(@Param("now") LocalDateTime now);
 
     @EntityGraph(attributePaths = {
-            "phamVis", "phamVis.vay", "phamVis.loaiVay", "phamVis.mauSac", "phamVis.kichThuoc"
+            "phamVis", "phamVis.sanPham", "phamVis.loaiSanPham", "phamVis.mauSac", "phamVis.kichThuoc"
     })
     @Query("SELECT DISTINCT campaign FROM DotKhuyenMai campaign ORDER BY campaign.ngayBatDau DESC, campaign.id DESC")
     List<DotKhuyenMai> findAllDetailed();
 
     @EntityGraph(attributePaths = {
-            "phamVis", "phamVis.vay", "phamVis.loaiVay", "phamVis.mauSac", "phamVis.kichThuoc"
+            "phamVis", "phamVis.sanPham", "phamVis.loaiSanPham", "phamVis.mauSac", "phamVis.kichThuoc"
     })
     @Query("SELECT DISTINCT campaign FROM DotKhuyenMai campaign WHERE campaign.id = :id")
     Optional<DotKhuyenMai> findDetailedById(@Param("id") Integer id);

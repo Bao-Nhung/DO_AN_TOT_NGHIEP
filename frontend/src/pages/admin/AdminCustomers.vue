@@ -23,7 +23,8 @@
           <tr>
             <th>Khách hàng</th>
             <th>Số điện thoại</th>
-            <th>Email</th>
+            <th>Hạng VIP</th>
+            <th>Điểm tích lũy</th>
             <th>Tổng đơn</th>
             <th>Tổng chi tiêu</th>
             <th>Ngày tham gia</th>
@@ -44,7 +45,14 @@
               </div>
             </td>
             <td>{{ c.phone }}</td>
-            <td style="color:var(--z-gray)">{{ c.email }}</td>
+            <td>
+              <span class="badge" :class="getTierBadgeClass(c.tier)">
+                <i class="bi bi-award-fill me-1"></i>{{ c.tier || 'Đồng' }}
+              </span>
+            </td>
+            <td style="font-weight:600; color:var(--z-accent)">
+              {{ (c.points || 0).toLocaleString('vi-VN') }} pt
+            </td>
             <td style="font-weight:500">{{ c.orders }}</td>
             <td style="font-weight:600">{{ c.spent }}</td>
             <td style="color:var(--z-gray)">{{ c.date }}</td>
@@ -227,6 +235,7 @@ async function loadCustomers() {
     customers.value = (data.content || []).map((c, i) => ({
       id: c.id, code: c.maKhachHang || '', name: c.hoVaTen || '', phone: c.soDienThoai || '',
       email: c.email || '', orders: c.tongDon || 0, spent: fmtPrice(c.tongChiTieu),
+      tier: c.hangThanhVien || 'Đồng', points: Number(c.diemTichLuy || 0),
       date: c.ngayTao ? new Date(c.ngayTao).toLocaleDateString('vi-VN') : '',
       color: avatarColors[(Number(c.id || 0) + i) % avatarColors.length],
       gioiTinh: c.gioiTinh,
@@ -234,6 +243,13 @@ async function loadCustomers() {
     totalItems.value = Number(data.totalElements || 0)
     totalPages.value = Number(data.totalPages || 0)
   } catch (e) { console.error('Không thể tải khách hàng:', e) }
+}
+
+function getTierBadgeClass(tier) {
+  if (tier === 'Kim Cương') return 'bg-dark text-white border border-light'
+  if (tier === 'Vàng') return 'bg-warning text-dark'
+  if (tier === 'Bạc') return 'bg-info text-dark'
+  return 'bg-secondary'
 }
 
 const currentPage = ref(1)

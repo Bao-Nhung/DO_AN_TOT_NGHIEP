@@ -7,8 +7,8 @@ import lombok.*;
 @Table(
         name = "Huong_dan_kich_thuoc",
         uniqueConstraints = @UniqueConstraint(
-                name = "UQ_Huong_dan_size_Vay_KichThuoc",
-                columnNames = {"id_vay", "id_kich_thuoc"}
+                name = "UQ_Huong_dan_size_SanPham_KichThuoc",
+                columnNames = {"id_san_pham", "id_kich_thuoc"}
         )
 )
 @Getter
@@ -22,8 +22,8 @@ public class HuongDanKichThuoc {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_vay", nullable = false)
-    private Vay vay;
+    @JoinColumn(name = "id_san_pham", nullable = false)
+    private SanPham sanPham;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "id_kich_thuoc", nullable = false)

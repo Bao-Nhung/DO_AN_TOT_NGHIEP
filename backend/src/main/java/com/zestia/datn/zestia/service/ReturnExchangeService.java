@@ -47,7 +47,7 @@ public class ReturnExchangeService {
     private final AnhDoiTraRepository requestImageRepo;
     private final HoaDonRepository orderRepo;
     private final HoaDonChiTietRepository orderDetailRepo;
-    private final VayChiTietRepository variantRepo;
+    private final SanPhamChiTietRepository variantRepo;
     private final NhanVienRepository employeeRepo;
     private final HoaDonAuditLogRepository auditRepo;
     private final CurrentCustomerService currentCustomerService;
@@ -102,7 +102,7 @@ public class ReturnExchangeService {
         if (images == null || images.stream().filter(file -> file != null && !file.isEmpty()).count() == 0) {
             throw badRequest("Vui lòng tải ít nhất một ảnh tình trạng sản phẩm");
         }
-        VayChiTiet replacement = EXCHANGE.equals(normalizedType)
+        SanPhamChiTiet replacement = EXCHANGE.equals(normalizedType)
                 ? requireReplacement(detail, replacementVariantId, safeQuantity)
                 : null;
         String safeRefundInfo = RETURN.equals(normalizedType)
@@ -151,7 +151,7 @@ public class ReturnExchangeService {
         String normalizedType = requireType(type);
         int safeQuantity = requireQuantity(quantity, detail.getSoLuong());
         String safeReason = requireText(reason, 5, 1000, "Vui lòng nhập lý do từ 5 đến 1000 ký tự");
-        VayChiTiet replacement = EXCHANGE.equals(normalizedType)
+        SanPhamChiTiet replacement = EXCHANGE.equals(normalizedType)
                 ? requireReplacement(detail, replacementVariantId, safeQuantity)
                 : null;
         String safeRefundInfo = RETURN.equals(normalizedType)
@@ -287,18 +287,18 @@ public class ReturnExchangeService {
         if (Boolean.TRUE.equals(request.getDaHoanTonKho())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu này đã cập nhật tồn kho trước đó");
         }
-        Integer oldId = request.getHoaDonChiTiet().getVayChiTiet().getId();
+        Integer oldId = request.getHoaDonChiTiet().getSanPhamChiTiet().getId();
         Integer newId = request.getBienTheDoi() != null ? request.getBienTheDoi().getId() : null;
         List<Integer> lockIds = new ArrayList<>(new LinkedHashSet<>(newId == null ? List.of(oldId) : List.of(oldId, newId)));
         Collections.sort(lockIds);
-        Map<Integer, VayChiTiet> locked = new HashMap<>();
+        Map<Integer, SanPhamChiTiet> locked = new HashMap<>();
         for (Integer id : lockIds) {
             locked.put(id, variantRepo.findByIdForUpdate(id)
                     .orElseThrow(() -> notFound("Không tìm thấy biến thể sản phẩm")));
         }
 
         int quantity = request.getSoLuong();
-        VayChiTiet oldVariant = locked.get(oldId);
+        SanPhamChiTiet oldVariant = locked.get(oldId);
         int oldBefore = value(oldVariant.getSoLuong());
         int oldAfter = oldBefore + quantity;
         oldVariant.setSoLuong(oldAfter);
@@ -311,7 +311,7 @@ public class ReturnExchangeService {
         );
 
         if (EXCHANGE.equals(request.getLoaiYeuCau())) {
-            VayChiTiet newVariant = locked.get(newId);
+            SanPhamChiTiet newVariant = locked.get(newId);
             if (value(newVariant.getSoLuong()) < quantity) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Biến thể đổi không còn đủ tồn kho");
             }
@@ -332,16 +332,16 @@ public class ReturnExchangeService {
         request.setDaHoanTonKho(true);
     }
 
-    private VayChiTiet requireReplacement(HoaDonChiTiet detail, Integer replacementId, int quantity) {
+    private SanPhamChiTiet requireReplacement(HoaDonChiTiet detail, Integer replacementId, int quantity) {
         if (replacementId == null) throw badRequest("Vui lòng chọn màu và kích cỡ muốn đổi");
-        VayChiTiet current = detail.getVayChiTiet();
-        VayChiTiet replacement = variantRepo.findById(replacementId)
+        SanPhamChiTiet current = detail.getSanPhamChiTiet();
+        SanPhamChiTiet replacement = variantRepo.findById(replacementId)
                 .orElseThrow(() -> notFound("Không tìm thấy biến thể muốn đổi"));
         if (Objects.equals(current.getId(), replacement.getId())) {
             throw badRequest("Biến thể đổi phải khác sản phẩm hiện tại");
         }
-        if (current.getVay() == null || replacement.getVay() == null
-                || !Objects.equals(current.getVay().getId(), replacement.getVay().getId())) {
+        if (current.getSanPham() == null || replacement.getSanPham() == null
+                || !Objects.equals(current.getSanPham().getId(), replacement.getSanPham().getId())) {
             throw badRequest("Chỉ được đổi màu hoặc kích cỡ của cùng sản phẩm");
         }
         if (!Objects.equals(replacement.getTrangThai(), (byte) 1) || value(replacement.getSoLuong()) < quantity) {
@@ -357,7 +357,7 @@ public class ReturnExchangeService {
         if (detail.getHoaDon() == null || !Objects.equals(detail.getHoaDon().getId(), order.getId())) {
             throw badRequest("Sản phẩm không thuộc đơn hàng này");
         }
-        if (detail.getVayChiTiet() == null) throw badRequest("Sản phẩm không còn biến thể hợp lệ");
+        if (detail.getSanPhamChiTiet() == null) throw badRequest("Sản phẩm không còn biến thể hợp lệ");
         return detail;
     }
 
@@ -442,8 +442,8 @@ public class ReturnExchangeService {
 
     private Map<String, Object> toMap(YeuCauDoiTra request, List<String> images) {
         HoaDonChiTiet detail = request.getHoaDonChiTiet();
-        VayChiTiet variant = detail.getVayChiTiet();
-        VayChiTiet replacement = request.getBienTheDoi();
+        SanPhamChiTiet variant = detail.getSanPhamChiTiet();
+        SanPhamChiTiet replacement = request.getBienTheDoi();
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", request.getId());
         map.put("orderId", request.getHoaDon().getId());
@@ -467,9 +467,9 @@ public class ReturnExchangeService {
         map.put("customerName", request.getKhachHang().getHoVaTen());
         map.put("customerPhone", request.getKhachHang().getSoDienThoai());
         map.put("employeeName", request.getNhanVienXuLy() != null ? request.getNhanVienXuLy().getHoVaTen() : null);
-        map.put("productId", variant.getVay().getId());
-        map.put("productCode", variant.getVay().getMaVay());
-        map.put("productName", variant.getVay().getTenVay());
+        map.put("productId", variant.getSanPham().getId());
+        map.put("productCode", variant.getSanPham().getMaSanPham());
+        map.put("productName", variant.getSanPham().getTenSanPham());
         map.put("variantId", variant.getId());
         map.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
         map.put("size", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
@@ -482,7 +482,7 @@ public class ReturnExchangeService {
         return map;
     }
 
-    private Map<String, Object> variantMap(VayChiTiet variant) {
+    private Map<String, Object> variantMap(SanPhamChiTiet variant) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", variant.getId());
         map.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
@@ -541,7 +541,6 @@ public class ReturnExchangeService {
                 try {
                     Files.deleteIfExists(storedFile);
                 } catch (IOException ignored) {
-                    // Database rollback remains authoritative; orphan cleanup can be retried later.
                 }
             }
         });

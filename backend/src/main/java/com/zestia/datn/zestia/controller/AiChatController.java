@@ -39,7 +39,8 @@ public class AiChatController {
 
         String message = body != null ? String.valueOf(body.getOrDefault("message", "")) : "";
         List<?> history = body != null && body.get("history") instanceof List<?> list ? list : List.of();
-        return ResponseEntity.ok(aiChatService.reply(message, history, extractUser(authHeader)));
+        String mode = body != null && body.get("mode") instanceof String m ? m : null;
+        return ResponseEntity.ok(aiChatService.reply(message, history, extractUser(authHeader), mode));
     }
 
     private AiChatService.ChatUser extractUser(String authHeader) {

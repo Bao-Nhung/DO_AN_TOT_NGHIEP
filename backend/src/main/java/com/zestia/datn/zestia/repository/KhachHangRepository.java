@@ -54,6 +54,8 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    kh.soDienThoai AS soDienThoai,
                    kh.email AS email,
                    kh.gioiTinh AS gioiTinh,
+                   kh.diemTichLuy AS diemTichLuy,
+                   kh.hangThanhVien AS hangThanhVien,
                    kh.ngayTao AS ngayTao,
                    COUNT(h.id) AS tongDon,
                    COALESCE(SUM(CASE
@@ -62,7 +64,7 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    END), 0) AS tongChiTieu
             FROM KhachHang kh
             LEFT JOIN HoaDon h ON h.khachHang.id = kh.id
-            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.ngayTao
+            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.diemTichLuy, kh.hangThanhVien, kh.ngayTao
             ORDER BY kh.ngayTao DESC
             """)
     List<KhachHangSummary> findCustomerSummaries();
@@ -74,6 +76,8 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    kh.soDienThoai AS soDienThoai,
                    kh.email AS email,
                    kh.gioiTinh AS gioiTinh,
+                   kh.diemTichLuy AS diemTichLuy,
+                   kh.hangThanhVien AS hangThanhVien,
                    kh.ngayTao AS ngayTao,
                    COUNT(h.id) AS tongDon,
                    COALESCE(SUM(CASE
@@ -87,7 +91,7 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    OR LOWER(kh.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR kh.soDienThoai LIKE CONCAT('%', :keyword, '%')
                    OR LOWER(kh.maKhachHang) LIKE LOWER(CONCAT('%', :keyword, '%')))
-            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.ngayTao
+            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.diemTichLuy, kh.hangThanhVien, kh.ngayTao
             ORDER BY kh.ngayTao DESC
             """,
             countQuery = """
@@ -108,6 +112,8 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
         String getSoDienThoai();
         String getEmail();
         Byte getGioiTinh();
+        Integer getDiemTichLuy();
+        String getHangThanhVien();
         Long getTongDon();
         BigDecimal getTongChiTieu();
         LocalDateTime getNgayTao();

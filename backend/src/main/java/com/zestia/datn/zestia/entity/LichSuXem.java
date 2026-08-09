@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 @Table(
         name = "Lich_su_xem",
         uniqueConstraints = @UniqueConstraint(
-                name = "UQ_Lich_su_xem_Khach_Vay",
-                columnNames = {"id_khach_hang", "id_vay"}
+                name = "UQ_Lich_su_xem_Khach_SanPham",
+                columnNames = {"id_khach_hang", "id_san_pham"}
         )
 )
 @Getter
@@ -29,8 +29,8 @@ public class LichSuXem {
     private KhachHang khachHang;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_vay", nullable = false)
-    private Vay vay;
+    @JoinColumn(name = "id_san_pham", nullable = false)
+    private SanPham sanPham;
 
     @Column(name = "ngay_xem")
     private LocalDateTime ngayXem;

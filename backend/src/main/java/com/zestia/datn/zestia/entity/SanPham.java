@@ -8,13 +8,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "Vay")
+@Table(name = "San_pham")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Vay {
+public class SanPham {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,8 +25,8 @@ public class Vay {
     private NhaCungCap nhaCungCap;
 
     @ManyToOne
-    @JoinColumn(name = "id_loai_vay")
-    private LoaiVay loaiVay;
+    @JoinColumn(name = "id_loai_san_pham")
+    private LoaiSanPham loaiSanPham;
 
     @ManyToOne
     @JoinColumn(name = "id_chat_lieu")
@@ -36,11 +36,11 @@ public class Vay {
     @JoinColumn(name = "id_tai_tro")
     private TaiTro taiTro;
 
-    @Column(name = "ma_vay", unique = true)
-    private String maVay;
+    @Column(name = "ma_san_pham", unique = true)
+    private String maSanPham;
 
-    @Column(name = "ten_vay")
-    private String tenVay;
+    @Column(name = "ten_san_pham")
+    private String tenSanPham;
 
     @Column(name = "link_youtube")
     private String linkYoutube;
@@ -67,10 +67,10 @@ public class Vay {
     private String moTaPhom;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "vay")
-    private List<VayChiTiet> danhSachBienThe;
+    @OneToMany(mappedBy = "sanPham")
+    private List<SanPhamChiTiet> danhSachBienThe;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "vay")
+    @OneToMany(mappedBy = "sanPham")
     private List<Anh> danhSachAnh;
 }

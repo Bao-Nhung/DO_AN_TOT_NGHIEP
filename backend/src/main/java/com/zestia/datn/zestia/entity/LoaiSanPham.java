@@ -6,20 +6,20 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Loai_vay")
+@Table(name = "Loai_san_pham")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoaiVay {
+public class LoaiSanPham {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "ten_loai_vay", nullable = false, length = 150)
-    private String tenLoaiVay;
+    @Column(name = "ten_loai_san_pham", nullable = false, length = 150)
+    private String tenLoaiSanPham;
 
     @Column(name = "trang_thai")
     private Byte trangThai;

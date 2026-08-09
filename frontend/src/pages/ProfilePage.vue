@@ -31,6 +31,42 @@
               <RouterLink to="/my-orders" class="lm-btn-secondary">Xem tất cả đơn</RouterLink>
             </div>
 
+            <!-- Thẻ Thành Viên Zestia VIP Card -->
+            <div class="p-4 rounded-4 text-white mb-4 position-relative overflow-hidden shadow-sm"
+                 :style="{ background: loyaltyCardBg }">
+              <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+                <div>
+                  <span class="badge px-3 py-2 text-uppercase fw-bold shadow-sm" style="background: rgba(255,255,255,0.25); backdrop-filter: blur(4px); font-size:12px;">
+                    <i class="bi bi-award-fill me-1"></i> HẠNG {{ loyalty.hangThanhVien || 'ĐỒNG' }}
+                  </span>
+                  <h3 class="mt-2 mb-0 fw-bold" style="letter-spacing: 1px; font-size: 22px;">ZESTIA VIP CLUB</h3>
+                </div>
+                <div class="text-end">
+                  <div style="font-size: 11px; opacity: 0.85;">ĐIỂM TÍCH LŨY HIỆN CÓ</div>
+                  <div class="fw-bold" style="font-size: 26px;">{{ (loyalty.diemTichLuy || 0).toLocaleString('vi-VN') }} <small style="font-size:13px">điểm</small></div>
+                  <div style="font-size: 11px; opacity: 0.85;">Tương đương: {{ fmtMoney(loyalty.giaTriDiemQuyDoi || 0) }}</div>
+                </div>
+              </div>
+
+              <!-- Tiến trình thăng hạng -->
+              <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 12px; opacity: 0.9;">
+                  <span>Tổng chi tiêu: <strong>{{ fmtMoney(loyalty.tongChiTieu || 0) }}</strong></span>
+                  <span v-if="loyalty.canChiTieuThem > 0">Cần mua thêm {{ fmtMoney(loyalty.canChiTieuThem) }} để thăng hạng</span>
+                  <span v-else>🎉 Đã đạt hạng cao nhất!</span>
+                </div>
+                <div class="progress" style="height: 6px; background: rgba(255,255,255,0.3);">
+                  <div class="progress-bar bg-white" role="progressbar" :style="{ width: loyaltyProgressPercent + '%' }"></div>
+                </div>
+              </div>
+
+              <!-- Quyền lợi hạng -->
+              <div class="d-flex align-items-center gap-4 mt-3 pt-3 border-top border-white-50 flex-wrap" style="font-size: 12px; opacity: 0.95;">
+                <div><i class="bi bi-percent me-1"></i> Chiết khấu hạng: <strong>{{ loyalty.chietKhauPhanTram || 0 }}%</strong> mọi đơn hàng</div>
+                <div><i class="bi bi-lightning-charge-fill me-1"></i> Tích điểm: <strong>1%</strong> giá trị đơn thành công</div>
+              </div>
+            </div>
+
             <div class="z-profile-stats">
               <div v-for="stat in stats" :key="stat.label">
                 <strong>{{ stat.value }}</strong><span>{{ stat.label }}</span>
@@ -244,6 +280,31 @@ const stats = computed(() => {
 const availableDistricts = computed(() => addressData.value.find(city => city.code === selectedCity.value)?.districts || [])
 const availableWards = computed(() => availableDistricts.value.find(district => district.code === selectedDistrict.value)?.wards || [])
 
+const loyalty = ref({
+  diemTichLuy: 0,
+  giaTriDiemQuyDoi: 0,
+  tongChiTieu: 0,
+  hangThanhVien: 'Đồng',
+  chietKhauPhanTram: 0,
+  mocChiTieuKeTiep: 5000000,
+  canChiTieuThem: 5000000
+})
+
+const loyaltyCardBg = computed(() => {
+  const tier = loyalty.value?.hangThanhVien
+  if (tier === 'Kim Cương') return 'linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%)'
+  if (tier === 'Vàng') return 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)'
+  if (tier === 'Bạc') return 'linear-gradient(135deg, #334155 0%, #64748b 100%)'
+  return 'linear-gradient(135deg, #78350f 0%, #b45309 100%)'
+})
+
+const loyaltyProgressPercent = computed(() => {
+  const spent = Number(loyalty.value?.tongChiTieu || 0)
+  const target = Number(loyalty.value?.mocChiTieuKeTiep || 5000000)
+  if (target <= 0) return 100
+  return Math.min(100, Math.floor((spent / target) * 100))
+})
+
 onMounted(async () => {
   if (!isLoggedIn()) return router.replace('/login?redirect=/profile')
   await Promise.all([loadCurrentUser(), loadOrders(), loadAddressData()])
@@ -258,6 +319,11 @@ async function loadCurrentUser() {
     profile.email = current.email || profile.email
     profile.soDienThoai = current.soDienThoai || profile.soDienThoai
     if (current.gioiTinh != null) profile.gioiTinh = String(current.gioiTinh)
+
+    const customerData = await api().getCustomerData()
+    if (customerData?.loyalty) {
+      loyalty.value = customerData.loyalty
+    }
   } catch (error) {
     showToast(error.error || error.message || 'Không thể tải hồ sơ', 'error')
   }

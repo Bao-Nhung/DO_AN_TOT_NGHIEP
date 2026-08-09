@@ -18,8 +18,8 @@ public class BienDongTonKho {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_vay_chi_tiet", nullable = false)
-    private VayChiTiet vayChiTiet;
+    @JoinColumn(name = "id_san_pham_chi_tiet", nullable = false)
+    private SanPhamChiTiet sanPhamChiTiet;
 
     @Column(name = "so_luong_truoc", nullable = false)
     private Integer soLuongTruoc;

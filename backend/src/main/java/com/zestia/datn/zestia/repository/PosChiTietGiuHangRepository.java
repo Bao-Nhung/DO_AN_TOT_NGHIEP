@@ -10,5 +10,5 @@ public interface PosChiTietGiuHangRepository extends JpaRepository<PosChiTietGiu
 
     List<PosChiTietGiuHang> findByPhienIdOrderById(Integer phienId);
 
-    Optional<PosChiTietGiuHang> findByPhienIdAndVayChiTietId(Integer phienId, Integer vayChiTietId);
+    Optional<PosChiTietGiuHang> findByPhienIdAndSanPhamChiTietId(Integer phienId, Integer sanPhamChiTietId);
 }

@@ -20,12 +20,12 @@ public class PhamViKhuyenMai {
     private DotKhuyenMai dotKhuyenMai;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_vay")
-    private Vay vay;
+    @JoinColumn(name = "id_san_pham")
+    private SanPham sanPham;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_loai_vay")
-    private LoaiVay loaiVay;
+    @JoinColumn(name = "id_loai_san_pham")
+    private LoaiSanPham loaiSanPham;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_mau_sac")

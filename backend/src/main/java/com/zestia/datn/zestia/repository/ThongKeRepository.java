@@ -35,15 +35,15 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
     /* 2. TOP SẢN PHẨM BÁN CHẠY (Giới hạn TOP tự động bằng SQL) */
     @Query(value = """
             SELECT TOP 5
-                v.ten_vay AS ten,
+                v.ten_san_pham AS ten,
                 SUM(hdct.so_luong) AS tongSoLuong,
                 SUM(hdct.so_luong * hdct.don_gia) AS doanhThu
             FROM Hoa_don hd
             JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
-            JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
-            JOIN Vay v ON vct.id_vay = v.id
+            JOIN San_pham_chi_tiet vct ON hdct.id_san_pham_chi_tiet = vct.id
+            JOIN San_pham v ON vct.id_san_pham = v.id
             WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
-            GROUP BY v.id, v.ten_vay
+            GROUP BY v.id, v.ten_san_pham
             ORDER BY tongSoLuong DESC
             """, nativeQuery = true)
     List<ThongKeSoLuongDTO> getTopSanPhamBanChay(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
@@ -53,7 +53,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
             SELECT kt.ten_kich_thuoc AS ten, SUM(hdct.so_luong) AS tongSoLuong, NULL AS doanhThu, NULL AS maHex
             FROM Hoa_don hd
             JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
-            JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
+            JOIN San_pham_chi_tiet vct ON hdct.id_san_pham_chi_tiet = vct.id
             JOIN Kich_Thuoc kt ON vct.id_kich_thuoc = kt.id
             WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY kt.id, kt.ten_kich_thuoc
@@ -66,7 +66,7 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
             SELECT ms.ten_mau_sac AS ten, ms.ma_hex AS maHex, SUM(hdct.so_luong) AS tongSoLuong, NULL AS doanhThu
             FROM Hoa_don hd
             JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
-            JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
+            JOIN San_pham_chi_tiet vct ON hdct.id_san_pham_chi_tiet = vct.id
             JOIN Mau_Sac ms ON vct.id_mau_sac = ms.id
             WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
             GROUP BY ms.id, ms.ten_mau_sac, ms.ma_hex
@@ -76,14 +76,14 @@ public interface ThongKeRepository extends JpaRepository<HoaDon, Integer> {
 
     /* 5. DOANH THU THEO DANH MỤC */
     @Query(value = """
-            SELECT lv.ten_loai_vay AS tenDanhMuc, SUM(hdct.so_luong * hdct.don_gia) AS tongDoanhThu
+            SELECT lv.ten_loai_san_pham AS tenDanhMuc, SUM(hdct.so_luong * hdct.don_gia) AS tongDoanhThu
             FROM Hoa_don hd
             JOIN Hoa_don_chi_tiet hdct ON hd.id = hdct.id_hoa_don
-            JOIN Vay_chi_tiet vct ON hdct.id_vay_chi_tiet = vct.id
-            JOIN Vay v ON vct.id_vay = v.id
-            JOIN Loai_vay lv ON v.id_loai_vay = lv.id
+            JOIN San_pham_chi_tiet vct ON hdct.id_san_pham_chi_tiet = vct.id
+            JOIN San_pham v ON vct.id_san_pham = v.id
+            JOIN Loai_san_pham lv ON v.id_loai_san_pham = lv.id
             WHERE hd.trang_thai = 4 AND hd.ngay_tao >= :startDate AND hd.ngay_tao < :endDate
-            GROUP BY lv.id, lv.ten_loai_vay
+            GROUP BY lv.id, lv.ten_loai_san_pham
             """, nativeQuery = true)
     List<ThongKeDoanhThuDTO> getThongKeDoanhThuTheoDanhMuc(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 

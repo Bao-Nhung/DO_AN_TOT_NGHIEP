@@ -148,19 +148,25 @@ export function api() {
     getLuckyWheelSpinsAdmin: (params = {}) => request(`/lucky-wheel/admin/spins${toQuery(params)}`),
     deliverLuckyWheelPrize: (spinId) => request(`/lucky-wheel/admin/spins/${spinId}/deliver`, { method: 'PUT' }),
 
-    // Products
-    getVay: () => request('/vay'),
-    getVayPage: (params) => request(`/vay/paged${toQuery(params)}`),
-    getVayById: (id) => request(`/vay/${id}`),
-    createVay: (data) => request('/vay', { method: 'POST', body: JSON.stringify(data) }),
-    updateVay: (id, data) => request(`/vay/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    // Products (San Pham)
+    getSanPham: () => request('/san-pham'),
+    getVay: () => request('/san-pham'),
+    getSanPhamPage: (params) => request(`/san-pham/paged${toQuery(params)}`),
+    getVayPage: (params) => request(`/san-pham/paged${toQuery(params)}`),
+    getStockMovements: (params) => request(`/san-pham/stock-movements${toQuery(params)}`),
+    getSanPhamById: (id) => request(`/san-pham/${id}`),
+    getVayById: (id) => request(`/san-pham/${id}`),
+    createSanPham: (data) => request('/san-pham', { method: 'POST', body: JSON.stringify(data) }),
+    createVay: (data) => request('/san-pham', { method: 'POST', body: JSON.stringify(data) }),
+    updateSanPham: (id, data) => request(`/san-pham/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    updateVay: (id, data) => request(`/san-pham/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     uploadVayAnh: async (id, file) => {
       const fd = new FormData()
       fd.append('file', file)
       const headers = { 'Accept-Language': currentLocale() }
       const token = getToken()
       if (token) headers['Authorization'] = `Bearer ${token}`
-      const res = await fetch(`${API_BASE}/vay/${id}/anh`, { method: 'POST', headers, body: fd })
+      const res = await fetch(`${API_BASE}/san-pham/${id}/anh`, { method: 'POST', headers, body: fd })
       if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload thất bại' }))
       return res.json()
     },
@@ -170,11 +176,11 @@ export function api() {
       const headers = { 'Accept-Language': currentLocale() }
       const token = getToken()
       if (token) headers.Authorization = `Bearer ${token}`
-      const res = await fetch(`${API_BASE}/vay/${id}/mau/${colorId}/anh`, { method: 'POST', headers, body: fd })
+      const res = await fetch(`${API_BASE}/san-pham/${id}/mau/${colorId}/anh`, { method: 'POST', headers, body: fd })
       if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload ảnh màu thất bại' }))
       return res.json()
     },
-    deleteVayAnh: (anhId) => request(`/vay/anh/${anhId}`, { method: 'DELETE' }),
+    deleteVayAnh: (anhId) => request(`/san-pham/anh/${anhId}`, { method: 'DELETE' }),
 
     // Orders & Tracking
     getHoaDon: () => request('/hoa-don'),
@@ -236,6 +242,24 @@ export function api() {
     completeReturnRequest: (id, note) => request(`/returns/${id}/complete`, {
       method: 'PUT', body: JSON.stringify({ note: note || null })
     }),
+    visualSearch: async (file) => {
+      const form = new FormData()
+      form.append('file', file)
+      const headers = { 'Accept-Language': currentLocale() }
+      const token = getToken()
+      if (token) headers.Authorization = `Bearer ${token}`
+      const res = await fetch(`${API_BASE}/ai/visual-search`, { method: 'POST', headers, body: form })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Không thể phân tích hình ảnh AI' }))
+        throw { status: res.status, ...err }
+      }
+      return res.json()
+    },
+    getFrequentlyBoughtTogether: (productId) => request(`/ai/frequently-bought-together/${productId}`),
+    // E-Invoice VAT
+    issueEInvoice: (orderId) => request(`/orders/${orderId}/issue-e-invoice`, { method: 'POST' }),
+    getEInvoice: (orderId) => request(`/orders/${orderId}/e-invoice`),
+    lookupEInvoice: (lookupCode) => request(`/e-invoice/lookup/${lookupCode}`),
     // Tracking
     searchOrder: (params) => {
       const query = new URLSearchParams()
@@ -276,6 +300,7 @@ export function api() {
     getNhanVienLamViec: () => request('/lich-lam-viec/nhan-vien'),
     getWorkShiftStatus: () => request('/lich-lam-viec/work-status'),
     getShiftHistory: (params = {}) => request(`/lich-lam-viec/history${toQuery(params)}`),
+    getShiftReport: (id) => request(`/lich-lam-viec/${id}/report`),
     exportShiftHistory: (params = {}) =>
       downloadFile(`/lich-lam-viec/history/export${toQuery(params)}`, 'lich-su-ca-lam.xlsx'),
     addLichLamViec: (data) => request('/lich-lam-viec', { method: 'POST', body: JSON.stringify(data) }),
@@ -334,8 +359,10 @@ export function api() {
     addChatLieu: (data) => request('/thuoc-tinh/chat-lieu', { method: 'POST', body: JSON.stringify(data) }),
     deleteChatLieu: (id) => request(`/thuoc-tinh/chat-lieu/${id}`, { method: 'DELETE' }),
 
-    addLoaiVay: (data) => request('/thuoc-tinh/loai-vay', { method: 'POST', body: JSON.stringify(data) }),
-    deleteLoaiVay: (id) => request(`/thuoc-tinh/loai-vay/${id}`, { method: 'DELETE' }),
+    addLoaiSanPham: (data) => request('/thuoc-tinh/loai-san-pham', { method: 'POST', body: JSON.stringify(data) }),
+    addLoaiVay: (data) => request('/thuoc-tinh/loai-san-pham', { method: 'POST', body: JSON.stringify(data) }),
+    deleteLoaiSanPham: (id) => request(`/thuoc-tinh/loai-san-pham/${id}`, { method: 'DELETE' }),
+    deleteLoaiVay: (id) => request(`/thuoc-tinh/loai-san-pham/${id}`, { method: 'DELETE' }),
 
     addNhaCungCap: (data) => request('/thuoc-tinh/nha-cung-cap', { method: 'POST', body: JSON.stringify(data) }),
     deleteNhaCungCap: (id) => request(`/thuoc-tinh/nha-cung-cap/${id}`, { method: 'DELETE' }),
@@ -441,8 +468,8 @@ export function api() {
     addThongBao: (data) => request('/thong-bao', { method: 'POST', body: JSON.stringify(data) }),
     updateThongBao: (id, data) => request(`/thong-bao/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deleteThongBao: (id) => request(`/thong-bao/${id}`, { method: 'DELETE' }),
-    postAiChat: (message, history = []) =>
-      request('/ai-chat', { method: 'POST', body: JSON.stringify({ message, history }) })
+    postAiChat: (message, history = [], mode = null) =>
+      request('/ai-chat', { method: 'POST', body: JSON.stringify({ message, history, ...(mode ? { mode } : {}) }) })
   }
 }
 

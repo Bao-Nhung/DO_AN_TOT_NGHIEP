@@ -6,12 +6,12 @@ import com.zestia.datn.zestia.entity.Anh;
 import com.zestia.datn.zestia.entity.DanhGia;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.KhachHang;
-import com.zestia.datn.zestia.entity.Vay;
+import com.zestia.datn.zestia.entity.SanPham;
 import com.zestia.datn.zestia.repository.AnhRepository;
 import com.zestia.datn.zestia.repository.DanhGiaRepository;
 import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
-import com.zestia.datn.zestia.repository.VayRepository;
+import com.zestia.datn.zestia.repository.SanPhamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -45,7 +45,7 @@ public class ReviewService {
     private final AnhRepository imageRepo;
     private final HoaDonChiTietRepository orderDetailRepo;
     private final HoaDonRepository orderRepo;
-    private final VayRepository productRepo;
+    private final SanPhamRepository productRepo;
     private final CurrentCustomerService currentCustomerService;
     private final ObjectMapper objectMapper;
 
@@ -53,7 +53,7 @@ public class ReviewService {
     public Map<String, Object> reviews(Integer productId, int page, int size) {
         int safePage = Math.max(0, page);
         int safeSize = Math.min(50, Math.max(1, size));
-        var result = reviewRepo.findByVayIdAndTrangThai(
+        var result = reviewRepo.findBySanPhamIdAndTrangThai(
                 productId,
                 (byte) 1,
                 PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "ngayTao"))
@@ -98,7 +98,7 @@ public class ReviewService {
         KhachHang customer = currentCustomerService.require(authentication);
         List<Integer> deliveredIds = orderDetailRepo.findDeliveredOrderIdsForCustomerAndProduct(customer.getId(), productId);
         List<Integer> eligibleIds = deliveredIds.stream()
-                .filter(orderId -> !reviewRepo.existsByKhachHangIdAndVayIdAndHoaDonId(customer.getId(), productId, orderId))
+                .filter(orderId -> !reviewRepo.existsByKhachHangIdAndSanPhamIdAndHoaDonId(customer.getId(), productId, orderId))
                 .toList();
         List<Map<String, Object>> orders = orderRepo.findAllById(eligibleIds).stream()
                 .sorted(Comparator.comparing(HoaDon::getNgayTao, Comparator.nullsLast(Comparator.reverseOrder())))
@@ -125,7 +125,7 @@ public class ReviewService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nội dung đánh giá cần từ 10 đến 2000 ký tự");
         }
 
-        Vay product = productRepo.findById(productId)
+        SanPham product = productRepo.findById(productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sản phẩm"));
         HoaDon order = orderRepo.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn hàng"));
@@ -133,7 +133,7 @@ public class ReviewService {
         if (!eligibleOrderIds.contains(order.getId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ khách đã nhận sản phẩm mới được đánh giá");
         }
-        if (reviewRepo.existsByKhachHangIdAndVayIdAndHoaDonId(customer.getId(), productId, orderId)) {
+        if (reviewRepo.existsByKhachHangIdAndSanPhamIdAndHoaDonId(customer.getId(), productId, orderId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Sản phẩm trong đơn này đã được đánh giá");
         }
 
@@ -141,7 +141,7 @@ public class ReviewService {
         try {
             DanhGia review = reviewRepo.save(DanhGia.builder()
                     .khachHang(customer)
-                    .vay(product)
+                    .sanPham(product)
                     .hoaDon(order)
                     .soSao((byte) stars)
                     .noiDung(cleanContent)
@@ -190,9 +190,9 @@ public class ReviewService {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", review.getId());
         map.put("customerName", CustomerPrivacy.maskName(review.getKhachHang().getHoVaTen()));
-        map.put("productId", review.getVay().getId());
-        map.put("productName", review.getVay().getTenVay());
-        map.put("productImage", productImages.get(review.getVay().getId()));
+        map.put("productId", review.getSanPham().getId());
+        map.put("productName", review.getSanPham().getTenSanPham());
+        map.put("productImage", productImages.get(review.getSanPham().getId()));
         map.put("stars", review.getSoSao());
         map.put("content", review.getNoiDung());
         map.put("images", parseImages(review.getAnhDanhGia()));
@@ -209,14 +209,14 @@ public class ReviewService {
 
     private Map<Integer, String> productImages(List<DanhGia> reviews) {
         List<Integer> productIds = reviews.stream()
-                .map(review -> review.getVay().getId())
+                .map(review -> review.getSanPham().getId())
                 .distinct()
                 .toList();
         if (productIds.isEmpty()) return Map.of();
 
         Map<Integer, String> images = new LinkedHashMap<>();
-        for (Anh image : imageRepo.findByVayIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
-            images.putIfAbsent(image.getVay().getId(), image.getAnhUrl());
+        for (Anh image : imageRepo.findBySanPhamIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
+            images.putIfAbsent(image.getSanPham().getId(), image.getAnhUrl());
         }
         return images;
     }
@@ -281,7 +281,6 @@ public class ReviewService {
                     try {
                         Files.deleteIfExists(path);
                     } catch (IOException ignored) {
-                        // The database rollback remains authoritative; an orphan cleanup can run later.
                     }
                 }
             }

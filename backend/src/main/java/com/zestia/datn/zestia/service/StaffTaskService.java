@@ -2,7 +2,7 @@ package com.zestia.datn.zestia.service;
 
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.SupportConversationRepository;
-import com.zestia.datn.zestia.repository.VayChiTietRepository;
+import com.zestia.datn.zestia.repository.SanPhamChiTietRepository;
 import com.zestia.datn.zestia.repository.YeuCauDoiTraRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,7 +31,7 @@ public class StaffTaskService {
     private final HoaDonRepository orderRepository;
     private final SupportConversationRepository conversationRepository;
     private final YeuCauDoiTraRepository returnRepository;
-    private final VayChiTietRepository variantRepository;
+    private final SanPhamChiTietRepository variantRepository;
 
     @Transactional(readOnly = true)
     public Map<String, Object> getTasks(Integer employeeId, boolean admin) {

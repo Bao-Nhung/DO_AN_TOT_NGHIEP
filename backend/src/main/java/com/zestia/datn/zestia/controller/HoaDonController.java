@@ -7,7 +7,7 @@ import com.zestia.datn.zestia.entity.HoaDonAuditLog;
 import com.zestia.datn.zestia.entity.HoaDonChiTiet;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.entity.LichSuTracking;
-import com.zestia.datn.zestia.entity.VayChiTiet;
+import com.zestia.datn.zestia.entity.SanPhamChiTiet;
 import com.zestia.datn.zestia.repository.AnhRepository;
 import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
@@ -53,7 +53,6 @@ public class HoaDonController {
     private final YeuCauDoiTraRepository returnRequestRepo;
     private final AnhRepository anhRepo;
     
-    // Khai báo thêm các Repo cần thiết cho Tracking và Xác thực (Đã vá lỗi)
     private final LichSuTrackingRepository lichSuTrackingRepo;
     private final HoaDonAuditLogRepository auditLogRepo;
     private final KhachHangRepository khachHangRepo;
@@ -164,7 +163,7 @@ public class HoaDonController {
             }
             if (hd.getTrangThai() == 0) {
                 byte oldTrangThai = hd.getTrangThai();
-                hd.setTrangThai((byte) 5); // Trạng thái 5 = Đã Hủy
+                hd.setTrangThai((byte) 5);
                 
                 String ghiChu = body.get("ghiChu") != null ? (String) body.get("ghiChu") : "Khách hàng yêu cầu hủy";
                 hd.setGhiChu(ghiChu);
@@ -320,10 +319,6 @@ public class HoaDonController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // ========================================================
-    // ===== TRACKING ENDPOINTS (TÍCH HỢP TỪ CODE ĐỒNG ĐỘI) =====
-    // ========================================================
-
     @GetMapping("/search")
     public ResponseEntity<?> searchOrder(
             @RequestParam String maHoaDon,
@@ -367,7 +362,6 @@ public class HoaDonController {
         }
     }
 
-    // ĐÃ VÁ LỖI: Sử dụng JwtUtil và KhachHangRepository thay vì Authentication mặc định bị lỗi
     @GetMapping("/my-orders")
     public ResponseEntity<?> getMyOrders(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
@@ -502,10 +496,6 @@ public class HoaDonController {
         }
     }
 
-    // ========================================================
-    // ===== HELPER METHODS (ĐÃ TÍCH HỢP ĐẦY ĐỦ DỮ LIỆU) =======
-    // ========================================================
-
     private List<Map<String, Object>> toMaps(List<HoaDon> orders) {
         if (orders.isEmpty()) return List.of();
         Map<Integer, Long> itemCounts = new HashMap<>();
@@ -553,7 +543,6 @@ public class HoaDonController {
         map.put("phuongThucThanhToanOnline", hd.getPhuongThucThanhToanOnline());
         map.put("daThanhToan", Boolean.TRUE.equals(hd.getDaThanhToan()));
         
-        // Trạng thái chung và trạng thái Tracking mới
         map.put("trangThai", hd.getTrangThai()); 
         map.put("trangThaiTracking", hd.getTrangThaiTracking()); 
         
@@ -574,15 +563,15 @@ public class HoaDonController {
         
         List<HoaDonChiTiet> chiTiets = hoaDonCtRepo.findByHoaDonId(hd.getId());
         List<Integer> productIds = chiTiets.stream()
-                .filter(item -> item.getVayChiTiet() != null && item.getVayChiTiet().getVay() != null)
-                .map(item -> item.getVayChiTiet().getVay().getId())
+                .filter(item -> item.getSanPhamChiTiet() != null && item.getSanPhamChiTiet().getSanPham() != null)
+                .map(item -> item.getSanPhamChiTiet().getSanPham().getId())
                 .distinct()
                 .toList();
         Map<Integer, String> firstImages = new HashMap<>();
         if (!productIds.isEmpty()) {
-            for (Anh image : anhRepo.findByVayIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
-                if (image.getVay() != null) {
-                    firstImages.putIfAbsent(image.getVay().getId(), image.getAnhUrl());
+            for (Anh image : anhRepo.findBySanPhamIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
+                if (image.getSanPham() != null) {
+                    firstImages.putIfAbsent(image.getSanPham().getId(), image.getAnhUrl());
                 }
             }
         }
@@ -590,26 +579,30 @@ public class HoaDonController {
         for (HoaDonChiTiet ct : chiTiets) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("id", ct.getId());
-            if (ct.getVayChiTiet() != null) {
-                item.put("variantId", ct.getVayChiTiet().getId());
-                item.put("productId", ct.getVayChiTiet().getVay() != null
-                        ? ct.getVayChiTiet().getVay().getId() : null);
-                item.put("tenVay", ct.getVayChiTiet().getVay() != null 
-                        ? ct.getVayChiTiet().getVay().getTenVay() : null);
-                item.put("maSanPham", ct.getVayChiTiet().getVay() != null 
-                        ? ct.getVayChiTiet().getVay().getMaVay() : null);
-                item.put("mauSac", ct.getVayChiTiet().getMauSac() != null 
-                        ? ct.getVayChiTiet().getMauSac().getTenMauSac() : null);
-                item.put("maHex", ct.getVayChiTiet().getMauSac() != null 
-                        ? ct.getVayChiTiet().getMauSac().getMaHex() : null);
-                item.put("kichThuoc", ct.getVayChiTiet().getKichThuoc() != null 
-                        ? ct.getVayChiTiet().getKichThuoc().getTenKichThuoc() : null);
+            if (ct.getSanPhamChiTiet() != null) {
+                item.put("variantId", ct.getSanPhamChiTiet().getId());
+                item.put("productId", ct.getSanPhamChiTiet().getSanPham() != null
+                        ? ct.getSanPhamChiTiet().getSanPham().getId() : null);
+                item.put("tenSanPham", ct.getSanPhamChiTiet().getSanPham() != null 
+                        ? ct.getSanPhamChiTiet().getSanPham().getTenSanPham() : null);
+                item.put("tenVay", ct.getSanPhamChiTiet().getSanPham() != null 
+                        ? ct.getSanPhamChiTiet().getSanPham().getTenSanPham() : null);
+                item.put("maSanPham", ct.getSanPhamChiTiet().getSanPham() != null 
+                        ? ct.getSanPhamChiTiet().getSanPham().getMaSanPham() : null);
+                item.put("maVay", ct.getSanPhamChiTiet().getSanPham() != null 
+                        ? ct.getSanPhamChiTiet().getSanPham().getMaSanPham() : null);
+                item.put("mauSac", ct.getSanPhamChiTiet().getMauSac() != null 
+                        ? ct.getSanPhamChiTiet().getMauSac().getTenMauSac() : null);
+                item.put("maHex", ct.getSanPhamChiTiet().getMauSac() != null 
+                        ? ct.getSanPhamChiTiet().getMauSac().getMaHex() : null);
+                item.put("kichThuoc", ct.getSanPhamChiTiet().getKichThuoc() != null 
+                        ? ct.getSanPhamChiTiet().getKichThuoc().getTenKichThuoc() : null);
                 
-                if (ct.getVayChiTiet().getVay() != null) {
-                    String variantImage = cleanText(ct.getVayChiTiet().getAnhUrl());
+                if (ct.getSanPhamChiTiet().getSanPham() != null) {
+                    String variantImage = cleanText(ct.getSanPhamChiTiet().getAnhUrl());
                     item.put("anhUrl", variantImage != null
                             ? variantImage
-                            : firstImages.get(ct.getVayChiTiet().getVay().getId()));
+                            : firstImages.get(ct.getSanPhamChiTiet().getSanPham().getId()));
                 }
             }
             item.put("soLuong", ct.getSoLuong());
@@ -625,7 +618,7 @@ public class HoaDonController {
     }
 
     private Map<String, Object> withReturnStatus(Map<String, Object> map,
-                                                  com.zestia.datn.zestia.entity.YeuCauDoiTra request) {
+                                                   com.zestia.datn.zestia.entity.YeuCauDoiTra request) {
         map.put("returnRequestStatus", request != null ? request.getTrangThai() : null);
         map.put("returnRequestType", request != null ? request.getLoaiYeuCau() : null);
         map.put("returnRefundAmount", request != null ? request.getSoTienHoan() : null);
@@ -826,7 +819,7 @@ public class HoaDonController {
     private static boolean isStaffRole(String role) {
         return "Admin".equalsIgnoreCase(role)
                 || "NhanVien".equalsIgnoreCase(role)
-                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+                || "Nhân viên".equalsIgnoreCase(role);
     }
 
     private static String clientIp(HttpServletRequest request) {

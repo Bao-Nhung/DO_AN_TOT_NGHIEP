@@ -176,10 +176,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 
+const route = useRoute()
 const toast = useToast()
 const campaign = ref(null)
 const loadingCampaign = ref(true)
@@ -219,7 +221,18 @@ const wheelStyle = computed(() => ({
   transform: `rotate(${wheelRotation.value}deg)`
 }))
 
-onMounted(loadCampaign)
+onMounted(async () => {
+  await loadCampaign()
+  if (route.query.orderCode) {
+    form.orderCode = String(route.query.orderCode).trim().toUpperCase()
+  }
+  if (route.query.phone) {
+    form.phone = String(route.query.phone).trim()
+  }
+  if (form.orderCode && form.phone) {
+    await checkOrder()
+  }
+})
 onBeforeUnmount(() => window.clearTimeout(resultTimer))
 
 async function loadCampaign() {

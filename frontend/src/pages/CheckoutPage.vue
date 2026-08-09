@@ -164,6 +164,42 @@
               </label>
             </div>
           </div>
+
+          <!-- VAT Enterprise Invoice Section -->
+          <div class="z-checkout-section mt-4">
+            <h3 class="z-checkout-title">
+              <i class="bi bi-file-earmark-text text-danger"></i>
+              <span>Xuất Hóa Đơn Điện Tử VAT Doanh Nghiệp</span>
+            </h3>
+            
+            <div class="form-check form-switch mb-3">
+              <input v-model="form.isVatRequested" class="form-check-input" type="checkbox" id="vatCheckbox" style="cursor: pointer;" />
+              <label class="form-check-label fw-bold text-dark" for="vatCheckbox" style="cursor: pointer;">
+                Yêu cầu xuất Hóa Đơn VAT doanh nghiệp cho đơn hàng này
+              </label>
+            </div>
+
+            <div v-if="form.isVatRequested" class="p-3 border rounded-3 bg-light">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="z-form-label">Tên công ty / Đơn vị mua hàng <span class="text-danger">*</span></label>
+                  <input v-model="form.tenCongTyVat" class="lm-input" placeholder="Ví dụ: CÔNG TY TNHH ĐẦU TƯ ABC" />
+                </div>
+                <div class="col-md-6">
+                  <label class="z-form-label">Mã số thuế (MST) <span class="text-danger">*</span></label>
+                  <input v-model="form.maSoThueVat" class="lm-input" placeholder="Ví dụ: 0101234567" />
+                </div>
+                <div class="col-md-6">
+                  <label class="z-form-label">Email nhận hóa đơn <span class="text-danger">*</span></label>
+                  <input v-model="form.emailVat" type="email" class="lm-input" placeholder="ketoan@company.com" />
+                </div>
+                <div class="col-12">
+                  <label class="z-form-label">Địa chỉ công ty (ghi trên MST) <span class="text-danger">*</span></label>
+                  <input v-model="form.diaChiVat" class="lm-input" placeholder="Ví dụ: Số 102 Đường Lê Văn Lương, Hà Nội" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="col-lg-5">
@@ -187,6 +223,20 @@
                 <div class="z-order-item-price">
                   <span>{{ formatPrice(Number(item.price) * item.qty) }}</span>
                 </div>
+              </div>
+            </div>
+
+            <!-- Freeship Progress Bar -->
+            <div class="mb-4 p-3 rounded border bg-light">
+              <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 13px; font-weight: 500;">
+                <span><i class="bi bi-truck text-danger me-1"></i> Tiềm năng ưu đãi Vận chuyển</span>
+                <span class="text-danger fw-bold">{{ freeShipProgress >= 100 ? 'Đã đạt Freeship!' : `Thiếu ${formatPrice(300000 - subtotal)}` }}</span>
+              </div>
+              <div class="progress mb-2" style="height: 6px; background: #e9ecef;">
+                <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" role="progressbar" :style="{ width: freeShipProgress + '%' }"></div>
+              </div>
+              <div style="font-size: 12px; color: var(--z-gray);">
+                {{ freeShipProgress >= 100 ? '🎉 Đơn hàng của bạn đạt mốc 300.000đ để áp dụng ưu đãi Freeship!' : `Mua thêm ${formatPrice(300000 - subtotal)} để tiết kiệm 30.000đ phí giao hàng.` }}
               </div>
             </div>
 
@@ -300,6 +350,7 @@ const { state, totalCount, subtotal, formatPrice, clearCart, refreshItems } = us
 const { showToast } = useToast()
 const { getUser } = useAuth()
 const { isEn, translateUiText } = useI18n()
+const freeShipProgress = computed(() => Math.min(100, Math.floor(((subtotal.value || 0) / 300000) * 100)))
 const orderSummaryLabel = computed(() => isEn.value
   ? `Order (${totalCount.value} products)`
   : `Đơn hàng (${totalCount.value} sản phẩm)`)
@@ -315,7 +366,12 @@ const form = ref({
   soDienThoai: '',
   email: '',
   ghiChu: '',
-  hinhThuc: 'MOMO'
+  hinhThuc: 'MOMO',
+  isVatRequested: false,
+  tenCongTyVat: '',
+  maSoThueVat: '',
+  emailVat: '',
+  diaChiVat: ''
 })
 const phoneTouched = ref(false)
 const phoneError = computed(() => {

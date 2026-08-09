@@ -2,7 +2,7 @@ package com.zestia.datn.zestia.service;
 
 import com.zestia.datn.zestia.entity.DotKhuyenMai;
 import com.zestia.datn.zestia.entity.PhamViKhuyenMai;
-import com.zestia.datn.zestia.entity.VayChiTiet;
+import com.zestia.datn.zestia.entity.SanPhamChiTiet;
 import com.zestia.datn.zestia.repository.DotKhuyenMaiRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,11 +36,11 @@ public class PromotionPricingService {
         }
     }
 
-    public PriceQuote quote(VayChiTiet variant) {
+    public PriceQuote quote(SanPhamChiTiet variant) {
         return quote(variant, activeCampaigns());
     }
 
-    public PriceQuote quote(VayChiTiet variant, List<DotKhuyenMai> campaigns) {
+    public PriceQuote quote(SanPhamChiTiet variant, List<DotKhuyenMai> campaigns) {
         BigDecimal basePrice = variant != null && variant.getGiaBan() != null
                 ? variant.getGiaBan() : BigDecimal.ZERO;
         PriceQuote best = new PriceQuote(basePrice, basePrice, BigDecimal.ZERO, null, null, null);
@@ -69,16 +69,16 @@ public class PromotionPricingService {
         cachedCampaigns = List.of();
     }
 
-    private boolean matches(DotKhuyenMai campaign, VayChiTiet variant) {
+    private boolean matches(DotKhuyenMai campaign, SanPhamChiTiet variant) {
         List<PhamViKhuyenMai> scopes = campaign.getPhamVis();
         if (scopes == null || scopes.isEmpty()) return true;
         return scopes.stream().anyMatch(scope -> matches(scope, variant));
     }
 
-    private boolean matches(PhamViKhuyenMai scope, VayChiTiet variant) {
-        if (scope.getVay() != null && !sameId(scope.getVay().getId(), variant.getVay() != null ? variant.getVay().getId() : null)) return false;
-        if (scope.getLoaiVay() != null && !sameId(scope.getLoaiVay().getId(),
-                variant.getVay() != null && variant.getVay().getLoaiVay() != null ? variant.getVay().getLoaiVay().getId() : null)) return false;
+    private boolean matches(PhamViKhuyenMai scope, SanPhamChiTiet variant) {
+        if (scope.getSanPham() != null && !sameId(scope.getSanPham().getId(), variant.getSanPham() != null ? variant.getSanPham().getId() : null)) return false;
+        if (scope.getLoaiSanPham() != null && !sameId(scope.getLoaiSanPham().getId(),
+                variant.getSanPham() != null && variant.getSanPham().getLoaiSanPham() != null ? variant.getSanPham().getLoaiSanPham().getId() : null)) return false;
         if (scope.getMauSac() != null && !sameId(scope.getMauSac().getId(), variant.getMauSac() != null ? variant.getMauSac().getId() : null)) return false;
         if (scope.getKichThuoc() != null && !sameId(scope.getKichThuoc().getId(), variant.getKichThuoc() != null ? variant.getKichThuoc().getId() : null)) return false;
         return true;

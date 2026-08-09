@@ -574,18 +574,18 @@ public class EmailService {
     }
 
     private String productName(HoaDonChiTiet ct) {
-        if (ct == null || ct.getVayChiTiet() == null || ct.getVayChiTiet().getVay() == null) return "Sản phẩm";
-        return ct.getVayChiTiet().getVay().getTenVay();
+        if (ct == null || ct.getSanPhamChiTiet() == null || ct.getSanPhamChiTiet().getSanPham() == null) return "Sản phẩm";
+        return ct.getSanPhamChiTiet().getSanPham().getTenSanPham();
     }
 
     private String sizeName(HoaDonChiTiet ct) {
-        if (ct == null || ct.getVayChiTiet() == null || ct.getVayChiTiet().getKichThuoc() == null) return "N/A";
-        return ct.getVayChiTiet().getKichThuoc().getTenKichThuoc();
+        if (ct == null || ct.getSanPhamChiTiet() == null || ct.getSanPhamChiTiet().getKichThuoc() == null) return "N/A";
+        return ct.getSanPhamChiTiet().getKichThuoc().getTenKichThuoc();
     }
 
     private String colorName(HoaDonChiTiet ct) {
-        if (ct == null || ct.getVayChiTiet() == null || ct.getVayChiTiet().getMauSac() == null) return "N/A";
-        return ct.getVayChiTiet().getMauSac().getTenMauSac();
+        if (ct == null || ct.getSanPhamChiTiet() == null || ct.getSanPhamChiTiet().getMauSac() == null) return "N/A";
+        return ct.getSanPhamChiTiet().getMauSac().getTenMauSac();
     }
 
     private String bilingualValue(String value) {

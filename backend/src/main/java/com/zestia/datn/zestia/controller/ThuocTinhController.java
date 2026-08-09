@@ -19,7 +19,7 @@ public class ThuocTinhController {
     private final MauSacRepository mauSacRepo;
     private final KichThuocRepository kichThuocRepo;
     private final ChatLieuRepository chatLieuRepo;
-    private final LoaiVayRepository loaiVayRepo;
+    private final LoaiSanPhamRepository loaiSanPhamRepo;
     private final NhaCungCapRepository nhaCungCapRepo;
 
     @GetMapping("/mau-sac")
@@ -37,9 +37,9 @@ public class ThuocTinhController {
         return chatLieuRepo.findAll().stream().map(this::toMap).toList();
     }
 
-    @GetMapping("/loai-vay")
-    public List<Map<String, Object>> getLoaiVay() {
-        return loaiVayRepo.findAll().stream().map(this::toMap).toList();
+    @GetMapping({"/loai-san-pham", "/loai-vay"})
+    public List<Map<String, Object>> getLoaiSanPham() {
+        return loaiSanPhamRepo.findAll().stream().map(this::toMap).toList();
     }
 
     @GetMapping("/nha-cung-cap")
@@ -47,11 +47,13 @@ public class ThuocTinhController {
 
     @GetMapping
     public Map<String, Object> getAll() {
+        List<Map<String, Object>> categories = loaiSanPhamRepo.findAll().stream().map(this::toMap).toList();
         return Map.of(
             "mauSac", mauSacRepo.findAll().stream().map(this::toMap).toList(),
             "kichThuoc", kichThuocRepo.findAll().stream().map(this::toMap).toList(),
             "chatLieu", chatLieuRepo.findAll().stream().map(this::toMap).toList(),
-            "loaiVay", loaiVayRepo.findAll().stream().map(this::toMap).toList(),
+            "loaiSanPham", categories,
+            "loaiVay", categories,
             "nhaCungCap", nhaCungCapRepo.findAll()
         );
     }
@@ -77,9 +79,10 @@ public class ThuocTinhController {
         return map;
     }
 
-    private Map<String, Object> toMap(LoaiVay item) {
+    private Map<String, Object> toMap(LoaiSanPham item) {
         Map<String, Object> map = commonMap(item.getId(), item.getTrangThai(), item.getNgayTao());
-        map.put("tenLoaiVay", item.getTenLoaiVay());
+        map.put("tenLoaiSanPham", item.getTenLoaiSanPham());
+        map.put("tenLoaiVay", item.getTenLoaiSanPham());
         map.put("moTa", item.getMoTa());
         return map;
     }
@@ -170,29 +173,29 @@ public class ThuocTinhController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // --- Loại váy CRUD ---
-    @PostMapping("/loai-vay")
-    public ResponseEntity<?> addLoaiVay(@RequestBody LoaiVay lv) {
-        lv.setNgayTao(LocalDateTime.now());
-        if (lv.getTrangThai() == null) lv.setTrangThai((byte) 1);
-        return ResponseEntity.ok(loaiVayRepo.save(lv));
+    // --- Loại sản phẩm CRUD ---
+    @PostMapping({"/loai-san-pham", "/loai-vay"})
+    public ResponseEntity<?> addLoaiSanPham(@RequestBody LoaiSanPham lsp) {
+        lsp.setNgayTao(LocalDateTime.now());
+        if (lsp.getTrangThai() == null) lsp.setTrangThai((byte) 1);
+        return ResponseEntity.ok(loaiSanPhamRepo.save(lsp));
     }
 
-    @PutMapping("/loai-vay/{id}")
-    public ResponseEntity<?> updateLoaiVay(@PathVariable Integer id, @RequestBody LoaiVay lv) {
-        return loaiVayRepo.findById(id).map(existing -> {
-            existing.setTenLoaiVay(lv.getTenLoaiVay());
-            if (lv.getMoTa() != null) existing.setMoTa(lv.getMoTa());
-            if (lv.getTrangThai() != null) existing.setTrangThai(lv.getTrangThai());
-            return ResponseEntity.ok(loaiVayRepo.save(existing));
+    @PutMapping({"/loai-san-pham/{id}", "/loai-vay/{id}"})
+    public ResponseEntity<?> updateLoaiSanPham(@PathVariable Integer id, @RequestBody LoaiSanPham lsp) {
+        return loaiSanPhamRepo.findById(id).map(existing -> {
+            existing.setTenLoaiSanPham(lsp.getTenLoaiSanPham());
+            if (lsp.getMoTa() != null) existing.setMoTa(lsp.getMoTa());
+            if (lsp.getTrangThai() != null) existing.setTrangThai(lsp.getTrangThai());
+            return ResponseEntity.ok(loaiSanPhamRepo.save(existing));
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    @DeleteMapping("/loai-vay/{id}")
-    public ResponseEntity<?> deleteLoaiVay(@PathVariable Integer id) {
-        return loaiVayRepo.findById(id).map(item -> {
+    @DeleteMapping({"/loai-san-pham/{id}", "/loai-vay/{id}"})
+    public ResponseEntity<?> deleteLoaiSanPham(@PathVariable Integer id) {
+        return loaiSanPhamRepo.findById(id).map(item -> {
             item.setTrangThai((byte) 0);
-            return ResponseEntity.ok(loaiVayRepo.save(item));
+            return ResponseEntity.ok(loaiSanPhamRepo.save(item));
         }).orElse(ResponseEntity.notFound().build());
     }
 

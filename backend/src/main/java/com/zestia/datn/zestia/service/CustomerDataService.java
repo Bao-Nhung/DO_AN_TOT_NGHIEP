@@ -20,10 +20,11 @@ public class CustomerDataService {
     private final GioHangChiTietRepository cartItemRepo;
     private final SanPhamYeuThichRepository wishlistRepo;
     private final LichSuXemRepository recentViewRepo;
-    private final VayRepository productRepo;
-    private final VayChiTietRepository variantRepo;
+    private final SanPhamRepository productRepo;
+    private final SanPhamChiTietRepository variantRepo;
     private final AnhRepository imageRepo;
     private final PromotionPricingService promotionPricingService;
+    private final LoyaltyService loyaltyService;
 
     @Transactional(readOnly = true)
     public Map<String, Object> getAll(Authentication authentication) {
@@ -31,12 +32,13 @@ public class CustomerDataService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("cart", cartItems(customer));
         data.put("wishlistIds", wishlistRepo.findByKhachHangIdOrderByNgayTaoDesc(customer.getId()).stream()
-                .map(item -> item.getVay().getId())
+                .map(item -> item.getSanPham().getId())
                 .toList());
         data.put("recentProductIds", recentViewRepo.findTop20ByKhachHangIdOrderByNgayXemDesc(customer.getId()).stream()
-                .map(item -> item.getVay().getId())
+                .map(item -> item.getSanPham().getId())
                 .distinct()
                 .toList());
+        data.put("loyalty", loyaltyService.toLoyaltySummaryMap(customer));
         return data;
     }
 
@@ -61,7 +63,7 @@ public class CustomerDataService {
 
         List<GioHangChiTiet> replacements = new ArrayList<>();
         for (Map.Entry<Integer, Integer> entry : quantities.entrySet()) {
-            VayChiTiet variant = variantRepo.findById(entry.getKey())
+            SanPhamChiTiet variant = variantRepo.findById(entry.getKey())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Biến thể trong giỏ hàng không tồn tại"));
             if (!isOrderable(variant)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sản phẩm trong giỏ đã ngừng bán");
@@ -71,7 +73,7 @@ public class CustomerDataService {
             if (quantity <= 0) continue;
             replacements.add(GioHangChiTiet.builder()
                     .gioHang(cart)
-                    .vayChiTiet(variant)
+                    .sanPhamChiTiet(variant)
                     .soLuong(quantity)
                     .ngayTao(LocalDateTime.now())
                     .build());
@@ -86,11 +88,11 @@ public class CustomerDataService {
     @Transactional
     public void addWishlist(Authentication authentication, Integer productId) {
         KhachHang customer = currentCustomerService.require(authentication);
-        Vay product = activeProduct(productId);
-        if (wishlistRepo.findByKhachHangIdAndVayId(customer.getId(), productId).isEmpty()) {
+        SanPham product = activeProduct(productId);
+        if (wishlistRepo.findByKhachHangIdAndSanPhamId(customer.getId(), productId).isEmpty()) {
             wishlistRepo.save(SanPhamYeuThich.builder()
                     .khachHang(customer)
-                    .vay(product)
+                    .sanPham(product)
                     .ngayTao(LocalDateTime.now())
                     .build());
         }
@@ -99,15 +101,15 @@ public class CustomerDataService {
     @Transactional
     public void removeWishlist(Authentication authentication, Integer productId) {
         KhachHang customer = currentCustomerService.require(authentication);
-        wishlistRepo.deleteByKhachHangIdAndVayId(customer.getId(), productId);
+        wishlistRepo.deleteByKhachHangIdAndSanPhamId(customer.getId(), productId);
     }
 
     @Transactional
     public void recordView(Authentication authentication, Integer productId) {
         KhachHang customer = currentCustomerService.require(authentication);
-        Vay product = activeProduct(productId);
-        LichSuXem view = recentViewRepo.findByKhachHangIdAndVayId(customer.getId(), productId)
-                .orElseGet(() -> LichSuXem.builder().khachHang(customer).vay(product).build());
+        SanPham product = activeProduct(productId);
+        LichSuXem view = recentViewRepo.findByKhachHangIdAndSanPhamId(customer.getId(), productId)
+                .orElseGet(() -> LichSuXem.builder().khachHang(customer).sanPham(product).build());
         view.setNgayXem(LocalDateTime.now());
         recentViewRepo.save(view);
     }
@@ -117,15 +119,15 @@ public class CustomerDataService {
         if (cart.isEmpty()) return List.of();
         List<GioHangChiTiet> items = cartItemRepo.findByGioHangId(cart.get().getId());
         List<Integer> productIds = items.stream()
-                .map(item -> item.getVayChiTiet().getVay().getId())
+                .map(item -> item.getSanPhamChiTiet().getSanPham().getId())
                 .distinct()
                 .toList();
         List<Anh> activeImages = productIds.isEmpty()
                 ? List.of()
-                : imageRepo.findByVayIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1);
+                : imageRepo.findBySanPhamIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1);
         Map<Integer, String> firstImages = activeImages.stream()
                 .collect(java.util.stream.Collectors.toMap(
-                        image -> image.getVay().getId(),
+                        image -> image.getSanPham().getId(),
                         Anh::getAnhUrl,
                         (first, ignored) -> first,
                         LinkedHashMap::new
@@ -136,14 +138,16 @@ public class CustomerDataService {
     }
 
     private Map<String, Object> cartItemMap(GioHangChiTiet item, Map<Integer, String> firstImages) {
-        VayChiTiet variant = item.getVayChiTiet();
-        Vay product = variant.getVay();
+        SanPhamChiTiet variant = item.getSanPhamChiTiet();
+        SanPham product = variant.getSanPham();
         PromotionPricingService.PriceQuote quote = promotionPricingService.quote(variant);
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", "variant-" + variant.getId());
         map.put("variantId", variant.getId());
         map.put("productId", product.getId());
-        map.put("name", product.getTenVay());
+        map.put("name", product.getTenSanPham());
+        map.put("tenVay", product.getTenSanPham());
+        map.put("tenSanPham", product.getTenSanPham());
         map.put("size", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
         map.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
         map.put("price", quote.effectivePrice());
@@ -153,8 +157,8 @@ public class CustomerDataService {
         return map;
     }
 
-    private Vay activeProduct(Integer productId) {
-        Vay product = productRepo.findById(productId)
+    private SanPham activeProduct(Integer productId) {
+        SanPham product = productRepo.findById(productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy sản phẩm"));
         if (product.getTrangThai() == null || product.getTrangThai() != 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sản phẩm đã ngừng bán");
@@ -162,10 +166,10 @@ public class CustomerDataService {
         return product;
     }
 
-    private boolean isOrderable(VayChiTiet variant) {
-        return variant.getVay() != null
-                && variant.getVay().getTrangThai() != null
-                && variant.getVay().getTrangThai() == 1
+    private boolean isOrderable(SanPhamChiTiet variant) {
+        return variant.getSanPham() != null
+                && variant.getSanPham().getTrangThai() != null
+                && variant.getSanPham().getTrangThai() == 1
                 && (variant.getTrangThai() == null || variant.getTrangThai() == 1);
     }
 

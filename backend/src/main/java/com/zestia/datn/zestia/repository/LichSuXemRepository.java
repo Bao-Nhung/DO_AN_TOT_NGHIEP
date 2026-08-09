@@ -9,5 +9,5 @@ import java.util.Optional;
 public interface LichSuXemRepository extends JpaRepository<LichSuXem, Integer> {
     List<LichSuXem> findTop20ByKhachHangIdOrderByNgayXemDesc(Integer khachHangId);
 
-    Optional<LichSuXem> findByKhachHangIdAndVayId(Integer khachHangId, Integer vayId);
+    Optional<LichSuXem> findByKhachHangIdAndSanPhamId(Integer khachHangId, Integer sanPhamId);
 }

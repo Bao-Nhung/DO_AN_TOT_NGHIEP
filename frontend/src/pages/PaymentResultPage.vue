@@ -77,6 +77,20 @@
           </div>
         </div>
 
+        <!-- Banner Vòng quay may mắn -->
+        <div v-if="status === 'success' && (Number(amount) >= 1000000 || !amount)" class="p-3 mb-4 rounded-3 border text-start" style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f6 100%); border-color: #fcc2d7 !important;">
+          <div class="d-flex align-items-center gap-3">
+            <div style="font-size: 32px;">🎉</div>
+            <div class="flex-grow-1">
+              <div style="font-weight: 600; font-size: 14px; color: #c92a2a;">Đơn hàng đủ điều kiện Quay Thưởng!</div>
+              <div style="font-size: 12px; color: #495057;">Đơn từ 1.000.000đ được nhận 1 lượt Vòng Quay May Mắn trúng quà 100%.</div>
+            </div>
+            <RouterLink :to="`/lucky-wheel?orderCode=${orderId}`" class="btn btn-sm btn-danger px-3 py-2 fw-bold text-nowrap shadow-sm">
+              Quay Ngay <i class="bi bi-arrow-right ms-1"></i>
+            </RouterLink>
+          </div>
+        </div>
+
         <div class="z-result-actions">
           <RouterLink to="/" class="lm-btn-primary"><span>Về trang chủ</span></RouterLink>
           <RouterLink to="/collections" class="lm-btn-outline" style="margin-left:12px">

@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface AnhRepository extends JpaRepository<Anh, Integer> {
-    List<Anh> findByVayIdOrderByIdAsc(Integer vayId);
-    List<Anh> findByVayIdAndTrangThai(Integer vayId, Byte trangThai);
-    List<Anh> findByVayIdInAndTrangThaiOrderByIdAsc(List<Integer> vayIds, Byte trangThai);
+    List<Anh> findBySanPhamIdOrderByIdAsc(Integer sanPhamId);
+    List<Anh> findBySanPhamIdAndTrangThai(Integer sanPhamId, Byte trangThai);
+    List<Anh> findBySanPhamIdInAndTrangThaiOrderByIdAsc(List<Integer> sanPhamIds, Byte trangThai);
 }

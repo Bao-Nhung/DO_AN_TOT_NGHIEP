@@ -74,7 +74,7 @@ DO_AN_TOT_NGHIEP/
 
 Toàn bộ dữ liệu mẫu (sản phẩm, **giá tiền**, **hình ảnh**, biến thể màu/size, đơn hàng, tài khoản...) nằm trong **một file SQL duy nhất**: `database/fashion_shop.sql`.
 
-> ⚠️ **Đây là bước quan trọng nhất để dự án chạy giống nhau trên mọi máy.** Nếu bỏ qua, sản phẩm sẽ hiện giá `0đ` và không có ảnh, vì giá lấy từ bảng `Vay_chi_tiet` còn ảnh lấy từ bảng `Anh` — cả hai đều nằm trong file SQL này.
+> ⚠️ **Đây là bước quan trọng nhất để dự án chạy giống nhau trên mọi máy.** Nếu bỏ qua, sản phẩm sẽ hiện giá `0đ` và không có ảnh, vì giá lấy từ bảng `san_pham_chi_tiet` còn ảnh lấy từ bảng `Anh` — cả hai đều nằm trong file SQL này.
 
 **Cách 1 — Dùng SSMS (khuyên dùng):**
 

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "UQ_Pos_chi_tiet_phien_bien_the",
-                        columnNames = {"id_phien", "id_vay_chi_tiet"}
+                        columnNames = {"id_phien", "id_san_pham_chi_tiet"}
                 )
         }
 )
@@ -32,8 +32,8 @@ public class PosChiTietGiuHang {
     private PosPhienGiuHang phien;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_vay_chi_tiet", nullable = false)
-    private VayChiTiet vayChiTiet;
+    @JoinColumn(name = "id_san_pham_chi_tiet", nullable = false)
+    private SanPhamChiTiet sanPhamChiTiet;
 
     @Column(name = "so_luong", nullable = false)
     private Integer soLuong;

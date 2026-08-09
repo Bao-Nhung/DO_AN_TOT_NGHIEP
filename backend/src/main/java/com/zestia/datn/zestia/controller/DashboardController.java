@@ -3,9 +3,9 @@ package com.zestia.datn.zestia.controller;
 import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
-import com.zestia.datn.zestia.repository.VayChiTietRepository;
-import com.zestia.datn.zestia.repository.VayRepository;
-import com.zestia.datn.zestia.repository.LoaiVayRepository;
+import com.zestia.datn.zestia.repository.SanPhamChiTietRepository;
+import com.zestia.datn.zestia.repository.SanPhamRepository;
+import com.zestia.datn.zestia.repository.LoaiSanPhamRepository;
 import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -26,9 +26,9 @@ public class DashboardController {
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
     private final KhachHangRepository khachHangRepo;
-    private final VayRepository vayRepo;
-    private final VayChiTietRepository vayCtRepo;
-    private final LoaiVayRepository loaiVayRepo;
+    private final SanPhamRepository sanPhamRepo;
+    private final SanPhamChiTietRepository sanPhamCtRepo;
+    private final LoaiSanPhamRepository loaiSanPhamRepo;
     private final LichSuThanhToanRepository paymentHistoryRepo;
 
     @GetMapping("/stats")
@@ -42,9 +42,10 @@ public class DashboardController {
         map.put("doanhThu", revenue);
         map.put("tongDonHang", orderCount);
         map.put("tongKhachHang", khachHangRepo.count());
-        map.put("tongSanPham", vayRepo.count());
-        map.put("tongBienThe", vayCtRepo.count());
-        map.put("tongLoaiVay", loaiVayRepo.count());
+        map.put("tongSanPham", sanPhamRepo.count());
+        map.put("tongBienThe", sanPhamCtRepo.count());
+        map.put("tongLoaiSanPham", loaiSanPhamRepo.count());
+        map.put("tongLoaiVay", loaiSanPhamRepo.count());
         map.put("topSellingProducts", topSellingProducts());
         map.put("lowStockVariants", lowStockVariants());
         return map;
@@ -53,8 +54,8 @@ public class DashboardController {
     @GetMapping("/inventory")
     public Map<String, Object> inventory() {
         Map<String, Object> map = new LinkedHashMap<>();
-        map.put("tongSanPham", vayRepo.count());
-        map.put("tongBienThe", vayCtRepo.count());
+        map.put("tongSanPham", sanPhamRepo.count());
+        map.put("tongBienThe", sanPhamCtRepo.count());
         map.put("lowStockVariants", lowStockVariants());
         return map;
     }
@@ -64,7 +65,9 @@ public class DashboardController {
                 .map(row -> {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("productId", row[0]);
+                    item.put("maSanPham", row[1]);
                     item.put("maVay", row[1]);
+                    item.put("tenSanPham", row[2]);
                     item.put("tenVay", row[2]);
                     item.put("soLuongBan", row[3]);
                     item.put("doanhThu", row[4]);
@@ -75,12 +78,14 @@ public class DashboardController {
     }
 
     private List<Map<String, Object>> lowStockVariants() {
-        return vayCtRepo.findLowStockSummary(PageRequest.of(0, 8)).stream()
+        return sanPhamCtRepo.findLowStockSummary(PageRequest.of(0, 8)).stream()
                 .map(row -> {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("variantId", row[0]);
                     item.put("productId", row[1]);
+                    item.put("tenSanPham", row[2]);
                     item.put("tenVay", row[2]);
+                    item.put("maSanPham", row[3]);
                     item.put("maVay", row[3]);
                     item.put("mauSac", row[4]);
                     item.put("kichThuoc", row[5]);

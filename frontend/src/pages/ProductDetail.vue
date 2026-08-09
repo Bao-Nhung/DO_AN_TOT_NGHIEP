@@ -128,6 +128,44 @@
       </div>
     </div>
 
+    <!-- Frequently Bought Together Section -->
+    <section v-if="frequentlyBoughtTogether?.items?.length > 1" class="py-5 bg-light border-top border-bottom">
+      <div class="container" style="max-width: 900px;">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <i class="bi bi-stars text-danger fs-4"></i>
+          <h3 class="z-display mb-0" style="font-size: 20px; font-weight: 600;">Thường Được Mua Cùng (Combo Gợi Ý AI)</h3>
+        </div>
+        
+        <div class="p-4 rounded-4 bg-white border shadow-sm">
+          <div class="row align-items-center g-4">
+            <div class="col-md-8">
+              <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div v-for="(item, index) in frequentlyBoughtTogether.items" :key="item.id" class="d-flex align-items-center gap-3">
+                  <div class="text-center" style="max-width: 140px;">
+                    <img :src="item.image || '/images/products/dress1.jpg'" :alt="item.name" class="rounded-3 border mb-2" style="width: 100px; height: 120px; object-fit: cover;" />
+                    <div class="text-truncate fw-bold" style="font-size: 12px;" :title="item.name">{{ item.name }}</div>
+                    <div class="text-danger fw-bold" style="font-size: 13px;">{{ fmtPrice(item.price) }}</div>
+                  </div>
+                  <div v-if="index < frequentlyBoughtTogether.items.length - 1" class="fs-4 text-muted fw-bold">+</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-4 text-end border-start ps-md-4">
+              <div style="font-size: 12px; color: var(--z-gray);">Tổng tiền Combo:</div>
+              <div class="text-decoration-line-through text-muted" style="font-size: 14px;">{{ fmtPrice(frequentlyBoughtTogether.originalTotal) }}</div>
+              <div class="display-6 fw-bold text-danger my-1" style="font-size: 24px;">{{ fmtPrice(frequentlyBoughtTogether.bundlePrice) }}</div>
+              <div class="badge bg-danger mb-3">{{ frequentlyBoughtTogether.savingsText }}</div>
+              
+              <button type="button" class="btn btn-danger w-100 py-2 font-weight-bold shadow-sm d-flex align-items-center justify-content-center gap-2" @click="addBundleToCart">
+                <i class="bi bi-cart-plus-fill"></i> Thêm cả 2 vào giỏ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="reviews" class="z-reviews-section">
       <div class="container">
         <div class="z-review-heading">
@@ -376,9 +414,36 @@ watch(reviewPageSize, async () => {
   applyReviewData(data)
 })
 
+const frequentlyBoughtTogether = ref(null)
+
+async function loadFrequentlyBoughtTogether(id) {
+  try {
+    frequentlyBoughtTogether.value = await api().getFrequentlyBoughtTogether(id)
+  } catch (error) {
+    console.warn('Không tải được combo mua cùng:', error)
+  }
+}
+
+async function addBundleToCart() {
+  if (!frequentlyBoughtTogether.value?.items?.length) return
+  for (const item of frequentlyBoughtTogether.value.items) {
+    const variantId = item.variantId || (item.id * 100 + 1)
+    await addItem({
+      id: item.id,
+      variantId: variantId,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      qty: 1
+    })
+  }
+  showToast('Đã thêm trọn bộ Combo vào giỏ hàng (Được áp dụng ưu đãi Combo)!')
+}
+
 onMounted(async () => {
   try {
     const id = route.params.id
+    loadFrequentlyBoughtTogether(id)
     const [productData, reviewData, policyData] = await Promise.all([
       api().getVayById(id).catch(() => null),
       api().getProductReviews(id, 0, reviewPageSize.value).catch(() => null),

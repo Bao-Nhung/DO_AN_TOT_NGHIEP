@@ -10,9 +10,9 @@ public interface GioHangChiTietRepository extends JpaRepository<GioHangChiTiet, 
 
     List<GioHangChiTiet> findByGioHangId(Integer gioHangId);
 
-    Optional<GioHangChiTiet> findByGioHangIdAndVayChiTietId(
+    Optional<GioHangChiTiet> findByGioHangIdAndSanPhamChiTietId(
             Integer gioHangId,
-            Integer vayChiTietId
+            Integer sanPhamChiTietId
     );
 
     long countByGioHangId(Integer gioHangId);

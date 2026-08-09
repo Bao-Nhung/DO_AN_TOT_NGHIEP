@@ -187,6 +187,17 @@
                     <span>Đổi / trả hàng</span>
                   </button>
 
+                  <!-- View VAT Invoice -->
+                  <button 
+                    v-if="order.yeuCauVat || order.soHoaDonVat"
+                    class="btn btn-sm btn-outline-danger py-2 px-3 d-flex align-items-center gap-2"
+                    style="font-size: 12px; height: auto;"
+                    @click="openEInvoiceModal(order.id)"
+                  >
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>Hóa đơn VAT</span>
+                  </button>
+
                   <!-- View details -->
                   <button 
                     class="lm-btn-primary py-2 px-3 d-flex align-items-center gap-2"
@@ -470,6 +481,9 @@
         </div>
       </div>
     </div>
+
+    <!-- E-Invoice Modal -->
+    <EInvoiceModal :show="showEInvoiceModal" :invoice="eInvoiceData" :orderId="selectedEInvoiceOrderId" @close="showEInvoiceModal = false" />
   </div>
 </template>
 
@@ -477,10 +491,25 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import OrderTrackingCard from '@/components/OrderTrackingCard.vue'
+import EInvoiceModal from '@/components/EInvoiceModal.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
+
+const showEInvoiceModal = ref(false)
+const selectedEInvoiceOrderId = ref(null)
+const eInvoiceData = ref(null)
+
+async function openEInvoiceModal(orderId) {
+  selectedEInvoiceOrderId.value = orderId
+  try {
+    eInvoiceData.value = await api().getEInvoice(orderId)
+    showEInvoiceModal.value = true
+  } catch (error) {
+    toast.showToast(error.error || 'Không thể lấy dữ liệu Hóa Đơn Điện Tử')
+  }
+}
 
 const toast = useToast()
 const { confirmDialog } = useConfirm()

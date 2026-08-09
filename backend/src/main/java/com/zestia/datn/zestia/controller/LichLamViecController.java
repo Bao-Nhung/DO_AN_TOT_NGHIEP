@@ -422,6 +422,19 @@ public class LichLamViecController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{id}/report")
+    public ResponseEntity<?> getShiftReport(@PathVariable Integer id,
+                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return lichLamViecRepo.findById(id).map(shift -> {
+            ResponseEntity<?> accessError = authorizeOwnShift(shift, authHeader);
+            if (accessError != null) return accessError;
+            var reports = shiftReportService.build(shift.getNgayLam(), shift.getNgayLam(), shift.getNhanVien() != null ? shift.getNhanVien().getId() : null);
+            var report = reports.stream().filter(r -> Objects.equals(r.id(), shift.getId())).findFirst().orElse(null);
+            if (report == null) return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(reportMap(report));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity<?> delete(@PathVariable Integer id) {

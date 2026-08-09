@@ -1,7 +1,7 @@
 package com.zestia.datn.zestia.service;
 
 import com.zestia.datn.zestia.entity.BienDongTonKho;
-import com.zestia.datn.zestia.entity.VayChiTiet;
+import com.zestia.datn.zestia.entity.SanPhamChiTiet;
 import com.zestia.datn.zestia.repository.BienDongTonKhoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,11 +13,11 @@ import java.time.LocalDateTime;
 public class InventoryMovementService {
     private final BienDongTonKhoRepository movementRepo;
 
-    public void record(VayChiTiet variant, int before, int after, String type,
+    public void record(SanPhamChiTiet variant, int before, int after, String type,
                        String reference, String actor, String note) {
         if (variant == null || variant.getId() == null || before == after) return;
         movementRepo.save(BienDongTonKho.builder()
-                .vayChiTiet(variant)
+                .sanPhamChiTiet(variant)
                 .soLuongTruoc(before)
                 .soLuongThayDoi(after - before)
                 .soLuongSau(after)

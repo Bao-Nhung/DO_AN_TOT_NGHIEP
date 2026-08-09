@@ -152,7 +152,14 @@
                 </thead>
                 <tbody>
                   <tr v-for="order in recentOrders" :key="order.id">
-                  <td style="font-weight:600">{{ order.code }}</td>
+                    <td style="font-weight:600">
+                      <div class="d-flex align-items-center gap-1">
+                        <span>{{ order.code }}</span>
+                        <button type="button" class="btn btn-sm btn-light border py-0 px-1" style="font-size:10px" title="Sao chép mã đơn" @click.stop="copyOrderCode(order.code)">
+                          <i class="bi bi-clipboard"></i>
+                        </button>
+                      </div>
+                    </td>
                     <td>{{ order.customer }}</td>
                     <td style="font-weight:500">{{ order.total }}</td>
                     <td><span class="z-status" :class="order.statusClass">{{ order.status }}</span></td>
@@ -224,8 +231,16 @@ import { computed, onMounted, ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
+import { useToast } from '@/composables/useToast'
 
+const { showToast } = useToast()
 const { getUser } = useAuth()
+
+function copyOrderCode(codeVal) {
+  if (!codeVal) return
+  navigator.clipboard.writeText(codeVal)
+  showToast(`Đã sao chép mã đơn hàng "${codeVal}"!`)
+}
 const currentUser = computed(() => getUser() || {})
 const isStaffDashboard = computed(() => currentUser.value.role !== 'Admin')
 const userName = computed(() => currentUser.value.hoVaTen || currentUser.value.username || 'Nhân viên')

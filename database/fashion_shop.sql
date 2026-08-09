@@ -1961,13 +1961,13 @@ BEGIN
     INSERT INTO dbo.Nhan_vien
         (id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung, mat_khau, tinh_trang_lam_viec, ngay_tao)
     VALUES
-        (@adminRoleId, N'NV001', N'Nguyễn Tiến Thành', 1, '1998-01-10', N'0900000001', N'Hà Nội', N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T09:00:00');
+        (@adminRoleId, N'NV001', N'Admin', 1, '1998-01-10', N'0900000001', N'Hà Nội', N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T09:00:00');
 END
 ELSE
 BEGIN
     UPDATE dbo.Nhan_vien
     SET id_vai_tro = @adminRoleId,
-        ho_va_ten = N'Nguyễn Tiến Thành',
+        ho_va_ten = N'Admin',
         email = N'admin@zestia.vn',
         tinh_trang_lam_viec = 1
     WHERE ten_nguoi_dung = N'admin';
@@ -4938,7 +4938,7 @@ SET trang_thai = CASE
         WHEN DAY(ngay_lam) % 13 = 0 THEN DATEADD(DAY, -1, CAST(ngay_lam AS datetime2))
         ELSE NULL
     END,
-    nguoi_duyet = CASE WHEN DAY(ngay_lam) % 13 = 0 THEN N'Nguyễn Tiến Thành' ELSE NULL END
+    nguoi_duyet = CASE WHEN DAY(ngay_lam) % 13 = 0 THEN N'Admin' ELSE NULL END
 WHERE ngay_lam BETWEEN '2026-08-01' AND '2026-08-31';
 GO
 
@@ -4948,7 +4948,7 @@ SET ly_do_bao_ban = COALESCE(NULLIF(LTRIM(RTRIM(ly_do_bao_ban)), N''), N'Yêu c�
     thoi_gian_bao_ban = COALESCE(thoi_gian_bao_ban, CAST(ngay_lam AS datetime2)),
     phan_hoi_bao_ban = COALESCE(NULLIF(LTRIM(RTRIM(phan_hoi_bao_ban)), N''), N'Đã đọc lý do và chấp nhận yêu cầu báo bận.'),
     thoi_gian_duyet = COALESCE(thoi_gian_duyet, DATEADD(MINUTE, 1, COALESCE(thoi_gian_bao_ban, CAST(ngay_lam AS datetime2)))),
-    nguoi_duyet = COALESCE(NULLIF(LTRIM(RTRIM(nguoi_duyet)), N''), N'Nguyễn Tiến Thành')
+    nguoi_duyet = COALESCE(NULLIF(LTRIM(RTRIM(nguoi_duyet)), N''), N'Admin')
 WHERE trang_thai = 2;
 
 UPDATE dbo.Lich_lam_viec
@@ -4969,7 +4969,7 @@ WHERE gia_ban IS NOT NULL;
 GO
 
 UPDATE dbo.Nhan_vien
-SET ho_va_ten = N'Nguyễn Tiến Thành'
+SET ho_va_ten = N'Admin'
 WHERE ten_nguoi_dung = N'admin';
 GO
 

@@ -118,6 +118,9 @@
                 <div>
                   <div class="d-flex align-items-center gap-2">
                     <span style="font-weight: 700; font-size: 15px; color: var(--z-dark)">{{ order.maHoaDon }}</span>
+                    <button type="button" class="btn btn-sm btn-light border py-0 px-2 d-inline-flex align-items-center gap-1" style="font-size:11px" title="Sao chép mã đơn hàng" @click.stop="copyOrderCode(order.maHoaDon)">
+                      <i class="bi bi-clipboard"></i> Copy
+                    </button>
                     <span class="badge-payment">{{ order.hinhThucThanhToan }}</span>
                   </div>
                   <div style="font-size: 12px; color: var(--z-gray); margin-top: 4px;">
@@ -229,7 +232,12 @@
         <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
           <div>
             <h3 style="font-size:18px;font-weight:700;margin:0;color:var(--z-dark)">Chi tiết đơn hàng</h3>
-            <div style="font-size:13px;color:var(--z-gray);margin-top:2px;">Mã hóa đơn: <strong>{{ detailOrder?.maHoaDon }}</strong></div>
+            <div class="d-flex align-items-center gap-2 mt-1" style="font-size:13px;color:var(--z-gray);">
+              <span>Mã hóa đơn: <strong>{{ detailOrder?.maHoaDon }}</strong></span>
+              <button type="button" class="btn btn-sm btn-light border py-0 px-2 d-inline-flex align-items-center gap-1" style="font-size:11px" title="Sao chép mã đơn hàng" @click="copyOrderCode(detailOrder?.maHoaDon)">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
           </div>
           <button type="button" class="z-icon-btn z-icon-btn--close" aria-label="Đóng chi tiết đơn hàng" @click="showDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
@@ -533,6 +541,12 @@ const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang gia
 statusMap[7] = { key: 'danger', label: 'Thanh toán thất bại' }
 statusMap[8] = { key: 'warning', label: 'Yêu cầu đổi/trả' }
 statusMap[9] = { key: 'danger', label: 'Đã hoàn tiền' }
+
+function copyOrderCode(code) {
+  if (!code) return
+  navigator.clipboard.writeText(code)
+  toast.showToast(`Đã sao chép mã đơn hàng "${code}"!`, 'success')
+}
 
 onMounted(loadOrders)
 onBeforeUnmount(clearReturnImagePreviews)

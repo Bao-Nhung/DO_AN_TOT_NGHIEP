@@ -738,6 +738,12 @@ function playBarcodeBeepSound() {
   } catch (_) {}
 }
 
+function copyOrderCode(codeVal) {
+  if (!codeVal) return
+  navigator.clipboard.writeText(codeVal)
+  showToast(`Đã sao chép mã đơn hàng "${codeVal}"!`)
+}
+
 async function confirmAddVariant() {
   if (!selectedColor.value) {
     showToast('Vui lòng chọn màu sắc!', 'warning')

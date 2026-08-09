@@ -6,14 +6,14 @@
       :class="{ active: isOpen }"
       type="button"
       @click="toggleCopilot"
-      title="Bật/Tắt Zestia AI Copilot (Phím tắt: Alt + A hoặc Ctrl + K)"
+      title="Bật/Tắt Zestia AI (Phím tắt: Alt + A hoặc Ctrl + K)"
     >
+      <div v-if="!isOpen" class="z-ai-pulse"></div>
       <div class="z-copilot-trigger-icon">
-        <i v-if="!isOpen" class="bi bi-stars"></i>
+        <i v-if="!isOpen" class="bi bi-stars z-ai-icon-stars"></i>
         <i v-else class="bi bi-x-lg"></i>
       </div>
-      <span class="z-copilot-trigger-text d-none d-md-inline">AI Copilot</span>
-      <span class="z-copilot-badge">Staff</span>
+      <span class="z-copilot-trigger-text d-none d-md-inline">Zestia AI</span>
     </button>
 
     <!-- Slide-over Copilot Panel -->
@@ -416,51 +416,69 @@ function formatMessageText(text) {
 }
 
 .z-copilot-trigger {
+  position: relative;
+  height: 52px;
+  padding: 0 20px 0 16px;
+  border: none;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #1A1A1A 0%, #333333 50%, #D4564E 100%);
+  color: #fff;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 30px;
-  background: linear-gradient(135deg, var(--z-dark, #1f2937), #374151);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  gap: 10px;
+  box-shadow: 0 12px 32px rgba(212, 86, 78, 0.35);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .z-copilot-trigger:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-  background: linear-gradient(135deg, var(--z-accent, #c08b7e), #8b5cf6);
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 16px 40px rgba(212, 86, 78, 0.45);
+  background: linear-gradient(135deg, #1A1A1A 0%, #333333 50%, #D4564E 100%);
 }
 
 .z-copilot-trigger-icon {
-  font-size: 16px;
+  font-size: 20px;
   display: flex;
   align-items: center;
-  color: #f59e0b;
+  justify-content: center;
+}
+
+.z-ai-icon-stars {
+  font-size: 20px;
+  color: #FFD700;
+  animation: z-spin-slow 6s linear infinite;
+}
+
+@keyframes z-spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .z-copilot-trigger-text {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   letter-spacing: 0.3px;
 }
 
-.z-copilot-badge {
-  font-size: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 7px;
-  border-radius: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
+.z-ai-pulse {
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  border-radius: 32px;
+  border: 2px solid rgba(212, 86, 78, 0.6);
+  animation: z-pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+}
+
+@keyframes z-pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
 }
 
 .z-copilot-panel {
   position: fixed;
   right: 24px;
-  bottom: 80px;
+  bottom: 86px;
   width: min(420px, calc(100vw - 32px));
   height: 580px;
   max-height: calc(100vh - 110px);

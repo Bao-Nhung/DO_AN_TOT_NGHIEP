@@ -56,7 +56,12 @@
         <div v-if="orderId" class="z-result-details">
           <div class="z-result-row">
             <span>Mã đơn hàng</span>
-            <strong>{{ orderId }}</strong>
+            <div class="d-flex align-items-center gap-2">
+              <strong>{{ orderId }}</strong>
+              <button type="button" class="btn btn-sm btn-light border py-0 px-2 d-inline-flex align-items-center gap-1" style="font-size:11px" title="Sao chép mã đơn hàng" @click="copyOrderCode(orderId)">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
           </div>
           <div v-if="amount" class="z-result-row">
             <span>Tổng tiền</span>
@@ -90,9 +95,17 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import { useCart } from '@/composables/useCart'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const { clearCart, syncCartNow } = useCart()
+const { showToast } = useToast()
+
+function copyOrderCode(codeVal) {
+  if (!codeVal) return
+  navigator.clipboard.writeText(codeVal)
+  showToast(`Đã sao chép mã đơn hàng "${codeVal}"!`)
+}
 
 const status = computed(() => route.query.status || 'error')
 const orderId = computed(() => route.query.orderId || '')

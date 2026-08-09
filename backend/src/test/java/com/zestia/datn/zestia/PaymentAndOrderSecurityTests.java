@@ -1074,7 +1074,7 @@ class PaymentAndOrderSecurityTests {
         NhanVien admin = employeeRepository.save(NhanVien.builder()
                 .vaiTro(adminRole)
                 .maNhanVien("NV-ADMIN-CHAT-" + marker)
-                .hoVaTen("Nguyễn Tiến Thành")
+                .hoVaTen("Admin")
                 .email("admin-chat-" + marker + "@example.com")
                 .tenNguoiDung("admin-chat-" + marker)
                 .matKhau(passwordEncoder.encode("Matkhau123"))
@@ -1095,12 +1095,12 @@ class PaymentAndOrderSecurityTests {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(SupportChatService.ACTIVE))
-                .andExpect(jsonPath("$.employeeName").value("Nguyễn Tiến Thành"));
+                .andExpect(jsonPath("$.employeeName").value("Admin"));
 
         mockMvc.perform(get("/api/support-chat/customer/" + publicToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(SupportChatService.ACTIVE))
-                .andExpect(jsonPath("$.employeeName").value("Nguyễn Tiến Thành"));
+                .andExpect(jsonPath("$.employeeName").value("Admin"));
     }
 
     @Test

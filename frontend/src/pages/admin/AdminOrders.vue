@@ -74,7 +74,14 @@
         </thead>
         <tbody>
           <tr v-for="o in paginatedOrders" :key="o.id" class="z-clickable-row" @click="openDetail(o)">
-            <td style="font-weight:600">{{ o.id }}</td>
+            <td style="font-weight:600">
+              <div class="d-flex align-items-center gap-1">
+                <span>{{ o.id }}</span>
+                <button type="button" class="btn btn-sm btn-light border py-0 px-1" style="font-size:10px" title="Sao chép mã đơn" @click.stop="copyOrderCode(o.id)">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            </td>
             <td>
               <div style="font-weight:500">{{ o.customer }}</div>
               <div style="font-size:12px;color:var(--z-gray)">{{ o.phone }}</div>
@@ -395,6 +402,12 @@ import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const { showToast } = useToast()
 const { isEn } = useI18n()
+
+function copyOrderCode(codeVal) {
+  if (!codeVal) return
+  navigator.clipboard.writeText(codeVal)
+  showToast(`Đã sao chép mã đơn hàng "${codeVal}"!`)
+}
 
 const statusMap = { 
     0: { text: 'Chờ xử lý', cls: 'pending' }, 

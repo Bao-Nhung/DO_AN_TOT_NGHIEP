@@ -43,7 +43,12 @@
         <div class="z-order-details p-4">
           <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2">
             <div>
-              <h4 class="m-0 font-weight-bold" style="color: var(--z-dark); font-size: 16px;">Chi tiết sản phẩm</h4>
+              <div class="d-flex align-items-center gap-2">
+                <h4 class="m-0 font-weight-bold" style="color: var(--z-dark); font-size: 16px;">Mã đơn: {{ currentOrder.maHoaDon }}</h4>
+                <button type="button" class="btn btn-sm btn-light border py-0 px-2 d-inline-flex align-items-center gap-1" style="font-size:11px" title="Sao chép mã đơn hàng" @click="copyOrderCode(currentOrder.maHoaDon)">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
               <span class="text-muted" style="font-size: 12px;">Đơn hàng gồm {{ currentOrder.chiTiets?.length || 0 }} sản phẩm</span>
             </div>
             <div class="d-flex gap-2">
@@ -280,6 +285,12 @@ import { api } from '@/composables/useApi'
 const { searchOrder, currentOrder, loading } = useOrders()
 const { showToast } = useToast()
 const route = useRoute()
+
+function copyOrderCode(codeVal) {
+  if (!codeVal) return
+  navigator.clipboard.writeText(codeVal)
+  showToast(`Đã sao chép mã đơn hàng "${codeVal}"!`)
+}
 
 const form = ref({
   maHoaDon: '',

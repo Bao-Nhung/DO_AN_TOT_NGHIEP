@@ -467,15 +467,17 @@ public class AiChatService {
             List<Vay> items = vayRepository.findActiveForAi(PageRequest.of(0, 5));
             StringBuilder sb = new StringBuilder("📦 **BÁO CÁO TRA CỨU TỒN KHO THỜI GIAN THỰC**\n\n");
             for (Vay v : items) {
-                int stock = v.getBiens() != null ? v.getBiens().stream().mapToInt(vt -> vt.getSoLuongTon() != null ? vt.getSoLuongTon() : 0).sum() : 0;
-                String mainImg = (v.getAnhs() != null && !v.getAnhs().isEmpty()) ? v.getAnhs().get(0).getAnhUrl() : "/images/products/shirt1.jpg";
-                sb.append(String.format("• **[%s] %s**: Tồn kho %d chiếc (Giá: %,.0fđ)\n", v.getMaVay(), v.getTenVay(), stock, v.getGiaBan() != null ? v.getGiaBan() : BigDecimal.ZERO));
+                List<VayChiTiet> variants = activeVariants(v);
+                int stock = totalStock(variants);
+                String mainImg = productImage(variants, "/images/products/shirt1.jpg");
+                BigDecimal price = lowestPrice(variants);
+                sb.append(String.format("• **[%s] %s**: Tồn kho %d chiếc (Giá từ: %,.0fđ)\n", v.getMaVay(), v.getTenVay(), stock, price));
                 cards.add(Map.of(
                         "type", "product",
                         "id", v.getId(),
                         "code", safe(v.getMaVay()),
                         "name", safe(v.getTenVay()),
-                        "price", v.getGiaBan() != null ? v.getGiaBan() : BigDecimal.ZERO,
+                        "price", price,
                         "stock", stock,
                         "image", mainImg,
                         "category", v.getLoaiVay() != null ? safe(v.getLoaiVay().getTenLoaiVay()) : "Thời trang"
@@ -494,19 +496,25 @@ public class AiChatService {
             sb.append("Bộ trang phục đề xuất phối màu hoàn hảo cho khách hàng:\n");
 
             if (shirt != null) {
-                String img = (shirt.getAnhs() != null && !shirt.getAnhs().isEmpty()) ? shirt.getAnhs().get(0).getAnhUrl() : "/images/products/shirt1.jpg";
-                sb.append(String.format("1. **Áo phối (Top)**: %s - %,.0fđ\n", shirt.getTenVay(), shirt.getGiaBan()));
-                cards.add(Map.of("type", "product", "id", shirt.getId(), "code", safe(shirt.getMaVay()), "name", safe(shirt.getTenVay()), "price", shirt.getGiaBan(), "image", img));
+                List<VayChiTiet> variants = activeVariants(shirt);
+                String img = productImage(variants, "/images/products/shirt1.jpg");
+                BigDecimal price = lowestPrice(variants);
+                sb.append(String.format("1. **Áo phối (Top)**: %s - %,.0fđ\n", shirt.getTenVay(), price));
+                cards.add(Map.of("type", "product", "id", shirt.getId(), "code", safe(shirt.getMaVay()), "name", safe(shirt.getTenVay()), "price", price, "image", img));
             }
             if (pants != null) {
-                String img = (pants.getAnhs() != null && !pants.getAnhs().isEmpty()) ? pants.getAnhs().get(0).getAnhUrl() : "/images/products/pants1.jpg";
-                sb.append(String.format("2. **Quần tôn dáng (Bottom)**: %s - %,.0fđ\n", pants.getTenVay(), pants.getGiaBan()));
-                cards.add(Map.of("type", "product", "id", pants.getId(), "code", safe(pants.getMaVay()), "name", safe(pants.getTenVay()), "price", pants.getGiaBan(), "image", img));
+                List<VayChiTiet> variants = activeVariants(pants);
+                String img = productImage(variants, "/images/products/pants1.jpg");
+                BigDecimal price = lowestPrice(variants);
+                sb.append(String.format("2. **Quần tôn dáng (Bottom)**: %s - %,.0fđ\n", pants.getTenVay(), price));
+                cards.add(Map.of("type", "product", "id", pants.getId(), "code", safe(pants.getMaVay()), "name", safe(pants.getTenVay()), "price", price, "image", img));
             }
             if (acc != null) {
-                String img = (acc.getAnhs() != null && !acc.getAnhs().isEmpty()) ? acc.getAnhs().get(0).getAnhUrl() : "/images/products/accessories1.jpg";
-                sb.append(String.format("3. **Phụ kiện điểm nhấn (Accessory)**: %s - %,.0fđ\n", acc.getTenVay(), acc.getGiaBan()));
-                cards.add(Map.of("type", "product", "id", acc.getId(), "code", safe(acc.getMaVay()), "name", safe(acc.getTenVay()), "price", acc.getGiaBan(), "image", img));
+                List<VayChiTiet> variants = activeVariants(acc);
+                String img = productImage(variants, "/images/products/accessories1.jpg");
+                BigDecimal price = lowestPrice(variants);
+                sb.append(String.format("3. **Phụ kiện điểm nhấn (Accessory)**: %s - %,.0fđ\n", acc.getTenVay(), price));
+                cards.add(Map.of("type", "product", "id", acc.getId(), "code", safe(acc.getMaVay()), "name", safe(acc.getTenVay()), "price", price, "image", img));
             }
             sb.append("\n*Gợi ý tư vấn tại quầy: Giới thiệu cho khách mua thêm phụ kiện hoặc áo sơ mi để được áp dụng mã giảm giá voucher tốt hơn.*");
             return Map.of("reply", sb.toString(), "configured", true, "cards", cards);
@@ -518,13 +526,13 @@ public class AiChatService {
             for (GiamGia g : vouchers) {
                 sb.append(String.format("• **Mã %s** (%s): Giảm %,.0fđ cho đơn từ %,.0fđ\n",
                         safe(g.getMaGiamGia()), safe(g.getTenGiamGia()),
-                        g.getSoTienGiam() != null ? g.getSoTienGiam() : BigDecimal.ZERO,
-                        g.getDonToiThieu() != null ? g.getDonToiThieu() : BigDecimal.ZERO));
+                        g.getGioTriGiam() != null ? g.getGioTriGiam() : BigDecimal.ZERO,
+                        g.getGiaTriDonToiThieu() != null ? g.getGiaTriDonToiThieu() : BigDecimal.ZERO));
                 cards.add(Map.of(
                         "type", "voucher",
                         "code", safe(g.getMaGiamGia()),
-                        "discount", g.getSoTienGiam() != null ? g.getSoTienGiam() : BigDecimal.ZERO,
-                        "minOrder", g.getDonToiThieu() != null ? g.getDonToiThieu() : BigDecimal.ZERO,
+                        "discount", g.getGioTriGiam() != null ? g.getGioTriGiam() : BigDecimal.ZERO,
+                        "minOrder", g.getGiaTriDonToiThieu() != null ? g.getGiaTriDonToiThieu() : BigDecimal.ZERO,
                         "description", safe(g.getTenGiamGia())
                 ));
             }
@@ -540,6 +548,40 @@ public class AiChatService {
         }
 
         return null;
+    }
+
+    private List<VayChiTiet> activeVariants(Vay product) {
+        if (product == null || product.getId() == null) return List.of();
+        return vayChiTietRepository.findByVayId(product.getId()).stream()
+                .filter(variant -> variant.getTrangThai() == null || variant.getTrangThai() == 1)
+                .toList();
+    }
+
+    private int totalStock(List<VayChiTiet> variants) {
+        return variants.stream()
+                .map(VayChiTiet::getSoLuong)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum();
+    }
+
+    private BigDecimal lowestPrice(List<VayChiTiet> variants) {
+        return variants.stream()
+                .map(promotionPricingService::quote)
+                .map(PromotionPricingService.PriceQuote::effectivePrice)
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(BigDecimal.ZERO);
+    }
+
+    private String productImage(List<VayChiTiet> variants, String fallback) {
+        return variants.stream()
+                .map(VayChiTiet::getAnhUrl)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(url -> !url.isEmpty())
+                .findFirst()
+                .orElse(fallback);
     }
 
     public record ChatUser(String role, Integer userId) {

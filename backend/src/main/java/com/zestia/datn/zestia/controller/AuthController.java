@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
@@ -61,21 +62,20 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletRequest request) {
-        String identifier = req != null && req.getUsername() != null
-                ? req.getUsername().trim().toLowerCase()
-                : "empty";
-        String rateKey = clientIp(request) + "|" + identifier;
+        String identifier = req != null ? clean(req.getUsername()) : null;
+        String normalizedIdentifier = identifier != null ? identifier.toLowerCase(Locale.ROOT) : "empty";
+        String rateKey = clientIp(request) + "|" + normalizedIdentifier;
         if (!rateLimiter.tryAcquire("login", rateKey, 8, 15 * 60)) {
             return ResponseEntity.status(429).body(Map.of(
                     "error", "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút"
             ));
         }
-        if (req == null || req.getUsername() == null || req.getPassword() == null) {
+        if (identifier == null || req.getPassword() == null || req.getPassword().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập tài khoản và mật khẩu"));
         }
-        Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDung(req.getUsername());
+        Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDungIgnoreCase(identifier);
         if (nvOpt.isEmpty()) {
-            nvOpt = nhanVienRepo.findByEmail(req.getUsername());
+            nvOpt = nhanVienRepo.findByEmailIgnoreCase(identifier);
         }
 
         if (nvOpt.isPresent()) {
@@ -83,7 +83,7 @@ public class AuthController {
             if (nv.getTinhTrangLamViec() != null && nv.getTinhTrangLamViec() == 0) {
                 return ResponseEntity.status(403).body(Map.of("error", "Tài khoản nhân viên đang bị tạm khoá"));
             }
-            if (passwordEncoder.matches(req.getPassword(), nv.getMatKhau())) {
+            if (passwordMatches(req.getPassword(), nv.getMatKhau())) {
                 rateLimiter.reset("login", rateKey);
                 String role = nv.getVaiTro() != null ? nv.getVaiTro().getTenVaiTro() : "NhanVien";
                 String token = jwtUtil.generateToken(nv.getTenNguoiDung(), role, nv.getId());
@@ -98,14 +98,14 @@ public class AuthController {
             }
         }
 
-        Optional<KhachHang> khOpt = khachHangRepo.findByEmail(req.getUsername());
+        Optional<KhachHang> khOpt = khachHangRepo.findByEmailIgnoreCase(identifier);
         if (khOpt.isEmpty()) {
-            khOpt = khachHangRepo.findBySoDienThoai(req.getUsername());
+            khOpt = khachHangRepo.findBySoDienThoai(identifier);
         }
 
         if (khOpt.isPresent()) {
             KhachHang kh = khOpt.get();
-            if (passwordEncoder.matches(req.getPassword(), kh.getMatKhau())) {
+            if (passwordMatches(req.getPassword(), kh.getMatKhau())) {
                 rateLimiter.reset("login", rateKey);
                 String token = jwtUtil.generateToken(kh.getEmail(), "KhachHang", kh.getId());
                 return ResponseEntity.ok(LoginResponse.builder()

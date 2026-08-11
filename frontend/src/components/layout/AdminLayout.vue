@@ -43,6 +43,10 @@
 
     <main class="z-admin-main">
       <div class="z-admin-utility-bar">
+        <RouterLink to="/" class="z-admin-language text-decoration-none" title="Xem Website Cửa Hàng" aria-label="Xem Website Cửa Hàng">
+          <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+          <span>Xem Website</span>
+        </RouterLink>
         <button type="button" class="z-admin-language" data-no-i18n
                 :title="locale === 'vi' ? 'Chuyển sang tiếng Anh' : 'Switch to Vietnamese'"
                 :aria-label="locale === 'vi' ? 'Chuyển sang tiếng Anh' : 'Switch to Vietnamese'"
@@ -167,6 +171,7 @@ const allNavItems = [
   { path: '/admin/vouchers', icon: 'bi-tag', label: 'Voucher', adminOnly: true },
   { path: '/admin/promotions', icon: 'bi-calendar2-event', label: 'Đợt khuyến mãi', adminOnly: true },
   { path: '/admin/lucky-wheel', icon: 'bi-stars', label: 'Vòng quay may mắn', adminOnly: true },
+  { path: '/admin/channels', icon: 'bi-diagram-3', label: 'Kênh bán ngoài', adminOnly: true },
   { path: '/admin/notifications', icon: 'bi-bell', label: 'Thông báo khách hàng', adminOnly: true },
   { path: '/admin/settings', icon: 'bi-gear', label: 'Cài đặt', adminOnly: true },
 ]

@@ -17,6 +17,7 @@
         <li><RouterLink class="lm-nav-link" to="/wishlist">{{ t('wishlist') }}</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/about">{{ t('about') }}</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/profile">{{ t('account') }}</RouterLink></li>
+        <li v-if="isStaffUser"><RouterLink class="lm-nav-link text-warning font-weight-bold" to="/admin" style="color:var(--z-accent)!important;font-weight:600;"><i class="bi bi-speedometer2 me-1"></i>Admin</RouterLink></li>
       </ul>
 
       <div class="d-flex align-items-center gap-1">
@@ -39,6 +40,9 @@
         <button type="button" class="lm-nav-icon-btn" @click="$router.push('/lucky-wheel')" :title="t('luckyWheel')" :aria-label="t('luckyWheel')">
           <i class="bi bi-stars"></i>
           <span class="z-new-feature-dot" aria-hidden="true"></span>
+        </button>
+        <button type="button" class="lm-nav-icon-btn text-danger" @click="$router.push('/collections?aiSearch=true')" title="Tìm bằng ảnh AI (AI Vision Search)" aria-label="Tìm bằng ảnh AI">
+          <i class="bi bi-camera-fill"></i>
         </button>
 
         <!-- Notifications Dropdown -->
@@ -107,6 +111,7 @@
         <RouterLink class="z-mobile-link" to="/lucky-wheel" @click="mobileOpen = false">{{ t('luckyWheel') }}</RouterLink>
         <RouterLink class="z-mobile-link" to="/about" @click="mobileOpen = false">{{ t('about') }}</RouterLink>
         <RouterLink class="z-mobile-link" to="/profile" @click="mobileOpen = false">{{ t('account') }}</RouterLink>
+        <RouterLink v-if="isStaffUser" class="z-mobile-link text-warning fw-bold" to="/admin" @click="mobileOpen = false" style="color:var(--z-accent)!important;font-weight:600;"><i class="bi bi-speedometer2 me-1"></i>Trang Admin</RouterLink>
         <div class="p-3 border-top mt-2 d-flex justify-content-between align-items-center">
           <span style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ t('languageLabel') }}</span>
           <button type="button" class="lm-lang-btn" @click="toggleLocale"
@@ -185,7 +190,12 @@ import { useCompare } from '@/composables/useCompare'
 
 const router = useRouter()
 const { openCart, totalCount, formatPrice } = useCart()
-const { isLoggedIn } = useAuth()
+const { isLoggedIn, getUser } = useAuth()
+const isStaffUser = computed(() => {
+  if (!isLoggedIn()) return false
+  const user = getUser()
+  return user && ['Admin', 'NhanVien', 'Nhân viên'].includes(user.role)
+})
 const { t, toggleLocale, locale } = useI18n()
 const { count: compareCount } = useCompare()
 const isScrolled = ref(false)

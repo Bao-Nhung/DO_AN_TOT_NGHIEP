@@ -1,4 +1,4 @@
-﻿import { createApp } from 'vue'
+import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 // Bootstrap
@@ -48,6 +48,7 @@ const AdminSupportChat = () => import('@/pages/admin/AdminSupportChat.vue')
 const AdminPromotions = () => import('@/pages/admin/AdminPromotions.vue')
 const AdminReturns = () => import('@/pages/admin/AdminReturns.vue')
 const AdminLuckyWheel = () => import('@/pages/admin/AdminLuckyWheel.vue')
+const AdminChannels = () => import('@/pages/admin/AdminChannels.vue')
 
 const routes = [
   { path: '/',               component: HomePage,       name: 'home' },
@@ -82,6 +83,7 @@ const routes = [
   { path: '/admin/notifications', component: AdminNotifications, name: 'admin-notifications' },
   { path: '/admin/support-chat', component: AdminSupportChat, name: 'admin-support-chat' },
   { path: '/admin/settings',  component: AdminSettings,  name: 'admin-settings' },
+  { path: '/admin/channels',  component: AdminChannels,  name: 'admin-channels' },
   { path: '/admin/pos',       component: AdminPOS,       name: 'admin-pos' },
   { path: '/tracking', name: 'Tracking', component: OrderTrackingPage },
   { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -104,6 +106,7 @@ const adminOnlyRouteNames = new Set([
   'admin-lucky-wheel',
   'admin-notifications',
   'admin-settings',
+  'admin-channels',
 ])
 
 function isAdminRole(role) {
@@ -125,7 +128,7 @@ router.beforeEach(async (to, from, next) => {
   const requiresLogin = isAdminRoute || isProfileRoute
   const user = isLoggedIn() ? getUser() : null
 
-  if (user && isStaffRole(user.role) && !isAdminRoute) {
+  if (user && isStaffRole(user.role) && to.name === 'login') {
     return next({ name: 'admin-dashboard' })
   }
 

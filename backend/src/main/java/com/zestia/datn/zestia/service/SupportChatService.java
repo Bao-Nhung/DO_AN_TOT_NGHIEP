@@ -214,7 +214,7 @@ public class SupportChatService {
     }
 
     private SupportConversation requireByTokenForUpdate(String token) {
-        if (token == null || !token.matches("[A-Za-z0-9]{20,64}")) {
+        if (token == null || !token.matches("[A-Za-z0-9]{16,64}")) {
             throw new NoSuchElementException("Phiên hỗ trợ không hợp lệ");
         }
         return conversationRepository.findByPublicTokenForUpdate(token)

@@ -106,6 +106,9 @@
             <td><span class="z-status" :class="o.statusClass">{{ o.status }}</span></td>
             <td style="color:var(--z-gray)">{{ o.date }}</td>
             <td @click.stop style="text-align: right; padding-right: 20px;">
+              <a :href="'/tracking?code=' + (o.maHoaDon || o.id) + '&phone=' + (o.phone || '')" target="_blank" class="btn btn-sm btn-outline-secondary me-1 py-1 px-2 text-decoration-none" style="font-size:11px;" title="Tra cứu công khai trên Website" aria-label="Tra cứu đơn hàng trên Website">
+                <i class="bi bi-search me-1"></i> Tra cứu
+              </a>
               <button v-if="o.raw?.yeuCauVat || o.raw?.soHoaDonVat" type="button" class="btn btn-sm btn-outline-danger me-1 py-1 px-2" style="font-size:11px;" title="Xem / Xuất Hóa Đơn Điện Tử VAT" @click="openEInvoiceModal(o.id)">
                 <i class="bi bi-receipt me-1"></i> VAT
               </button>

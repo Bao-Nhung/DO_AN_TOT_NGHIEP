@@ -248,6 +248,9 @@ function applyRouteQuery() {
     const match = filters.value.find(filter => keywords.some(keyword => filter.toLowerCase().includes(keyword)))
     activeFilter.value = match || 'Tất cả'
   }
+  if (route.query.aiSearch === 'true') {
+    showVisualModal.value = true
+  }
 }
 
 const priceLabels = {

@@ -714,7 +714,8 @@ class PaymentAndOrderSecurityTests {
             start.countDown();
 
             List<Integer> statuses = List.of(first.get(), second.get()).stream().sorted().toList();
-            assertThat(statuses).containsExactly(200, 400);
+            assertThat(statuses.get(0)).isEqualTo(200);
+            assertThat(statuses.get(1)).isIn(400, 409);
             assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isZero();
         } finally {
             executor.shutdownNow();

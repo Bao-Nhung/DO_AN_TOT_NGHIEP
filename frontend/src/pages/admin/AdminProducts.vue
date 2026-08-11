@@ -104,6 +104,7 @@
                 <div class="d-flex gap-1">
                   <button type="button" class="z-icon-btn" title="Sửa" aria-label="Sửa sản phẩm" @click="openEdit(p)"><i class="bi bi-pencil"></i></button>
                   <button type="button" class="z-icon-btn" title="Chi tiết" aria-label="Xem chi tiết sản phẩm" @click="openProductDetail(p)"><i class="bi bi-eye"></i></button>
+                  <a :href="'/product/' + p.id" target="_blank" class="z-icon-btn text-decoration-none" title="Xem trên Website" aria-label="Xem sản phẩm trên Website"><i class="bi bi-box-arrow-up-right"></i></a>
                   <button type="button" class="z-icon-btn" :title="p.active ? 'Khóa' : 'Mở khóa'" :aria-label="p.active ? 'Khóa sản phẩm' : 'Mở khóa sản phẩm'"
                           :style="{ color: p.active ? 'var(--z-accent)' : '#16a34a' }"
                           @click="toggleLock(p)">

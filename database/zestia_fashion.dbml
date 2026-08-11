@@ -1,0 +1,547 @@
+// ============================================================
+// ZESTIA FASHION — DATABASE ERD DIAGRAM (DBML Format for dbdiagram.io)
+// Sao chép toàn bộ nội dung file này và dán vào https://dbdiagram.io
+// ============================================================
+
+Project Zestia_Fashion {
+  database_type: 'SQL Server'
+  Note: 'Hệ thống bán thời trang đa kênh Zestia (Web Client, POS tại quầy, Admin Portal, AI Copilot)'
+}
+
+// ------------------------------------------------------------
+// 1. PHÂN HỆ QUẢN TRỊ & NHÂN SỰ (USERS & WORKSHIFTS)
+// ------------------------------------------------------------
+
+Table Vai_tro {
+  id int [pk, increment]
+  ten_vai_tro nvarchar(100) [not null, unique]
+  Note: 'Vai trò hệ thống (Admin, Nhân viên)'
+}
+
+Table Nhan_vien {
+  id int [pk, increment]
+  id_vai_tro int [ref: > Vai_tro.id]
+  ma_nhan_vien nvarchar(50) [unique]
+  ho_va_ten nvarchar(150) [not null]
+  gioi_tinh tinyint
+  ngay_sinh date
+  so_dien_thoai nvarchar(20)
+  dia_chi nvarchar(255)
+  email nvarchar(150) [unique]
+  ten_nguoi_dung nvarchar(100) [unique]
+  mat_khau nvarchar(255)
+  tinh_trang_lam_viec tinyint [note: '1: Đang làm việc, 0: Thôi việc']
+  ngay_tao datetime2
+}
+
+Table Lich_lam_viec {
+  id int [pk, increment]
+  id_nhan_vien int [ref: > Nhan_vien.id]
+  ngay_lam date [not null]
+  ca_lam nvarchar(50)
+  gio_bat_dau time [not null]
+  gio_ket_thuc time [not null]
+  ghi_chu nvarchar(255)
+  trang_thai tinyint [note: '0: Chờ xác nhận, 1: Đã xác nhận, 2: Báo bận']
+  ly_do_bao_ban nvarchar(500)
+  phan_hoi_bao_ban nvarchar(500)
+  thoi_gian_xac_nhan datetime2
+  thoi_gian_bao_ban datetime2
+  thoi_gian_duyet datetime2
+  nguoi_duyet nvarchar(150)
+  gio_check_in datetime2
+  gio_check_out datetime2
+  ngay_tao datetime2
+}
+
+// ------------------------------------------------------------
+// 2. PHÂN HỆ KHÁCH HÀNG & THÀNH VIÊN (CUSTOMERS & LOYALTY)
+// ------------------------------------------------------------
+
+Table Khach_hang {
+  id int [pk, increment]
+  ma_khach_hang nvarchar(50)
+  ho_va_ten nvarchar(150) [not null]
+  gioi_tinh tinyint
+  ngay_sinh date
+  so_dien_thoai nvarchar(20)
+  email nvarchar(150)
+  google_subject nvarchar(100)
+  mat_khau nvarchar(255)
+  diem_tich_luy int [default: 0]
+  tong_chi_tieu decimal(18,2) [default: 0]
+  hang_thanh_vien nvarchar(50) [default: 'Đồng']
+  ngay_tao datetime2
+}
+
+Table Dia_chi_khach_hang {
+  id int [pk, increment]
+  id_khach_hang int [ref: > Khach_hang.id]
+  ten_nguoi_nhan nvarchar(150) [not null]
+  so_dien_thoai nvarchar(20) [not null]
+  tinh_thanh nvarchar(100)
+  quan_huyen nvarchar(100)
+  phuong_xa nvarchar(100)
+  dia_chi_chi_tiet nvarchar(255) [not null]
+  la_mac_dinh tinyint [default: 0]
+}
+
+Table Newsletter_subscriber {
+  id int [pk, increment]
+  email nvarchar(150) [not null, unique]
+  trang_thai tinyint [default: 1]
+  ngay_dang_ky datetime2
+  ngay_cap_nhat datetime2
+}
+
+Table Password_reset_token {
+  id int [pk, increment]
+  token nvarchar(100) [not null]
+  account_type nvarchar(20) [not null]
+  account_id int [not null]
+  expires_at datetime2 [not null]
+  used_at datetime2
+  created_at datetime2
+}
+
+// ------------------------------------------------------------
+// 3. PHÂN HỆ SẢN PHẨM & TỒN KHO (PRODUCTS & VARIANTS)
+// ------------------------------------------------------------
+
+Table loai_san_pham {
+  id int [pk, increment]
+  ma_loai_san_pham nvarchar(50)
+  ten_loai_san_pham nvarchar(150) [not null]
+  mo_ta nvarchar(255)
+  trang_thai tinyint [default: 1]
+}
+
+Table Chat_lieu {
+  id int [pk, increment]
+  ten_chat_lieu nvarchar(100) [not null]
+}
+
+Table Mau_sac {
+  id int [pk, increment]
+  ten_mau_sac nvarchar(100) [not null]
+  ma_mau nvarchar(20)
+}
+
+Table Kich_thuoc {
+  id int [pk, increment]
+  ten_kich_thuoc nvarchar(50) [not null]
+}
+
+Table Phong_cach {
+  id int [pk, increment]
+  ten_phong_cach nvarchar(100) [not null]
+}
+
+Table Xuat_xu {
+  id int [pk, increment]
+  ten_xuat_xu nvarchar(100) [not null]
+}
+
+Table Co_ao {
+  id int [pk, increment]
+  ten_co_ao nvarchar(100) [not null]
+}
+
+Table Tay_ao {
+  id int [pk, increment]
+  ten_tay_ao nvarchar(100) [not null]
+}
+
+Table Kieu_dang {
+  id int [pk, increment]
+  ten_kieu_dang nvarchar(100) [not null]
+}
+
+Table san_pham {
+  id int [pk, increment]
+  id_loai_san_pham int [ref: > loai_san_pham.id]
+  id_chat_lieu int [ref: > Chat_lieu.id]
+  id_phong_cach int [ref: > Phong_cach.id]
+  id_xuat_xu int [ref: > Xuat_xu.id]
+  id_co_ao int [ref: > Co_ao.id]
+  id_tay_ao int [ref: > Tay_ao.id]
+  id_kieu_dang int [ref: > Kieu_dang.id]
+  ma_san_pham nvarchar(50) [unique]
+  ten_san_pham nvarchar(255) [not null]
+  mo_ta nvarchar(max)
+  trang_thai tinyint [default: 1]
+  ngay_tao datetime2
+}
+
+Table Anh {
+  id int [pk, increment]
+  id_san_pham int [ref: > san_pham.id]
+  duong_dan nvarchar(500) [not null]
+  la_anh_chinh tinyint [default: 0]
+}
+
+Table san_pham_chi_tiet {
+  id int [pk, increment]
+  id_san_pham int [ref: > san_pham.id]
+  id_mau_sac int [ref: > Mau_sac.id]
+  id_kich_thuoc int [ref: > Kich_thuoc.id]
+  ma_san_pham_chi_tiet nvarchar(50) [unique]
+  gia_nhap decimal(18,2)
+  gia_ban decimal(18,2) [not null]
+  so_luong int [not null, default: 0]
+  phan_tram_giam int [default: 0]
+  trang_thai tinyint [default: 1]
+  ngay_tao datetime2
+}
+
+Table Bien_dong_ton_kho {
+  id int [pk, increment]
+  id_san_pham_chi_tiet int [ref: > san_pham_chi_tiet.id]
+  id_nhan_vien int [ref: > Nhan_vien.id]
+  loai_bien_dong nvarchar(50) [not null]
+  so_luong_thay_doi int [not null]
+  so_luong_truoc int [not null]
+  so_luong_sau int [not null]
+  ma_tham_chieu nvarchar(100)
+  ghi_chu nvarchar(255)
+  ngay_tao datetime2
+}
+
+// ------------------------------------------------------------
+// 4. PHÂN HỆ KHUYẾN MÃI & VOUCHER (PROMOTIONS & DISCOUNTS)
+// ------------------------------------------------------------
+
+Table Voucher {
+  id int [pk, increment]
+  ma_voucher nvarchar(50) [not null, unique]
+  ten_voucher nvarchar(150) [not null]
+  loai_giam nvarchar(20) [not null, note: 'PERCENT | AMOUNT']
+  gia_tri_giam decimal(18,2) [not null]
+  gia_tri_giam_toi_da decimal(18,2)
+  gia_tri_don_toi_thieu decimal(18,2)
+  so_luong int [not null]
+  so_luong_da_dung int [default: 0]
+  ngay_bat_dau datetime2 [not null]
+  ngay_ket_thuc datetime2 [not null]
+  trang_thai tinyint [default: 1]
+}
+
+Table Voucher_khach_hang {
+  id int [pk, increment]
+  id_voucher int [ref: > Voucher.id]
+  id_khach_hang int [ref: > Khach_hang.id]
+  trang_thai tinyint [default: 0]
+  ngay_dung datetime2
+}
+
+Table Dot_khuyen_mai {
+  id int [pk, increment]
+  ma_dot nvarchar(50) [not null, unique]
+  ten_dot nvarchar(150) [not null]
+  loai_giam nvarchar(20) [not null]
+  gia_tri_giam decimal(18,2) [not null]
+  ngay_bat_dau datetime2 [not null]
+  ngay_ket_thuc datetime2 [not null]
+  trang_thai tinyint [default: 1]
+}
+
+Table Pham_vi_khuyen_mai {
+  id int [pk, increment]
+  id_dot_khuyen_mai int [ref: > Dot_khuyen_mai.id]
+  id_san_pham int [ref: > san_pham.id]
+  id_loai_san_pham int [ref: > loai_san_pham.id]
+  id_mau_sac int [ref: > Mau_sac.id]
+  id_kich_thuoc int [ref: > Kich_thuoc.id]
+}
+
+// ------------------------------------------------------------
+// 5. PHÂN HỆ HÓA ĐƠN & THANH TOÁN (ORDERS, PAYMENTS & VAT)
+// ------------------------------------------------------------
+
+Table Hoa_don {
+  id int [pk, increment]
+  id_khach_hang int [ref: > Khach_hang.id]
+  id_nhan_vien int [ref: > Nhan_vien.id]
+  id_voucher int [ref: > Voucher.id]
+  ma_hoa_don nvarchar(50) [not null, unique]
+  loai_hoa_don nvarchar(20) [default: 'ONLINE', note: 'ONLINE | POS']
+  ten_khach_hang nvarchar(150)
+  so_dien_thoai nvarchar(20)
+  dia_chi_giao_hang nvarchar(255)
+  tong_tien_hang decimal(18,2) [not null]
+  tien_giam decimal(18,2) [default: 0]
+  phi_van_chuyen decimal(18,2) [default: 0]
+  tong_tien decimal(18,2) [not null]
+  phuong_thuc_thanh_toan nvarchar(50) [note: 'COD | MOMO | ZALOPAY | CASH | VIETQR']
+  trang_thai_thanh_toan tinyint [default: 0]
+  trang_thai nvarchar(50) [not null]
+  yeu_cau_vat tinyint [default: 0]
+  mst_vat nvarchar(50)
+  ten_cong_ty_vat nvarchar(255)
+  email_vat nvarchar(150)
+  so_hoa_don_vat nvarchar(50)
+  ngay_tao datetime2
+}
+
+Table Hoa_don_chi_tiet {
+  id int [pk, increment]
+  id_hoa_don int [ref: > Hoa_don.id]
+  id_san_pham_chi_tiet int [ref: > san_pham_chi_tiet.id]
+  ten_san_pham nvarchar(255)
+  ten_mau_sac nvarchar(100)
+  ten_kich_thuoc nvarchar(50)
+  gia_ban decimal(18,2) [not null]
+  gia_giam decimal(18,2) [default: 0]
+  so_luong int [not null]
+  thanh_tien decimal(18,2) [not null]
+}
+
+Table Thanh_toan {
+  id int [pk, increment]
+  id_hoa_don int [ref: > Hoa_don.id]
+  phuong_thuc nvarchar(50) [not null]
+  ma_giao_dich nvarchar(100)
+  so_tien decimal(18,2) [not null]
+  trang_thai tinyint [default: 1]
+  ghi_chu nvarchar(255)
+  thoi_gian datetime2
+}
+
+Table Yeu_cau_doi_tra {
+  id int [pk, increment]
+  id_hoa_don int [ref: > Hoa_don.id]
+  id_san_pham_chi_tiet_cu int [ref: > san_pham_chi_tiet.id]
+  id_san_pham_chi_tiet_moi int [ref: > san_pham_chi_tiet.id]
+  loai_yeu_cau nvarchar(20) [not null, note: 'DOI | TRA']
+  ly_do nvarchar(500) [not null]
+  so_luong int [not null]
+  phuong_thuc_hoan nvarchar(50)
+  so_tien_hoan decimal(18,2)
+  thong_tin_nhan_tien nvarchar(255)
+  trang_thai nvarchar(50) [not null]
+  ngay_tao datetime2
+}
+
+// ------------------------------------------------------------
+// 6. PHÂN HỆ ĐÁNH GIÁ & TƯƠNG TÁC (REVIEWS & WISHLIST)
+// ------------------------------------------------------------
+
+Table Danh_gia {
+  id int [pk, increment]
+  id_khach_hang int [ref: > Khach_hang.id]
+  id_san_pham int [ref: > san_pham.id]
+  id_hoa_don int [ref: > Hoa_don.id]
+  diem int [not null]
+  noi_dung nvarchar(1000)
+  trang_thai tinyint [default: 1]
+  ngay_tao datetime2
+}
+
+Table Danh_gia_anh {
+  id int [pk, increment]
+  id_danh_gia int [ref: > Danh_gia.id]
+  duong_dan nvarchar(500) [not null]
+}
+
+Table San_pham_yeu_thich {
+  id int [pk, increment]
+  id_khach_hang int [ref: > Khach_hang.id]
+  id_san_pham int [ref: > san_pham.id]
+  ngay_tao datetime2
+}
+
+Table Lich_su_xem {
+  id int [pk, increment]
+  id_khach_hang int [ref: > Khach_hang.id]
+  id_san_pham int [ref: > san_pham.id]
+  thoi_gian_xem datetime2
+}
+
+// ------------------------------------------------------------
+// 7. PHÂN HỆ CHAT HỖ TRỢ & THÔNG BÁO (SUPPORT CHAT & NOTIFICATIONS)
+// ------------------------------------------------------------
+
+Table Support_conversation {
+  id int [pk, increment]
+  public_token nvarchar(64) [not null, unique]
+  id_khach_hang int [ref: > Khach_hang.id]
+  id_nhan_vien int [ref: > Nhan_vien.id]
+  tieu_de nvarchar(255)
+  trang_thai nvarchar(20) [not null, note: 'WAITING | ACTIVE | CLOSED']
+  ngay_tao datetime2
+  ngay_cap_nhat datetime2
+  ngay_dong datetime2
+}
+
+Table Support_message {
+  id int [pk, increment]
+  conversation_id int [ref: > Support_conversation.id]
+  sender_type nvarchar(20) [not null, note: 'CUSTOMER | STAFF | SYSTEM']
+  sender_name nvarchar(150)
+  content nvarchar(1000) [not null]
+  created_at datetime2
+}
+
+Table Thong_bao {
+  id int [pk, increment]
+  tieu_de nvarchar(255) [not null]
+  noi_dung nvarchar(max) [not null]
+  loai nvarchar(50) [note: 'HeThong | Voucher | DonHang']
+  trang_thai tinyint [default: 1]
+  ngay_tao datetime2
+}
+
+Table Customer_notification {
+  id int [pk, increment]
+  notification_id int [ref: > Thong_bao.id]
+  customer_id int [ref: > Khach_hang.id]
+  is_read tinyint [default: 0]
+  read_at datetime2
+  created_at datetime2
+}
+
+// ------------------------------------------------------------
+// 8. PHÂN HỆ VÒNG QUAY MAY MẮN (LUCKY WHEEL CAMPAIGN)
+// ------------------------------------------------------------
+
+Table Vong_quay_may_man {
+  id int [pk, increment]
+  ten_chien_dich nvarchar(150) [not null]
+  ngay_bat_dau datetime2 [not null]
+  ngay_ket_thuc datetime2 [not null]
+  gia_tri_don_toi_thieu decimal(18,2) [not null]
+  trang_thai tinyint [default: 1]
+}
+
+Table Phan_thuong_vong_quay {
+  id int [pk, increment]
+  id_vong_quay int [ref: > Vong_quay_may_man.id]
+  ten_phan_thuong nvarchar(150) [not null]
+  bieu_tuong nvarchar(255)
+  loai_bieu_tuong nvarchar(20) [default: 'BOOTSTRAP_ICON']
+  loai_phan_thuong nvarchar(20) [not null]
+  gia_tri decimal(18,2)
+  trong_so int [not null, default: 1]
+  so_luong_ton int [not null, default: 0]
+  trang_thai tinyint [default: 1]
+}
+
+Table Luot_quay_may_man {
+  id int [pk, increment]
+  id_vong_quay int [ref: > Vong_quay_may_man.id]
+  id_phan_thuong int [ref: > Phan_thuong_vong_quay.id]
+  id_hoa_don int [ref: > Hoa_don.id]
+  ho_ten_nguoi_quay nvarchar(150)
+  so_dien_thoai nvarchar(20)
+  ten_phan_thuong_snap nvarchar(150)
+  ngay_quay datetime2
+  trang_thai_trao tinyint [default: 0]
+}
+
+// ------------------------------------------------------------
+// 9. PHÂN HỆ AI INTELLIGENCE (AI COPILOT, VISION & RECOMMENDATIONS)
+// ------------------------------------------------------------
+
+Table Ai_chat_log {
+  id int [pk, increment]
+  id_khach_hang int [ref: > Khach_hang.id]
+  mode nvarchar(50) [not null, note: 'assistant | stylist | staff']
+  user_prompt nvarchar(1200) [not null]
+  ai_response nvarchar(max) [not null]
+  model_name nvarchar(50)
+  execution_time_ms int
+  ngay_tao datetime2
+}
+
+Table Ai_visual_search_log {
+  id int [pk, increment]
+  id_khach_hang int [ref: > Khach_hang.id]
+  image_filename nvarchar(255)
+  detected_category nvarchar(100)
+  detected_color nvarchar(100)
+  matched_product_ids nvarchar(500)
+  highest_score int
+  ngay_tao datetime2
+}
+
+Table Ai_recommendations {
+  id int [pk, increment]
+  id_san_pham_chinh int [ref: > san_pham.id]
+  id_san_pham_goi_y int [ref: > san_pham.id]
+  loai_goi_y nvarchar(50) [note: 'CROSS_SELL | STYLIST_COMBO']
+  score_do_phu_hop decimal(5,2)
+  ngay_tao datetime2
+}
+
+// ------------------------------------------------------------
+// GOM NHÓM BẢNG ĐỂ VẼ ERD TRỰC QUAN (TABLE GROUPS)
+// ------------------------------------------------------------
+
+TableGroup User_And_Staff {
+  Vai_tro
+  Nhan_vien
+  Lich_lam_viec
+}
+
+TableGroup Customer_Management {
+  Khach_hang
+  Dia_chi_khach_hang
+  Newsletter_subscriber
+  Password_reset_token
+}
+
+TableGroup Product_Catalog {
+  san_pham
+  san_pham_chi_tiet
+  loai_san_pham
+  Chat_lieu
+  Mau_sac
+  Kich_thuoc
+  Phong_cach
+  Xuat_xu
+  Co_ao
+  Tay_ao
+  Kieu_dang
+  Anh
+  Bien_dong_ton_kho
+}
+
+TableGroup Orders_And_Payments {
+  Hoa_don
+  Hoa_don_chi_tiet
+  Thanh_toan
+  Yeu_cau_doi_tra
+}
+
+TableGroup Promotions_And_Vouchers {
+  Voucher
+  Voucher_khach_hang
+  Dot_khuyen_mai
+  Pham_vi_khuyen_mai
+}
+
+TableGroup Customer_Interactions {
+  Danh_gia
+  Danh_gia_anh
+  San_pham_yeu_thich
+  Lich_su_xem
+}
+
+TableGroup Support_And_Notifications {
+  Support_conversation
+  Support_message
+  Thong_bao
+  Customer_notification
+}
+
+TableGroup Gamification_LuckyWheel {
+  Vong_quay_may_man
+  Phan_thuong_vong_quay
+  Luot_quay_may_man
+}
+
+TableGroup AI_Intelligence {
+  Ai_chat_log
+  Ai_visual_search_log
+  Ai_recommendations
+}

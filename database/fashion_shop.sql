@@ -5513,6 +5513,59 @@ IF EXISTS (
       )
 )
     THROW 51026, N'Có đơn hàng tháng 8 đã thanh toán nhưng thiếu giao dịch thành công.', 1;
+-- ===== BẢNG LƯU VẾT AI CHAT (Ai_chat_log) =====
+IF OBJECT_ID(N'dbo.Ai_chat_log','U') IS NULL
+BEGIN
+CREATE TABLE [dbo].[Ai_chat_log] (
+  [id] int IDENTITY(1,1) NOT NULL,
+  [id_khach_hang] int NULL,
+  [mode] nvarchar(50) NOT NULL,
+  [user_prompt] nvarchar(1200) NOT NULL,
+  [ai_response] nvarchar(max) NOT NULL,
+  [model_name] nvarchar(50) NULL,
+  [execution_time_ms] int NULL,
+  [ngay_tao] datetime2(7) NULL DEFAULT GETDATE(),
+  CONSTRAINT [PK_Ai_chat_log] PRIMARY KEY ([id]),
+  CONSTRAINT [FK_Ai_chat_log_Khach_hang] FOREIGN KEY ([id_khach_hang]) REFERENCES [dbo].[Khach_hang]([id])
+);
+END
+GO
+
+-- ===== BẢNG LƯU VẾT TÌM BẰNG ẢNH AI (Ai_visual_search_log) =====
+IF OBJECT_ID(N'dbo.Ai_visual_search_log','U') IS NULL
+BEGIN
+CREATE TABLE [dbo].[Ai_visual_search_log] (
+  [id] int IDENTITY(1,1) NOT NULL,
+  [id_khach_hang] int NULL,
+  [image_filename] nvarchar(255) NULL,
+  [detected_category] nvarchar(100) NULL,
+  [detected_color] nvarchar(100) NULL,
+  [matched_product_ids] nvarchar(500) NULL,
+  [highest_score] int NULL,
+  [ngay_tao] datetime2(7) NULL DEFAULT GETDATE(),
+  CONSTRAINT [PK_Ai_visual_search_log] PRIMARY KEY ([id]),
+  CONSTRAINT [FK_Ai_visual_search_log_Khach_hang] FOREIGN KEY ([id_khach_hang]) REFERENCES [dbo].[Khach_hang]([id])
+);
+END
+GO
+
+-- ===== BẢNG LƯU BẢN BẢN GỢI Ý PHỐI ĐỒ AI (Ai_recommendations) =====
+IF OBJECT_ID(N'dbo.Ai_recommendations','U') IS NULL
+BEGIN
+CREATE TABLE [dbo].[Ai_recommendations] (
+  [id] int IDENTITY(1,1) NOT NULL,
+  [id_san_pham_chinh] int NOT NULL,
+  [id_san_pham_goi_y] int NOT NULL,
+  [loai_goi_y] nvarchar(50) NULL,
+  [score_do_phu_hop] decimal(5,2) NULL,
+  [ngay_tao] datetime2(7) NULL DEFAULT GETDATE(),
+  CONSTRAINT [PK_Ai_recommendations] PRIMARY KEY ([id]),
+  CONSTRAINT [FK_Ai_recommendations_SP_Chinh] FOREIGN KEY ([id_san_pham_chinh]) REFERENCES [dbo].[san_pham]([id]),
+  CONSTRAINT [FK_Ai_recommendations_SP_GoiY] FOREIGN KEY ([id_san_pham_goi_y]) REFERENCES [dbo].[san_pham]([id])
+);
+END
+GO
+
 IF XACT_STATE() <> 1
     THROW 51099, N'Cài đặt dữ liệu đã bị lỗi và không thể commit. Không có thông báo thành công giả.', 1;
 COMMIT TRANSACTION;

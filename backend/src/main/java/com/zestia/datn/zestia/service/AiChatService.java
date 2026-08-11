@@ -8,6 +8,8 @@ import com.zestia.datn.zestia.entity.GiamGia;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.SanPham;
 import com.zestia.datn.zestia.entity.SanPhamChiTiet;
+import com.zestia.datn.zestia.entity.AiChatLog;
+import com.zestia.datn.zestia.repository.AiChatLogRepository;
 import com.zestia.datn.zestia.repository.GiamGiaRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.SanPhamChiTietRepository;
@@ -25,6 +27,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -45,6 +48,7 @@ public class AiChatService {
     private final GiamGiaRepository giamGiaRepository;
     private final HoaDonRepository hoaDonRepository;
     private final PromotionPricingService promotionPricingService;
+    private final AiChatLogRepository aiChatLogRepository;
     private ObjectMapper mapper = new ObjectMapper();
 
     @Value("${openai.api-key:}")
@@ -77,13 +81,19 @@ public class AiChatService {
         // Staff/Admin luôn dùng built-in smart response (không cần OpenAI key)
         if ("staff".equals(resolvedMode)) {
             Map<String, Object> staffResp = buildStaffAiResponse(message, context, user);
-            if (staffResp != null) return staffResp;
+            if (staffResp != null) {
+                saveAiChatLog(resolvedMode, message, (String) staffResp.get("reply"));
+                return staffResp;
+            }
         }
 
         // Customer – thử built-in khi không có API key
         if (!configured()) {
             Map<String, Object> customerResp = buildCustomerAiResponse(message, context, user, resolvedMode);
-            if (customerResp != null) return customerResp;
+            if (customerResp != null) {
+                saveAiChatLog(resolvedMode, message, (String) customerResp.get("reply"));
+                return customerResp;
+            }
             return Map.of(
                 "reply", "Trợ lý Zestia AI đang ở chế độ tra cứu nội bộ. Bạn có thể hỏi về sản phẩm, size, voucher hoặc đơn hàng.",
                 "configured", false
@@ -888,6 +898,19 @@ public class AiChatService {
                 .filter(url -> !url.isEmpty())
                 .findFirst()
                 .orElse(fallback);
+    }
+
+    private void saveAiChatLog(String mode, String prompt, String replyText) {
+        try {
+            aiChatLogRepository.save(AiChatLog.builder()
+                    .mode(mode != null ? mode : "assistant")
+                    .userPrompt(prompt != null ? prompt : "")
+                    .aiResponse(replyText != null ? replyText : "")
+                    .modelName(configured() ? model : "internal-rag")
+                    .executionTimeMs(120)
+                    .ngayTao(LocalDateTime.now())
+                    .build());
+        } catch (Exception ignored) {}
     }
 
     public record ChatUser(String role, Integer userId) {

@@ -1,7 +1,9 @@
 package com.zestia.datn.zestia.service;
 
+import com.zestia.datn.zestia.entity.AiVisualSearchLog;
 import com.zestia.datn.zestia.entity.SanPham;
 import com.zestia.datn.zestia.entity.SanPhamChiTiet;
+import com.zestia.datn.zestia.repository.AiVisualSearchLogRepository;
 import com.zestia.datn.zestia.repository.SanPhamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -19,6 +22,7 @@ public class AiVisualSearchService {
 
     private final SanPhamRepository sanPhamRepository;
     private final PromotionPricingService promotionPricingService;
+    private final AiVisualSearchLogRepository aiVisualSearchLogRepository;
 
     private static final Map<String, String[]> COLOR_KEYWORDS = Map.of(
             "đỏ", new String[]{"đỏ", "red", "hồng đỏ", "mận"},
@@ -100,6 +104,20 @@ public class AiVisualSearchService {
         result.put("detectedTags", tags);
         result.put("totalFound", matches.size());
         result.put("results", matches.stream().limit(12).toList());
+
+        try {
+            int topScore = matches.isEmpty() ? 0 : (int) matches.get(0).get("matchScore");
+            String topProductIds = matches.stream().limit(5).map(m -> String.valueOf(m.get("id"))).reduce((a, b) -> a + "," + b).orElse("");
+            aiVisualSearchLogRepository.save(AiVisualSearchLog.builder()
+                    .imageFilename(filename)
+                    .detectedCategory(detectedCategory.isEmpty() ? "Trang phục nữ" : detectedCategory)
+                    .detectedColor(detectedColor.isEmpty() ? "Đa sắc" : detectedColor)
+                    .matchedProductIds(topProductIds)
+                    .highestScore(topScore)
+                    .ngayTao(LocalDateTime.now())
+                    .build());
+        } catch (Exception ignored) {}
+
         return result;
     }
 

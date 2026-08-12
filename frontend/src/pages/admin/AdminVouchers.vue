@@ -19,10 +19,10 @@
                 <div style="font-size:13px;color:var(--z-gray);margin-top:2px">{{ v.name }}</div>
               </div>
               <div class="d-flex align-items-center gap-1">
-                <span class="z-status me-2" :class="v.active ? 'success' : 'pending'">{{ v.active ? 'Hoạt động' : 'Hết hạn' }}</span>
+                <span class="z-status me-2" :class="v.statusClass">{{ v.statusLabel }}</span>
                 <button type="button" class="z-icon-btn" title="Xem chi tiết" aria-label="Xem chi tiết voucher" @click="openViewVoucher(v)"><i class="bi bi-eye"></i></button>
                 <button type="button" class="z-icon-btn" title="Chỉnh sửa" aria-label="Chỉnh sửa voucher" @click="openEditVoucher(v)"><i class="bi bi-pencil"></i></button>
-                <button type="button" class="z-icon-btn" title="Xóa" aria-label="Xóa voucher" style="color:var(--z-accent)" @click="deleteVoucher(v)"><i class="bi bi-trash"></i></button>
+                <button v-if="v.raw.trangThai === 1" type="button" class="z-icon-btn" title="Ngừng hoạt động" aria-label="Ngừng hoạt động voucher" style="color:var(--z-accent)" @click="deactivateVoucher(v)"><i class="bi bi-slash-circle"></i></button>
               </div>
             </div>
             <div class="d-flex flex-column gap-2 mb-3" style="font-size:13px">
@@ -92,28 +92,49 @@
           </div>
           <div class="row g-3">
             <div class="col-6">
-              <label class="z-label">Phần trăm giảm (%)</label>
-              <input v-model.number="vForm.phanTramGiam" type="number" class="lm-input" placeholder="Để trống nếu giảm số tiền">
+              <label class="z-label">Loại giảm *</label>
+              <select v-model="vForm.discountType" class="lm-input">
+                <option value="PERCENT">Theo phần trăm</option>
+                <option value="FIXED">Theo số tiền</option>
+              </select>
             </div>
             <div class="col-6">
-              <label class="z-label">Hoặc giảm số tiền cụ thể (đ)</label>
-              <input v-model.number="vForm.gioTriGiam" type="number" class="lm-input" placeholder="Để trống nếu giảm phần trăm">
+              <label class="z-label">{{ vForm.discountType === 'PERCENT' ? 'Phần trăm giảm (%) *' : 'Số tiền giảm (đ) *' }}</label>
+              <input
+                v-if="vForm.discountType === 'PERCENT'"
+                v-model.number="vForm.phanTramGiam"
+                type="number"
+                min="0.01"
+                max="100"
+                step="0.01"
+                class="lm-input"
+                placeholder="Ví dụ: 10"
+              >
+              <input
+                v-else
+                v-model.number="vForm.gioTriGiam"
+                type="number"
+                min="1"
+                step="1000"
+                class="lm-input"
+                placeholder="Ví dụ: 50000"
+              >
             </div>
           </div>
           <div class="row g-3">
-            <div class="col-6">
+            <div v-if="vForm.discountType === 'PERCENT'" class="col-6">
               <label class="z-label">Giảm tối đa (đ)</label>
-              <input v-model.number="vForm.giamToiDa" type="number" class="lm-input" placeholder="Ví dụ: 100000">
+              <input v-model.number="vForm.giamToiDa" type="number" min="1" step="1000" class="lm-input" placeholder="Ví dụ: 100000">
             </div>
-            <div class="col-6">
+            <div :class="vForm.discountType === 'PERCENT' ? 'col-6' : 'col-12'">
               <label class="z-label">Đơn tối thiểu (đ)</label>
-              <input v-model.number="vForm.giaTriDonToiThieu" type="number" class="lm-input" placeholder="Ví dụ: 200000">
+              <input v-model.number="vForm.giaTriDonToiThieu" type="number" min="0" step="1000" class="lm-input" placeholder="Ví dụ: 200000">
             </div>
           </div>
           <div class="row g-3">
             <div class="col-6">
               <label class="z-label">Số lượng</label>
-              <input v-model.number="vForm.soLuong" type="number" class="lm-input" placeholder="100">
+              <input v-model.number="vForm.soLuong" type="number" min="0" max="1000000" step="1" class="lm-input" placeholder="100">
             </div>
             <div class="col-6" v-if="vForm.id">
               <label class="z-label">Trạng thái</label>
@@ -235,6 +256,7 @@ const vForm = ref({
   id: null,
   maGiamGia: '',
   tenGiamGia: '',
+  discountType: 'PERCENT',
   phanTramGiam: null,
   gioTriGiam: null,
   giaTriDonToiThieu: null,
@@ -272,7 +294,7 @@ async function loadData() {
         minOrder: g.giaTriDonToiThieu ? Number(g.giaTriDonToiThieu).toLocaleString('vi-VN') + 'đ' : '0đ',
         total: g.soLuong || 0,
         period: fmtDate(g.ngayBatDau) + ' - ' + fmtDate(g.ngayKetThuc),
-        active: g.trangThai === 1 || g.trangThai === true,
+        ...voucherStatus(g),
         raw: g
       }))
     }
@@ -284,6 +306,7 @@ function openAddVoucher() {
     id: null,
     maGiamGia: '',
     tenGiamGia: '',
+    discountType: 'PERCENT',
     phanTramGiam: null,
     gioTriGiam: null,
     giaTriDonToiThieu: null,
@@ -302,6 +325,7 @@ function openEditVoucher(v) {
     id: v.id,
     maGiamGia: raw.maGiamGia || '',
     tenGiamGia: raw.tenGiamGia || '',
+    discountType: Number(raw.phanTramGiam) > 0 ? 'PERCENT' : 'FIXED',
     phanTramGiam: raw.phanTramGiam,
     gioTriGiam: raw.gioTriGiam,
     giaTriDonToiThieu: raw.giaTriDonToiThieu,
@@ -320,14 +344,39 @@ function openViewVoucher(v) {
 }
 
 async function saveVoucher() {
-  if (!vForm.value.maGiamGia) { showToast('Vui lòng nhập mã giảm giá'); return }
+  const form = vForm.value
+  if (!form.maGiamGia?.trim()) { showToast('Vui lòng nhập mã giảm giá', 'warning'); return }
+  if (!form.tenGiamGia?.trim()) { showToast('Vui lòng nhập tên voucher', 'warning'); return }
+  if (form.discountType === 'PERCENT' && !(Number(form.phanTramGiam) > 0 && Number(form.phanTramGiam) <= 100)) {
+    showToast('Phần trăm giảm phải lớn hơn 0 và không vượt quá 100', 'warning'); return
+  }
+  if (form.discountType === 'FIXED' && !(Number(form.gioTriGiam) > 0)) {
+    showToast('Số tiền giảm phải lớn hơn 0', 'warning'); return
+  }
+  if (!form.ngayBatDau || !form.ngayKetThuc || form.ngayKetThuc < form.ngayBatDau) {
+    showToast('Khoảng thời gian áp dụng voucher không hợp lệ', 'warning'); return
+  }
+  if (!Number.isInteger(Number(form.soLuong)) || Number(form.soLuong) < 0) {
+    showToast('Số lượng voucher phải là số nguyên không âm', 'warning'); return
+  }
+  const payload = {
+    ...form,
+    maGiamGia: form.maGiamGia.trim().toUpperCase(),
+    tenGiamGia: form.tenGiamGia.trim(),
+    phanTramGiam: form.discountType === 'PERCENT' ? Number(form.phanTramGiam) : null,
+    gioTriGiam: form.discountType === 'FIXED' ? Number(form.gioTriGiam) : null,
+    giamToiDa: form.discountType === 'PERCENT' && Number(form.giamToiDa) > 0 ? Number(form.giamToiDa) : null,
+    giaTriDonToiThieu: Number(form.giaTriDonToiThieu) || 0,
+    soLuong: Number(form.soLuong)
+  }
+  delete payload.discountType
   saving.value = true
   try {
-    if (vForm.value.id) {
-      await api().updateVoucher(vForm.value.id, vForm.value)
+    if (form.id) {
+      await api().updateVoucher(form.id, payload)
       showToast('Cập nhật voucher thành công!')
     } else {
-      await api().addVoucher(vForm.value)
+      await api().addVoucher(payload)
       showToast('Thêm voucher thành công!')
     }
     showVoucherModal.value = false
@@ -336,18 +385,27 @@ async function saveVoucher() {
   finally { saving.value = false }
 }
 
-async function deleteVoucher(v) {
+function voucherStatus(voucher) {
+  const today = new Date().toISOString().slice(0, 10)
+  if (!(voucher.trangThai === 1 || voucher.trangThai === true)) return { statusLabel: 'Ngừng hoạt động', statusClass: 'pending' }
+  if (Number(voucher.soLuong) <= 0) return { statusLabel: 'Hết lượt', statusClass: 'pending' }
+  if (voucher.ngayBatDau && voucher.ngayBatDau > today) return { statusLabel: 'Sắp diễn ra', statusClass: 'info' }
+  if (voucher.ngayKetThuc && voucher.ngayKetThuc < today) return { statusLabel: 'Hết hạn', statusClass: 'pending' }
+  return { statusLabel: 'Đang áp dụng', statusClass: 'success' }
+}
+
+async function deactivateVoucher(v) {
   if (!await confirmDialog({
-    title: 'Xóa voucher',
-    message: `Bạn có chắc muốn xóa voucher "${v.code}"?`,
-    confirmText: 'Xóa',
+    title: 'Ngừng voucher',
+    message: `Ngừng hoạt động voucher "${v.code}"? Các đơn đã dùng voucher vẫn được giữ nguyên.`,
+    confirmText: 'Ngừng hoạt động',
     variant: 'danger'
   })) return
   try {
     await api().deleteVoucher(v.id)
-    showToast('Đã xóa voucher!')
+    showToast('Đã ngừng hoạt động voucher')
     await loadData()
-  } catch (e) { showToast('Lỗi khi xóa') }
+  } catch (e) { showToast('Không thể ngừng voucher: ' + (e.message || 'Lỗi không xác định'), 'error') }
 }
 </script>
 

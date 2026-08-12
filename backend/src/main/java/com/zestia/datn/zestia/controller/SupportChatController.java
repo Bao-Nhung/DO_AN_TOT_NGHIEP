@@ -3,6 +3,7 @@ package com.zestia.datn.zestia.controller;
 import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
+import com.zestia.datn.zestia.repository.NhanVienRepository;
 import com.zestia.datn.zestia.service.SupportChatService;
 import com.zestia.datn.zestia.service.RequestRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +20,7 @@ import java.util.NoSuchElementException;
 public class SupportChatController {
     private final SupportChatService supportChatService;
     private final KhachHangRepository customerRepository;
+    private final NhanVienRepository employeeRepository;
     private final JwtUtil jwtUtil;
     private final RequestRateLimiter rateLimiter;
 
@@ -54,9 +56,11 @@ public class SupportChatController {
 
     @GetMapping("/staff/conversations")
     public ResponseEntity<?> staffConversations(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         Staff staff = requireStaff(authHeader);
-        return ResponseEntity.ok(supportChatService.getStaffConversations(staff.id(), staff.admin()));
+        return ResponseEntity.ok(supportChatService.getStaffConversations(staff.id(), staff.admin(), page, size));
     }
 
     @GetMapping("/staff/conversations/{id}")
@@ -135,7 +139,17 @@ public class SupportChatController {
                     : Integer.parseInt(String.valueOf(idValue));
             String role = claims.get("role", String.class);
             String name = jwtUtil.extractUsername(raw);
-            return new Staff(id, role, name, "Admin".equals(role));
+            if (isEmployee(role) || "Admin".equalsIgnoreCase(role)) {
+                var employee = employeeRepository.findById(id).orElse(null);
+                if (employee == null || !Byte.valueOf((byte) 1).equals(employee.getTinhTrangLamViec())
+                        || employee.getVaiTro() == null || employee.getVaiTro().getTenVaiTro() == null) {
+                    return null;
+                }
+                String currentRole = employee.getVaiTro().getTenVaiTro();
+                if (!isEmployee(currentRole) && !"Admin".equalsIgnoreCase(currentRole)) return null;
+                return new Staff(id, currentRole, employee.getHoVaTen(), "Admin".equalsIgnoreCase(currentRole));
+            }
+            return new Staff(id, role, name, false);
         } catch (Exception ignored) {
             return null;
         }

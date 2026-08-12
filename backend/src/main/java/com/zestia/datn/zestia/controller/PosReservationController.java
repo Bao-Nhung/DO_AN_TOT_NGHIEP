@@ -28,6 +28,9 @@ public class PosReservationController {
             @RequestBody Map<String, Object> body,
             @RequestHeader("Authorization") String authHeader
     ) {
+        if (body == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu giữ hàng không hợp lệ"));
+        }
         String token = stringValue(body.get("token"));
         Integer variantId = integerValue(body.get("variantId"));
         Integer quantity = integerValue(body.get("quantity"));

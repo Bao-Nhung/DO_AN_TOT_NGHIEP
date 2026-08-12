@@ -162,6 +162,10 @@ const phraseOverrides = {
   'Số điện thoại Việt Nam không hợp lệ': 'Invalid Vietnamese phone number format',
   'Vui lòng nhập đầy đủ địa chỉ': 'Please provide a complete shipping address',
   'Đã duyệt · Chờ gửi hàng': 'Approved · Awaiting item return',
+  'Đang chờ nhân viên phản hồi...': 'Waiting for a customer service agent...',
+  'Phiên hỗ trợ đã kết thúc': 'The support session has ended',
+  'Size ước tính ban đầu:': 'Initial size estimate:',
+  'Cần đối chiếu từng mẫu': 'Check against each product guide',
 }
 
 const dictionary = Object.freeze({ ...autoEnglish, ...phraseOverrides })
@@ -186,6 +190,7 @@ const templateEntries = Object.entries(dictionary)
   })
 
 const dynamicRules = [
+  [/^Đang trò chuyện với\s+(.+)$/i, 'Chatting with $1'],
   [/^Mở danh sách\s+(\d+)\s+việc cần xử lý$/i, 'Open $1 pending tasks'],
   [/^Đã chọn\s+(\d+)\s*\/\s*(\d+)\s+sản phẩm$/i, 'Selected $1/$2 products'],
   [/^(\d+)\s+đánh giá đã xác minh$/i, '$1 verified reviews'],

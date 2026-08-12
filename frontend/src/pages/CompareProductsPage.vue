@@ -42,16 +42,16 @@
                     <button
                       type="button"
                       class="z-compare-remove"
-                      :aria-label="`${t('compare.remove')} ${product.tenVay}`"
+                      :aria-label="`${t('compare.remove')} ${product.tenSanPham}`"
                       @click="removeProduct(product.id)"
                     >
                       <i class="bi bi-x-lg"></i>
                     </button>
                     <RouterLink :to="`/product/${product.id}`">
-                      <img v-if="product.anhUrl" :src="product.anhUrl" :alt="product.tenVay">
+                      <img v-if="product.anhUrl" :src="product.anhUrl" :alt="product.tenSanPham">
                       <div v-else class="z-compare-placeholder">Z</div>
-                      <strong>{{ product.tenVay }}</strong>
-                      <span>{{ product.maVay }}</span>
+                      <strong>{{ product.tenSanPham }}</strong>
+                      <span>{{ product.maSanPham }}</span>
                     </RouterLink>
                   </div>
                 </th>
@@ -67,7 +67,7 @@
               <tr>
                 <th scope="row">Loại sản phẩm</th>
                 <td v-for="product in comparedProducts" :key="`category-${product.id}`">
-                  {{ product.loaiVay || 'N/A' }}
+                  {{ product.loaiSanPham || 'N/A' }}
                 </td>
               </tr>
               <tr>
@@ -142,7 +142,7 @@ const loading = ref(true)
 async function loadComparison() {
   loading.value = true
   try {
-    const results = await Promise.allSettled(ids.value.map(id => api().getVayById(id)))
+    const results = await Promise.allSettled(ids.value.map(id => api().getSanPhamById(id)))
     comparedProducts.value = results
       .filter(result => result.status === 'fulfilled')
       .map(result => result.value)
@@ -158,7 +158,7 @@ async function loadComparison() {
 function availableSizes(product) {
   return [...new Set(
     (product.bienThe || [])
-      .filter(variant => Number(variant.soLuong || 0) > 0 && variant.trangThai !== 0)
+      .filter(variant => Number(variant.soLuong || 0) > 0 && Number(variant.trangThai) === 1)
       .map(variant => variant.kichThuoc)
       .filter(Boolean)
   )]

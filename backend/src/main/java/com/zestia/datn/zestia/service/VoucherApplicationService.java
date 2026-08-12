@@ -32,7 +32,7 @@ public class VoucherApplicationService {
             return VoucherEvaluation.invalid("Mã giảm giá không tồn tại");
         }
         BigDecimal safeSubtotal = subtotal != null ? subtotal : BigDecimal.ZERO;
-        if (voucher.getTrangThai() != null && voucher.getTrangThai() == 0) {
+        if (!Byte.valueOf((byte) 1).equals(voucher.getTrangThai())) {
             return VoucherEvaluation.invalid("Mã giảm giá đã ngừng hoạt động", voucher);
         }
         int remaining = voucher.getSoLuong() != null ? voucher.getSoLuong() : Integer.MAX_VALUE;
@@ -77,7 +77,7 @@ public class VoucherApplicationService {
 
     public VoucherEvaluation findBest(BigDecimal subtotal, Integer reservedVoucherId) {
         BigDecimal safeSubtotal = subtotal != null ? subtotal : BigDecimal.ZERO;
-        return voucherRepository.findAll().stream()
+        return voucherRepository.findPotentiallyUsable(LocalDate.now(), reservedVoucherId).stream()
                 .map(voucher -> evaluate(
                         voucher,
                         safeSubtotal,

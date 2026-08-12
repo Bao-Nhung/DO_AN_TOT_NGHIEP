@@ -23,7 +23,7 @@ export function useNotification() {
   function notifyOrderCreated(orderCode, amount) {
     return addNotification({
       type: 'order_created',
-      title: `✓ Đơn hàng ${orderCode} được tạo`,
+      title: `Đơn hàng ${orderCode} được tạo`,
       message: `Đơn hàng trị giá ${formatMoney(amount)} đã được tạo thành công. Cảm ơn bạn!`,
       action: { label: 'Xem chi tiết', callback: () => {} }
     })
@@ -41,7 +41,7 @@ export function useNotification() {
   function notifyOrderShipping(orderCode) {
     return addNotification({
       type: 'order_shipping',
-      title: `🚚 Đơn hàng ${orderCode} đang giao`,
+      title: `Đơn hàng ${orderCode} đang giao`,
       message: 'Đơn hàng của bạn đang trên đường tới với bạn.',
       action: { label: 'Xem tracking' }
     })
@@ -50,7 +50,7 @@ export function useNotification() {
   function notifyOrderDelivered(orderCode) {
     return addNotification({
       type: 'order_delivered',
-      title: `✅ Đơn hàng ${orderCode} đã giao`,
+      title: `Đơn hàng ${orderCode} đã giao`,
       message: 'Đơn hàng của bạn đã được giao thành công. Cảm ơn bạn đã tin tưởng ZESTIA!',
       action: { label: 'Xem đánh giá' }
     })

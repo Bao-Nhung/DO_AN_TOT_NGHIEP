@@ -104,7 +104,7 @@
               <table class="z-table" style="min-width:1050px">
                 <thead><tr><th>Mã đơn / Khách hàng</th><th>Kết quả</th><th>Mã nhận quà</th><th>Giá trị đơn</th><th>Thời gian quay</th><th>Trạng thái</th><th style="width:120px"></th></tr></thead>
                 <tbody>
-                  <tr v-for="spin in pagedSpins" :key="spin.id">
+                  <tr v-for="spin in spins" :key="spin.id">
                     <td><strong>{{ spin.maHoaDon }}</strong><div class="z-subtext">{{ spin.tenKhachHang }} · {{ spin.soDienThoai }}</div></td>
                     <td><strong>{{ spin.tenKetQua }}</strong></td>
                     <td><code v-if="spin.trungThuong">{{ spin.maNhanThuong }}</code><span v-else class="z-subtext">Không có</span></td>
@@ -118,15 +118,15 @@
                 </tbody>
               </table>
             </div>
-            <div v-if="!filteredSpins.length" class="z-table-empty"><i class="bi bi-clock-history"></i><span>Chưa có lượt quay phù hợp.</span></div>
+            <div v-if="!spins.length" class="z-table-empty"><i class="bi bi-clock-history"></i><span>Chưa có lượt quay phù hợp.</span></div>
           </div>
-          <div v-if="filteredSpins.length" class="z-list-pagination">
-            <span>Hiển thị {{ (spinPage - 1) * spinPageSize + 1 }}-{{ Math.min(spinPage * spinPageSize, filteredSpins.length) }} / {{ filteredSpins.length }} lượt</span>
+          <div v-if="spinTotalItems" class="z-list-pagination">
+            <span>Hiển thị {{ (spinPage - 1) * spinPageSize + 1 }}-{{ Math.min(spinPage * spinPageSize, spinTotalItems) }} / {{ spinTotalItems }} lượt</span>
             <PageSizeSelect v-model="spinPageSize" :options="[5, 10, 20, 50]" />
             <div v-if="spinTotalPages > 1" class="d-flex gap-2 align-items-center">
-              <button type="button" class="z-page-btn" :disabled="spinPage === 1" @click="spinPage--"><i class="bi bi-chevron-left"></i></button>
+              <button type="button" class="z-page-btn" :disabled="spinPage === 1" @click="goToSpinPage(spinPage - 1)"><i class="bi bi-chevron-left"></i></button>
               <span>Trang {{ spinPage }} / {{ spinTotalPages }}</span>
-              <button type="button" class="z-page-btn" :disabled="spinPage === spinTotalPages" @click="spinPage++"><i class="bi bi-chevron-right"></i></button>
+              <button type="button" class="z-page-btn" :disabled="spinPage === spinTotalPages" @click="goToSpinPage(spinPage + 1)"><i class="bi bi-chevron-right"></i></button>
             </div>
           </div>
         </section>
@@ -241,6 +241,8 @@ const prizeModal = ref(false)
 const spinStatus = ref('')
 const spinPage = ref(1)
 const spinPageSize = ref(10)
+const spinTotalItems = ref(0)
+const spinTotalPages = ref(1)
 const prizeIconMode = ref('library')
 const prizeIconFile = ref(null)
 const prizeIconPreview = ref('')
@@ -264,16 +266,8 @@ const iconOptions = [
 const campaignForm = reactive(emptyCampaign())
 const prizeForm = reactive(emptyPrize())
 const selectedCampaign = computed(() => campaigns.value.find(item => item.id === selectedCampaignId.value) || null)
-const filteredSpins = computed(() => spinStatus.value ? spins.value.filter(item => item.trangThaiNhan === spinStatus.value) : spins.value)
-const spinTotalPages = computed(() => Math.max(1, Math.ceil(filteredSpins.value.length / spinPageSize.value)))
-const pagedSpins = computed(() => {
-  const start = (spinPage.value - 1) * spinPageSize.value
-  return filteredSpins.value.slice(start, start + spinPageSize.value)
-})
-
 watch(selectedCampaignId, async id => { spinStatus.value = ''; spinPage.value = 1; await loadSpins(id) })
-watch([spinStatus, spinPageSize], () => { spinPage.value = 1 })
-watch(spinTotalPages, total => { if (spinPage.value > total) spinPage.value = total })
+watch([spinStatus, spinPageSize], () => { spinPage.value = 1; loadSpins(selectedCampaignId.value) })
 onMounted(loadData)
 onBeforeUnmount(releaseIconPreview)
 
@@ -289,9 +283,30 @@ async function loadData() {
 }
 
 async function loadSpins(campaignId) {
-  if (!campaignId) { spins.value = []; return }
-  try { spins.value = await api().getLuckyWheelSpinsAdmin({ campaignId }) || [] }
+  if (!campaignId) { spins.value = []; spinTotalItems.value = 0; spinTotalPages.value = 1; return }
+  try {
+    const data = await api().getLuckyWheelSpinsAdmin({
+      campaignId,
+      status: spinStatus.value || null,
+      page: spinPage.value - 1,
+      size: spinPageSize.value
+    }) || {}
+    spins.value = data.content || []
+    spinTotalItems.value = Number(data.totalElements || 0)
+    spinTotalPages.value = Math.max(1, Number(data.totalPages || 0))
+    if (spinPage.value > spinTotalPages.value) {
+      spinPage.value = spinTotalPages.value
+      await loadSpins(campaignId)
+    }
+  }
   catch (error) { toast.showToast(error.error || 'Không thể tải lịch sử lượt quay', 'error') }
+}
+
+function goToSpinPage(page) {
+  const target = Math.max(1, Math.min(spinTotalPages.value, page))
+  if (target === spinPage.value) return
+  spinPage.value = target
+  loadSpins(selectedCampaignId.value)
 }
 
 function emptyCampaign() {

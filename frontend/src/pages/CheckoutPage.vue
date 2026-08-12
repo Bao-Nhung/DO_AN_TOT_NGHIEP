@@ -165,17 +165,16 @@
             </div>
           </div>
 
-          <!-- VAT Enterprise Invoice Section -->
           <div class="z-checkout-section mt-4">
             <h3 class="z-checkout-title">
               <i class="bi bi-file-earmark-text text-danger"></i>
-              <span>Xuất Hóa Đơn Điện Tử VAT Doanh Nghiệp</span>
+              <span>Yêu cầu hóa đơn VAT doanh nghiệp</span>
             </h3>
             
             <div class="form-check form-switch mb-3">
               <input v-model="form.isVatRequested" class="form-check-input" type="checkbox" id="vatCheckbox" style="cursor: pointer;" />
               <label class="form-check-label fw-bold text-dark" for="vatCheckbox" style="cursor: pointer;">
-                Yêu cầu xuất Hóa Đơn VAT doanh nghiệp cho đơn hàng này
+                Gửi thông tin xuất hóa đơn VAT cho đơn hàng này
               </label>
             </div>
 
@@ -236,7 +235,8 @@
                 <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" role="progressbar" :style="{ width: freeShipProgress + '%' }"></div>
               </div>
               <div style="font-size: 12px; color: var(--z-gray);">
-                {{ freeShipProgress >= 100 ? '🎉 Đơn hàng của bạn đạt mốc 300.000đ để áp dụng ưu đãi Freeship!' : `Mua thêm ${formatPrice(300000 - subtotal)} để tiết kiệm 30.000đ phí giao hàng.` }}
+                <i v-if="freeShipProgress >= 100" class="bi bi-check2-circle text-success me-1" aria-hidden="true"></i>
+                {{ freeShipProgress >= 100 ? 'Đơn hàng đã đạt mốc 300.000đ để áp dụng ưu đãi Freeship.' : `Mua thêm ${formatPrice(300000 - subtotal)} để tiết kiệm 30.000đ phí giao hàng.` }}
               </div>
             </div>
 
@@ -702,6 +702,14 @@ function handlePlaceOrder() {
   phoneTouched.value = true
   if (phoneError.value) return showToast(phoneError.value)
   if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
+  if (form.value.isVatRequested) {
+    if (form.value.tenCongTyVat.trim().length < 2) return showToast('Vui lòng nhập tên công ty xuất hóa đơn')
+    if (!/^\d{10}(?:-\d{3})?$/.test(form.value.maSoThueVat.trim())) {
+      return showToast('Mã số thuế phải gồm 10 số hoặc dạng 10 số-3 số')
+    }
+    if (!isValidEmail(form.value.emailVat)) return showToast('Email nhận hóa đơn không hợp lệ')
+    if (form.value.diaChiVat.trim().length < 5) return showToast('Vui lòng nhập địa chỉ xuất hóa đơn')
+  }
   
   if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
     return showToast('Vui lòng chọn và nhập đầy đủ địa chỉ giao hàng')
@@ -717,7 +725,7 @@ function confirmAndPlaceOrder() {
 }
 
 onMounted(async () => {
-  await refreshItems(productId => api().getVayById(productId))
+  await refreshItems(productId => api().getSanPhamById(productId))
 
   const { isLoggedIn } = useAuth()
   if (isLoggedIn()) {
@@ -781,7 +789,10 @@ async function placeOrder() {
       method: form.value.hinhThuc,
       phone: form.value.soDienThoai.trim(),
       address: fullAddress,
-      voucher: appliedVoucher.value || ''
+      voucher: appliedVoucher.value || '',
+      vat: form.value.isVatRequested
+        ? [form.value.tenCongTyVat.trim(), form.value.maSoThueVat.trim(), form.value.emailVat.trim().toLowerCase(), form.value.diaChiVat.trim()]
+        : null
     })
     const savedRequest = JSON.parse(sessionStorage.getItem('zestia_checkout_request') || 'null')
     if (!savedRequest || savedRequest.fingerprint !== fingerprint) {
@@ -810,8 +821,13 @@ async function placeOrder() {
       quanHuyen: districtName,
       xaPhuong: wardName,
       duong: specificAddress.value.trim(),
+      yeuCauVat: form.value.isVatRequested,
+      tenCongTyVat: form.value.isVatRequested ? form.value.tenCongTyVat.trim() : null,
+      maSoThueVat: form.value.isVatRequested ? form.value.maSoThueVat.trim() : null,
+      emailVat: form.value.isVatRequested ? form.value.emailVat.trim().toLowerCase() : null,
+      diaChiVat: form.value.isVatRequested ? form.value.diaChiVat.trim() : null,
       items: state.items.map(i => ({ 
-        productId: i.productId || parseInt(i.id), // Lấy đúng ID gốc của váy
+        productId: Number(i.productId),
         variantId: i.variantId || null,
         qty: i.qty,
         size: i.size,   // Truyền size khách đã chọn
@@ -851,6 +867,8 @@ async function placeOrder() {
     }
   } catch (err) {
     if (err.paymentFailed && (err.maHoaDon || err.orderId)) {
+      sessionStorage.removeItem('zestia_checkout_request')
+      sessionStorage.removeItem('zestia_pending_payment')
       router.push({
         path: '/payment-result',
         query: {
@@ -878,7 +896,7 @@ function isValidEmail(value) {
 .z-checkout-section {
   background: white;
   border: 1px solid var(--z-gray-border);
-  border-radius: 12px;
+  border-radius: var(--z-radius);
   padding: 28px;
 }
 .z-checkout-title {
@@ -914,10 +932,11 @@ function isValidEmail(value) {
   position: relative;
   cursor: pointer;
   border: 1.5px solid var(--z-gray-border);
-  border-radius: 10px;
+  border-radius: var(--z-radius);
   padding: 16px;
-  transition: all 0.2s;
+  transition: var(--z-ease);
 }
+.z-payment-option:hover { border-color: var(--z-accent-light); }
 .z-payment-option.active {
   border-color: var(--z-accent);
   background: var(--z-accent-soft);
@@ -942,7 +961,7 @@ function isValidEmail(value) {
 .z-order-summary {
   background: white;
   border: 1px solid var(--z-gray-border);
-  border-radius: 12px;
+  border-radius: var(--z-radius);
   padding: 28px;
   position: sticky;
   top: 90px;
@@ -1009,7 +1028,7 @@ function isValidEmail(value) {
   align-items: center;
   gap: 8px;
   border: 1.5px solid var(--z-gray-border);
-  border-radius: 10px;
+  border-radius: var(--z-radius);
   padding: 8px 12px;
 }
 .z-voucher-input {
@@ -1067,7 +1086,7 @@ function isValidEmail(value) {
 }
 .z-voucher-tag.disabled { border-color: var(--z-gray-border); background: var(--z-bg-alt); opacity: .65; cursor: not-allowed; }
 .z-voucher-tag.selected { border-style: solid; box-shadow: inset 0 0 0 1px var(--z-accent); }
-.z-best-voucher { float: right; border-radius: 10px; background: #dcfce7; color: #166534; padding: 2px 7px; font-size: 9px; font-weight: 700; }
+.z-best-voucher { float: right; border-radius: 6px; background: #dcfce7; color: #166534; padding: 2px 7px; font-size: 10px; font-weight: 700; }
 
 .z-order-totals { border-top: 1px solid var(--z-gray-border); padding-top: 16px; margin-top: 16px; }
 .z-order-row {

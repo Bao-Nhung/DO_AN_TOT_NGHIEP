@@ -36,11 +36,12 @@ export function useWishlist() {
   }
 
   function toggleWishlist(id) {
-    if (wishlistIds.value.includes(id)) {
-      removeFromWishlist(id)
+    const numericId = Number(id)
+    if (wishlistIds.value.includes(numericId)) {
+      removeFromWishlist(numericId)
       return false
     } else {
-      addToWishlist(id)
+      addToWishlist(numericId)
       return true
     }
   }

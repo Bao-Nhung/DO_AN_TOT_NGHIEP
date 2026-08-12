@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.HoaDonChiTiet;
+import com.zestia.datn.zestia.entity.Anh;
 import com.zestia.datn.zestia.entity.GiamGia;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.entity.KichThuoc;
@@ -16,6 +17,7 @@ import com.zestia.datn.zestia.entity.VaiTro;
 import com.zestia.datn.zestia.entity.SanPham;
 import com.zestia.datn.zestia.entity.SanPhamChiTiet;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
+import com.zestia.datn.zestia.repository.AnhRepository;
 import com.zestia.datn.zestia.repository.HoaDonChiTietRepository;
 import com.zestia.datn.zestia.repository.GiamGiaRepository;
 import com.zestia.datn.zestia.repository.KichThuocRepository;
@@ -35,6 +37,7 @@ import com.zestia.datn.zestia.service.GatewayPaymentResultService;
 import com.zestia.datn.zestia.service.OrderStatusService;
 import com.zestia.datn.zestia.service.ShiftReportService;
 import com.zestia.datn.zestia.service.SupportChatService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -59,6 +62,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -84,6 +88,9 @@ class PaymentAndOrderSecurityTests {
     private HoaDonChiTietRepository orderDetailRepository;
 
     @Autowired
+    private AnhRepository imageRepository;
+
+    @Autowired
     private GiamGiaRepository voucherRepository;
 
     @Autowired
@@ -102,7 +109,7 @@ class PaymentAndOrderSecurityTests {
     private LichSuThanhToanRepository paymentHistoryRepository;
 
     @Autowired
-    private SanPhamRepository vayRepository;
+    private SanPhamRepository sanPhamRepository;
 
     @Autowired
     private SanPhamChiTietRepository variantRepository;
@@ -142,6 +149,11 @@ class PaymentAndOrderSecurityTests {
 
     @MockitoBean
     private EmailService emailService;
+
+    @BeforeEach
+    void configureMailForOtpTests() {
+        when(emailService.isConfigured()).thenReturn(true);
+    }
 
     @Test
     @WithMockUser(authorities = "ROLE_Admin")
@@ -210,6 +222,39 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
+    void supplierContactDataIsNotPublic() throws Exception {
+        mockMvc.perform(get("/api/thuoc-tinh/nha-cung-cap"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/thuoc-tinh"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nhaCungCap").doesNotExist());
+    }
+
+    @Test
+    void gatewayResultFromWrongProviderCannotMutateOrder() {
+        HoaDon order = hoaDonRepository.save(HoaDon.builder()
+                .maHoaDon("HDTESTWRONGGATEWAY")
+                .tongTien(BigDecimal.valueOf(420000))
+                .hinhThucThanhToan("MOMO")
+                .trangThai((byte) 0)
+                .daThanhToan(false)
+                .daHoanTonKho(false)
+                .ngayTao(LocalDateTime.now())
+                .build());
+
+        var result = paymentResultService.applyById(
+                order.getId(), "ZALOPAY", BigDecimal.valueOf(420000), "TXN-WRONG-GATEWAY", true);
+
+        HoaDon unchanged = hoaDonRepository.findById(order.getId()).orElseThrow();
+        assertThat(result.success()).isFalse();
+        assertThat(unchanged.getTrangThai()).isZero();
+        assertThat(unchanged.getDaThanhToan()).isFalse();
+        assertThat(unchanged.getDaHoanTonKho()).isFalse();
+        assertThat(paymentHistoryRepository.findByHoaDonId(order.getId())).isEmpty();
+    }
+
+    @Test
     void gatewayAmountMismatchFailsOrderAndRestoresOnlyOnce() {
         HoaDon order = hoaDonRepository.save(HoaDon.builder()
                 .maHoaDon("HDTESTAMOUNT")
@@ -232,11 +277,40 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
+    void gatewayFailureIsTerminalAndIdempotent() {
+        HoaDon order = hoaDonRepository.save(HoaDon.builder()
+                .maHoaDon("HDTESTGATEWAYFAILED")
+                .tongTien(BigDecimal.valueOf(500000))
+                .hinhThucThanhToan("MOMO")
+                .trangThai((byte) 0)
+                .daThanhToan(false)
+                .daHoanTonKho(false)
+                .ngayTao(LocalDateTime.now())
+                .build());
+
+        var first = paymentResultService.applyById(
+                order.getId(), "MOMO", order.getTongTien(), "TXN-GATEWAY-FAILED", false);
+        var second = paymentResultService.applyById(
+                order.getId(), "MOMO", order.getTongTien(), "TXN-GATEWAY-FAILED", false);
+
+        HoaDon failed = hoaDonRepository.findById(order.getId()).orElseThrow();
+        assertThat(first.success()).isFalse();
+        assertThat(first.idempotent()).isFalse();
+        assertThat(second.idempotent()).isTrue();
+        assertThat(failed.getTrangThai()).isEqualTo((byte) 7);
+        assertThat(failed.getDaThanhToan()).isFalse();
+        assertThat(failed.getDaHoanTonKho()).isTrue();
+        assertThat(paymentHistoryRepository.findByHoaDonId(order.getId())).hasSize(1);
+    }
+
+    @Test
     @WithMockUser(authorities = "ROLE_NhanVien")
     void employeeCannotAccessAdminInventoryOrRevenueDashboard() throws Exception {
         mockMvc.perform(get("/api/dashboard/inventory"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/dashboard/stats"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/customer-data"))
                 .andExpect(status().isForbidden());
     }
 
@@ -254,7 +328,7 @@ class PaymentAndOrderSecurityTests {
     void productPaginationReturnsOnlyTheRequestedServerPage() throws Exception {
         String marker = "Paged dress " + System.nanoTime();
         for (int index = 0; index < 12; index++) {
-            vayRepository.save(SanPham.builder()
+            sanPhamRepository.save(SanPham.builder()
                     .maSanPham("V-PAGED-" + System.nanoTime() + "-" + index)
                     .tenSanPham(marker + " " + index)
                     .trangThai((byte) 1)
@@ -289,7 +363,7 @@ class PaymentAndOrderSecurityTests {
                 .tinhTrangLamViec((byte) 0)
                 .ngayTao(LocalDateTime.now())
                 .build());
-        SanPham lockedProduct = vayRepository.save(SanPham.builder()
+        SanPham lockedProduct = sanPhamRepository.save(SanPham.builder()
                 .maSanPham("V-LOCKED-" + marker)
                 .tenSanPham("Locked product " + marker)
                 .trangThai((byte) 0)
@@ -297,21 +371,85 @@ class PaymentAndOrderSecurityTests {
                 .build());
         String staleToken = jwtUtil.generateToken(employee.getTenNguoiDung(), "NhanVien", employee.getId());
 
-        String response = mockMvc.perform(get("/api/vay")
+        String response = mockMvc.perform(get("/api/san-pham")
                         .header("Authorization", "Bearer " + staleToken))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
-        assertThat(response).doesNotContain(lockedProduct.getTenVay());
+        assertThat(response).doesNotContain(lockedProduct.getTenSanPham());
+
+        String aiResponse = mockMvc.perform(post("/api/ai-chat")
+                        .header("Authorization", "Bearer " + staleToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"xem doanh thu va ton kho noi bo\",\"mode\":\"staff\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(aiResponse).doesNotContain("totalStock", "totalOrders", "totalProducts");
+    }
+
+    @Test
+    void anonymousUserCannotReadInventoryMovementHistory() throws Exception {
+        mockMvc.perform(get("/api/san-pham/stock-movements"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void anonymousUserCannotEnableStaffAiMode() throws Exception {
+        String response = mockMvc.perform(post("/api/ai-chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"xem doanh thu và tồn kho nội bộ\",\"mode\":\"staff\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        assertThat(response).doesNotContain("totalStock", "totalOrders", "totalProducts");
+    }
+
+    @Test
+    void aiDescribesPercentageVoucherFromDatabaseWithoutZeroDongLabel() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        String voucherCode = "AIPERCENT" + marker;
+        voucherRepository.save(GiamGia.builder()
+                .maGiamGia(voucherCode)
+                .tenGiamGia("Voucher AI phần trăm")
+                .giaTriDonToiThieu(BigDecimal.valueOf(500000))
+                .phanTramGiam(BigDecimal.valueOf(15))
+                .giamToiDa(BigDecimal.valueOf(120000))
+                .soLuong(12)
+                .ngayBatDau(LocalDate.now().minusDays(1))
+                .ngayKetThuc(LocalDate.now())
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+
+        String response = mockMvc.perform(post("/api/ai-chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":\"Cho tôi xem voucher đang dùng được\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        JsonNode voucherCard = null;
+        for (JsonNode card : objectMapper.readTree(response).path("cards")) {
+            if (voucherCode.equals(card.path("code").asText())) {
+                voucherCard = card;
+                break;
+            }
+        }
+
+        assertThat(response).contains(voucherCode, "Giảm 15%", "tối đa 120.000đ", "Còn 12 lượt");
+        assertThat(response).doesNotContain("Voucher AI phần trăm · Giảm 0đ");
+        assertThat(voucherCard).isNotNull();
+        assertThat(voucherCard.path("discountPercent").decimalValue()).isEqualByComparingTo("15");
     }
 
     @Test
     @WithMockUser(authorities = "ROLE_KhachHang")
-    void customerCannotSearchOtherCustomersOrdersByPhone() throws Exception {
+    void removedPhoneSearchEndpointIsNotAvailableToCustomer() throws Exception {
         mockMvc.perform(get("/api/hoa-don/search-by-phone")
                         .param("soDienThoai", "0900000001"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
         mockMvc.perform(get("/api/staff/tasks"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/hoa-don/paged"))
                 .andExpect(status().isForbidden());
     }
 
@@ -432,7 +570,71 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
-    void posCheckoutRequiresAndLinksCustomerPhoneThenDeductsStock() throws Exception {
+    void checkoutSnapshotsProductImageWhenVariantHasNoOwnImage() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        String customerPhone = "09" + marker.substring(marker.length() - 8);
+        String customerEmail = "snapshot-" + marker + "@example.com";
+        MauSac color = colorRepository.save(MauSac.builder()
+                .tenMauSac("Snapshot Black " + marker).trangThai((byte) 1).build());
+        KichThuoc size = sizeRepository.save(KichThuoc.builder()
+                .tenKichThuoc("SNAPSHOT-S-" + marker).trangThai((byte) 1).build());
+        SanPham product = sanPhamRepository.save(SanPham.builder()
+                .maSanPham("V-SNAPSHOT-" + marker)
+                .tenSanPham("Snapshot dress")
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
+                .sanPham(product)
+                .mauSac(color)
+                .kichThuoc(size)
+                .maSanPhamChiTiet("VC-SNAPSHOT-" + marker)
+                .giaBan(BigDecimal.valueOf(650000))
+                .soLuong(2)
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        String imageUrl = "/images/products/snapshot-" + marker + ".jpg";
+        imageRepository.save(Anh.builder()
+                .sanPham(product)
+                .anhUrl(imageUrl)
+                .trangThai((byte) 1)
+                .ngayTao(LocalDateTime.now())
+                .build());
+
+        String requestBody = """
+                {"hoTen":"Khách ảnh hóa đơn","soDienThoai":"%s","email":"%s",
+                 "diaChi":"39 Nguyễn Thị Duệ, Hà Nội","tinhThanhCode":1,"quanHuyenCode":1,
+                 "hinhThucThanhToan":"COD","checkoutRequestId":"CHECKOUT-SNAPSHOT-%s",
+                 "items":[{"productId":%d,"variantId":%d,"qty":1}]}
+                """.formatted(customerPhone, customerEmail, marker, product.getId(), variant.getId());
+
+        String response = mockMvc.perform(post("/api/payment/create-order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        int orderId = objectMapper.readTree(response).path("orderId").asInt();
+
+        assertThat(orderDetailRepository.findByHoaDonId(orderId))
+                .singleElement()
+                .extracting(HoaDonChiTiet::getAnhUrlSnapshot)
+                .isEqualTo(imageUrl);
+
+        String conflictingIdentityRequest = requestBody
+                .replace(customerEmail, "other-" + marker + "@example.com")
+                .replace("CHECKOUT-SNAPSHOT-" + marker, "CHECKOUT-CONFLICT-" + marker);
+        mockMvc.perform(post("/api/payment/create-order")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(conflictingIdentityRequest))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BUSINESS_STATE_CONFLICT"))
+                .andExpect(jsonPath("$.error").value("Số điện thoại đang gắn với một email khác"));
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(1);
+    }
+
+    @Test
+    void posCheckoutRequiresReservationLinksCustomerAndIsIdempotent() throws Exception {
         String marker = String.valueOf(System.nanoTime());
         VaiTro role = roleRepository.findByTenVaiTro("NhanVien")
                 .orElseGet(() -> roleRepository.save(VaiTro.builder().tenVaiTro("NhanVien").build()));
@@ -459,7 +661,7 @@ class PaymentAndOrderSecurityTests {
                 .build());
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("POS Black " + marker).trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("POS-S-" + marker).trangThai((byte) 1).build());
-        SanPham product = vayRepository.save(SanPham.builder()
+        SanPham product = sanPhamRepository.save(SanPham.builder()
                 .maSanPham("V-POS-" + marker)
                 .tenSanPham("POS checkout dress")
                 .trangThai((byte) 1)
@@ -470,37 +672,47 @@ class PaymentAndOrderSecurityTests {
                 .mauSac(color)
                 .kichThuoc(size)
                 .maSanPhamChiTiet("VC-POS-" + marker)
-                .giaBanGoc(BigDecimal.valueOf(600000))
                 .giaBan(BigDecimal.valueOf(500000))
-                .giaNhap(BigDecimal.valueOf(300000))
                 .soLuong(2)
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
                 .build());
         String token = jwtUtil.generateToken(employee.getTenNguoiDung(), "NhanVien", employee.getId());
+        String authorization = "Bearer " + token;
         String customerPhone = "09" + marker.substring(Math.max(0, marker.length() - 8));
+        String checkoutSession = reservationToken(mockMvc.perform(post("/api/pos-reservations/items")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"variantId":%d,"quantity":1}
+                                """.formatted(variant.getId())))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
 
         mockMvc.perform(post("/api/payment/create-order")
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"tenKhachHang":"Khách POS test","soDienThoai":"%s","hinhThucThanhToan":"Tiền mặt",
                                  "hinhThucNhanHang":0,"trangThai":4,"daThanhToan":true,"tienKhachDua":499999,
-                                 "nhanVienId":%d,"items":[{"productId":%d,"variantId":%d,"qty":1}]}
-                                """.formatted(customerPhone, employee.getId(), product.getId(), variant.getId())))
+                                 "nhanVienId":%d,"posReservationToken":"%s",
+                                 "items":[{"productId":%d,"variantId":%d,"qty":1}]}
+                                """.formatted(customerPhone, employee.getId(), checkoutSession, product.getId(), variant.getId())))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Số tiền khách đưa chưa đủ. Còn thiếu 1.00đ"));
 
-        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(2);
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(1);
 
+        String successfulRequest = """
+                {"tenKhachHang":"Khách POS test","soDienThoai":"%s","hinhThucThanhToan":"Tiền mặt",
+                 "hinhThucNhanHang":0,"trangThai":4,"daThanhToan":true,"tienKhachDua":500000,
+                 "nhanVienId":%d,"posReservationToken":"%s",
+                 "items":[{"productId":%d,"variantId":%d,"qty":1}]}
+                """.formatted(customerPhone, employee.getId(), checkoutSession, product.getId(), variant.getId());
         mockMvc.perform(post("/api/payment/create-order")
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"tenKhachHang":"Khách POS test","soDienThoai":"%s","hinhThucThanhToan":"Tiền mặt",
-                                 "hinhThucNhanHang":0,"trangThai":4,"daThanhToan":true,"tienKhachDua":500000,
-                                 "nhanVienId":%d,"items":[{"productId":%d,"variantId":%d,"qty":1}]}
-                                """.formatted(customerPhone, employee.getId(), product.getId(), variant.getId())))
+                        .content(successfulRequest))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.trangThai").value(4))
                 .andExpect(jsonPath("$.hinhThucNhanHang").value(0))
@@ -513,6 +725,15 @@ class PaymentAndOrderSecurityTests {
         assertThat(saved.getKhachHang().getSoDienThoai()).isEqualTo(customerPhone);
         assertThat(saved.getDaThanhToan()).isTrue();
         assertThat(saved.getDiaChiGiaoHang()).isEqualTo("Mua trực tiếp tại cửa hàng");
+
+        mockMvc.perform(post("/api/payment/create-order")
+                        .header("Authorization", authorization)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(successfulRequest))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(saved.getId()));
+        assertThat(hoaDonRepository.findByNhanVienId(employee.getId())).hasSize(1);
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(1);
 
         mockMvc.perform(get("/api/staff/tasks")
                         .header("Authorization", "Bearer " + token))
@@ -562,7 +783,7 @@ class PaymentAndOrderSecurityTests {
                 .tenKichThuoc("HOLD-S-" + marker)
                 .trangThai((byte) 1)
                 .build());
-        SanPham product = vayRepository.save(SanPham.builder()
+        SanPham product = sanPhamRepository.save(SanPham.builder()
                 .maSanPham("V-HOLD-" + marker)
                 .tenSanPham("POS reservation dress")
                 .trangThai((byte) 1)
@@ -573,9 +794,7 @@ class PaymentAndOrderSecurityTests {
                 .mauSac(color)
                 .kichThuoc(size)
                 .maSanPhamChiTiet("VC-HOLD-" + marker)
-                .giaBanGoc(BigDecimal.valueOf(500000))
                 .giaBan(BigDecimal.valueOf(500000))
-                .giaNhap(BigDecimal.valueOf(300000))
                 .soLuong(4)
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
@@ -685,7 +904,7 @@ class PaymentAndOrderSecurityTests {
     void concurrentCheckoutCannotOversellTheLastVariant() throws Exception {
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("Concurrency Black").trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("CONCURRENT-S").trangThai((byte) 1).build());
-        SanPham product = vayRepository.save(SanPham.builder()
+        SanPham product = sanPhamRepository.save(SanPham.builder()
                 .maSanPham("V-CONCURRENT-" + System.nanoTime())
                 .tenSanPham("Concurrent checkout dress")
                 .trangThai((byte) 1)
@@ -696,9 +915,7 @@ class PaymentAndOrderSecurityTests {
                 .mauSac(color)
                 .kichThuoc(size)
                 .maSanPhamChiTiet("VC-CONCURRENT-" + System.nanoTime())
-                .giaBanGoc(BigDecimal.valueOf(600000))
                 .giaBan(BigDecimal.valueOf(500000))
-                .giaNhap(BigDecimal.valueOf(300000))
                 .soLuong(1)
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())
@@ -811,7 +1028,7 @@ class PaymentAndOrderSecurityTests {
                 .build());
         String token = jwtUtil.generateToken(employee.getTenNguoiDung(), "NhanVien", employee.getId());
 
-        mockMvc.perform(get("/api/vay").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/api/san-pham").header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("SHIFT_REQUIRED"));
     }
@@ -829,7 +1046,7 @@ class PaymentAndOrderSecurityTests {
         HoaDon order = hoaDonRepository.save(HoaDon.builder()
                 .maHoaDon("HD-RETURN-" + marker)
                 .khachHang(customer)
-                .tongTien(BigDecimal.valueOf(700000))
+                .tongTien(BigDecimal.valueOf(1400000))
                 .hinhThucThanhToan("MOMO")
                 .hinhThucNhanHang((byte) 1)
                 .trangThai((byte) 4)
@@ -838,13 +1055,13 @@ class PaymentAndOrderSecurityTests {
                 .build());
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("Return Black " + marker).trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("RETURN-S-" + marker).trangThai((byte) 1).build());
-        SanPham product = vayRepository.save(SanPham.builder().maSanPham("V-RETURN-" + marker).tenSanPham("Return dress").trangThai((byte) 1).ngayTao(LocalDateTime.now()).build());
+        SanPham product = sanPhamRepository.save(SanPham.builder().maSanPham("V-RETURN-" + marker).tenSanPham("Return dress").trangThai((byte) 1).ngayTao(LocalDateTime.now()).build());
         SanPhamChiTiet variant = variantRepository.save(SanPhamChiTiet.builder()
                 .sanPham(product).mauSac(color).kichThuoc(size).maSanPhamChiTiet("VC-RETURN-" + marker)
-                .giaBanGoc(BigDecimal.valueOf(700000)).giaBan(BigDecimal.valueOf(700000))
+                .giaBan(BigDecimal.valueOf(700000))
                 .soLuong(2).trangThai((byte) 1).ngayTao(LocalDateTime.now()).build());
         HoaDonChiTiet detail = orderDetailRepository.save(HoaDonChiTiet.builder()
-                .hoaDon(order).sanPhamChiTiet(variant).soLuong(1).donGia(BigDecimal.valueOf(700000)).build());
+                .hoaDon(order).sanPhamChiTiet(variant).soLuong(2).donGia(BigDecimal.valueOf(700000)).build());
         String token = jwtUtil.generateToken(customer.getEmail(), "KhachHang", customer.getId());
         MockMultipartFile image = new MockMultipartFile("images", "condition.png", "image/png",
                 java.util.Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="));
@@ -888,7 +1105,17 @@ class PaymentAndOrderSecurityTests {
                 .ngayTao(LocalDateTime.now())
                 .build());
         String adminToken = jwtUtil.generateToken(admin.getTenNguoiDung(), "Admin", admin.getId());
-        Integer requestId = returnRequestRepository.findByHoaDonChiTietId(detail.getId()).orElseThrow().getId();
+        Integer requestId = returnRequestRepository.findFirstByHoaDonChiTietIdOrderByNgayTaoDesc(detail.getId()).orElseThrow().getId();
+
+        mockMvc.perform(get("/api/returns/mine")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(requestId))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.totalElements").value(1));
+        mockMvc.perform(get("/api/returns")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
 
         mockMvc.perform(put("/api/returns/" + requestId + "/review")
                         .header("Authorization", "Bearer " + adminToken)
@@ -902,6 +1129,7 @@ class PaymentAndOrderSecurityTests {
                         .content("{\"accepted\":true,\"reason\":\"Đã nhận đủ hàng và tem mác\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CHO_HOAN_TAT"));
+        assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(3);
         mockMvc.perform(put("/api/returns/" + requestId + "/complete")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -909,6 +1137,37 @@ class PaymentAndOrderSecurityTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DA_HOAN_TIEN"));
         assertThat(variantRepository.findById(variant.getId()).orElseThrow().getSoLuong()).isEqualTo(3);
+
+        mockMvc.perform(multipart("/api/returns/online")
+                        .file(image)
+                        .header("Authorization", "Bearer " + token)
+                        .param("orderId", String.valueOf(order.getId()))
+                        .param("orderDetailId", String.valueOf(detail.getId()))
+                        .param("type", "TRA")
+                        .param("quantity", "1")
+                        .param("reason", "Trả nốt sản phẩm còn lại trong đơn")
+                        .param("condition", "Sản phẩm còn nguyên tem mác và chưa qua sử dụng")
+                        .param("refundInfo", "Ví MoMo 0912345678 - Nguyen Van A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CHO_DUYET"));
+
+        mockMvc.perform(get("/api/hoa-don/" + order.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chiTiets[0].soLuongDaDoiTra").value(2))
+                .andExpect(jsonPath("$.chiTiets[0].soLuongConLaiDoiTra").value(0));
+
+        mockMvc.perform(multipart("/api/returns/online")
+                        .file(image)
+                        .header("Authorization", "Bearer " + token)
+                        .param("orderId", String.valueOf(order.getId()))
+                        .param("orderDetailId", String.valueOf(detail.getId()))
+                        .param("type", "TRA")
+                        .param("quantity", "1")
+                        .param("reason", "Không thể tạo vượt số lượng đã mua")
+                        .param("condition", "Sản phẩm còn nguyên tem mác và chưa qua sử dụng")
+                        .param("refundInfo", "Ví MoMo 0912345678 - Nguyen Van A"))
+                .andExpect(status().isConflict());
 
         mockMvc.perform(put("/api/returns/" + requestId + "/complete")
                         .header("Authorization", "Bearer " + adminToken)
@@ -923,7 +1182,7 @@ class PaymentAndOrderSecurityTests {
         String marker = String.valueOf(System.nanoTime());
         MauSac color = colorRepository.save(MauSac.builder().tenMauSac("Failed Black " + marker).trangThai((byte) 1).build());
         KichThuoc size = sizeRepository.save(KichThuoc.builder().tenKichThuoc("FAILED-S-" + marker).trangThai((byte) 1).build());
-        SanPham product = vayRepository.save(SanPham.builder()
+        SanPham product = sanPhamRepository.save(SanPham.builder()
                 .maSanPham("V-FAILED-" + marker)
                 .tenSanPham("Delivery failed dress")
                 .trangThai((byte) 1)
@@ -934,7 +1193,6 @@ class PaymentAndOrderSecurityTests {
                 .mauSac(color)
                 .kichThuoc(size)
                 .maSanPhamChiTiet("VC-FAILED-" + marker)
-                .giaBanGoc(BigDecimal.valueOf(800000))
                 .giaBan(BigDecimal.valueOf(700000))
                 .soLuong(3)
                 .trangThai((byte) 1)
@@ -1064,7 +1322,10 @@ class PaymentAndOrderSecurityTests {
         assertThat(conversation.get("status")).isEqualTo(SupportChatService.ACTIVE);
         assertThat(conversation.get("employeeName")).isNotNull();
         assertThat(conversation.get("token").toString()).hasSize(32);
-        assertThat((List<?>) conversation.get("messages")).hasSizeGreaterThanOrEqualTo(2);
+        List<?> messages = (List<?>) conversation.get("messages");
+        assertThat(messages).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(messages)
+                .allSatisfy(message -> assertThat(((Map<?, ?>) message).containsKey("senderType")).isTrue());
     }
 
     @Test
@@ -1278,6 +1539,36 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
+    void adminCannotConfirmOrCheckInForAnEmployee() throws Exception {
+        String marker = String.valueOf(System.nanoTime());
+        NhanVien employee = createScheduleStaff("Nhân viên", "NV-OWNER-ACTION-", marker);
+        NhanVien admin = createScheduleStaff("Admin", "NV-ADMIN-ACTION-", marker);
+        LichLamViec shift = scheduleRepository.save(LichLamViec.builder()
+                .nhanVien(employee)
+                .ngayLam(LocalDate.now().plusDays(1))
+                .caLam("Ca sáng")
+                .gioBatDau(LocalTime.of(8, 0))
+                .gioKetThuc(LocalTime.of(12, 0))
+                .trangThai((byte) 0)
+                .ngayTao(LocalDateTime.now())
+                .build());
+        String adminToken = jwtUtil.generateToken(admin.getTenNguoiDung(), "Admin", admin.getId());
+
+        mockMvc.perform(post("/api/lich-lam-viec/" + shift.getId() + "/confirm")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Admin không thể xác nhận hoặc chấm công thay nhân viên"));
+
+        shift.setTrangThai((byte) 1);
+        shift.setThoiGianXacNhan(LocalDateTime.now());
+        scheduleRepository.save(shift);
+        mockMvc.perform(post("/api/lich-lam-viec/" + shift.getId() + "/check-in")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isForbidden());
+        assertThat(scheduleRepository.findById(shift.getId()).orElseThrow().getGioCheckIn()).isNull();
+    }
+
+    @Test
     @WithMockUser(authorities = "ROLE_Admin")
     void employeeCreationRejectsInvalidContactInformation() throws Exception {
         mockMvc.perform(post("/api/nhan-vien")
@@ -1317,7 +1608,7 @@ class PaymentAndOrderSecurityTests {
                 .tenKichThuoc("CANCEL-COD-" + marker)
                 .trangThai((byte) 1)
                 .build());
-        SanPham product = vayRepository.save(SanPham.builder()
+        SanPham product = sanPhamRepository.save(SanPham.builder()
                 .maSanPham("V-CANCEL-COD-" + marker)
                 .tenSanPham("Cancelable COD dress")
                 .trangThai((byte) 1)
@@ -1328,9 +1619,7 @@ class PaymentAndOrderSecurityTests {
                 .mauSac(color)
                 .kichThuoc(size)
                 .maSanPhamChiTiet("VC-CANCEL-COD-" + marker)
-                .giaBanGoc(BigDecimal.valueOf(650000))
                 .giaBan(BigDecimal.valueOf(650000))
-                .giaNhap(BigDecimal.valueOf(400000))
                 .soLuong(stock)
                 .trangThai((byte) 1)
                 .ngayTao(LocalDateTime.now())

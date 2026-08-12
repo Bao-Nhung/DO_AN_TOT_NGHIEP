@@ -6,18 +6,23 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zestia.datn.zestia.entity.GiamGia;
 import com.zestia.datn.zestia.entity.HoaDon;
+import com.zestia.datn.zestia.entity.HuongDanKichThuoc;
+import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.entity.SanPham;
 import com.zestia.datn.zestia.entity.SanPhamChiTiet;
 import com.zestia.datn.zestia.entity.AiChatLog;
 import com.zestia.datn.zestia.repository.AiChatLogRepository;
 import com.zestia.datn.zestia.repository.GiamGiaRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
+import com.zestia.datn.zestia.repository.HuongDanKichThuocRepository;
+import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.SanPhamChiTietRepository;
 import com.zestia.datn.zestia.repository.SanPhamRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -25,15 +30,19 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.text.NumberFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Matcher;
@@ -42,6 +51,11 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class AiChatService {
+    private static final Set<String> SEARCH_STOP_WORDS = Set.of(
+            "toi", "minh", "muon", "can", "tim", "san", "pham", "cho", "va", "voi",
+            "cua", "mot", "nhung", "dang", "con", "gia", "duoi", "tren", "khoang",
+            "mac", "nao", "size", "mau", "theo", "phu", "hop", "giup"
+    );
 
     private final SanPhamRepository sanPhamRepository;
     private final SanPhamChiTietRepository sanPhamChiTietRepository;
@@ -49,6 +63,8 @@ public class AiChatService {
     private final HoaDonRepository hoaDonRepository;
     private final PromotionPricingService promotionPricingService;
     private final AiChatLogRepository aiChatLogRepository;
+    private final HuongDanKichThuocRepository sizeGuideRepository;
+    private final KhachHangRepository customerRepository;
     private ObjectMapper mapper = new ObjectMapper();
 
     @Value("${openai.api-key:}")
@@ -67,6 +83,7 @@ public class AiChatService {
      * @param mode "assistant" | "stylist" | "staff" – resolved from frontend tab or user role
      */
     public Map<String, Object> reply(String message, List<?> history, ChatUser user, String mode) {
+        long startedAt = System.nanoTime();
         String resolvedMode = resolveMode(mode, user);
 
         if (message == null || message.isBlank()) {
@@ -82,8 +99,7 @@ public class AiChatService {
         if ("staff".equals(resolvedMode)) {
             Map<String, Object> staffResp = buildStaffAiResponse(message, context, user);
             if (staffResp != null) {
-                saveAiChatLog(resolvedMode, message, (String) staffResp.get("reply"));
-                return staffResp;
+                return logAndReturn(resolvedMode, message, user, startedAt, "internal-rag", staffResp);
             }
         }
 
@@ -91,13 +107,12 @@ public class AiChatService {
         if (!configured()) {
             Map<String, Object> customerResp = buildCustomerAiResponse(message, context, user, resolvedMode);
             if (customerResp != null) {
-                saveAiChatLog(resolvedMode, message, (String) customerResp.get("reply"));
-                return customerResp;
+                return logAndReturn(resolvedMode, message, user, startedAt, "internal-rag", customerResp);
             }
-            return Map.of(
+            return logAndReturn(resolvedMode, message, user, startedAt, "internal-rag", Map.of(
                 "reply", "Trợ lý Zestia AI đang ở chế độ tra cứu nội bộ. Bạn có thể hỏi về sản phẩm, size, voucher hoặc đơn hàng.",
                 "configured", false
-            );
+            ));
         }
 
         // Gọi OpenAI
@@ -120,8 +135,9 @@ public class AiChatService {
                 Map<String, Object> fallback = "staff".equals(resolvedMode)
                     ? buildStaffAiResponse(message, context, user)
                     : buildCustomerAiResponse(message, context, user, resolvedMode);
-                return fallback != null ? fallback
+                Map<String, Object> result = fallback != null ? fallback
                     : Map.of("reply", "AI đang tạm thời không kết nối được. Vui lòng thử lại sau.", "configured", true);
+                return logAndReturn(resolvedMode, message, user, startedAt, "internal-rag", result);
             }
 
             JsonNode root = mapper.readTree(response.body());
@@ -135,13 +151,14 @@ public class AiChatService {
             result.put("reply", text);
             result.put("configured", true);
             if (!aiCards.isEmpty()) result.put("cards", aiCards);
-            return result;
+            return logAndReturn(resolvedMode, message, user, startedAt, model, result);
         } catch (Exception e) {
             Map<String, Object> fallback = "staff".equals(resolvedMode)
                 ? buildStaffAiResponse(message, context, user)
                 : buildCustomerAiResponse(message, context, user, resolvedMode);
-            return fallback != null ? fallback
+            Map<String, Object> result = fallback != null ? fallback
                 : Map.of("reply", "AI gặp sự cố kết nối. Đang dùng chế độ tra cứu nội bộ.", "configured", true);
+            return logAndReturn(resolvedMode, message, user, startedAt, "internal-rag", result);
         }
     }
 
@@ -151,8 +168,8 @@ public class AiChatService {
     }
 
     private String resolveMode(String mode, ChatUser user) {
-        if (mode != null && !mode.isBlank()) return mode.toLowerCase().trim();
         if (user != null && user.isStaff()) return "staff";
+        if (mode != null && "stylist".equalsIgnoreCase(mode.trim())) return "stylist";
         return "assistant";
     }
 
@@ -267,10 +284,8 @@ public class AiChatService {
         }
 
         sb.append("\nVoucher kha dung:\n");
-        List<GiamGia> vouchers = giamGiaRepository.findAll().stream()
-                .filter(this::activeVoucher)
-                .limit(8)
-                .toList();
+        List<GiamGia> vouchers = giamGiaRepository.findPubliclyUsableForAi(
+                LocalDate.now(), PageRequest.of(0, 8));
         if (vouchers.isEmpty()) {
             sb.append("- Hien chua co voucher kha dung.\n");
         } else {
@@ -279,9 +294,10 @@ public class AiChatService {
 
         if (user != null && "KhachHang".equalsIgnoreCase(user.role()) && user.userId() != null) {
             sb.append("\nDon hang gan day cua khach dang nhap:\n");
-            List<HoaDon> orders = hoaDonRepository.findByCustomerIdOrderByLatest(user.userId()).stream()
-                    .limit(5)
-                    .toList();
+            List<HoaDon> orders = hoaDonRepository.findCustomerHistoryPage(
+                    user.userId(),
+                    PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "ngayTao", "id"))
+            ).getContent();
             if (orders.isEmpty()) {
                 sb.append("- Chua co don hang gan day.\n");
             } else {
@@ -300,7 +316,10 @@ public class AiChatService {
         if (query.isBlank()) return products;
 
         List<SanPham> matched = products.stream()
-                .filter(v -> productMatches(v, variantsByProduct.getOrDefault(v.getId(), List.of()), query))
+                .filter(product -> productMatchScore(
+                        product, variantsByProduct.getOrDefault(product.getId(), List.of()), query) > 0)
+                .sorted(Comparator.comparingInt((SanPham product) -> productMatchScore(
+                        product, variantsByProduct.getOrDefault(product.getId(), List.of()), query)).reversed())
                 .toList();
         if (matched.isEmpty()) return products;
 
@@ -315,7 +334,7 @@ public class AiChatService {
         return result;
     }
 
-    private boolean productMatches(SanPham product, List<SanPhamChiTiet> variants, String query) {
+    private int productMatchScore(SanPham product, List<SanPhamChiTiet> variants, String query) {
         List<String> fields = new ArrayList<>();
         fields.add(product.getTenSanPham());
         fields.add(product.getMaSanPham());
@@ -329,16 +348,24 @@ public class AiChatService {
             if (effectivePrice != null) fields.add(effectivePrice.toPlainString());
         });
         String haystack = normalizeForSearch(String.join(" ", fields.stream().filter(Objects::nonNull).toList()));
-        return queryTokens(query).stream().anyMatch(haystack::contains);
+        return (int) queryTokens(query).stream().filter(haystack::contains).count();
     }
 
     private List<String> queryTokens(String query) {
-        return Pattern.compile("[\\p{L}\\p{N}]+")
+        List<String> tokens = new ArrayList<>();
+        Pattern.compile("\\bsize\\s*([a-z0-9]+)\\b")
+                .matcher(query)
+                .results()
+                .map(match -> "size " + match.group(1))
+                .forEach(tokens::add);
+        Pattern.compile("[\\p{L}\\p{N}]+")
                 .matcher(query)
                 .results()
                 .map(match -> match.group())
                 .filter(token -> token.length() >= 2)
-                .toList();
+                .filter(token -> !SEARCH_STOP_WORDS.contains(token))
+                .forEach(tokens::add);
+        return tokens.stream().distinct().toList();
     }
 
     private String normalizeForSearch(String value) {
@@ -348,7 +375,7 @@ public class AiChatService {
                 .replace('đ', 'd');
     }
 
-    private String productSummary(SanPham vay, List<SanPhamChiTiet> variants) {
+    private String productSummary(SanPham product, List<SanPhamChiTiet> variants) {
         int stock = variants.stream().map(SanPhamChiTiet::getSoLuong).filter(Objects::nonNull).mapToInt(Integer::intValue).sum();
         BigDecimal minPrice = variants.stream()
                 .map(v -> promotionPricingService.quote(v).effectivePrice())
@@ -370,8 +397,8 @@ public class AiChatService {
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("N/A");
         return "%s (%s) - gia tu %s, ton %d, size: %s, mau: %s".formatted(
-                safe(vay.getTenSanPham()),
-                safe(vay.getMaSanPham()),
+                safe(product.getTenSanPham()),
+                safe(product.getMaSanPham()),
                 money(minPrice),
                 stock,
                 sizes,
@@ -381,29 +408,52 @@ public class AiChatService {
 
     private boolean activeVariant(SanPhamChiTiet variant) {
         return variant != null
-                && (variant.getTrangThai() == null || variant.getTrangThai() == 1)
+                && Byte.valueOf((byte) 1).equals(variant.getTrangThai())
                 && variant.getSanPham() != null
-                && (variant.getSanPham().getTrangThai() == null || variant.getSanPham().getTrangThai() == 1);
-    }
-
-    private boolean activeVoucher(GiamGia voucher) {
-        LocalDate today = LocalDate.now();
-        if (voucher.getTrangThai() != null && voucher.getTrangThai() == 0) return false;
-        if (voucher.getSoLuong() != null && voucher.getSoLuong() <= 0) return false;
-        if (voucher.getNgayBatDau() != null && today.isBefore(voucher.getNgayBatDau())) return false;
-        return voucher.getNgayKetThuc() == null || !today.isAfter(voucher.getNgayKetThuc());
+                && Byte.valueOf((byte) 1).equals(variant.getSanPham().getTrangThai())
+                && variant.getSoLuong() != null
+                && variant.getSoLuong() > 0;
     }
 
     private String voucherSummary(GiamGia voucher) {
-        String value = voucher.getPhanTramGiam() != null && voucher.getPhanTramGiam().compareTo(BigDecimal.ZERO) > 0
-                ? "giam " + voucher.getPhanTramGiam().stripTrailingZeros().toPlainString() + "%"
-                : "giam " + money(voucher.getGioTriGiam());
-        return "%s - %s, don toi thieu %s, con %s luot".formatted(
-                safe(voucher.getMaGiamGia()),
-                value,
+        return safe(voucher.getMaGiamGia()) + " - " + voucherDisplayDescription(voucher);
+    }
+
+    private String voucherValueLabel(GiamGia voucher) {
+        if (voucher.getPhanTramGiam() != null
+                && voucher.getPhanTramGiam().compareTo(BigDecimal.ZERO) > 0) {
+            String value = "Giảm " + voucher.getPhanTramGiam().stripTrailingZeros().toPlainString() + "%";
+            if (voucher.getGiamToiDa() != null && voucher.getGiamToiDa().compareTo(BigDecimal.ZERO) > 0) {
+                value += ", tối đa " + money(voucher.getGiamToiDa());
+            }
+            return value;
+        }
+        return "Giảm " + money(voucher.getGioTriGiam());
+    }
+
+    private String voucherDisplayDescription(GiamGia voucher) {
+        String remaining = voucher.getSoLuong() != null
+                ? "Còn " + voucher.getSoLuong() + " lượt"
+                : "Không giới hạn lượt";
+        return "%s · %s · Đơn từ %s · %s".formatted(
+                safe(voucher.getTenGiamGia()),
+                voucherValueLabel(voucher),
                 money(voucher.getGiaTriDonToiThieu()),
-                voucher.getSoLuong() != null ? voucher.getSoLuong() : "khong gioi han"
+                remaining
         );
+    }
+
+    private Map<String, Object> voucherCard(GiamGia voucher) {
+        Map<String, Object> card = new LinkedHashMap<>();
+        card.put("type", "voucher");
+        card.put("code", safe(voucher.getMaGiamGia()));
+        card.put("discount", voucher.getGioTriGiam() != null ? voucher.getGioTriGiam() : BigDecimal.ZERO);
+        card.put("discountPercent", voucher.getPhanTramGiam() != null ? voucher.getPhanTramGiam() : BigDecimal.ZERO);
+        card.put("maxDiscount", voucher.getGiamToiDa() != null ? voucher.getGiamToiDa() : BigDecimal.ZERO);
+        card.put("minOrder", voucher.getGiaTriDonToiThieu() != null ? voucher.getGiaTriDonToiThieu() : BigDecimal.ZERO);
+        card.put("remaining", voucher.getSoLuong());
+        card.put("description", voucherDisplayDescription(voucher));
+        return card;
     }
 
     private String orderSummary(HoaDon order) {
@@ -461,8 +511,6 @@ public class AiChatService {
             case 5 -> "da huy";
             case 6 -> "giao that bai";
             case 7 -> "thanh toan that bai";
-            case 8 -> "yeu cau doi tra";
-            case 9 -> "da hoan tien/hoan tat doi tra";
             default -> "khong ro";
         };
     }
@@ -483,8 +531,11 @@ public class AiChatService {
     }
 
     private String money(BigDecimal value) {
-        if (value == null) return "0 VND";
-        return String.format("%,.0f VND", value);
+        if (value == null) return "0đ";
+        NumberFormat formatter = NumberFormat.getNumberInstance(Locale.forLanguageTag("vi-VN"));
+        formatter.setMinimumFractionDigits(0);
+        formatter.setMaximumFractionDigits(0);
+        return formatter.format(value) + "đ";
     }
 
     private String safe(String value) {
@@ -511,33 +562,33 @@ public class AiChatService {
 
         if (msg.contains("doanh thu") || msg.contains("thống kê") || msg.contains("báo cáo") || msg.contains("doanh số")) {
             long totalProducts = sanPhamRepository.countByTrangThai((byte) 1);
-            long totalOrders = hoaDonRepository.count();
+            HoaDonRepository.DashboardSummary summary = hoaDonRepository.summarizeDashboard();
+            long totalOrders = summary != null && summary.getOrderCount() != null ? summary.getOrderCount() : 0;
+            BigDecimal revenue = summary != null && summary.getRevenue() != null ? summary.getRevenue() : BigDecimal.ZERO;
             long totalStockCount = Objects.requireNonNullElse(sanPhamChiTietRepository.sumActiveStock(), 0L);
-            String replyText = String.format("📊 **BÁO CÁO TỔNG QUAN HỆ THỐNG ZESTIA**\n\n" +
+            String replyText = String.format("📊 **TỔNG QUAN HỆ THỐNG ZESTIA**\n\n" +
+                    "• **Doanh thu từ đơn hoàn thành**: %,.0fđ\n" +
                     "• **Tổng sản phẩm đang kinh doanh**: %d sản phẩm\n" +
                     "• **Tổng đơn hàng hệ thống**: %d đơn hàng\n" +
-                    "• **Tổng tồn kho hiện tại**: %d chiếc\n" +
-                    "• **Trạng thái hệ thống**: ✅ Hoạt động ổn định, sẵn sàng phục vụ.",
-                    totalProducts, totalOrders, totalStockCount);
+                    "• **Tổng tồn kho hiện tại**: %d chiếc\n\n" +
+                    "Số liệu trên là tổng tích lũy. Hãy mở trang Báo cáo để lọc theo ngày hoặc tháng.",
+                    revenue, totalProducts, totalOrders, totalStockCount);
 
             cards.add(Map.of(
                     "type", "stats",
-                    "title", "Thống kê thời gian thực",
+                    "title", "Thống kê hiện tại",
+                    "revenue", revenue,
                     "totalProducts", totalProducts,
                     "totalOrders", totalOrders,
-                    "totalStock", totalStockCount,
-                    "status", "Ổn định"
+                    "totalStock", totalStockCount
             ));
 
             return Map.of("reply", replyText, "configured", true, "cards", cards);
         }
 
         if (msg.contains("kho") || msg.contains("tồn kho") || msg.contains("hết hàng") || msg.contains("cảnh báo")) {
-            List<SanPhamChiTiet> lowStockVariants = sanPhamChiTietRepository.findAll().stream()
-                    .filter(this::activeVariant)
-                    .filter(v -> v.getSoLuong() != null && v.getSoLuong() <= 5)
-                    .limit(6)
-                    .toList();
+            List<SanPhamChiTiet> lowStockVariants = sanPhamChiTietRepository.findLowStockVariants(
+                    PageRequest.of(0, 6));
 
             List<Map<String, Object>> lowStockList = new ArrayList<>();
             for (SanPhamChiTiet vct : lowStockVariants) {
@@ -565,7 +616,7 @@ public class AiChatService {
             }
 
             List<SanPham> items = sanPhamRepository.findActiveForAi(PageRequest.of(0, 5));
-            StringBuilder sb = new StringBuilder("📦 **BÁO CÁO TRA CỨU TỒN KHO CHUYÊN SÂU ZESTIA AI PRO**\n\n");
+            StringBuilder sb = new StringBuilder("**TỒN KHO HIỆN TẠI**\n\n");
             if (!lowStockList.isEmpty()) {
                 sb.append(String.format("⚠️ **CẢNH BÁO**: Phát hiện %d biến thể sản phẩm có tồn kho $\\le 5$ chiếc cần nhập thêm ngay!\n\n", lowStockList.size()));
             }
@@ -595,40 +646,32 @@ public class AiChatService {
                 cards.add(outfitCard);
             }
 
-            StringBuilder sb = new StringBuilder("💡 **GỢI Ý PHỐI ĐỒ POS CHUYÊN NGHIỆP (STYLIST COPILOT v3.0)**\n\n");
-            sb.append("Dưới đây là Set Outfit được AI Stylist thiết kế tối ưu cho nhân viên tư vấn bán chéo (Cross-sell) tại quầy thu ngân:\n");
+            StringBuilder sb = new StringBuilder("**GỢI Ý PHỐI ĐỒ TẠI QUẦY**\n\n");
+            sb.append("Các sản phẩm dưới đây đang bán và còn biến thể có tồn kho để nhân viên tham khảo khi tư vấn:\n");
             return Map.of("reply", sb.toString(), "configured", true, "cards", cards);
         }
 
         if (msg.contains("voucher") || msg.contains("mã") || msg.contains("khuyến mãi") || msg.contains("giam gia") || msg.contains("giảm giá")) {
-            List<GiamGia> vouchers = giamGiaRepository.findAll().stream()
-                    .filter(this::activeVoucher).toList();
+            List<GiamGia> vouchers = giamGiaRepository.findPubliclyUsableForAi(
+                    LocalDate.now(), PageRequest.of(0, 20));
             StringBuilder sb = new StringBuilder("🎟️ **DANH SÁCH VOUCHER / MÃ GIẢM GIÁ ĐANG ÁP DỤNG**\n\n");
             if (vouchers.isEmpty()) {
                 sb.append("Hiện chưa có voucher nào đang hoạt động.\n");
             } else {
                 for (GiamGia g : vouchers) {
-                    sb.append(String.format("• **Mã %s** (%s): Giảm %,.0fđ cho đơn từ %,.0fđ\n",
-                            safe(g.getMaGiamGia()), safe(g.getTenGiamGia()),
-                            g.getGioTriGiam() != null ? g.getGioTriGiam() : BigDecimal.ZERO,
-                            g.getGiaTriDonToiThieu() != null ? g.getGiaTriDonToiThieu() : BigDecimal.ZERO));
-                    cards.add(Map.of(
-                            "type", "voucher",
-                            "code", safe(g.getMaGiamGia()),
-                            "discount", g.getGioTriGiam() != null ? g.getGioTriGiam() : BigDecimal.ZERO,
-                            "minOrder", g.getGiaTriDonToiThieu() != null ? g.getGiaTriDonToiThieu() : BigDecimal.ZERO,
-                            "description", safe(g.getTenGiamGia())
-                    ));
+                    sb.append("• **Mã ").append(safe(g.getMaGiamGia())).append("**: ")
+                            .append(voucherDisplayDescription(g)).append("\n");
+                    cards.add(voucherCard(g));
                 }
             }
             return Map.of("reply", sb.toString(), "configured", true, "cards", cards);
         }
 
         if (msg.contains("soạn") || msg.contains("trả lời") || msg.contains("xin lỗi") || msg.contains("cskh")) {
-            String replyText = "✍️ **MẪU SOẠN TIN TRẢ LỜI KHÁCH HÀNG CHUYÊN NGHIỆP (BẤM NÚT ĐỂ SAO CHÉP):**\n\n" +
-                    "\"Kính chào Quý khách! Zestia vô cùng xin lỗi vì sự bất tiện mà Quý khách đã gặp phải. " +
-                    "Đội ngũ nhân viên Zestia đã kiểm tra và gửi mã voucher ưu đãi đặc biệt dành riêng cho đơn hàng tiếp theo của Quý khách. " +
-                    "Zestia cảm ơn Quý khách đã luôn yêu thương và đồng hành cùng thương hiệu!\"";
+            String replyText = "✍️ **MẪU SOẠN TIN TRẢ LỜI KHÁCH HÀNG (BẤM NÚT ĐỂ SAO CHÉP):**\n\n" +
+                    "\"Kính chào Quý khách! Zestia chân thành xin lỗi vì sự bất tiện Quý khách đã gặp phải. " +
+                    "Đội ngũ cửa hàng đang kiểm tra trường hợp này và sẽ phản hồi ngay khi có kết quả chính xác. " +
+                    "Cảm ơn Quý khách đã kiên nhẫn và đồng hành cùng Zestia.\"";
             return Map.of("reply", replyText, "configured", true, "copyable", true);
         }
 
@@ -646,46 +689,41 @@ public class AiChatService {
 
         if (msg.contains("dự tiệc") || msg.contains("đi tiệc") || msg.contains("dạ hội") || msg.contains("sang trọng")) {
             List<SanPham> items = sanPhamRepository.findActiveForAi(PageRequest.of(0, 20)).stream()
-                    .filter(v -> v.getLoaiSanPham() != null && (
-                        v.getLoaiSanPham().getTenLoaiSanPham().contains("Váy") ||
-                        v.getLoaiSanPham().getTenLoaiSanPham().contains("Đầm") ||
-                        v.getLoaiSanPham().getTenLoaiSanPham().contains("Sản phẩm")
-                    ))
+                    .filter(v -> v.getLoaiSanPham() != null)
+                    .filter(v -> {
+                        String category = normalizeForSearch(v.getLoaiSanPham().getTenLoaiSanPham());
+                        return category.contains("vay") || category.contains("dam") || category.contains("du tiec");
+                    })
                     .limit(3).toList();
             if (items.isEmpty()) items = sanPhamRepository.findActiveForAi(PageRequest.of(0, 3));
             items.forEach(v -> cards.add(productCardSimple(v)));
             return Map.of(
-                "reply", "👗 **GỢI Ý THỜI TRANG DỰ TIỆC SANG TRỌNG & TÔN DÁNG**\n\nDưới đây là những thiết kế dạ hội & dự tiệc cao cấp nhất tại Zestia:",
+                "reply", "**Gợi ý trang phục dự tiệc**\n\nCác sản phẩm dưới đây đang bán và còn biến thể có tồn kho:",
                 "cards", cards, "configured", false
             );
         }
 
         if (msg.contains("công sở") || msg.contains("đi làm") || msg.contains("sơ mi") || msg.contains("văn phòng")) {
             List<SanPham> items = sanPhamRepository.findActiveForAi(PageRequest.of(0, 20)).stream()
-                    .filter(v -> v.getLoaiSanPham() != null && (
-                        v.getLoaiSanPham().getTenLoaiSanPham().contains("Áo") ||
-                        v.getLoaiSanPham().getTenLoaiSanPham().contains("Quần")
-                    ))
+                    .filter(v -> v.getLoaiSanPham() != null)
+                    .filter(v -> {
+                        String category = normalizeForSearch(v.getLoaiSanPham().getTenLoaiSanPham());
+                        return category.contains("ao") || category.contains("quan") || category.contains("cong so");
+                    })
                     .limit(3).toList();
             if (items.isEmpty()) items = sanPhamRepository.findActiveForAi(PageRequest.of(0, 3));
             items.forEach(v -> cards.add(productCardSimple(v)));
             return Map.of(
-                "reply", "💼 **OUTFIT CÔNG SỞ THANH LỊCH & CHUYÊN NGHIỆP**\n\nZestia đề xuất set công sở chuẩn phong cách Hàn Quốc:",
+                "reply", "**Gợi ý trang phục công sở**\n\nCác sản phẩm dưới đây đang bán và còn biến thể có tồn kho:",
                 "cards", cards, "configured", false
             );
         }
 
         if (msg.contains("voucher") || msg.contains("mã giảm") || msg.contains("khuyến mãi") || msg.contains("ưu đãi")) {
-            List<GiamGia> vouchers = giamGiaRepository.findAll().stream()
-                    .filter(this::activeVoucher).limit(5).toList();
+            List<GiamGia> vouchers = giamGiaRepository.findPubliclyUsableForAi(
+                    LocalDate.now(), PageRequest.of(0, 5));
             if (!vouchers.isEmpty()) {
-                vouchers.forEach(v -> cards.add(new java.util.HashMap<>(Map.of(
-                    "type", "voucher",
-                    "code", safe(v.getMaGiamGia()),
-                    "discount", v.getGioTriGiam() != null ? v.getGioTriGiam() : BigDecimal.ZERO,
-                    "minOrder", v.getGiaTriDonToiThieu() != null ? v.getGiaTriDonToiThieu() : BigDecimal.ZERO,
-                    "description", safe(v.getTenGiamGia())
-                ))));
+                vouchers.forEach(v -> cards.add(voucherCard(v)));
                 return Map.of(
                     "reply", "🎟️ **DANH SÁCH VOUCHER ĐANG ÁP DỤNG TẠI ZESTIA**\n\nBấm **\"Áp dụng\"** để sao chép mã và dùng khi thanh toán:",
                     "cards", cards, "configured", false
@@ -698,16 +736,7 @@ public class AiChatService {
         }
 
         if (msg.contains("size") || msg.contains("số đo") || msg.contains("cân nặng") || msg.contains("chiều cao")) {
-            return Map.of(
-                "reply", "📏 **BẢNG TƯ VẤN SIZE CHUẨN ZESTIA**\n\n" +
-                         "• **Size XS**: 35–40kg | Ngực 78–82cm, Eo 58–62cm\n" +
-                         "• **Size S**: 40–48kg | Ngực 82–85cm, Eo 62–66cm\n" +
-                         "• **Size M**: 49–55kg | Ngực 86–90cm, Eo 67–71cm\n" +
-                         "• **Size L**: 56–62kg | Ngực 91–95cm, Eo 72–76cm\n" +
-                         "• **Size XL**: 63–70kg | Ngực 96–100cm, Eo 77–82cm\n\n" +
-                         "💡 *Mẹo: Nếu số đo ở giữa 2 size, hãy chọn size lớn hơn để thoải mái hơn!*",
-                "configured", false
-            );
+            return buildSizeGuideResponse(message);
         }
 
         if (msg.contains("đơn") || msg.contains("trạng thái") || msg.contains("tra cứu") || msg.contains("đơn hàng")) {
@@ -720,61 +749,143 @@ public class AiChatService {
             );
         }
 
-        List<SanPham> featured = sanPhamRepository.findActiveForAi(PageRequest.of(0, 3));
-        featured.forEach(v -> cards.add(productCardSimple(v)));
+        List<SanPham> featured = relevantProducts(message, 3);
+        featured.forEach(product -> addProductCard(cards, product));
         return Map.of(
-            "reply", "✨ **SẢN PHẨM NỔI BẬT ĐƯỢC YÊU THÍCH NHẤT TUẦN NÀY**\n\nXem ngay những thiết kế mới cập bến tại Zestia:",
+            "reply", "**Một số sản phẩm đang bán tại Zestia**\n\nBạn có thể cho biết thêm ngân sách, màu, size hoặc dịp mặc để nhận gợi ý sát hơn:",
             "cards", cards, "configured", false
         );
+    }
+
+    private Map<String, Object> buildSizeGuideResponse(String message) {
+        String query = normalizeForSearch(message);
+        List<SanPham> products = sanPhamRepository.findActiveForAi(PageRequest.of(0, 100));
+        List<Integer> ids = products.stream().map(SanPham::getId).filter(Objects::nonNull).toList();
+        Map<Integer, List<SanPhamChiTiet>> variantsByProduct = ids.isEmpty()
+                ? Map.of()
+                : sanPhamChiTietRepository.findBySanPhamIdIn(ids).stream()
+                        .filter(this::activeVariant)
+                        .collect(Collectors.groupingBy(variant -> variant.getSanPham().getId()));
+
+        SanPham selected = products.stream()
+                .filter(product -> !variantsByProduct.getOrDefault(product.getId(), List.of()).isEmpty())
+                .filter(product -> {
+                    String code = normalizeForSearch(product.getMaSanPham());
+                    int score = productMatchScore(product,
+                            variantsByProduct.getOrDefault(product.getId(), List.of()), query);
+                    return (!code.isBlank() && query.contains(code)) || score >= 2;
+                })
+                .max(Comparator.comparingInt(product -> productMatchScore(
+                        product, variantsByProduct.getOrDefault(product.getId(), List.of()), query)))
+                .orElse(null);
+
+        if (selected == null) {
+            return Map.of(
+                    "reply", "Bảng size được lưu riêng theo từng sản phẩm và phom dáng. " +
+                            "Bạn hãy gửi mã sản phẩm (ví dụ ASM001) hoặc mở trang chi tiết sản phẩm để xem số đo chính xác.",
+                    "configured", false
+            );
+        }
+
+        List<HuongDanKichThuoc> guides = sizeGuideRepository
+                .findBySanPhamIdOrderByKichThuocId(selected.getId());
+        if (guides.isEmpty()) {
+            return Map.of(
+                    "reply", "Sản phẩm " + safe(selected.getTenSanPham()) +
+                            " hiện chưa có bảng số đo. Bạn có thể yêu cầu kết nối nhân viên để được tư vấn trực tiếp.",
+                    "configured", false
+            );
+        }
+
+        Integer height = extractMeasurement(query, "(?:cao|chieu cao)\\s*(\\d{3})");
+        Integer weight = extractMeasurement(query, "(?:nang|can nang)\\s*(\\d{2,3})");
+        StringBuilder reply = new StringBuilder("**Bảng size theo dữ liệu của ")
+                .append(safe(selected.getTenSanPham())).append(" (" )
+                .append(safe(selected.getMaSanPham())).append(")**\n\n");
+        for (HuongDanKichThuoc guide : guides) {
+            boolean matched = within(height, guide.getChieuCaoTu(), guide.getChieuCaoDen())
+                    && within(weight, guide.getCanNangTu(), guide.getCanNangDen())
+                    && (height != null || weight != null);
+            reply.append("- Size ")
+                    .append(guide.getKichThuoc() != null ? safe(guide.getKichThuoc().getTenKichThuoc()) : "N/A")
+                    .append(": cao ").append(range(guide.getChieuCaoTu(), guide.getChieuCaoDen(), "cm"))
+                    .append(", nặng ").append(range(guide.getCanNangTu(), guide.getCanNangDen(), "kg"))
+                    .append(", ngực ").append(range(guide.getVongNgucTu(), guide.getVongNgucDen(), "cm"))
+                    .append(", eo ").append(range(guide.getVongEoTu(), guide.getVongEoDen(), "cm"));
+            if (matched) reply.append(" (phù hợp với số đo bạn cung cấp)");
+            reply.append("\n");
+        }
+        reply.append("\nNếu các số đo nằm ở nhiều size, hãy ưu tiên số đo vòng lớn nhất và phom mặc mong muốn.");
+
+        Map<String, Object> card = productCardSimple(selected);
+        return card.isEmpty()
+                ? Map.of("reply", reply.toString(), "configured", false)
+                : Map.of("reply", reply.toString(), "configured", false, "cards", List.of(card));
+    }
+
+    private Integer extractMeasurement(String text, String expression) {
+        Matcher matcher = Pattern.compile(expression).matcher(text);
+        if (!matcher.find()) return null;
+        try {
+            return Integer.valueOf(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private boolean within(Integer value, Integer minimum, Integer maximum) {
+        if (value == null) return true;
+        return (minimum == null || value >= minimum) && (maximum == null || value <= maximum);
+    }
+
+    private String range(Integer minimum, Integer maximum, String unit) {
+        if (minimum == null && maximum == null) return "chưa cập nhật";
+        if (minimum == null) return "đến " + maximum + unit;
+        if (maximum == null) return "từ " + minimum + unit;
+        return minimum + "-" + maximum + unit;
     }
 
     private Map<String, Object> buildStylistResponse(String msg) {
         List<Map<String, Object>> cards = new ArrayList<>();
         List<SanPham> allActive = sanPhamRepository.findActiveForAi(PageRequest.of(0, 30));
 
-        SanPham dress = allActive.stream().filter(v -> v.getLoaiSanPham() != null &&
-                (v.getLoaiSanPham().getTenLoaiSanPham().contains("Váy") || v.getLoaiSanPham().getTenLoaiSanPham().contains("Đầm") || v.getLoaiSanPham().getTenLoaiSanPham().contains("Sản phẩm")))
-                .findFirst().orElse(null);
-        SanPham top = allActive.stream().filter(v -> v.getLoaiSanPham() != null &&
-                v.getLoaiSanPham().getTenLoaiSanPham().contains("Áo")).findFirst().orElse(null);
-        SanPham bottom = allActive.stream().filter(v -> v.getLoaiSanPham() != null &&
-                (v.getLoaiSanPham().getTenLoaiSanPham().contains("Quần") || v.getLoaiSanPham().getTenLoaiSanPham().contains("Chân váy")))
-                .findFirst().orElse(null);
-        SanPham acc = allActive.stream().filter(v -> v.getLoaiSanPham() != null &&
-                v.getLoaiSanPham().getTenLoaiSanPham().contains("Phụ kiện")).findFirst().orElse(null);
+        SanPham dress = firstByCodePrefix(allActive, "VDH", "DTP");
+        SanPham top = firstByCodePrefix(allActive, "ASM", "AKH");
+        SanPham bottom = firstByCodePrefix(allActive, "QJN", "QTY");
+        SanPham acc = firstByCodePrefix(allActive, "PKT");
 
         String occasion;
         String styleNote;
 
         if (msg.contains("tiệc") || msg.contains("dạ hội") || msg.contains("sang trọng")) {
-            occasion = "🥂 TIỆC TỐI / DẠ HỘI";
-            styleNote = "Set đồ lộng lẫy, tôn dáng – kết hợp phụ kiện ánh kim sẽ là lựa chọn hoàn hảo!";
-            if (dress != null) cards.add(productCardSimple(dress));
+            occasion = "TIỆC TỐI / DẠ HỘI";
+            styleNote = "Ưu tiên đầm dự tiệc và một phụ kiện đang còn hàng.";
+            addProductCard(cards, dress);
         } else if (msg.contains("hẹn hò") || msg.contains("cafe") || msg.contains("dạo phố")) {
-            occasion = "☕ HẸN HÒ / CAFE / DẠO PHỐ";
-            styleNote = "Nhẹ nhàng, nữ tính nhưng vẫn cá tính – bí quyết cho buổi hẹn hò!";
-            if (top != null) cards.add(productCardSimple(top));
-            if (bottom != null) cards.add(productCardSimple(bottom));
+            occasion = "HẸN HÒ / CAFE / DẠO PHỐ";
+            styleNote = "Gợi ý một áo và một quần đang còn hàng để phối theo phong cách gọn gàng.";
+            addProductCard(cards, top);
+            addProductCard(cards, bottom);
         } else if (msg.contains("du lịch") || msg.contains("biển") || msg.contains("phượt")) {
-            occasion = "🏖️ DU LỊCH / NGOÀI TRỜI";
-            styleNote = "Thoáng mát, linh hoạt và dễ phối – công thức du lịch chuẩn!";
-            if (top != null) cards.add(productCardSimple(top));
-            if (bottom != null) cards.add(productCardSimple(bottom));
+            occasion = "DU LỊCH / NGOÀI TRỜI";
+            styleNote = "Gợi ý các món tách rời đang còn hàng để dễ thay đổi cách phối.";
+            addProductCard(cards, top);
+            addProductCard(cards, bottom);
         } else if (msg.contains("công sở") || msg.contains("đi làm") || msg.contains("văn phòng")) {
-            occasion = "💼 CÔNG SỞ / VĂN PHÒNG";
-            styleNote = "Chuyên nghiệp, gọn gàng nhưng vẫn thời trang là yếu tố then chốt!";
-            if (top != null) cards.add(productCardSimple(top));
-            if (bottom != null) cards.add(productCardSimple(bottom));
+            occasion = "CÔNG SỞ / VĂN PHÒNG";
+            styleNote = "Gợi ý áo và quần đang còn hàng cho trang phục công sở.";
+            addProductCard(cards, top);
+            addProductCard(cards, bottom);
         } else {
-            occasion = "✨ EVERYDAY CHIC";
-            styleNote = "Set đồ năng động, phù hợp mọi dịp trong ngày!";
-            if (top != null) cards.add(productCardSimple(top));
-            if (dress != null && cards.size() < 2) cards.add(productCardSimple(dress));
-            if (bottom != null && cards.size() < 2) cards.add(productCardSimple(bottom));
+            occasion = "TRANG PHỤC HẰNG NGÀY";
+            styleNote = "Một vài sản phẩm đang bán để bạn bắt đầu lựa chọn.";
+            addProductCard(cards, top);
+            if (cards.size() < 2) addProductCard(cards, dress);
+            if (cards.size() < 2) addProductCard(cards, bottom);
         }
 
-        if (acc != null && cards.size() < 3) cards.add(productCardSimple(acc));
-        if (cards.isEmpty()) allActive.stream().limit(3).forEach(v -> cards.add(productCardSimple(v)));
+        if (cards.size() < 3) addProductCard(cards, acc);
+        if (cards.isEmpty()) allActive.stream().limit(3).forEach(product -> addProductCard(cards, product));
 
         Map<String, Object> outfitCard = buildOutfitCard("Set Outfit Zestia " + occasion, styleNote, allActive);
         if (!outfitCard.isEmpty()) {
@@ -782,7 +893,7 @@ public class AiChatService {
         }
 
         return Map.of(
-            "reply", String.format("✨ **GỢI Ý PHỐI ĐỒ – %s**\n\n%s\n\nDưới đây là set đồ Zestia Stylist đề xuất riêng cho bạn:", occasion, styleNote),
+            "reply", String.format("**Gợi ý phối đồ - %s**\n\n%s\n\nCác gợi ý dùng dữ liệu sản phẩm và tồn kho hiện tại:", occasion, styleNote),
             "cards", cards, "configured", false
         );
     }
@@ -795,81 +906,112 @@ public class AiChatService {
         boolean wantsVoucher = msg.contains("voucher") || msg.contains("mã giảm") || msg.contains("khuyến mãi");
 
         if (wantsVoucher) {
-            giamGiaRepository.findAll().stream().filter(this::activeVoucher).limit(3).forEach(v ->
-                cards.add(new java.util.HashMap<>(Map.of(
-                    "type", "voucher",
-                    "code", safe(v.getMaGiamGia()),
-                    "discount", v.getGioTriGiam() != null ? v.getGioTriGiam() : BigDecimal.ZERO,
-                    "minOrder", v.getGiaTriDonToiThieu() != null ? v.getGiaTriDonToiThieu() : BigDecimal.ZERO,
-                    "description", safe(v.getTenGiamGia())
-                )))
+            giamGiaRepository.findPubliclyUsableForAi(LocalDate.now(), PageRequest.of(0, 3)).forEach(v ->
+                cards.add(voucherCard(v))
             );
         } else if ("stylist".equals(mode) || msg.contains("set") || msg.contains("outfit") || msg.contains("phối")) {
-            List<SanPham> products = sanPhamRepository.findActiveForAi(PageRequest.of(0, 20));
-            Map<String, Object> outfit = buildOutfitCard("Set Lookbook Phối Đồ Cao Cấp Zestia", "Xu hướng thời trang 2026", products);
+            List<SanPham> products = relevantProducts(message, 20);
+            Map<String, Object> outfit = buildOutfitCard("Gợi ý phối đồ Zestia", "Các sản phẩm đang bán và còn hàng", products);
             if (!outfit.isEmpty()) cards.add(outfit);
         } else if (wantsProducts) {
-            List<SanPham> products = sanPhamRepository.findActiveForAi(PageRequest.of(0, 20));
-            products.stream().limit(3).forEach(v -> cards.add(productCardSimple(v)));
+            relevantProducts(message, 3).forEach(product -> addProductCard(cards, product));
         }
         return cards;
     }
 
+    private List<SanPham> relevantProducts(String message, int limit) {
+        int fetchSize = Math.max(30, Math.min(100, limit * 10));
+        List<SanPham> products = sanPhamRepository.findActiveForAi(PageRequest.of(0, fetchSize));
+        List<Integer> ids = products.stream().map(SanPham::getId).filter(Objects::nonNull).toList();
+        if (ids.isEmpty()) return List.of();
+        Map<Integer, List<SanPhamChiTiet>> variantsByProduct = sanPhamChiTietRepository
+                .findBySanPhamIdIn(ids).stream()
+                .filter(this::activeVariant)
+                .collect(Collectors.groupingBy(variant -> variant.getSanPham().getId()));
+        List<SanPham> available = products.stream()
+                .filter(product -> !variantsByProduct.getOrDefault(product.getId(), List.of()).isEmpty())
+                .toList();
+        return prioritizeProducts(available, variantsByProduct, message).stream().limit(limit).toList();
+    }
+
     private Map<String, Object> buildOutfitCard(String title, String occasion, List<SanPham> products) {
         if (products == null || products.isEmpty()) return Map.of();
-        SanPham top = products.stream().filter(p -> p.getMaSanPham() != null && (p.getMaSanPham().startsWith("ASM") || p.getMaSanPham().startsWith("AKH"))).findFirst().orElse(null);
-        SanPham bottom = products.stream().filter(p -> p.getMaSanPham() != null && (p.getMaSanPham().startsWith("QJN") || p.getMaSanPham().startsWith("QTY"))).findFirst().orElse(null);
-        SanPham dress = products.stream().filter(p -> p.getMaSanPham() != null && (p.getMaSanPham().startsWith("VDH") || p.getMaSanPham().startsWith("DTP"))).findFirst().orElse(null);
-        SanPham acc = products.stream().filter(p -> p.getMaSanPham() != null && p.getMaSanPham().startsWith("PKT")).findFirst().orElse(null);
+        SanPham top = firstByCodePrefix(products, "ASM", "AKH");
+        SanPham bottom = firstByCodePrefix(products, "QJN", "QTY");
+        SanPham dress = firstByCodePrefix(products, "VDH", "DTP");
+        SanPham acc = firstByCodePrefix(products, "PKT");
 
         List<Map<String, Object>> items = new ArrayList<>();
-        if (top != null) items.add(productCardSimple(top));
-        if (bottom != null) items.add(productCardSimple(bottom));
-        if (items.size() < 2 && dress != null) items.add(productCardSimple(dress));
-        if (acc != null) items.add(productCardSimple(acc));
+        String normalizedOccasion = normalizeForSearch(occasion);
+        if (normalizedOccasion.contains("tiec") || normalizedOccasion.contains("da hoi")) {
+            addProductCard(items, dress);
+        } else {
+            addProductCard(items, top);
+            addProductCard(items, bottom);
+            if (items.size() < 2) addProductCard(items, dress);
+        }
+        addProductCard(items, acc);
 
         if (items.isEmpty()) {
-            products.stream().limit(3).forEach(p -> items.add(productCardSimple(p)));
+            products.stream().limit(3).forEach(product -> addProductCard(items, product));
         }
 
         BigDecimal totalPrice = items.stream()
                 .map(i -> (BigDecimal) i.getOrDefault("price", BigDecimal.ZERO))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal comboPrice = totalPrice.multiply(BigDecimal.valueOf(0.9)).setScale(0, java.math.RoundingMode.HALF_UP);
-
         Map<String, Object> outfit = new java.util.HashMap<>();
         outfit.put("type", "outfit");
         outfit.put("title", title);
         outfit.put("occasion", occasion);
         outfit.put("items", items);
         outfit.put("totalPrice", totalPrice);
-        outfit.put("comboPrice", comboPrice);
-        outfit.put("discountPercent", 10);
         return outfit;
+    }
+
+    private SanPham firstByCodePrefix(List<SanPham> products, String... prefixes) {
+        if (products == null || prefixes == null) return null;
+        return products.stream()
+                .filter(product -> product.getMaSanPham() != null)
+                .filter(product -> java.util.Arrays.stream(prefixes)
+                        .anyMatch(prefix -> product.getMaSanPham().startsWith(prefix)))
+                .findFirst()
+                .orElse(null);
     }
 
     private Map<String, Object> productCardSimple(SanPham v) {
         if (v == null) return Map.of();
         List<SanPhamChiTiet> variants = activeVariants(v);
-        BigDecimal price = lowestPrice(variants);
+        SanPhamChiTiet selectedVariant = variants.stream()
+                .min(Comparator.comparing(variant -> promotionPricingService.quote(variant).effectivePrice()))
+                .orElse(null);
+        if (selectedVariant == null) return Map.of();
+        BigDecimal price = promotionPricingService.quote(selectedVariant).effectivePrice();
         String img = productImage(variants, "/images/products/dress1.jpg");
-        int stock = totalStock(variants);
+        int stock = Optional.ofNullable(selectedVariant.getSoLuong()).orElse(0);
         java.util.Map<String, Object> card = new java.util.HashMap<>();
         card.put("type", "product");
         card.put("id", v.getId() != null ? v.getId() : 0);
+        card.put("variantId", selectedVariant.getId());
         card.put("name", safe(v.getTenSanPham()));
-        card.put("tenVay", safe(v.getTenSanPham()));
         card.put("price", price);
         card.put("image", img);
         card.put("category", v.getLoaiSanPham() != null ? safe(v.getLoaiSanPham().getTenLoaiSanPham()) : "Thời trang");
         card.put("stock", stock);
+        card.put("color", selectedVariant.getMauSac() != null ? safe(selectedVariant.getMauSac().getTenMauSac()) : "");
+        card.put("size", selectedVariant.getKichThuoc() != null ? safe(selectedVariant.getKichThuoc().getTenKichThuoc()) : "");
         return card;
+    }
+
+    private void addProductCard(List<Map<String, Object>> items, SanPham product) {
+        Map<String, Object> card = productCardSimple(product);
+        if (!card.isEmpty()) items.add(card);
     }
 
     private List<SanPhamChiTiet> activeVariants(SanPham product) {
         if (product == null || product.getId() == null) return List.of();
         return sanPhamChiTietRepository.findBySanPhamId(product.getId()).stream()
-                .filter(variant -> variant.getTrangThai() == null || variant.getTrangThai() == 1)
+                .filter(variant -> Byte.valueOf((byte) 1).equals(variant.getTrangThai()))
+                .filter(variant -> variant.getSoLuong() != null && variant.getSoLuong() > 0)
                 .toList();
     }
 
@@ -900,17 +1042,37 @@ public class AiChatService {
                 .orElse(fallback);
     }
 
-    private void saveAiChatLog(String mode, String prompt, String replyText) {
+    private Map<String, Object> logAndReturn(String mode, String prompt, ChatUser user,
+                                             long startedAt, String actualModel,
+                                             Map<String, Object> response) {
+        long elapsedMillis = Math.max(0L, (System.nanoTime() - startedAt) / 1_000_000L);
+        saveAiChatLog(mode, prompt, Objects.toString(response.get("reply"), ""),
+                user, actualModel, (int) Math.min(Integer.MAX_VALUE, elapsedMillis));
+        return response;
+    }
+
+    private void saveAiChatLog(String mode, String prompt, String replyText,
+                               ChatUser user, String actualModel, int executionTimeMs) {
         try {
+            KhachHang customer = user != null
+                    && "KhachHang".equalsIgnoreCase(user.role())
+                    && user.userId() != null
+                    ? customerRepository.findById(user.userId()).orElse(null)
+                    : null;
+            String modelName = actualModel == null || actualModel.isBlank() ? "internal-rag" : actualModel.trim();
+            if (modelName.length() > 50) modelName = modelName.substring(0, 50);
             aiChatLogRepository.save(AiChatLog.builder()
+                    .khachHang(customer)
                     .mode(mode != null ? mode : "assistant")
                     .userPrompt(prompt != null ? prompt : "")
                     .aiResponse(replyText != null ? replyText : "")
-                    .modelName(configured() ? model : "internal-rag")
-                    .executionTimeMs(120)
+                    .modelName(modelName)
+                    .executionTimeMs(executionTimeMs)
                     .ngayTao(LocalDateTime.now())
                     .build());
-        } catch (Exception ignored) {}
+        } catch (RuntimeException ignored) {
+            // Chat must remain available even when analytics persistence is unavailable.
+        }
     }
 
     public record ChatUser(String role, Integer userId) {

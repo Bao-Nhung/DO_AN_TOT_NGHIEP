@@ -10,6 +10,8 @@ import com.zestia.datn.zestia.repository.NhanVienRepository;
 import com.zestia.datn.zestia.repository.SupportConversationRepository;
 import com.zestia.datn.zestia.repository.SupportMessageRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,16 +75,31 @@ public class SupportChatService {
     }
 
     @Transactional
-    public List<Map<String, Object>> getStaffConversations(Integer employeeId, boolean admin) {
+    public Map<String, Object> getStaffConversations(Integer employeeId, boolean admin, int page, int size) {
         List<SupportConversation> conversations = conversationRepository.findByTrangThaiInOrderByNgayCapNhatDesc(OPEN_STATUSES);
         LocalDateTime now = LocalDateTime.now();
-        conversations.forEach(conversation -> refreshAssignment(conversation, now));
-        return conversations.stream()
-                .filter(conversation -> admin
-                        || conversation.getNhanVien() == null
-                        || Objects.equals(conversation.getNhanVien().getId(), employeeId))
-                .map(this::staffSummary)
-                .toList();
+        rebalanceAssignments(conversations, now);
+
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(50, Math.max(1, size));
+        var result = conversationRepository.findOpenForStaff(
+                OPEN_STATUSES,
+                employeeId,
+                admin,
+                PageRequest.of(safePage, safeSize,
+                        Sort.by(Sort.Direction.DESC, "ngayCapNhat").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        Map<Integer, String> latestMessages = latestMessages(result.getContent());
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", result.getContent().stream()
+                .map(conversation -> staffSummary(conversation,
+                        latestMessages.getOrDefault(conversation.getId(), "")))
+                .toList());
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -176,9 +193,83 @@ public class SupportChatService {
         }
     }
 
+    private void rebalanceAssignments(List<SupportConversation> conversations, LocalDateTime now) {
+        Map<Integer, NhanVien> availableEmployees = checkedInShifts(now).stream()
+                .map(LichLamViec::getNhanVien)
+                .filter(Objects::nonNull)
+                .filter(employee -> Byte.valueOf((byte) 1).equals(employee.getTinhTrangLamViec()))
+                .filter(this::isCustomerSupportRole)
+                .collect(java.util.stream.Collectors.toMap(
+                        NhanVien::getId,
+                        employee -> employee,
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+        Map<Integer, Long> assignedCounts = new HashMap<>();
+        for (SupportConversation conversation : conversations) {
+            if (conversation.getNhanVien() != null) {
+                assignedCounts.merge(conversation.getNhanVien().getId(), 1L, Long::sum);
+            }
+        }
+
+        for (SupportConversation conversation : conversations) {
+            NhanVien assigned = conversation.getNhanVien();
+            boolean assignedAvailable = assigned != null && (
+                    isActiveAdmin(assigned) || availableEmployees.containsKey(assigned.getId())
+            );
+            if (assigned != null && !assignedAvailable) {
+                String previousName = assigned.getHoVaTen();
+                conversation.setNhanVien(null);
+                conversation.setTrangThai(WAITING);
+                conversation.setNgayNhan(null);
+                conversation.setNgayCapNhat(now);
+                conversationRepository.save(conversation);
+                saveMessage(conversation, "SYSTEM", "Zestia",
+                        previousName + " đã kết thúc ca. Zestia đang chuyển yêu cầu cho nhân viên khác.", now);
+                assignedCounts.computeIfPresent(assigned.getId(), (id, count) -> Math.max(0L, count - 1));
+                assigned = null;
+            }
+
+            if (assigned == null && !WAITING.equals(conversation.getTrangThai())) {
+                conversation.setTrangThai(WAITING);
+                conversation.setNgayNhan(null);
+                conversation.setNgayCapNhat(now);
+                conversationRepository.save(conversation);
+            }
+            if (assigned == null && !availableEmployees.isEmpty()) {
+                NhanVien selected = availableEmployees.values().stream()
+                        .min(Comparator.comparingLong(employee -> assignedCounts.getOrDefault(employee.getId(), 0L)))
+                        .orElse(null);
+                if (selected != null) {
+                    conversation.setNhanVien(selected);
+                    conversation.setTrangThai(ACTIVE);
+                    conversation.setNgayNhan(now);
+                    conversation.setNgayCapNhat(now);
+                    conversationRepository.save(conversation);
+                    saveMessage(conversation, "SYSTEM", "Zestia",
+                            selected.getHoVaTen() + " đang trực và đã tiếp nhận yêu cầu.", now);
+                    assignedCounts.merge(selected.getId(), 1L, Long::sum);
+                }
+            } else if (assigned != null && !ACTIVE.equals(conversation.getTrangThai())) {
+                conversation.setTrangThai(ACTIVE);
+                conversation.setNgayCapNhat(now);
+                conversationRepository.save(conversation);
+            }
+        }
+    }
+
+    private boolean isActiveAdmin(NhanVien employee) {
+        return Byte.valueOf((byte) 1).equals(employee.getTinhTrangLamViec())
+                && employee.getVaiTro() != null
+                && "Admin".equalsIgnoreCase(employee.getVaiTro().getTenVaiTro());
+    }
+
     private boolean isEmployeeAvailable(Integer employeeId, LocalDateTime now) {
         NhanVien assigned = employeeRepository.findById(employeeId).orElse(null);
-        if (assigned != null && assigned.getVaiTro() != null
+        if (assigned == null || !Byte.valueOf((byte) 1).equals(assigned.getTinhTrangLamViec())) {
+            return false;
+        }
+        if (assigned.getVaiTro() != null
                 && "Admin".equalsIgnoreCase(assigned.getVaiTro().getTenVaiTro())) {
             return true;
         }
@@ -192,7 +283,7 @@ public class SupportChatService {
         return checkedInShifts(now).stream()
                 .map(LichLamViec::getNhanVien)
                 .filter(Objects::nonNull)
-                .filter(employee -> employee.getTinhTrangLamViec() == null || employee.getTinhTrangLamViec() == 1)
+                .filter(employee -> Byte.valueOf((byte) 1).equals(employee.getTinhTrangLamViec()))
                 .filter(this::isCustomerSupportRole)
                 .min(Comparator.comparingLong(employee -> conversationRepository
                         .countByNhanVienIdAndTrangThaiIn(employee.getId(), OPEN_STATUSES)))
@@ -256,7 +347,7 @@ public class SupportChatService {
         return map;
     }
 
-    private Map<String, Object> staffSummary(SupportConversation conversation) {
+    private Map<String, Object> staffSummary(SupportConversation conversation, String lastMessage) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", conversation.getId());
         map.put("title", conversation.getTieuDe());
@@ -266,20 +357,25 @@ public class SupportChatService {
         map.put("employeeName", conversation.getNhanVien() != null ? conversation.getNhanVien().getHoVaTen() : null);
         map.put("createdAt", conversation.getNgayTao());
         map.put("updatedAt", conversation.getNgayCapNhat());
-        List<SupportMessage> messages = messageRepository.findByConversationIdOrderByIdAsc(conversation.getId());
-        map.put("lastMessage", messages.isEmpty() ? "" : messages.get(messages.size() - 1).getContent());
+        map.put("lastMessage", lastMessage);
         return map;
     }
 
     private Map<String, Object> staffSnapshot(SupportConversation conversation) {
-        Map<String, Object> map = staffSummary(conversation);
-        map.put("messages", messages(conversation));
+        List<SupportMessage> messages = messageRepository.findByConversationIdOrderByIdAsc(conversation.getId());
+        String lastMessage = messages.isEmpty() ? "" : messages.get(messages.size() - 1).getContent();
+        Map<String, Object> map = staffSummary(conversation, lastMessage);
+        map.put("messages", messageMaps(messages));
         map.put("closedAt", conversation.getNgayDong());
         return map;
     }
 
     private List<Map<String, Object>> messages(SupportConversation conversation) {
-        return messageRepository.findByConversationIdOrderByIdAsc(conversation.getId()).stream().map(message -> {
+        return messageMaps(messageRepository.findByConversationIdOrderByIdAsc(conversation.getId()));
+    }
+
+    private List<Map<String, Object>> messageMaps(List<SupportMessage> messages) {
+        return messages.stream().map(message -> {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", message.getId());
             map.put("senderType", message.getSenderType());
@@ -288,6 +384,17 @@ public class SupportChatService {
             map.put("createdAt", message.getCreatedAt());
             return map;
         }).toList();
+    }
+
+    private Map<Integer, String> latestMessages(List<SupportConversation> conversations) {
+        if (conversations.isEmpty()) return Map.of();
+        return messageRepository.findLatestByConversationIds(
+                        conversations.stream().map(SupportConversation::getId).toList())
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        message -> message.getConversation().getId(),
+                        SupportMessage::getContent
+                ));
     }
 
     private String validateMessage(String value) {

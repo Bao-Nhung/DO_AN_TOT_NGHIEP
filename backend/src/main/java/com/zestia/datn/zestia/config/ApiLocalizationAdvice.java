@@ -17,7 +17,7 @@ import java.util.*;
 public class ApiLocalizationAdvice implements ResponseBodyAdvice<Object> {
     private static final Set<String> TRANSLATABLE_KEYS = Set.of(
             "error", "message", "thongBao",
-            "loaiVay", "tenLoaiVay", "loaiSanPham", "tenLoaiSanPham",
+            "loaiSanPham", "tenLoaiSanPham",
             "chatLieu", "tenChatLieu",
             "mauSac", "tenMauSac",
             "kichThuoc", "tenKichThuoc",
@@ -25,7 +25,7 @@ public class ApiLocalizationAdvice implements ResponseBodyAdvice<Object> {
             "hinhThucThanhToan", "hinhThucNhanHang"
     );
     private static final Set<String> CONTENT_KEYS = Set.of(
-            "tenVay", "tenSanPham", "moTa",
+            "tenSanPham", "moTa",
             "tieuDe", "noiDung", "tomTat",
             "tenGiamGia", "tenDot", "giamGia",
             "ghiChu", "lyDo", "tinhTrangHang",

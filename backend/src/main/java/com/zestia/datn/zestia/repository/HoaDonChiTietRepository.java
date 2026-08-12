@@ -56,4 +56,17 @@ public interface HoaDonChiTietRepository extends JpaRepository<HoaDonChiTiet, In
             ORDER BY SUM(ct.soLuong) DESC
             """)
     List<Object[]> findTopSellingProductStats(Pageable pageable);
+
+    @Query("""
+            SELECT other.sanPhamChiTiet.sanPham.id, COUNT(DISTINCT base.hoaDon.id)
+            FROM HoaDonChiTiet base, HoaDonChiTiet other
+            WHERE other.hoaDon.id = base.hoaDon.id
+              AND base.hoaDon.trangThai = 4
+              AND base.sanPhamChiTiet.sanPham.id = :productId
+              AND other.sanPhamChiTiet.sanPham.id <> :productId
+              AND other.sanPhamChiTiet.sanPham.trangThai = 1
+            GROUP BY other.sanPhamChiTiet.sanPham.id
+            ORDER BY COUNT(DISTINCT base.hoaDon.id) DESC
+            """)
+    List<Object[]> findFrequentlyBoughtProductIds(@Param("productId") Integer productId, Pageable pageable);
 }

@@ -6,6 +6,7 @@ import com.zestia.datn.zestia.dto.response.ThongKeDoanhThuDTO;
 import com.zestia.datn.zestia.dto.response.ThongKeDoanhThuThoiGianDTO;
 import com.zestia.datn.zestia.dto.response.ThongKeKhachHangDTO;
 import com.zestia.datn.zestia.dto.response.ThongKeSoLuongDTO;
+import com.zestia.datn.zestia.dto.response.ThongKeSanPhamDTO;
 import com.zestia.datn.zestia.dto.response.ThongKeTongQuanDTO;
 import com.zestia.datn.zestia.dto.response.ThongKeTrangThaiDTO;
 
@@ -16,13 +17,13 @@ public class ThongKeResponse {
 
     private ThongKeTongQuanDTO tongQuan;
 
-    private List<ThongKeDoanhThuThoiGianDTO> doanhThuLoiNhuan;
+    private List<ThongKeDoanhThuThoiGianDTO> doanhThuTheoThoiGian;
 
     private List<ThongKeTrangThaiDTO> trangThaiDonHang;
 
     private List<ThongKeKhachHangDTO> tangTruongKhachHang;
 
-    private List<ThongKeSoLuongDTO> topSanPham;
+    private List<ThongKeSanPhamDTO> topSanPham;
 
     private List<ThongKeSoLuongDTO> theoSize;
 

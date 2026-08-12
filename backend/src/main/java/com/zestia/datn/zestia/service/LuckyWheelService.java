@@ -9,6 +9,8 @@ import com.zestia.datn.zestia.repository.LuotQuayMayManRepository;
 import com.zestia.datn.zestia.repository.PhanThuongVongQuayRepository;
 import com.zestia.datn.zestia.repository.VongQuayMayManRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,9 @@ public class LuckyWheelService {
     private static final Pattern HEX_COLOR = Pattern.compile("^#[0-9A-Fa-f]{6}$");
     private static final Pattern ICON = Pattern.compile("^bi-[a-z0-9-]{2,45}$");
     private static final Pattern CUSTOM_ICON = Pattern.compile("^/images/lucky-wheel/[A-Za-z0-9._-]{1,180}$");
+    private static final Set<String> CLAIM_STATUSES = Set.of(
+            LuotQuayMayMan.WAITING, LuotQuayMayMan.DELIVERED, LuotQuayMayMan.NO_PRIZE
+    );
 
     private final VongQuayMayManRepository campaignRepository;
     private final PhanThuongVongQuayRepository prizeRepository;
@@ -132,6 +137,7 @@ public class LuckyWheelService {
 
     @Transactional
     public Map<String, Object> saveCampaign(Integer id, Map<String, Object> body) {
+        if (body == null) throw badRequest("Dữ liệu chiến dịch không hợp lệ.");
         VongQuayMayMan campaign = id == null ? new VongQuayMayMan() : campaignRepository.findById(id)
                 .orElseThrow(() -> notFound("Không tìm thấy chiến dịch vòng quay."));
         String code = string(body.get("maChienDich"));
@@ -140,6 +146,9 @@ public class LuckyWheelService {
         if ((id == null && campaignRepository.existsByMaChienDichIgnoreCase(code))
                 || (id != null && campaignRepository.existsByMaChienDichIgnoreCaseAndIdNot(code, id))) {
             throw badRequest("Mã chiến dịch đã tồn tại.");
+        }
+        if (!code.matches("[A-Z0-9_-]{3,50}")) {
+            throw badRequest("Mã chiến dịch chỉ gồm chữ in hoa, số, gạch ngang hoặc gạch dưới.");
         }
 
         String name = requiredText(body.get("tenChienDich"), "Tên chiến dịch", 3, 150);
@@ -150,6 +159,11 @@ public class LuckyWheelService {
         LocalDateTime startsAt = dateTime(body.get("ngayBatDau"), "Thời gian bắt đầu");
         LocalDateTime endsAt = dateTime(body.get("ngayKetThuc"), "Thời gian kết thúc");
         if (!endsAt.isAfter(startsAt)) throw badRequest("Thời gian kết thúc phải sau thời gian bắt đầu.");
+        byte status = byteValue(body.get("trangThai"), (byte) 1);
+        if (status == 1 && campaignRepository.countActiveOverlaps(id, startsAt, endsAt) > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Thời gian chiến dịch trùng với một vòng quay đang hoạt động khác.");
+        }
 
         campaign.setMaChienDich(code);
         campaign.setTenChienDich(name);
@@ -157,7 +171,7 @@ public class LuckyWheelService {
         campaign.setGiaTriDonToiThieu(minimum);
         campaign.setNgayBatDau(startsAt);
         campaign.setNgayKetThuc(endsAt);
-        campaign.setTrangThai(byteValue(body.get("trangThai"), (byte) 1));
+        campaign.setTrangThai(status);
         if (campaign.getNgayTao() == null) campaign.setNgayTao(LocalDateTime.now());
         VongQuayMayMan saved = campaignRepository.save(campaign);
         return campaignSummary(saved);
@@ -165,6 +179,7 @@ public class LuckyWheelService {
 
     @Transactional
     public Map<String, Object> savePrize(Integer campaignId, Integer prizeId, Map<String, Object> body) {
+        if (body == null) throw badRequest("Dữ liệu phần thưởng không hợp lệ.");
         VongQuayMayMan campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> notFound("Không tìm thấy chiến dịch vòng quay."));
         PhanThuongVongQuay prize = prizeId == null ? new PhanThuongVongQuay() : prizeRepository.findByIdForUpdate(prizeId)
@@ -221,9 +236,26 @@ public class LuckyWheelService {
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> listSpins(Integer campaignId, String status) {
+    public Map<String, Object> listSpins(Integer campaignId, String status, int page, int size) {
         String normalizedStatus = status == null || status.isBlank() ? null : status.trim().toUpperCase(Locale.ROOT);
-        return spinRepository.findForAdmin(campaignId, normalizedStatus).stream().map(this::adminSpin).toList();
+        if (normalizedStatus != null && !CLAIM_STATUSES.contains(normalizedStatus)) {
+            throw badRequest("Trạng thái nhận quà không hợp lệ.");
+        }
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        var result = spinRepository.findForAdmin(
+                campaignId,
+                normalizedStatus,
+                PageRequest.of(safePage, safeSize,
+                        Sort.by(Sort.Direction.DESC, "ngayQuay").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", result.getContent().stream().map(this::adminSpin).toList());
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        return response;
     }
 
     @Transactional
@@ -249,21 +281,16 @@ public class LuckyWheelService {
         if (defaultMoney(order.getTongTien()).compareTo(campaign.getGiaTriDonToiThieu()) < 0) {
             return "Đơn hàng chưa đạt giá trị tối thiểu " + money(campaign.getGiaTriDonToiThieu()) + ".";
         }
-        if (isOnlinePayment(order) && !Boolean.TRUE.equals(order.getDaThanhToan())) {
-            return "Đơn thanh toán trực tuyến chưa được xác nhận thành công.";
+        if (!Boolean.TRUE.equals(order.getDaThanhToan())) {
+            return "Đơn hàng chưa được xác nhận thanh toán thành công.";
         }
         return null;
     }
 
-    private boolean isOnlinePayment(HoaDon order) {
-        String method = Optional.ofNullable(order.getHinhThucThanhToan()).orElse("").toUpperCase(Locale.ROOT);
-        return method.equals("MOMO") || method.equals("ZALOPAY");
-    }
-
     private PhanThuongVongQuay choosePrize(List<PhanThuongVongQuay> prizes) {
-        int totalWeight = prizes.stream().mapToInt(prize -> Math.max(0, prize.getTrongSo())).sum();
+        long totalWeight = prizes.stream().mapToLong(prize -> Math.max(0, prize.getTrongSo())).sum();
         if (totalWeight <= 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "Vòng quay chưa được cấu hình phần thưởng khả dụng.");
-        int cursor = random.nextInt(totalWeight);
+        long cursor = random.nextLong(totalWeight);
         for (PhanThuongVongQuay prize : prizes) {
             cursor -= prize.getTrongSo();
             if (cursor < 0) return prize;

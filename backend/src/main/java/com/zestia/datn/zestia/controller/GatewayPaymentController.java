@@ -6,11 +6,15 @@ import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.service.GatewayPaymentResultService;
+import com.zestia.datn.zestia.service.RequestRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -39,12 +43,10 @@ import java.util.*;
 @RequestMapping("/api/payment")
 @RequiredArgsConstructor
 public class GatewayPaymentController {
-    private static final byte STATUS_CANCELLED = 5;
-    private static final byte STATUS_PAYMENT_FAILED = 7;
-
     private final HoaDonRepository hoaDonRepo;
     private final JwtUtil jwtUtil;
     private final GatewayPaymentResultService paymentResultService;
+    private final RequestRateLimiter rateLimiter;
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -80,14 +82,21 @@ public class GatewayPaymentController {
     // ============================ MoMo ============================
 
     @PostMapping("/momo/create")
+    @Transactional
     public ResponseEntity<?> createMomo(@RequestBody Map<String, Object> body,
-                                        @RequestHeader(value = "Authorization", required = false) String authHeader) {
+                                        @RequestHeader(value = "Authorization", required = false) String authHeader,
+                                        Authentication authentication,
+                                        HttpServletRequest request) {
+        if (!allowPaymentStart(request)) return tooManyPaymentStarts();
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         Integer orderId = toInt(body.get("orderId"));
-        Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findById(orderId) : Optional.empty();
+        Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findByIdForUpdate(orderId) : Optional.empty();
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy đơn hàng"));
         HoaDon hd = opt.get();
-        ResponseEntity<?> authError = authorizePaymentStart(hd, body, authHeader);
+        ResponseEntity<?> authError = authorizePaymentStart(hd, body, authHeader, authentication, "MOMO");
         if (authError != null) return authError;
+        ResponseEntity<?> existingSession = existingPaymentSession(hd, "MOMO");
+        if (existingSession != null) return existingSession;
 
         try {
             long amount = hd.getTongTien().longValue();
@@ -103,6 +112,8 @@ public class GatewayPaymentController {
             }
             hd.setHinhThucThanhToan("MOMO");
             hd.setMaGiaoDichCong(momoOrderId);
+            hd.setUrlThanhToan(payUrl);
+            hd.setThanhToanHetHan(LocalDateTime.now().plusMinutes(25));
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", payUrl));
         } catch (Exception e) {
@@ -114,6 +125,7 @@ public class GatewayPaymentController {
     /** POS: tạo QR cổng MoMo theo số tiền (không gắn đơn — nhân viên xác nhận tại quầy). */
     @PostMapping("/momo/qr")
     public ResponseEntity<?> momoQr(@RequestBody Map<String, Object> body) {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         long amount = toLong(body.get("amount"));
         if (amount < 1000) return ResponseEntity.badRequest().body(Map.of("error", "Số tiền không hợp lệ"));
         try {
@@ -237,14 +249,21 @@ public class GatewayPaymentController {
     // ============================ ZaloPay ============================
 
     @PostMapping("/zalopay/create")
+    @Transactional
     public ResponseEntity<?> createZalo(@RequestBody Map<String, Object> body,
-                                        @RequestHeader(value = "Authorization", required = false) String authHeader) {
+                                        @RequestHeader(value = "Authorization", required = false) String authHeader,
+                                        Authentication authentication,
+                                        HttpServletRequest request) {
+        if (!allowPaymentStart(request)) return tooManyPaymentStarts();
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         Integer orderId = toInt(body.get("orderId"));
-        Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findById(orderId) : Optional.empty();
+        Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findByIdForUpdate(orderId) : Optional.empty();
         if (opt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy đơn hàng"));
         HoaDon hd = opt.get();
-        ResponseEntity<?> authError = authorizePaymentStart(hd, body, authHeader);
+        ResponseEntity<?> authError = authorizePaymentStart(hd, body, authHeader, authentication, "ZALOPAY");
         if (authError != null) return authError;
+        ResponseEntity<?> existingSession = existingPaymentSession(hd, "ZALOPAY");
+        if (existingSession != null) return existingSession;
 
         try {
             long appTime = System.currentTimeMillis();
@@ -259,6 +278,8 @@ public class GatewayPaymentController {
             }
             hd.setHinhThucThanhToan("ZALOPAY");
             hd.setMaGiaoDichCong(appTransId);
+            hd.setUrlThanhToan(orderUrl);
+            hd.setThanhToanHetHan(LocalDateTime.now().plusMinutes(25));
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", orderUrl));
         } catch (Exception e) {
@@ -270,6 +291,7 @@ public class GatewayPaymentController {
     /** POS: tạo QR cổng ZaloPay theo số tiền. */
     @PostMapping("/zalopay/qr")
     public ResponseEntity<?> zaloQr(@RequestBody Map<String, Object> body) {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         long amount = toLong(body.get("amount"));
         if (amount < 1000) return ResponseEntity.badRequest().body(Map.of("error", "Số tiền không hợp lệ"));
         try {
@@ -402,11 +424,24 @@ public class GatewayPaymentController {
         return postForm(zaloQueryEndpoint, form);
     }
 
-    private ResponseEntity<?> authorizePaymentStart(HoaDon hd, Map<String, Object> body, String authHeader) {
-        if (hd.getTrangThai() != null && (hd.getTrangThai() == STATUS_CANCELLED || hd.getTrangThai() == STATUS_PAYMENT_FAILED)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Don hang khong the tao thanh toan"));
+    private ResponseEntity<?> authorizePaymentStart(HoaDon hd, Map<String, Object> body, String authHeader,
+                                                     Authentication authentication, String expectedMethod) {
+        if (Boolean.TRUE.equals(hd.getDaThanhToan())) {
+            return ResponseEntity.status(409).body(Map.of("error", "Đơn hàng này đã được thanh toán"));
+        }
+        if (Boolean.TRUE.equals(hd.getDaHoanTonKho()) || hd.getTrangThai() == null || hd.getTrangThai() != 0) {
+            return ResponseEntity.status(409).body(Map.of("error", "Đơn hàng không còn ở trạng thái chờ thanh toán"));
+        }
+        if (!expectedMethod.equalsIgnoreCase(cleanString(hd.getHinhThucThanhToan()))) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Đơn hàng đã chọn phương thức " + hd.getHinhThucThanhToan() + ", không thể đổi cổng thanh toán"
+            ));
         }
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(401).body(Map.of("error", "Phiên đăng nhập không còn hợp lệ"));
+            }
+            if (isStaffAuthentication(authentication)) return null;
             try {
                 String token = authHeader.substring(7);
                 if (!jwtUtil.isValid(token)) {
@@ -415,7 +450,6 @@ public class GatewayPaymentController {
                 var claims = jwtUtil.extractClaims(token);
                 String role = claims.get("role", String.class);
                 Integer userId = toInt(claims.get("userId"));
-                if (isStaffRole(role)) return null;
                 if ("KhachHang".equalsIgnoreCase(role)
                         && hd.getKhachHang() != null
                         && Objects.equals(hd.getKhachHang().getId(), userId)) {
@@ -428,6 +462,31 @@ public class GatewayPaymentController {
         }
         if (matchesGuestPaymentProof(hd, body)) return null;
         return ResponseEntity.status(403).body(Map.of("error", "Can xac thuc don hang bang ma hoa don va so dien thoai"));
+    }
+
+    private ResponseEntity<?> existingPaymentSession(HoaDon order, String method) {
+        if (order.getUrlThanhToan() == null || order.getUrlThanhToan().isBlank()
+                || order.getThanhToanHetHan() == null
+                || !order.getThanhToanHetHan().isAfter(LocalDateTime.now())
+                || !method.equalsIgnoreCase(order.getHinhThucThanhToan())) {
+            return null;
+        }
+        return ResponseEntity.ok(Map.of(
+                "payUrl", order.getUrlThanhToan(),
+                "reused", true,
+                "expiresAt", order.getThanhToanHetHan()
+        ));
+    }
+
+    private boolean allowPaymentStart(HttpServletRequest request) {
+        String client = request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+        return rateLimiter.tryAcquire("payment-start", client, 15, 5 * 60);
+    }
+
+    private ResponseEntity<?> tooManyPaymentStarts() {
+        return ResponseEntity.status(429).body(Map.of(
+                "error", "Bạn đang yêu cầu thanh toán quá nhiều lần. Vui lòng chờ ít phút rồi thử lại"
+        ));
     }
 
     private boolean matchesGuestPaymentProof(HoaDon hd, Map<String, Object> body) {
@@ -474,10 +533,12 @@ public class GatewayPaymentController {
         return cleaned.startsWith("+84") ? "0" + cleaned.substring(3) : cleaned;
     }
 
-    private static boolean isStaffRole(String role) {
-        return "Admin".equalsIgnoreCase(role)
-                || "NhanVien".equalsIgnoreCase(role)
-                || "Nh\u00E2n vi\u00EAn".equalsIgnoreCase(role);
+    private static boolean isStaffAuthentication(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .anyMatch(authority -> "ROLE_Admin".equalsIgnoreCase(authority)
+                        || "ROLE_NhanVien".equalsIgnoreCase(authority)
+                        || "ROLE_Nhân viên".equalsIgnoreCase(authority));
     }
 
     private JsonNode postJson(String url, String json) throws Exception {
@@ -487,6 +548,7 @@ public class GatewayPaymentController {
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        requireSuccessfulGatewayResponse(resp);
         return mapper.readTree(resp.body());
     }
 
@@ -502,7 +564,14 @@ public class GatewayPaymentController {
                 .POST(HttpRequest.BodyPublishers.ofString(sb.toString(), StandardCharsets.UTF_8))
                 .build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        requireSuccessfulGatewayResponse(resp);
         return mapper.readTree(resp.body());
+    }
+
+    private static void requireSuccessfulGatewayResponse(HttpResponse<?> response) throws IOException {
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IOException("Cổng thanh toán phản hồi HTTP " + response.statusCode());
+        }
     }
 
     private static String hmacHex(String algo, String key, String data) throws Exception {
@@ -531,14 +600,21 @@ public class GatewayPaymentController {
     }
 
     private Map<String, Object> paymentStartFailedBody(HoaDon hd, String message, int code) {
+        String method = cleanString(hd.getHinhThucThanhToan());
+        String transactionId = (method != null ? method : "PAYMENT")
+                + "-START-FAILED-" + hd.getId() + "-" + System.currentTimeMillis();
+        GatewayPaymentResultService.PaymentOutcome outcome = paymentResultService.applyById(
+                hd.getId(), method, BigDecimal.ZERO, transactionId, false
+        );
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", message);
-        body.put("paymentFailed", false);
-        body.put("retryable", true);
+        body.put("paymentFailed", true);
+        body.put("retryable", false);
         body.put("orderId", hd.getId());
         body.put("maHoaDon", hd.getMaHoaDon());
         body.put("amount", hd.getTongTien());
         body.put("resultCode", code);
+        body.put("message", outcome.message());
         return body;
     }
 

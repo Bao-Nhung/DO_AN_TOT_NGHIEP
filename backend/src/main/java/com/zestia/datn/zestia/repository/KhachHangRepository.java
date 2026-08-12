@@ -4,8 +4,13 @@ import com.zestia.datn.zestia.entity.KhachHang;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -13,6 +18,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "5000"))
+    @Query("SELECT kh FROM KhachHang kh WHERE kh.id = :id")
+    Optional<KhachHang> findByIdForUpdate(@Param("id") Integer id);
 
     Optional<KhachHang> findByMaKhachHang(String maKhachHang);
 
@@ -47,27 +57,8 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
     @Query("SELECT kh FROM KhachHang kh WHERE kh.matKhau IS NOT NULL AND kh.matKhau NOT LIKE '$2%'")
     List<KhachHang> findAccountsWithLegacyPassword();
 
-    @Query("""
-            SELECT kh.id AS id,
-                   kh.maKhachHang AS maKhachHang,
-                   kh.hoVaTen AS hoVaTen,
-                   kh.soDienThoai AS soDienThoai,
-                   kh.email AS email,
-                   kh.gioiTinh AS gioiTinh,
-                   kh.diemTichLuy AS diemTichLuy,
-                   kh.hangThanhVien AS hangThanhVien,
-                   kh.ngayTao AS ngayTao,
-                   COUNT(h.id) AS tongDon,
-                   COALESCE(SUM(CASE
-                       WHEN h.trangThai = 4 THEN h.tongTien
-                       ELSE 0
-                   END), 0) AS tongChiTieu
-            FROM KhachHang kh
-            LEFT JOIN HoaDon h ON h.khachHang.id = kh.id
-            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.diemTichLuy, kh.hangThanhVien, kh.ngayTao
-            ORDER BY kh.ngayTao DESC
-            """)
-    List<KhachHangSummary> findCustomerSummaries();
+    @Query("SELECT kh FROM KhachHang kh WHERE kh.email IS NOT NULL AND TRIM(kh.email) <> ''")
+    Page<KhachHang> findAllWithEmail(Pageable pageable);
 
     @Query(value = """
             SELECT kh.id AS id,
@@ -80,10 +71,7 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    kh.hangThanhVien AS hangThanhVien,
                    kh.ngayTao AS ngayTao,
                    COUNT(h.id) AS tongDon,
-                   COALESCE(SUM(CASE
-                       WHEN h.trangThai = 4 THEN h.tongTien
-                       ELSE 0
-                   END), 0) AS tongChiTieu
+                   COALESCE(kh.tongChiTieu, 0) AS tongChiTieu
             FROM KhachHang kh
             LEFT JOIN HoaDon h ON h.khachHang.id = kh.id
             WHERE (:keyword IS NULL
@@ -91,7 +79,7 @@ public interface KhachHangRepository extends JpaRepository<KhachHang, Integer> {
                    OR LOWER(kh.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR kh.soDienThoai LIKE CONCAT('%', :keyword, '%')
                    OR LOWER(kh.maKhachHang) LIKE LOWER(CONCAT('%', :keyword, '%')))
-            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.diemTichLuy, kh.hangThanhVien, kh.ngayTao
+            GROUP BY kh.id, kh.maKhachHang, kh.hoVaTen, kh.soDienThoai, kh.email, kh.gioiTinh, kh.diemTichLuy, kh.hangThanhVien, kh.tongChiTieu, kh.ngayTao
             ORDER BY kh.ngayTao DESC
             """,
             countQuery = """

@@ -8,6 +8,8 @@ import com.zestia.datn.zestia.repository.ThongBaoRepository;
 import com.zestia.datn.zestia.service.CurrentCustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -27,16 +29,51 @@ public class CustomerNotificationController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> active(Authentication authentication) {
+    public Map<String, Object> active(@RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "8") int size,
+                                      @RequestParam(required = false) String q,
+                                      @RequestParam(required = false) String type,
+                                      Authentication authentication) {
         KhachHang customer = currentCustomerService.require(authentication);
-        List<ThongBao> notifications = notificationRepo.findByTrangThaiOrderByNgayTaoDesc((byte) 1);
+        String keyword = q == null || q.isBlank() ? null : q.trim();
+        String typeFilter = type == null || type.isBlank() ? null : type.trim();
+        var result = notificationRepo.findVisibleForCustomerPage(
+                customer.getId(),
+                (byte) 1,
+                keyword,
+                typeFilter,
+                PageRequest.of(
+                        Math.max(0, page),
+                        Math.min(100, Math.max(1, size)),
+                        Sort.by(Sort.Direction.DESC, "ngayTao", "id")
+                )
+        );
+        List<ThongBao> notifications = result.getContent();
         List<Integer> ids = notifications.stream().map(ThongBao::getId).toList();
         Set<Integer> readIds = ids.isEmpty()
                 ? Set.of()
                 : new HashSet<>(readRepo.findReadNotificationIds(customer.getId(), ids));
-        return notifications.stream()
+        List<Map<String, Object>> content = notifications.stream()
                 .map(notification -> toMap(notification, readIds.contains(notification.getId())))
                 .toList();
+        Map<String, Long> counts = new LinkedHashMap<>();
+        counts.put("all", 0L);
+        for (Object[] row : notificationRepo.countVisibleByType(customer.getId(), (byte) 1)) {
+            String notificationType = row[0] != null ? String.valueOf(row[0]) : "Khac";
+            long count = ((Number) row[1]).longValue();
+            counts.put(notificationType, count);
+            counts.put("all", counts.get("all") + count);
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", content);
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        response.put("counts", counts);
+        response.put("unreadCount", notificationRepo.countUnreadForCustomer(customer.getId(), (byte) 1));
+        return response;
     }
 
     @PutMapping("/{id}/read")
@@ -45,6 +82,8 @@ public class CustomerNotificationController {
         KhachHang customer = currentCustomerService.require(authentication);
         ThongBao notification = notificationRepo.findById(id)
                 .filter(item -> Byte.valueOf((byte) 1).equals(item.getTrangThai()))
+                .filter(item -> item.getKhachHang() == null
+                        || Objects.equals(item.getKhachHang().getId(), customer.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"));
         if (!readRepo.existsByKhachHangIdAndThongBaoId(customer.getId(), id)) {
             readRepo.save(ThongBaoDaDoc.builder()
@@ -60,7 +99,7 @@ public class CustomerNotificationController {
     @Transactional
     public Map<String, Object> markAllRead(Authentication authentication) {
         KhachHang customer = currentCustomerService.require(authentication);
-        List<ThongBao> active = notificationRepo.findByTrangThaiOrderByNgayTaoDesc((byte) 1);
+        List<ThongBao> active = notificationRepo.findVisibleForCustomer(customer.getId(), (byte) 1);
         List<Integer> ids = active.stream().map(ThongBao::getId).toList();
         Set<Integer> existing = ids.isEmpty()
                 ? Set.of()

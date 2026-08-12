@@ -1,73 +1,68 @@
 <template>
   <div class="z-customer-ai">
-    <!-- Nút bấm mở AI Assistant nổi có hiệu ứng Pulse & Badge -->
     <button
       v-if="!open"
       type="button"
       class="z-ai-toggle-btn"
-      title="Zestia AI Fashion Assistant & Stylist"
-      aria-label="Mở Trợ lý AI Zestia"
+      title="Trợ lý mua sắm Zestia"
+      aria-label="Mở trợ lý mua sắm Zestia"
       @click="toggleOpen"
     >
-      <div class="z-ai-pulse"></div>
-      <i class="bi bi-stars z-ai-icon-stars"></i>
-      <span class="z-ai-badge-text">Zestia AI 2.0</span>
+      <i class="bi bi-chat-dots" aria-hidden="true"></i>
+      <span class="z-ai-badge-text">Tư vấn cùng Zestia</span>
     </button>
 
-    <!-- Khung Chat AI Assistant chính -->
     <transition name="z-slide-up">
-      <section v-if="open" class="z-ai-window" aria-label="Zestia AI Fashion Assistant">
-        <!-- Header -->
+      <section v-if="open" class="z-ai-window" aria-label="Trợ lý mua sắm Zestia">
         <header class="z-ai-header">
           <div class="z-ai-header-info">
             <div class="z-ai-avatar">
-              <i class="bi bi-robot"></i>
+              <img src="/images/brand/zestia-mark.png" alt="" aria-hidden="true">
               <span class="z-ai-status-dot"></span>
             </div>
             <div>
               <div class="d-flex align-items-center gap-2">
                 <strong class="z-ai-title">
-                  {{ humanMode ? 'Nhân viên Zestia CSKH' : (activeTab === 'stylist' ? 'Zestia AI Stylist' : (activeTab === 'size' ? 'Zestia Size Advisor' : 'Zestia AI Assistant')) }}
+                  {{ humanMode ? 'Nhân viên Zestia' : (activeTab === 'stylist' ? 'Phối đồ Zestia' : (activeTab === 'size' ? 'Tư vấn chọn size' : 'Trợ lý Zestia')) }}
                 </strong>
-                <span class="badge bg-danger-subtle text-danger fw-bold" style="font-size:10px;padding:2px 6px">PRO 2.0</span>
+                <span v-if="!humanMode" class="z-ai-mode-badge">Trực tuyến</span>
               </div>
               <span class="z-ai-subtitle" v-if="humanMode">{{ supportStatusText }}</span>
-              <span class="z-ai-subtitle" v-else-if="activeTab === 'stylist'">Gợi ý Outfit phối đồ chuẩn gu & dịp</span>
-              <span class="z-ai-subtitle" v-else-if="activeTab === 'size'">Tính Size chuẩn vóc dáng theo chiều cao/cân nặng</span>
-              <span class="z-ai-subtitle" v-else>Tư vấn sản phẩm, size, voucher & đơn hàng</span>
+              <span class="z-ai-subtitle" v-else-if="activeTab === 'stylist'">Trang phục theo dịp và phong cách</span>
+              <span class="z-ai-subtitle" v-else-if="activeTab === 'size'">Tham khảo theo số đo và từng phom</span>
+              <span class="z-ai-subtitle" v-else>Sản phẩm, voucher và đơn hàng</span>
             </div>
           </div>
           <div class="z-ai-header-actions">
-            <button type="button" class="z-ai-icon-btn" :title="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'" @click="soundEnabled = !soundEnabled">
+            <button type="button" class="z-ai-icon-btn" :title="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'" :aria-label="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'" @click="soundEnabled = !soundEnabled">
               <i class="bi" :class="soundEnabled ? 'bi-volume-up' : 'bi-volume-mute'"></i>
             </button>
-            <button type="button" class="z-ai-icon-btn" title="Xóa lịch sử chat" @click="clearHistory">
+            <button v-if="!humanMode" type="button" class="z-ai-icon-btn" title="Xóa lịch sử chat" aria-label="Xóa lịch sử chat" @click="clearHistory">
               <i class="bi bi-trash"></i>
             </button>
-            <button type="button" class="z-ai-icon-btn close-btn" title="Đóng" @click="open = false">
+            <button type="button" class="z-ai-icon-btn close-btn" title="Đóng" aria-label="Đóng trợ lý" @click="open = false">
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
         </header>
 
-        <!-- Thanh chuyển chế độ (Tabs) -->
         <div class="z-ai-tabs" v-if="!humanMode">
           <button type="button" class="z-ai-tab" :class="{ active: activeTab === 'assistant' }" @click="activeTab = 'assistant'">
             <i class="bi bi-chat-left-dots"></i> Tư vấn
           </button>
           <button type="button" class="z-ai-tab" :class="{ active: activeTab === 'stylist' }" @click="activeTab = 'stylist'">
-            <i class="bi bi-magic"></i> AI Stylist
+            <i class="bi bi-bag-heart"></i> Phối đồ
           </button>
           <button type="button" class="z-ai-tab" :class="{ active: activeTab === 'size' }" @click="activeTab = 'size'">
-            <i class="bi bi-ruler"></i> Tính Size
+            <i class="bi bi-rulers"></i> Chọn size
           </button>
         </div>
 
         <!-- BỘ TÍNH SIZE CHUẨN KHI Ở TAB SIZE -->
         <div v-if="activeTab === 'size' && !humanMode" class="z-size-calculator-panel">
           <div class="z-size-calc-header">
-            <i class="bi bi-stars text-danger me-1"></i>
-            <strong>Tính Size Chuẩn Theo Vóc Dáng</strong>
+            <i class="bi bi-rulers" aria-hidden="true"></i>
+            <strong>Tham khảo size theo vóc dáng</strong>
           </div>
           <div class="row g-2 mt-1">
             <div class="col-6">
@@ -81,8 +76,8 @@
           </div>
           <div class="z-size-result-bar mt-2">
             <div class="z-size-badge-val">
-              Size khuyên dùng: <span class="z-size-tag">{{ calculatedSizeInfo.size }}</span>
-              <small class="ms-2 text-success">Vừa vặn {{ calculatedSizeInfo.score }}%</small>
+              Size ước tính ban đầu: <span class="z-size-tag">{{ calculatedSizeInfo.size }}</span>
+              <small class="ms-2 text-muted">Cần đối chiếu từng mẫu</small>
             </div>
             <button type="button" class="btn btn-sm btn-dark z-calc-submit-btn" @click="askAiForSize">
               <i class="bi bi-send-fill me-1"></i> Tư vấn sản phẩm
@@ -94,7 +89,7 @@
         <div ref="bodyRef" class="z-ai-body">
           <div v-for="(msg, index) in displayMessages" :key="msg.id || index" class="z-ai-msg-group" :class="msg.role">
             <div class="z-ai-avatar-mini" v-if="msg.role === 'assistant'">
-              <i class="bi bi-stars"></i>
+              <i class="bi bi-chat-quote"></i>
             </div>
             
             <div class="z-ai-msg-content">
@@ -126,7 +121,7 @@
                     <template v-if="card.type === 'outfit'">
                       <div class="z-outfit-card">
                         <div class="z-outfit-header">
-                          <span class="z-outfit-badge"><i class="bi bi-stars me-1"></i> LOOKBOOK OUTFIT</span>
+                          <span class="z-outfit-badge"><i class="bi bi-bag-heart me-1"></i> Gợi ý phối đồ</span>
                           <strong class="z-outfit-title">{{ card.title }}</strong>
                           <span v-if="card.occasion" class="z-outfit-sub">{{ card.occasion }}</span>
                         </div>
@@ -142,13 +137,12 @@
                         <div class="z-outfit-footer">
                           <div class="d-flex align-items-center justify-content-between">
                             <div class="z-outfit-pricing">
-                              <span class="z-outfit-combo-price">{{ formatPrice(card.comboPrice || card.totalPrice) }}</span>
-                              <span class="z-outfit-old-price ms-1" v-if="card.totalPrice && card.totalPrice > card.comboPrice">{{ formatPrice(card.totalPrice) }}</span>
+                              <span class="z-outfit-combo-price">{{ formatPrice(card.totalPrice) }}</span>
                             </div>
-                            <span class="badge bg-danger-subtle text-danger font-monospace" v-if="card.discountPercent">-{{ card.discountPercent }}% Set</span>
+                            <span class="text-muted" style="font-size:11px">Tổng giá hiện tại</span>
                           </div>
-                          <button type="button" class="btn btn-sm btn-danger w-100 mt-2 z-outfit-add-btn" @click="addOutfitToCart(card)">
-                            <i class="bi bi-bag-check-fill me-1"></i> Thêm cả Set vào Giỏ hàng
+                          <button type="button" class="lm-btn-primary w-100 mt-2 z-outfit-add-btn" @click="addOutfitToCart(card)">
+                            <i class="bi bi-bag-check me-1"></i> Thêm cả bộ vào giỏ
                           </button>
                         </div>
                       </div>
@@ -167,10 +161,10 @@
                           <span v-if="card.stock" class="z-card-stock">Còn {{ card.stock }}</span>
                         </div>
                         <div class="d-flex gap-1 mt-2">
-                          <button type="button" class="btn btn-sm btn-dark flex-grow-1" style="font-size:11px" @click="goToProduct(card.id)">
+                          <button type="button" class="lm-btn-primary z-card-view-btn flex-grow-1" @click="goToProduct(card.id)">
                             <i class="bi bi-eye"></i> Xem ngay
                           </button>
-                          <button type="button" class="btn btn-sm btn-outline-dark" style="font-size:11px" title="Thêm vào giỏ" @click="quickAddToCart(card)">
+                          <button type="button" class="z-icon-btn z-card-cart-btn" title="Thêm vào giỏ" aria-label="Thêm sản phẩm vào giỏ" @click="quickAddToCart(card)">
                             <i class="bi bi-cart-plus"></i>
                           </button>
                         </div>
@@ -198,7 +192,7 @@
 
           <!-- Typing Indicator Animation -->
           <div v-if="loading" class="z-ai-msg-group assistant">
-            <div class="z-ai-avatar-mini"><i class="bi bi-stars"></i></div>
+            <div class="z-ai-avatar-mini"><i class="bi bi-chat-quote"></i></div>
             <div class="z-ai-msg-content">
               <div class="z-ai-msg-bubble z-ai-typing-bubble">
                 <span class="z-dot"></span>
@@ -230,27 +224,28 @@
         <div v-if="!humanMode && hasAskedAi && !loading" class="z-ai-handoff-bar">
           <span>Cần gặp nhân viên tư vấn trực tiếp?</span>
           <button type="button" class="z-handoff-btn" :disabled="handoffLoading" @click="requestEmployee">
-            <i class="bi bi-headset"></i> {{ handoffLoading ? 'Đang kết nối...' : 'Gặp NV CSKH' }}
+            <i class="bi bi-headset"></i> {{ handoffLoading ? 'Đang kết nối...' : 'Chat với nhân viên' }}
           </button>
         </div>
 
         <div v-if="humanMode && supportStatus === 'CLOSED'" class="z-ai-handoff-bar">
           <span>Phiên hỗ trợ nhân viên đã kết thúc.</span>
           <button type="button" class="z-handoff-btn" @click="backToAi">
-            <i class="bi bi-stars"></i> Quay lại AI
+            <i class="bi bi-chat-dots"></i> Quay lại trợ lý
           </button>
         </div>
 
-        <!-- Input ẩn cho Visual Search Tải Ảnh -->
+        <!-- Input ảnh dùng để tìm biến thể có màu gần nhất. -->
         <input type="file" ref="fileInputRef" accept="image/*" class="d-none" @change="handleImageUpload" />
 
         <!-- Form nhập tin nhắn -->
         <form v-if="!humanMode || supportStatus !== 'CLOSED'" class="z-ai-form" @submit.prevent="send">
-          <!-- Nút Tải ảnh / Visual Search -->
+          <!-- Tìm sản phẩm theo màu từ ảnh. -->
           <button
             type="button"
             class="z-ai-media-btn"
-            title="Tìm sản phẩm bằng hình ảnh (AI Visual Search)"
+            title="Tìm sản phẩm theo màu từ ảnh"
+            aria-label="Tìm sản phẩm theo màu từ ảnh"
             :disabled="loading"
             @click="triggerImageUpload"
           >
@@ -262,7 +257,8 @@
             type="button"
             class="z-ai-mic-btn"
             :class="{ listening: isListening }"
-            :title="isListening ? 'Đang lắng nghe...' : 'Nói với AI bằng giọng nói'"
+            :title="isListening ? 'Đang lắng nghe...' : 'Nhập câu hỏi bằng giọng nói'"
+            :aria-label="isListening ? 'Dừng ghi âm' : 'Nhập câu hỏi bằng giọng nói'"
             :disabled="loading"
             @click="toggleVoiceInput"
           >
@@ -273,7 +269,7 @@
             v-model="draft"
             ref="inputRef"
             class="z-ai-input"
-            :placeholder="humanMode ? 'Nhắn cho nhân viên đang trực...' : (activeTab === 'stylist' ? 'Nhập dịp đi chơi, phong cách...' : (activeTab === 'size' ? 'Hỏi chi tiết về size vóc dáng...' : 'Hỏi về mẫu áo, váy, size, voucher...'))"
+            :placeholder="humanMode ? 'Nhắn cho nhân viên đang trực...' : (activeTab === 'stylist' ? 'Bạn cần trang phục cho dịp nào?' : (activeTab === 'size' ? 'Nhập chiều cao, cân nặng hoặc số đo...' : 'Bạn đang cần Zestia tư vấn gì?'))"
             :disabled="loading"
             maxlength="1000"
           />
@@ -292,7 +288,6 @@ import { useRouter } from 'vue-router'
 import { api } from '@/composables/useApi'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
-import { MOCK_PRODUCTS } from '@/composables/useProducts'
 
 const router = useRouter()
 const { formatPrice, addItem } = useCart()
@@ -320,6 +315,7 @@ const supportStatus = ref('')
 const supportEmployee = ref('')
 const humanMessages = ref([])
 let supportPoll = null
+const SUPPORT_SESSION_KEY = 'zestia_support_token'
 
 const hasAskedAi = ref(false)
 
@@ -327,7 +323,7 @@ const messages = ref([
   {
     id: 1,
     role: 'assistant',
-    content: '✨ **Xin chào! Mình là Zestia AI Fashion Assistant & Stylist 2.0.**\n\nMình có thể giúp bạn chọn trang phục tôn dáng, phối đồ Outfit trọn bộ theo dịp, tìm đồ qua hình ảnh, hoặc tính Size chuẩn vóc dáng!',
+    content: '**Xin chào! Mình là trợ lý mua sắm Zestia.**\n\nMình có thể giúp bạn tìm sản phẩm đang bán, phối trang phục theo dịp, tìm màu gần với ảnh mẫu và tham khảo size theo dữ liệu của từng sản phẩm.',
     cards: []
   }
 ])
@@ -335,23 +331,23 @@ const messages = ref([
 const displayMessages = computed(() => humanMode.value ? humanMessages.value : messages.value)
 
 const assistantChips = [
-  { label: '🔥 Mẫu hot nhất', question: 'Mẫu sản phẩm nào đang bán chạy nhất?', icon: 'bi-fire' },
-  { label: '🎟️ Mã giảm giá', question: 'Có mã giảm giá hoặc voucher nào hôm nay?', icon: 'bi-ticket-perforated' },
-  { label: '📐 Tư vấn chọn size', question: 'Tư vấn cho mình cách chọn size chuẩn', icon: 'bi-ruler' },
-  { label: '🚚 Tra cứu đơn hàng', question: 'Cho mình tra cứu trạng thái đơn hàng', icon: 'bi-truck' }
+  { label: 'Mẫu bán chạy', question: 'Mẫu sản phẩm nào đang bán chạy nhất?', icon: 'bi-fire' },
+  { label: 'Voucher hiện có', question: 'Có mã giảm giá hoặc voucher nào hôm nay?', icon: 'bi-ticket-perforated' },
+  { label: 'Tư vấn chọn size', question: 'Tư vấn cho mình cách chọn size chuẩn', icon: 'bi-rulers' },
+  { label: 'Tra cứu đơn hàng', question: 'Cho mình tra cứu trạng thái đơn hàng', icon: 'bi-truck' }
 ]
 
 const stylistChips = [
-  { label: '🥂 Outfit đi tiệc', question: 'Gợi ý cho mình set đồ đi tiệc sang trọng tôn dáng', icon: 'bi-balloon-heart' },
-  { label: '💼 Set đồ công sở', question: 'Tư vấn outfit công sở thanh lịch lịch sự', icon: 'bi-briefcase' },
-  { label: '☕ Cafe dạo phố', question: 'Gợi ý set đồ dạo phố nhẹ nhàng cá tính', icon: 'bi-cup-hot' },
-  { label: '🏖️ Outfit du lịch', question: 'Gợi ý set đồ du lịch thoáng mát trẻ trung', icon: 'bi-sun' }
+  { label: 'Trang phục đi tiệc', question: 'Gợi ý cho mình set đồ đi tiệc sang trọng tôn dáng', icon: 'bi-balloon-heart' },
+  { label: 'Trang phục công sở', question: 'Tư vấn outfit công sở thanh lịch lịch sự', icon: 'bi-briefcase' },
+  { label: 'Dạo phố cuối tuần', question: 'Gợi ý set đồ dạo phố nhẹ nhàng cá tính', icon: 'bi-cup-hot' },
+  { label: 'Trang phục du lịch', question: 'Gợi ý set đồ du lịch thoáng mát trẻ trung', icon: 'bi-sun' }
 ]
 
 const sizeChips = [
-  { label: '✨ Cao 1m55 - 45kg', question: 'Mình cao 1m55 nặng 45kg mặc size gì vừa vặn?', icon: 'bi-person' },
-  { label: '✨ Cao 1m62 - 52kg', question: 'Mình cao 1m62 nặng 52kg mặc size gì?', icon: 'bi-person' },
-  { label: '✨ Cao 1m68 - 60kg', question: 'Mình cao 1m68 nặng 60kg chọn size nào chuẩn?', icon: 'bi-person' }
+  { label: '1m55 - 45 kg', question: 'Mình cao 1m55 nặng 45kg mặc size gì vừa vặn?', icon: 'bi-person' },
+  { label: '1m62 - 52 kg', question: 'Mình cao 1m62 nặng 52kg mặc size gì?', icon: 'bi-person' },
+  { label: '1m68 - 60 kg', question: 'Mình cao 1m68 nặng 60kg chọn size nào chuẩn?', icon: 'bi-person' }
 ]
 
 const currentChips = computed(() => {
@@ -364,20 +360,35 @@ const calculatedSizeInfo = computed(() => {
   const h = sizeHeight.value
   const w = sizeWeight.value
   let size = 'M'
-  let score = 96
-  if (h < 155 && w < 48) { size = 'S'; score = 98; }
-  else if (h >= 155 && h <= 165 && w >= 48 && w <= 56) { size = 'M'; score = 97; }
-  else if (w > 56 && w <= 65) { size = 'L'; score = 95; }
-  else if (w > 65) { size = 'XL'; score = 92; }
-  return { size, score }
+  if (h < 155 && w < 48) size = 'S'
+  else if (h >= 155 && h <= 165 && w >= 48 && w <= 56) size = 'M'
+  else if (w > 56 && w <= 65) size = 'L'
+  else if (w > 65) size = 'XL'
+  return { size }
 })
 
 const supportStatusText = computed(() => {
-  if (supportStatus.value === 'PENDING') return 'Đang chờ nhân viên phản hồi...'
-  if (supportStatus.value === 'CLAIMED') return `Đang trò chuyện với NV ${supportEmployee.value || ''}`
+  if (supportStatus.value === 'WAITING') return 'Đang chờ nhân viên phản hồi...'
+  if (supportStatus.value === 'ACTIVE') return `Đang trò chuyện với ${supportEmployee.value || 'nhân viên Zestia'}`
   if (supportStatus.value === 'CLOSED') return 'Phiên hỗ trợ đã kết thúc'
   return 'Hỗ trợ trực tiếp'
 })
+
+function mapSupportMessages(items) {
+  return (items || []).map(message => ({
+    id: message.id,
+    role: (message.senderType || message.senderRole) === 'CUSTOMER' ? 'user' : 'assistant',
+    senderName: message.senderName,
+    content: message.content
+  }))
+}
+
+function applySupportSnapshot(data) {
+  supportStatus.value = data?.status || ''
+  supportEmployee.value = data?.employeeName || ''
+  humanMessages.value = mapSupportMessages(data?.messages)
+  if (supportStatus.value === 'CLOSED') stopSupportPolling()
+}
 
 function playChimeSound() {
   if (!soundEnabled.value) return
@@ -465,14 +476,18 @@ async function handleImageUpload(e) {
   e.target.value = ''
 
   if (!file.type.startsWith('image/')) {
-    showToast('Vui lòng chọn tệp hình ảnh valid.')
+    showToast('Vui lòng chọn một tệp hình ảnh hợp lệ.')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Ảnh không được vượt quá 5 MB.')
     return
   }
 
   messages.value.push({
     id: Date.now(),
     role: 'user',
-    content: '📷 [Đã gửi 1 hình ảnh để AI phân tích trang phục]'
+    content: '[Đã gửi một hình ảnh để tìm sản phẩm theo màu sắc]'
   })
   scrollToBottom()
   loading.value = true
@@ -480,18 +495,19 @@ async function handleImageUpload(e) {
   try {
     const res = await api().visualSearch(file)
     playChimeSound()
-    const found = res.data || []
-    let reply = `🔍 **AI Visual Search đã phân tích hình ảnh!**\n\nMình tìm thấy ${found.length} mẫu trang phục phong cách tương tự tại Zestia:`
+    const found = Array.isArray(res?.results) ? res.results : []
+    let reply = `**Đã phân tích màu nổi bật trong ảnh.**\n\nMình tìm thấy ${found.length} sản phẩm có màu gần nhất tại Zestia:`
     if (!found.length) {
-      reply = '🔍 **AI Visual Search**: Không tìm thấy sản phẩm hoàn toàn giống hệt, nhưng đây là các mẫu gợi ý thời trang mới nhất:'
+      reply = 'Hiện chưa có sản phẩm đang bán với màu đủ gần ảnh bạn gửi.'
     }
-    const cards = (found.length ? found : MOCK_PRODUCTS.slice(0, 3)).map(p => ({
+    const cards = found.map(p => ({
       type: 'product',
       id: p.id,
-      name: p.tenSanPham || p.tenVay || p.name,
-      price: p.giaBan || p.price,
-      image: p.anhUrl || p.image,
-      category: p.loaiSanPham || p.category || 'Thời trang'
+      variantId: p.variantId,
+      name: p.tenSanPham || p.name,
+      price: p.giaCuoi || p.price,
+      image: p.anhChinh || p.image,
+      category: p.danhMuc || p.category || 'Thời trang'
     }))
 
     messages.value.push({
@@ -521,9 +537,14 @@ function askAiForSize() {
 function toggleOpen() {
   open.value = !open.value
   if (open.value) {
+    window.dispatchEvent(new Event('zestia-close-notifications'))
     scrollToBottom()
     nextTick(() => inputRef.value?.focus())
   }
+}
+
+function closeChatWindow() {
+  open.value = false
 }
 
 function scrollToBottom() {
@@ -541,30 +562,52 @@ function onCardImgError(e) {
 function goToProduct(id) {
   if (!id) return
   open.value = false
-  router.push(`/products/${id}`)
+  router.push(`/product/${id}`)
 }
 
 function quickAddToCart(card) {
+  if (!card.variantId) {
+    open.value = false
+    router.push(`/product/${card.id}`)
+    showToast('Vui lòng chọn màu và kích thước trước khi thêm vào giỏ.')
+    return
+  }
   addItem({
     id: card.id,
+    productId: card.id,
+    variantId: card.variantId,
     name: card.name,
     price: card.price,
-    image: card.image
+    image: card.image,
+    color: card.color,
+    size: card.size,
+    variant: [card.color, card.size ? `Size ${card.size}` : ''].filter(Boolean).join(' · '),
+    maxQty: Number(card.stock || 0)
   })
   showToast(`Đã thêm "${card.name}" vào giỏ hàng!`)
 }
 
 function addOutfitToCart(outfitCard) {
   if (!outfitCard || !outfitCard.items || !outfitCard.items.length) return
+  if (outfitCard.items.some(item => !item.variantId)) {
+    showToast('Một sản phẩm trong gợi ý chưa có biến thể còn hàng. Vui lòng mở sản phẩm để chọn lại.')
+    return
+  }
   outfitCard.items.forEach(item => {
     addItem({
       id: item.id,
+      productId: item.id,
+      variantId: item.variantId,
       name: item.name,
       price: item.price,
-      image: item.image
+      image: item.image,
+      color: item.color,
+      size: item.size,
+      variant: [item.color, item.size ? `Size ${item.size}` : ''].filter(Boolean).join(' · '),
+      maxQty: Number(item.stock || 0)
     })
   })
-  showToast(`🎉 Đã thêm trọn bộ Set Outfit (${outfitCard.items.length} món) vào giỏ hàng!`)
+  showToast(`Đã thêm trọn bộ phối gồm ${outfitCard.items.length} món vào giỏ hàng.`)
 }
 
 function applyVoucherCode(code) {
@@ -576,7 +619,7 @@ function applyVoucherCode(code) {
 function copyText(text) {
   if (!text) return
   navigator.clipboard.writeText(text.replace(/[*_#`~]/g, ''))
-  showToast('Đã sao chép câu trả lời AI!')
+  showToast('Đã sao chép câu trả lời')
 }
 
 function clearHistory() {
@@ -584,7 +627,7 @@ function clearHistory() {
     {
       id: Date.now(),
       role: 'assistant',
-      content: '✨ **Lịch sử chat đã được làm mới.**\n\nMình có thể giúp gì cho bạn hôm nay?',
+      content: '**Lịch sử trò chuyện đã được làm mới.**\n\nMình có thể giúp gì cho bạn hôm nay?',
       cards: []
     }
   ]
@@ -633,14 +676,14 @@ async function send() {
     messages.value.push({
       id: Date.now() + 1,
       role: 'assistant',
-      content: res.reply || 'Zestia AI đã ghi nhận.',
+      content: res.reply || 'Zestia đã ghi nhận câu hỏi của bạn.',
       cards: res.cards || []
     })
   } catch (err) {
     messages.value.push({
       id: Date.now() + 1,
       role: 'assistant',
-      content: 'Rất tiếc, AI tạm thời không phản hồi. Bạn có thể nhấn nút "Gặp NV CSKH" bên dưới để trò chuyện trực tiếp nhé!',
+      content: 'Trợ lý đang tạm gián đoạn. Bạn có thể chọn "Chat với nhân viên" bên dưới để được hỗ trợ trực tiếp.',
       cards: []
     })
   } finally {
@@ -655,14 +698,8 @@ async function requestEmployee() {
     const firstMsg = messages.value.find(m => m.role === 'user')?.content || 'Cần hỗ trợ tư vấn trực tiếp'
     const res = await api().requestHumanSupport(firstMsg)
     supportToken.value = res.token
-    supportStatus.value = res.status
-    supportEmployee.value = res.employeeName || ''
-    humanMessages.value = (res.messages || []).map(m => ({
-      id: m.id,
-      role: m.senderRole === 'CUSTOMER' ? 'user' : 'assistant',
-      senderName: m.senderName,
-      content: m.content
-    }))
+    sessionStorage.setItem(SUPPORT_SESSION_KEY, res.token)
+    applySupportSnapshot(res)
     humanMode.value = true
     startSupportPolling()
     showToast('Đã tạo kết nối với nhân viên CSKH!')
@@ -677,12 +714,7 @@ async function sendHumanMessage(text) {
   if (!supportToken.value) return
   try {
     const res = await api().sendCustomerSupportMessage(supportToken.value, text)
-    humanMessages.value = (res.messages || []).map(m => ({
-      id: m.id,
-      role: m.senderRole === 'CUSTOMER' ? 'user' : 'assistant',
-      senderName: m.senderName,
-      content: m.content
-    }))
+    applySupportSnapshot(res)
     scrollToBottom()
   } catch (err) {
     showToast('Gửi tin nhắn thất bại.')
@@ -695,14 +727,8 @@ function startSupportPolling() {
     if (!supportToken.value || !humanMode.value) return
     try {
       const data = await api().getCustomerSupportChat(supportToken.value)
-      supportStatus.value = data.status
-      supportEmployee.value = data.employeeName || ''
-      humanMessages.value = (data.messages || []).map(m => ({
-        id: m.id,
-        role: m.senderRole === 'CUSTOMER' ? 'user' : 'assistant',
-        senderName: m.senderName,
-        content: m.content
-      }))
+      applySupportSnapshot(data)
+      scrollToBottom()
     } catch {
       // Ignore poll error
     }
@@ -719,7 +745,25 @@ function stopSupportPolling() {
 function backToAi() {
   humanMode.value = false
   supportToken.value = ''
+  supportStatus.value = ''
+  supportEmployee.value = ''
+  humanMessages.value = []
+  sessionStorage.removeItem(SUPPORT_SESSION_KEY)
   stopSupportPolling()
+}
+
+async function restoreSupportSession() {
+  const token = sessionStorage.getItem(SUPPORT_SESSION_KEY)
+  if (!token) return
+  try {
+    const data = await api().getCustomerSupportChat(token)
+    supportToken.value = token
+    humanMode.value = true
+    applySupportSnapshot(data)
+    if (data.status !== 'CLOSED') startSupportPolling()
+  } catch {
+    sessionStorage.removeItem(SUPPORT_SESSION_KEY)
+  }
 }
 
 function formatMarkdown(text) {
@@ -736,7 +780,13 @@ function formatMarkdown(text) {
   return html
 }
 
+onMounted(() => {
+  restoreSupportSession()
+  window.addEventListener('zestia-close-customer-chat', closeChatWindow)
+})
+
 onBeforeUnmount(() => {
+  window.removeEventListener('zestia-close-customer-chat', closeChatWindow)
   stopSupportPolling()
   if (recognition) recognition.stop()
 })
@@ -745,590 +795,658 @@ onBeforeUnmount(() => {
 <style scoped>
 .z-customer-ai {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 9999;
-  font-family: var(--z-font-base, system-ui, -apple-system, sans-serif);
+  right: 20px;
+  bottom: 20px;
+  z-index: 1040;
+  font-family: var(--z-font-body);
 }
 
 .z-ai-toggle-btn {
-  position: relative;
-  display: flex;
+  min-height: 46px;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 32px;
-  background: linear-gradient(135deg, #1A1A1A 0%, #333333 100%);
-  color: #fff;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  gap: 9px;
+  padding: 0 16px;
+  border: 1px solid var(--z-dark);
+  border-radius: var(--z-radius);
+  background: var(--z-dark);
+  color: var(--z-white);
+  box-shadow: 0 12px 30px rgba(27, 27, 31, 0.2);
+  font-size: 13px;
+  font-weight: 650;
   cursor: pointer;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: var(--z-ease);
 }
-
+.z-ai-toggle-btn i { font-size: 17px; }
 .z-ai-toggle-btn:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  border-color: var(--z-accent);
+  background: var(--z-accent);
+  color: var(--z-white);
+  transform: translateY(-2px);
+  box-shadow: 0 15px 32px rgba(27, 27, 31, 0.24);
 }
+.z-ai-toggle-btn:active { transform: translateY(0); }
+.z-ai-badge-text { white-space: nowrap; }
 
-.z-ai-icon-stars {
-  font-size: 20px;
-  color: #FFD700;
-}
-
-.z-ai-badge-text {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-
-.z-ai-pulse {
-  position: absolute;
-  top: -2px; left: -2px; right: -2px; bottom: -2px;
-  border-radius: 32px;
-  border: 2px solid rgba(212, 86, 78, 0.6);
-  animation: z-pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
-}
-
-@keyframes z-pulse-ring {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.08); opacity: 0; }
-  100% { transform: scale(0.95); opacity: 0; }
-}
-
-/* KHUNG CHAT AI PANEL GLASSMORPHISM */
 .z-ai-window {
-  width: min(420px, calc(100vw - 28px));
-  height: min(640px, calc(100vh - 100px));
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 20px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
+  width: min(420px, calc(100vw - 32px));
+  height: min(650px, calc(100dvh - 96px));
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+  box-shadow: 0 24px 64px rgba(27, 27, 31, 0.24);
 }
 
-/* HEADER */
 .z-ai-header {
-  padding: 14px 18px;
-  background: linear-gradient(135deg, #1A1A1A 0%, #2D2D2D 100%);
-  color: #fff;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--z-dark);
+  color: var(--z-white);
 }
-
 .z-ai-header-info {
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
-
+.z-ai-header-info > div:last-child { min-width: 0; }
 .z-ai-avatar {
+  position: relative;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #D4564E 0%, #B8433C 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: #fff;
-  position: relative;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border-radius: var(--z-radius);
+  background: var(--z-white);
 }
-
+.z-ai-avatar img { width: 30px; height: 30px; object-fit: contain; }
 .z-ai-status-dot {
   position: absolute;
-  bottom: 0;
-  right: 0;
+  right: -2px;
+  bottom: -2px;
   width: 10px;
   height: 10px;
+  border: 2px solid var(--z-dark);
   border-radius: 50%;
-  background: #2ECC71;
-  border: 2px solid #1A1A1A;
+  background: #22C55E;
 }
-
-.z-ai-title { font-size: 14px; font-weight: 700; color: #fff; }
-.z-ai-subtitle { display: block; font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 1px; }
-
-.z-ai-header-actions { display: flex; align-items: center; gap: 6px; }
-.z-ai-icon-btn {
-  width: 32px; height: 32px; border: none; border-radius: 50%;
-  background: rgba(255,255,255,0.1); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; cursor: pointer; transition: background 0.2s;
+.z-ai-title {
+  max-width: 205px;
+  display: block;
+  overflow: hidden;
+  color: var(--z-white);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.z-ai-icon-btn:hover { background: rgba(255,255,255,0.2); }
-.z-ai-icon-btn.close-btn:hover { background: #D4564E; }
-
-/* TABS MODE SWITCHER */
-.z-ai-tabs {
+.z-ai-subtitle {
+  max-width: 230px;
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.z-ai-mode-badge {
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.z-ai-header-actions {
   display: flex;
-  background: #F4F4F5;
-  padding: 4px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  align-items: center;
+  gap: 5px;
+}
+.z-ai-icon-btn {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--z-white);
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-ai-icon-btn:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--z-white);
+}
+.z-ai-icon-btn.close-btn:hover {
+  border-color: var(--z-accent);
+  background: var(--z-accent);
+}
+
+.z-ai-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--z-gray-border);
+  background: var(--z-bg-alt);
 }
 .z-ai-tab {
-  flex: 1;
-  border: none;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #666;
-  background: transparent;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
+  min-width: 0;
+  min-height: 38px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--z-gray);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-ai-tab:hover {
+  border-color: var(--z-gray-border);
+  background: var(--z-white);
+  color: var(--z-dark);
 }
 .z-ai-tab.active {
-  background: #fff;
-  color: var(--z-dark);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  border-color: var(--z-gray-border);
+  background: var(--z-white);
+  color: var(--z-accent-dark);
+  box-shadow: 0 2px 6px rgba(27, 27, 31, 0.06);
 }
 
-/* SIZE CALCULATOR PANEL */
 .z-size-calculator-panel {
-  background: #FFF9F9;
-  padding: 12px 16px;
-  border-bottom: 1px solid #FFEBEB;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--z-gray-border);
+  background: var(--z-bg);
 }
 .z-size-calc-header {
-  font-size: 12px;
-  color: #333;
   display: flex;
   align-items: center;
+  gap: 7px;
+  color: var(--z-dark);
+  font-size: 12px;
 }
+.z-size-calc-header i { color: var(--z-accent); }
 .z-calc-label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--z-gray);
   font-size: 11px;
-  color: #555;
 }
-.custom-range {
-  height: 4px;
-}
+.custom-range { accent-color: var(--z-accent); }
 .z-size-result-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid #FFD6D6;
+  gap: 8px;
 }
-.z-size-badge-val {
-  font-size: 12px;
-}
+.z-size-badge-val { color: var(--z-gray); font-size: 11px; line-height: 1.5; }
 .z-size-tag {
-  background: #D4564E;
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 6px;
+  display: inline-grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  margin-left: 4px;
+  border-radius: 4px;
+  background: var(--z-dark);
+  color: var(--z-white);
+  font-size: 12px;
   font-weight: 700;
-  font-size: 13px;
+}
+.z-calc-submit-btn {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
-/* CHAT BODY */
 .z-ai-body {
+  min-height: 0;
   flex: 1;
-  padding: 16px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 14px;
+  background: var(--z-bg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--z-gray-light) transparent;
 }
-
 .z-ai-msg-group {
-  display: flex;
-  gap: 10px;
   max-width: 94%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
-
 .z-ai-msg-group.user {
   align-self: flex-end;
   flex-direction: row-reverse;
 }
-
 .z-ai-avatar-mini {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--z-accent-light);
   border-radius: 50%;
-  background: linear-gradient(135deg, #1A1A1A, #D4564E);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
+  font-size: 12px;
 }
-
+.z-ai-msg-content { min-width: 0; flex: 1; }
 .z-ai-msg-bubble {
-  position: relative;
-  padding: 12px 14px;
-  border-radius: 16px;
-  font-size: 13px;
-  line-height: 1.5;
+  padding: 10px 12px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+  color: var(--z-dark-soft);
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
 }
-
-.z-ai-msg-group.assistant .z-ai-msg-bubble {
-  background: #F4F4F6;
-  color: #1A1A1A;
-  border-top-left-radius: 4px;
-}
-
 .z-ai-msg-group.user .z-ai-msg-bubble {
-  background: linear-gradient(135deg, #1A1A1A, #333333);
-  color: #fff;
-  border-top-right-radius: 4px;
+  border-color: var(--z-dark);
+  background: var(--z-dark);
+  color: var(--z-white);
 }
-
+.z-ai-text { color: inherit; }
+.z-ai-text :deep(p) { margin: 0 0 8px; color: inherit; }
+.z-ai-text :deep(p:last-child) { margin-bottom: 0; }
+.z-ai-text :deep(strong),
+.z-ai-text :deep(code),
+.z-ai-text :deep(a) { color: inherit; }
+.z-ai-text :deep(a) { text-decoration: underline; text-underline-offset: 2px; }
 .z-ai-msg-actions {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 4px;
+  margin-top: 8px;
 }
-
 .z-ai-action-sub-btn {
-  border: none;
-  background: rgba(0,0,0,0.05);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  font-size: 11px;
-  color: #666;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.z-ai-action-sub-btn:hover { background: rgba(0,0,0,0.1); color: #000; }
-
-/* CARDS SCROLL */
-.z-ai-cards-container {
-  margin-top: 10px;
-  width: 100%;
-}
-.z-ai-cards-scroll {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 6px;
-}
-
-/* THẺ OUTFIT SET LOOKBOOK */
-.z-outfit-card {
-  width: 280px;
-  flex-shrink: 0;
-  background: #fff;
-  border: 1px solid #EAEAEA;
-  border-radius: 14px;
-  padding: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-}
-.z-outfit-badge {
-  font-size: 10px;
-  font-weight: 800;
-  color: #D4564E;
-  letter-spacing: 0.5px;
-}
-.z-outfit-title {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1A1A1A;
-}
-.z-outfit-sub {
-  font-size: 11px;
-  color: #777;
-}
-.z-outfit-items-grid {
+  width: 26px;
+  height: 26px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin: 10px 0;
-}
-.z-outfit-mini-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #F9F9FB;
-  padding: 6px;
-  border-radius: 8px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: var(--z-bg-alt);
+  color: var(--z-gray);
   cursor: pointer;
+  transition: var(--z-ease);
 }
-.z-outfit-mini-item img {
-  width: 36px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-.z-outfit-mini-name {
-  font-size: 10px;
-  font-weight: 600;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.z-outfit-mini-price {
-  font-size: 10px;
-  color: #D4564E;
-  font-weight: 700;
-}
-.z-outfit-combo-price {
-  font-size: 14px;
-  font-weight: 800;
-  color: #D4564E;
-}
-.z-outfit-old-price {
-  font-size: 11px;
-  text-decoration: line-through;
-  color: #999;
+.z-ai-action-sub-btn:hover {
+  border-color: var(--z-gray-border);
+  background: var(--z-white);
+  color: var(--z-accent-dark);
 }
 
-/* THẺ SẢN PHẨM SINGLE */
+.z-ai-cards-container { margin-top: 9px; }
+.z-ai-cards-scroll {
+  display: grid;
+  gap: 10px;
+}
 .z-ai-card-item {
-  width: 170px;
-  flex-shrink: 0;
-  background: #fff;
-  border: 1px solid #EAEAEA;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
-.z-card-img-wrapper {
-  position: relative;
-  aspect-ratio: 3/4;
-  cursor: pointer;
-  overflow: hidden;
-}
-.z-card-img-wrapper img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s;
-}
-.z-card-img-wrapper:hover img {
-  transform: scale(1.05);
-}
-.z-card-cat-badge {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  font-size: 9px;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-.z-card-info {
-  padding: 8px 10px;
-}
-.z-card-name {
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
 }
-.z-card-price {
-  font-size: 13px;
-  font-weight: 700;
-  color: #D4564E;
-}
-.z-card-stock {
-  font-size: 10px;
-  color: #888;
-}
-
-/* THẺ VOUCHER */
-.z-voucher-card {
-  width: 220px;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, #FFF9F9, #FFEBEB);
-  border: 1px dashed #D4564E;
-  border-radius: 12px;
-  padding: 10px 12px;
+.z-outfit-card { padding: 11px; }
+.z-outfit-header {
   display: flex;
   flex-direction: column;
+  gap: 3px;
+  margin-bottom: 9px;
+}
+.z-outfit-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  color: var(--z-accent-dark);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.z-outfit-title { color: var(--z-dark); font-size: 12px; }
+.z-outfit-sub { color: var(--z-gray); font-size: 11px; }
+.z-outfit-items-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
-.z-voucher-code {
-  font-size: 14px;
-  color: #D4564E;
-}
-.z-voucher-desc {
-  font-size: 11px;
-  color: #555;
-}
-.z-voucher-apply-btn {
-  align-self: flex-end;
-  border: none;
-  background: #D4564E;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
+.z-outfit-mini-item {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--z-gray-border);
   border-radius: 6px;
+  background: var(--z-bg);
   cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-outfit-mini-item:hover {
+  border-color: var(--z-accent-light);
+  transform: translateY(-1px);
+}
+.z-outfit-mini-item img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  display: block;
+  object-fit: cover;
+}
+.z-outfit-mini-info { display: grid; gap: 2px; padding: 6px; }
+.z-outfit-mini-name {
+  overflow: hidden;
+  color: var(--z-dark);
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.z-outfit-mini-price { color: var(--z-accent-dark); font-size: 10px; font-weight: 700; }
+.z-outfit-footer {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--z-gray-border);
+}
+.z-outfit-combo-price { color: var(--z-dark); font-size: 13px; font-weight: 700; }
+.z-outfit-add-btn {
+  min-height: 36px;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 11px;
 }
 
-/* TYPING INDICATOR */
-.z-ai-typing-bubble {
-  display: flex;
-  gap: 4px;
-  padding: 12px 16px;
+.z-ai-card-item.product {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
 }
+.z-card-img-wrapper {
+  position: relative;
+  min-height: 112px;
+  overflow: hidden;
+  background: var(--z-bg-alt);
+  cursor: pointer;
+}
+.z-card-img-wrapper img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.z-card-cat-badge {
+  position: absolute;
+  left: 5px;
+  bottom: 5px;
+  max-width: calc(100% - 10px);
+  overflow: hidden;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgba(27, 27, 31, 0.82);
+  color: var(--z-white);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.z-card-info { min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 10px; }
+.z-card-name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--z-dark);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  cursor: pointer;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.z-card-price { color: var(--z-accent-dark); font-size: 12px; font-weight: 700; }
+.z-card-stock { color: #217A3D; font-size: 10px; font-weight: 600; }
+.z-card-view-btn { min-height: 32px; justify-content: center; padding: 5px 9px; font-size: 10px; }
+.z-card-cart-btn { width: 32px; height: 32px; flex-basis: 32px; }
+
+.z-voucher-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+}
+.z-voucher-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
+}
+.z-voucher-details { min-width: 0; }
+.z-voucher-code { display: block; color: var(--z-dark); font-size: 11px; }
+.z-voucher-desc { margin-top: 2px; color: var(--z-gray); font-size: 10px; line-height: 1.4; }
+.z-voucher-apply-btn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--z-dark);
+  border-radius: 6px;
+  background: var(--z-dark);
+  color: var(--z-white);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-voucher-apply-btn:hover { border-color: var(--z-accent); background: var(--z-accent); }
+
+.z-ai-typing-bubble { min-width: 58px; display: flex; align-items: center; gap: 4px; }
 .z-dot {
   width: 6px;
   height: 6px;
-  background: #888;
   border-radius: 50%;
-  animation: z-typing 1.4s infinite ease-in-out;
+  background: var(--z-gray-light);
+  animation: z-dot-bounce 1.15s infinite ease-in-out;
 }
-.z-dot:nth-child(1) { animation-delay: 0s; }
-.z-dot:nth-child(2) { animation-delay: 0.2s; }
-.z-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes z-typing {
-  0%, 100% { transform: translateY(0); opacity: 0.4; }
-  50% { transform: translateY(-4px); opacity: 1; }
+.z-dot:nth-child(2) { animation-delay: 0.14s; }
+.z-dot:nth-child(3) { animation-delay: 0.28s; }
+@keyframes z-dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
+  30% { transform: translateY(-3px); opacity: 1; }
 }
 
-/* QUICK CHIPS */
 .z-ai-quick-section {
-  padding: 6px 12px;
-  background: #FAFAFA;
-  border-top: 1px solid #F0F0F0;
+  padding: 9px 12px;
+  border-top: 1px solid var(--z-gray-border);
+  background: var(--z-white);
 }
 .z-ai-chips-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 4px 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 .z-ai-chip-btn {
-  flex-shrink: 0;
-  border: 1px solid #E0E0E0;
-  background: #fff;
-  color: #444;
+  min-width: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-white);
+  color: var(--z-dark-soft);
   font-size: 11px;
   font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 16px;
+  line-height: 1.25;
+  text-align: left;
   cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
+  transition: var(--z-ease);
 }
-.z-ai-chip-btn:hover {
-  background: #1A1A1A;
-  color: #fff;
-  border-color: #1A1A1A;
+.z-ai-chip-btn i { flex: 0 0 auto; color: var(--z-accent); font-size: 12px; }
+.z-ai-chip-btn:hover:not(:disabled) {
+  border-color: var(--z-accent-light);
+  background: var(--z-accent-soft);
+  color: var(--z-dark);
+  transform: translateY(-1px);
 }
+.z-ai-chip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* HANDOFF BAR */
 .z-ai-handoff-bar {
-  padding: 8px 14px;
-  background: #FFF5F5;
-  border-top: 1px solid #FFEBEB;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--z-gray-border);
+  background: var(--z-warm-light);
+  color: var(--z-dark-soft);
   font-size: 11px;
-  color: #666;
 }
 .z-handoff-btn {
-  border: none;
-  background: #1A1A1A;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 10px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid var(--z-dark);
   border-radius: 6px;
+  background: var(--z-white);
+  color: var(--z-dark);
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
   cursor: pointer;
+  transition: var(--z-ease);
 }
+.z-handoff-btn:hover:not(:disabled) { background: var(--z-dark); color: var(--z-white); }
+.z-handoff-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* FORM INPUT */
 .z-ai-form {
-  padding: 10px 14px;
-  background: #fff;
-  border-top: 1px solid #EAEAEA;
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px 36px minmax(0, 1fr) 38px;
   align-items: center;
   gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--z-gray-border);
+  background: var(--z-white);
 }
-.z-ai-media-btn, .z-ai-mic-btn {
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 50%;
-  background: #F4F4F6;
-  color: #555;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.z-ai-media-btn:hover, .z-ai-mic-btn:hover {
-  background: #EAEAEA;
-  color: #1A1A1A;
-}
-.z-ai-mic-btn.listening {
-  background: #FFEBEB;
-  animation: z-mic-pulse 1.2s infinite;
-}
-@keyframes z-mic-pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-
-.z-ai-input {
-  flex: 1;
-  border: 1px solid #E5E5E5;
-  border-radius: 20px;
-  padding: 8px 14px;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.z-ai-input:focus {
-  border-color: #1A1A1A;
-}
-
+.z-ai-media-btn,
+.z-ai-mic-btn,
 .z-ai-send-btn {
   width: 36px;
   height: 36px;
-  border: none;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #1A1A1A, #333333);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-bg);
+  color: var(--z-gray);
   cursor: pointer;
+  transition: var(--z-ease);
 }
-.z-ai-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.z-ai-media-btn:hover:not(:disabled),
+.z-ai-mic-btn:hover:not(:disabled) {
+  border-color: var(--z-accent-light);
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
+}
+.z-ai-mic-btn.listening {
+  border-color: var(--z-accent);
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
+}
+.z-ai-input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-white);
+  color: var(--z-dark);
+  font-size: 11px;
+  outline: none;
+  transition: var(--z-ease);
+}
+.z-ai-input::placeholder { color: var(--z-gray-light); }
+.z-ai-input:focus {
+  border-color: var(--z-accent);
+  box-shadow: 0 0 0 3px var(--z-accent-soft);
+}
+.z-ai-send-btn {
+  width: 38px;
+  height: 38px;
+  border-color: var(--z-dark);
+  background: var(--z-dark);
+  color: var(--z-white);
+}
+.z-ai-send-btn:hover:not(:disabled) { border-color: var(--z-accent); background: var(--z-accent); }
+.z-ai-media-btn:disabled,
+.z-ai-mic-btn:disabled,
+.z-ai-send-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.z-slide-up-enter-active,
+.z-slide-up-leave-active { transition: transform 0.16s ease; }
+.z-slide-up-enter-from,
+.z-slide-up-leave-to { transform: translateY(8px); }
+
+@media (max-width: 575px) {
+  .z-customer-ai { right: 10px; bottom: 10px; }
+  .z-ai-window {
+    width: calc(100vw - 20px);
+    height: calc(100dvh - 82px);
+  }
+  .z-ai-header { min-height: 64px; padding: 10px; }
+  .z-ai-avatar { width: 36px; height: 36px; flex-basis: 36px; }
+  .z-ai-avatar img { width: 27px; height: 27px; }
+  .z-ai-subtitle { max-width: 155px; }
+  .z-ai-title { max-width: 165px; }
+  .z-ai-header-actions { gap: 3px; }
+  .z-ai-icon-btn { width: 30px; height: 30px; flex-basis: 30px; }
+  .z-size-result-bar { align-items: flex-start; flex-direction: column; }
+  .z-calc-submit-btn { width: 100%; justify-content: center; }
+  .z-ai-body { padding: 12px 10px; }
+  .z-ai-quick-section { padding: 8px 10px; }
+  .z-ai-form { grid-template-columns: 34px 34px minmax(0, 1fr) 36px; gap: 4px; padding: 8px 10px; }
+  .z-ai-media-btn, .z-ai-mic-btn { width: 34px; height: 34px; }
+  .z-ai-send-btn { width: 36px; height: 36px; }
+  .z-ai-input { padding-inline: 9px; font-size: 11px; }
+  .z-ai-handoff-bar { align-items: flex-start; flex-direction: column; }
+  .z-handoff-btn { width: 100%; justify-content: center; }
 }
 
-/* TRANSITIONS */
-.z-slide-up-enter-active, .z-slide-up-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-.z-slide-up-enter-from, .z-slide-up-leave-to {
-  transform: translateY(20px);
-  opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+  .z-ai-toggle-btn,
+  .z-ai-tab,
+  .z-ai-chip-btn,
+  .z-ai-card-item,
+  .z-slide-up-enter-active,
+  .z-slide-up-leave-active { transition: none; }
+  .z-dot { animation: none; }
 }
 </style>

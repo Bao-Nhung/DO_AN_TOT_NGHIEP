@@ -109,9 +109,9 @@
               <a :href="'/tracking?code=' + (o.maHoaDon || o.id) + '&phone=' + (o.phone || '')" target="_blank" class="btn btn-sm btn-outline-secondary me-1 py-1 px-2 text-decoration-none" style="font-size:11px;" title="Tra cứu công khai trên Website" aria-label="Tra cứu đơn hàng trên Website">
                 <i class="bi bi-search me-1"></i> Tra cứu
               </a>
-              <button v-if="o.raw?.yeuCauVat || o.raw?.soHoaDonVat" type="button" class="btn btn-sm btn-outline-danger me-1 py-1 px-2" style="font-size:11px;" title="Xem / Xuất Hóa Đơn Điện Tử VAT" @click="openEInvoiceModal(o.id)">
-                <i class="bi bi-receipt me-1"></i> VAT
-              </button>
+              <span v-if="o.raw?.yeuCauVat" class="badge bg-warning text-dark me-1" title="Khách có yêu cầu xuất hóa đơn VAT">
+                <i class="bi bi-receipt me-1"></i>Yêu cầu VAT
+              </span>
               <button type="button" class="z-action-btn d-inline-block" title="Xem & Xử lý" :aria-label="`Xem và xử lý đơn ${o.maHoaDon || o.id}`" @click="openDetail(o)">
                 <i class="bi bi-pencil-square"></i>
               </button>
@@ -185,14 +185,6 @@
                   <div class="z-step-label" style="color: var(--z-danger); font-weight: 600;">Đã huỷ</div>
                </div>
             </template>
-            <template v-else-if="detailData.trangThai === 8 || detailData.trangThai === 9">
-               <div class="z-step active">
-                  <div class="z-step-dot" :style="detailData.trangThai === 9 ? 'background: var(--z-danger);' : 'background: var(--z-accent);'"></div>
-                  <div class="z-step-label" :style="detailData.trangThai === 9 ? 'color: var(--z-danger); font-weight: 600;' : 'color: var(--z-accent); font-weight: 600;'">
-                    {{ detailData.trangThai === 9 ? 'Đã hoàn tiền/hoàn tất' : 'Yêu cầu đổi/trả' }}
-                  </div>
-               </div>
-            </template>
             <template v-else>
                 <div v-for="(step, i) in statusSteps" :key="i"
                      class="z-step" :class="{ active: detailData.trangThai >= i && detailData.trangThai !== 6, current: detailData.trangThai === i, failed: i === 4 && detailData.trangThai === 6 }">
@@ -232,25 +224,17 @@
                     </div>
                   </div>
 
-                  <!-- VAT Enterprise Information Box -->
-                  <div v-if="detailData.yeuCauVat || detailData.soHoaDonVat" class="mb-4 p-3 border border-danger rounded bg-light">
+                  <div v-if="detailData.yeuCauVat" class="mb-4 p-3 border border-warning rounded bg-light">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                      <strong class="text-danger"><i class="bi bi-file-earmark-text me-1"></i>Hóa Đơn Điện Tử VAT Doanh Nghiệp</strong>
-                      <button type="button" class="btn btn-sm btn-danger py-1 px-3 fw-bold" @click="openEInvoiceModal(detailData.id)">
-                        <i class="bi bi-receipt me-1"></i> {{ detailData.trangThaiVat === 'DA_PHAT_HANH' ? 'Xem Hóa Đơn' : 'Phát Hành VAT' }}
-                      </button>
+                      <strong><i class="bi bi-file-earmark-text me-1"></i>Thông tin yêu cầu xuất hóa đơn VAT</strong>
+                      <span class="badge bg-warning text-dark">Đã ghi nhận</span>
                     </div>
                     <div style="font-size: 13px;">
                       <div><strong>Tên công ty:</strong> {{ detailData.tenCongTyVat || detailData.tenKhachHang }}</div>
                       <div><strong>Mã số thuế:</strong> {{ detailData.maSoThueVat || 'Không cung cấp' }}</div>
                       <div><strong>Email nhận HD:</strong> {{ detailData.emailVat || detailData.emailKhachHang }}</div>
                       <div><strong>Địa chỉ:</strong> {{ detailData.diaChiVat || detailData.diaChiGiaoHang }}</div>
-                      <div class="mt-2">
-                        <strong>Trạng thái VAT: </strong>
-                        <span :class="detailData.trangThaiVat === 'DA_PHAT_HANH' ? 'badge bg-success' : 'badge bg-warning text-dark'">
-                          {{ detailData.trangThaiVat === 'DA_PHAT_HANH' ? 'Đã Phát Hành' : 'Chờ Phát Hành' }}
-                        </span>
-                      </div>
+                      <div class="mt-2 text-muted">Nhân viên đối chiếu thông tin và phát hành bằng hệ thống hóa đơn điện tử hợp pháp của cửa hàng.</div>
                     </div>
                   </div>
 
@@ -315,7 +299,7 @@
                         </div>
                       </div>
                       <div class="flex-grow-1">
-                        <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ item.tenSanPham || item.tenVay || 'Sản phẩm' }}</div>
+                        <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ item.tenSanPham || 'Sản phẩm' }}</div>
                         <div style="font-size:12px;color:var(--z-gray)">
                           <span v-if="item.maSanPham">Mã SP: {{ item.maSanPham }}<br></span>
                           <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
@@ -420,40 +404,17 @@
       </div>
     </div>
 
-    <!-- E-Invoice Modal -->
-    <EInvoiceModal :show="showEInvoiceModal" :invoice="eInvoiceData" :orderId="selectedEInvoiceOrderId" @close="showEInvoiceModal = false" @updated="onEInvoiceUpdated" />
   </AdminLayout>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import EInvoiceModal from '@/components/EInvoiceModal.vue'
 import { api } from '@/composables/useApi'
 import { fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from '@/composables/useI18n'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
-
-const showEInvoiceModal = ref(false)
-const selectedEInvoiceOrderId = ref(null)
-const eInvoiceData = ref(null)
-
-async function openEInvoiceModal(orderId) {
-  selectedEInvoiceOrderId.value = orderId
-  try {
-    eInvoiceData.value = await api().getEInvoice(orderId)
-    showEInvoiceModal.value = true
-  } catch (error) {
-    showToast(error.error || 'Không thể lấy dữ liệu Hóa Đơn Điện Tử')
-  }
-}
-
-function onEInvoiceUpdated(updated) {
-  eInvoiceData.value = updated
-  showToast('Đã phát hành Hóa Đơn Điện Tử VAT thành công!')
-  fetchOrders()
-}
 
 const { showToast } = useToast()
 const { isEn } = useI18n()
@@ -476,8 +437,6 @@ const statusMap = {
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
 statusMap[7] = { text: 'Thanh toán thất bại', cls: 'danger' }
-statusMap[8] = { text: 'Yêu cầu đổi/trả', cls: 'warning' }
-statusMap[9] = { text: 'Đã hoàn tiền', cls: 'danger' }
 
 const search = ref('')
 const activeStatus = ref('all')
@@ -615,8 +574,6 @@ const statusTabs = computed(() => [
   { label: 'Đã huỷ',        value: '5', count: Number(statusCounts.value['5'] || 0) },
   { label: 'Giao thất bại', value: '6', count: Number(statusCounts.value['6'] || 0) },
   { label: 'Thanh toán thất bại', value: '7', count: Number(statusCounts.value['7'] || 0) },
-  { label: 'Yêu cầu đổi/trả', value: '8', count: Number(statusCounts.value['8'] || 0) },
-  { label: 'Đã hoàn tiền', value: '9', count: Number(statusCounts.value['9'] || 0) },
 ])
 
 const filteredOrders = computed(() => allOrders.value)
@@ -781,7 +738,7 @@ async function openDetail(o) {
 <style scoped>
 .z-tab {
   padding: 8px 16px; border: 1px solid var(--z-gray-border);
-  background: var(--z-white); border-radius: 20px;
+  background: var(--z-white); border-radius: var(--z-radius);
   font-size: 13px; font-weight: 500; color: var(--z-gray);
   cursor: pointer; transition: all 0.2s;
   display: inline-flex; align-items: center; gap: 6px;

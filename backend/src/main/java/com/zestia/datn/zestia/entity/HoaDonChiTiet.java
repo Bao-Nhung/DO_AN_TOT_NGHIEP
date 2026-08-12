@@ -32,12 +32,25 @@ public class HoaDonChiTiet {
     @Column(name = "don_gia")
     private BigDecimal donGia;
 
-    @Column(name = "gia_nhap")
-    private BigDecimal giaNhap;
-
     @Column(name = "phan_tram_giam")
     private BigDecimal phanTramGiam;
 
-    public SanPhamChiTiet getVayChiTiet() { return sanPhamChiTiet; }
-    public void setVayChiTiet(SanPhamChiTiet val) { this.sanPhamChiTiet = val; }
+    @Column(name = "thanh_tien")
+    private BigDecimal thanhTien;
+
+    @Column(name = "ma_san_pham_snapshot", length = 50)
+    private String maSanPhamSnapshot;
+
+    @Column(name = "ten_san_pham_snapshot", length = 200)
+    private String tenSanPhamSnapshot;
+
+    @Column(name = "mau_sac_snapshot", length = 100)
+    private String mauSacSnapshot;
+
+    @Column(name = "kich_thuoc_snapshot", length = 50)
+    private String kichThuocSnapshot;
+
+    @Column(name = "anh_url_snapshot", length = 500)
+    private String anhUrlSnapshot;
+
 }

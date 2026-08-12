@@ -187,8 +187,8 @@
             <tr v-for="log in stockLogs" :key="log.id">
               <td style="font-size:12px;color:var(--z-gray)">{{ formatDate(log.ngayTao) }}</td>
               <td>
-                <div style="font-weight:500">{{ log.tenVay || 'N/A' }}</div>
-                <div style="font-size:11px;color:var(--z-gray)">{{ log.maVay }}</div>
+                <div style="font-weight:500">{{ log.tenSanPham || 'N/A' }}</div>
+                <div style="font-size:11px;color:var(--z-gray)">{{ log.maSanPham }}</div>
               </td>
               <td>
                 <span class="badge bg-light text-dark border">
@@ -226,7 +226,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h3 style="font-size:18px;font-weight:600;margin:0">Chi tiết sản phẩm</h3>
-            <div style="font-size:13px;color:var(--z-gray)">{{ productDetail?.maVay }}</div>
+            <div style="font-size:13px;color:var(--z-gray)">{{ productDetail?.maSanPham }}</div>
           </div>
           <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết sản phẩm" @click="showProductDetail = false"><i class="bi bi-x-lg"></i></button>
         </div>
@@ -246,12 +246,12 @@
               </div>
             </div>
             <div class="col-md-8">
-              <h2 style="font-size:22px;font-weight:600;margin-bottom:8px">{{ productDetail.tenVay }}</h2>
+              <h2 style="font-size:22px;font-weight:600;margin-bottom:8px">{{ productDetail.tenSanPham }}</h2>
               <div class="d-flex gap-2 align-items-center mb-3">
                 <span class="z-status" :class="productDetail.trangThai === 1 ? 'success' : 'pending'">
                   {{ productDetail.trangThai === 1 ? 'Đang bán' : 'Ngừng bán' }}
                 </span>
-                <span v-if="productDetail.loaiVay" style="font-size:12px;color:var(--z-gray);background:var(--z-bg-alt);padding:4px 10px;border-radius:20px">{{ productDetail.loaiVay }}</span>
+                <span v-if="productDetail.loaiSanPham" style="font-size:12px;color:var(--z-gray);background:var(--z-bg-alt);padding:4px 10px;border-radius:20px">{{ productDetail.loaiSanPham }}</span>
               </div>
               <div class="row g-2 mb-3">
                 <div class="col-6"><span style="font-size:12px;color:var(--z-gray)">Chất liệu:</span> <strong style="font-size:13px">{{ productDetail.chatLieu || 'N/A' }}</strong></div>
@@ -278,7 +278,7 @@
               </thead>
               <tbody>
                 <tr v-for="bt in productDetail.bienThe" :key="bt.id">
-                  <td style="font-weight:500">{{ bt.maVayChiTiet }}</td>
+                  <td style="font-weight:500">{{ bt.maSanPhamChiTiet }}</td>
                   <td>
                     <span class="d-inline-flex align-items-center gap-1">
                       <span v-if="bt.maHex" :style="{ width:'12px', height:'12px', borderRadius:'50%', background: bt.maHex, display:'inline-block', border:'1px solid var(--z-gray-border)' }"></span>
@@ -323,8 +323,9 @@
                      style="border-bottom:1px solid var(--z-gray-border)">
                   <span :style="{ width:'16px', height:'16px', borderRadius:'50%', background: c.hex, border:'1px solid var(--z-gray-border)', flexShrink:0 }"></span>
                   <span style="font-size:13px;flex:1">{{ c.name }}</span>
+                  <span class="z-attr-status" :class="{ inactive: c.trangThai !== 1 }">{{ c.trangThai === 1 ? 'Đang dùng' : 'Đã ngừng' }}</span>
                   <code style="font-size:11px;color:var(--z-gray)">{{ c.hex }}</code>
-                  <button type="button" class="z-icon-btn-sm" :aria-label="`Xóa màu ${c.name}`" @click="deleteColor(c)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-icon-btn-sm" :aria-label="`${c.trangThai === 1 ? 'Ngừng' : 'Mở lại'} màu ${c.name}`" @click="toggleColor(c)"><i class="bi" :class="c.trangThai === 1 ? 'bi-lock' : 'bi-unlock'"></i></button>
                 </div>
               </div>
             </div>
@@ -339,9 +340,9 @@
                 <button class="lm-btn-primary" style="padding:6px 14px;font-size:12px" @click="addSize"><span>Thêm</span></button>
               </div>
               <div class="d-flex flex-wrap gap-2">
-                <div v-for="s in attrSizes" :key="s.id" class="z-chip">
+                <div v-for="s in attrSizes" :key="s.id" class="z-chip" :class="{ inactive: s.trangThai !== 1 }">
                   {{ s.name }}
-                  <button type="button" class="z-chip-x" :aria-label="`Xóa kích thước ${s.name}`" @click="deleteSize(s)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-chip-x" :aria-label="`${s.trangThai === 1 ? 'Ngừng' : 'Mở lại'} kích thước ${s.name}`" @click="toggleSize(s)"><i class="bi" :class="s.trangThai === 1 ? 'bi-lock' : 'bi-unlock'"></i></button>
                 </div>
               </div>
             </div>
@@ -356,9 +357,9 @@
                 <button class="lm-btn-primary" style="padding:6px 14px;font-size:12px" @click="addMaterial"><span>Thêm</span></button>
               </div>
               <div class="d-flex flex-wrap gap-2">
-                <div v-for="m in attrMaterials" :key="m.id" class="z-chip">
+                <div v-for="m in attrMaterials" :key="m.id" class="z-chip" :class="{ inactive: m.trangThai !== 1 }">
                   {{ m.name }}
-                  <button type="button" class="z-chip-x" :aria-label="`Xóa chất liệu ${m.name}`" @click="deleteMaterial(m)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-chip-x" :aria-label="`${m.trangThai === 1 ? 'Ngừng' : 'Mở lại'} chất liệu ${m.name}`" @click="toggleMaterial(m)"><i class="bi" :class="m.trangThai === 1 ? 'bi-lock' : 'bi-unlock'"></i></button>
                 </div>
               </div>
             </div>
@@ -373,9 +374,9 @@
                 <button class="lm-btn-primary" style="padding:6px 14px;font-size:12px" @click="addCategory"><span>Thêm</span></button>
               </div>
               <div class="d-flex flex-wrap gap-2">
-                <div v-for="cat in attrCategories" :key="cat.id" class="z-chip">
+                <div v-for="cat in attrCategories" :key="cat.id" class="z-chip" :class="{ inactive: cat.trangThai !== 1 }">
                   {{ cat.name }}
-                  <button type="button" class="z-chip-x" :aria-label="`Xóa danh mục ${cat.name}`" @click="deleteCategory(cat)"><i class="bi bi-x"></i></button>
+                  <button type="button" class="z-chip-x" :aria-label="`${cat.trangThai === 1 ? 'Ngừng' : 'Mở lại'} danh mục ${cat.name}`" @click="toggleCategory(cat)"><i class="bi" :class="cat.trangThai === 1 ? 'bi-lock' : 'bi-unlock'"></i></button>
                 </div>
               </div>
             </div>
@@ -394,7 +395,7 @@
               </div>
               <table v-if="attrSuppliers.length" class="z-table" style="font-size:12px">
                 <thead>
-                  <tr><th>Tên</th><th>Địa chỉ</th><th>SĐT</th><th>Email</th><th style="width:40px"></th></tr>
+                  <tr><th>Tên</th><th>Địa chỉ</th><th>SĐT</th><th>Email</th><th>Trạng thái</th><th style="width:40px"></th></tr>
                 </thead>
                 <tbody>
                   <tr v-for="s in attrSuppliers" :key="s.id">
@@ -402,7 +403,8 @@
                     <td style="color:var(--z-gray)">{{ s.address }}</td>
                     <td>{{ s.phone }}</td>
                     <td style="color:var(--z-gray)">{{ s.email }}</td>
-                    <td><button type="button" class="z-icon-btn-sm" :aria-label="`Xóa nhà cung cấp ${s.name}`" @click="deleteSupplier(s)"><i class="bi bi-x"></i></button></td>
+                    <td><span class="z-attr-status" :class="{ inactive: s.trangThai !== 1 }">{{ s.trangThai === 1 ? 'Đang dùng' : 'Đã ngừng' }}</span></td>
+                    <td><button type="button" class="z-icon-btn-sm" :aria-label="`${s.trangThai === 1 ? 'Ngừng' : 'Mở lại'} nhà cung cấp ${s.name}`" @click="toggleSupplier(s)"><i class="bi" :class="s.trangThai === 1 ? 'bi-lock' : 'bi-unlock'"></i></button></td>
                   </tr>
                 </tbody>
               </table>
@@ -425,12 +427,12 @@
         <div class="d-flex flex-column gap-3 mb-4">
           <div>
             <label class="z-label">Tên sản phẩm *</label>
-            <input v-model="form.tenVay" class="lm-input" placeholder="Nhập tên sản phẩm">
+            <input v-model="form.tenSanPham" class="lm-input" placeholder="Nhập tên sản phẩm">
           </div>
           <div class="row g-3">
             <div class="col-6">
               <label class="z-label">Mã sản phẩm</label>
-              <input :value="editingId ? form.maVay : 'Hệ thống tự sinh mã (SPXXXX)'" class="lm-input" disabled>
+              <input :value="editingId ? form.maSanPham : 'Hệ thống tự sinh mã (SPXXXX)'" class="lm-input" disabled>
             </div>
             <div class="col-6">
               <label class="z-label">Trạng thái</label>
@@ -443,23 +445,23 @@
           <div class="row g-3">
             <div class="col-4">
               <label class="z-label">Loại sản phẩm</label>
-              <select v-model="form.idLoaiVay" class="lm-input">
+              <select v-model="form.idLoaiSanPham" class="lm-input">
                 <option :value="null">-- Chọn --</option>
-                <option v-for="lv in loaiVayList" :key="lv.id" :value="lv.id">{{ lv.tenLoaiVay }}</option>
+                <option v-for="category in activeOptions(loaiSanPhamList, form.idLoaiSanPham)" :key="category.id" :value="category.id">{{ category.tenLoaiSanPham }}{{ category.trangThai === 1 ? '' : ' (đã ngừng)' }}</option>
               </select>
             </div>
             <div class="col-4">
               <label class="z-label">Chất liệu</label>
               <select v-model="form.idChatLieu" class="lm-input">
                 <option :value="null">-- Chọn --</option>
-                <option v-for="cl in chatLieuList" :key="cl.id" :value="cl.id">{{ cl.tenChatLieu }}</option>
+                <option v-for="cl in activeOptions(chatLieuList, form.idChatLieu)" :key="cl.id" :value="cl.id">{{ cl.tenChatLieu }}{{ cl.trangThai === 1 ? '' : ' (đã ngừng)' }}</option>
               </select>
             </div>
             <div class="col-4">
               <label class="z-label">Nhà cung cấp</label>
               <select v-model="form.idNhaCungCap" class="lm-input">
                 <option :value="null">-- Chọn --</option>
-                <option v-for="ncc in nhaCungCapList" :key="ncc.id" :value="ncc.id">{{ ncc.tenNhaCungCap }}</option>
+                <option v-for="ncc in activeOptions(nhaCungCapList, form.idNhaCungCap)" :key="ncc.id" :value="ncc.id">{{ ncc.tenNhaCungCap }}{{ ncc.trangThai === 1 ? '' : ' (đã ngừng)' }}</option>
               </select>
             </div>
           </div>
@@ -490,19 +492,27 @@
         <!-- Variants -->
         <h4 style="font-size:13px;font-weight:600;color:var(--z-accent);margin-bottom:12px">BIẾN THỂ (Size, Màu, Giá, Số lượng)</h4>
         <div class="d-flex flex-column gap-2 mb-3">
-          <div v-for="(v, i) in form.variants" :key="i"
-               class="d-flex align-items-center gap-2 p-2" style="background:var(--z-bg-alt);border-radius:var(--z-radius)">
-            <select v-model="v.idMauSac" class="lm-input" style="padding:6px 10px;font-size:12px;flex:1">
+          <div v-for="(v, i) in form.variants" :key="v.variantId || `new-${i}`"
+               class="z-variant-row d-flex align-items-center gap-2 p-2" :class="{ inactive: v.trangThai !== 1 }">
+            <select v-model="v.idMauSac" class="lm-input" style="padding:6px 10px;font-size:12px;flex:1"
+                    :disabled="Boolean(v.variantId)"
+                    :title="v.variantId ? 'Màu của biến thể đã phát sinh dữ liệu không thể thay đổi' : 'Chọn màu sắc'">
               <option :value="null">Màu sắc</option>
-              <option v-for="ms in mauSacList" :key="ms.id" :value="ms.id">{{ ms.tenMauSac }}</option>
+              <option v-for="ms in activeOptions(mauSacList, v.idMauSac)" :key="ms.id" :value="ms.id">{{ ms.tenMauSac }}{{ ms.trangThai === 1 ? '' : ' (đã ngừng)' }}</option>
             </select>
-            <select v-model="v.idKichThuoc" class="lm-input" style="padding:6px 10px;font-size:12px;flex:1">
+            <select v-model="v.idKichThuoc" class="lm-input" style="padding:6px 10px;font-size:12px;flex:1"
+                    :disabled="Boolean(v.variantId)"
+                    :title="v.variantId ? 'Kích thước của biến thể đã phát sinh dữ liệu không thể thay đổi' : 'Chọn kích thước'">
               <option :value="null">Kích thước</option>
-              <option v-for="kt in kichThuocList" :key="kt.id" :value="kt.id">{{ kt.tenKichThuoc }}</option>
+              <option v-for="kt in activeOptions(kichThuocList, v.idKichThuoc)" :key="kt.id" :value="kt.id">{{ kt.tenKichThuoc }}{{ kt.trangThai === 1 ? '' : ' (đã ngừng)' }}</option>
             </select>
             <input :value="formatPriceInput(v.giaBan)" type="text" inputmode="numeric" class="lm-input" placeholder="Giá bán" style="padding:6px 10px;font-size:12px;flex:1" @input="updateVariantPrice(v, 'giaBan', $event)">
             <input v-model.number="v.soLuong" type="number" class="lm-input" placeholder="SL" style="padding:6px 10px;font-size:12px;width:70px">
-            <button type="button" class="z-icon-btn" aria-label="Xóa biến thể" style="color:var(--z-accent);flex-shrink:0" @click="form.variants.splice(i, 1)">
+            <label class="z-variant-switch" :title="v.trangThai === 1 ? 'Ngừng bán biến thể' : 'Mở bán biến thể'">
+              <input v-model="v.trangThai" type="checkbox" :true-value="1" :false-value="0">
+              <span>{{ v.trangThai === 1 ? 'Bán' : 'Ngừng' }}</span>
+            </label>
+            <button v-if="!v.variantId" type="button" class="z-icon-btn" aria-label="Bỏ biến thể mới" style="color:var(--z-accent);flex-shrink:0" @click="form.variants.splice(i, 1)">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -567,7 +577,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
-import { mapProduct, fmtPrice, MOCK_PRODUCTS } from '@/composables/useProducts'
+import { mapProduct, fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { useI18n } from '@/composables/useI18n'
@@ -630,7 +640,7 @@ const editingId = ref(null)
 const allProducts = ref([])
 const categories = ref([])
 const filters = computed(() => ['Tất cả', ...categories.value])
-const loaiVayList = ref([])
+const loaiSanPhamList = ref([])
 const chatLieuList = ref([])
 const mauSacList = ref([])
 const kichThuocList = ref([])
@@ -653,8 +663,8 @@ const newCategory = ref('')
 const newSupplier = ref({ tenNhaCungCap: '', diaChi: '', soDienThoai: '', email: '' })
 
 const defaultForm = {
-  tenVay: '', maVay: '', moTa: '', trangThai: 1,
-  idLoaiVay: null, idChatLieu: null, idNhaCungCap: null,
+  tenSanPham: '', maSanPham: '', moTa: '', trangThai: 1,
+  idLoaiSanPham: null, idChatLieu: null, idNhaCungCap: null,
   chieuCaoNguoiMau: null, canNangNguoiMau: null, sizeNguoiMau: '', moTaPhom: '',
   variants: []
 }
@@ -740,19 +750,20 @@ onMounted(async () => {
 
 async function loadAttrs() {
   try {
-    const attrs = await api().getThuocTinh()
-    loaiVayList.value = attrs.loaiVay || []
+    const [attrs, suppliers] = await Promise.all([api().getThuocTinh(), api().getNhaCungCap()])
+    loaiSanPhamList.value = attrs.loaiSanPham || []
     chatLieuList.value = attrs.chatLieu || []
     mauSacList.value = attrs.mauSac || []
     kichThuocList.value = attrs.kichThuoc || []
-    nhaCungCapList.value = attrs.nhaCungCap || []
-    categories.value = (attrs.loaiVay || []).map(category => category.tenLoaiVay).filter(Boolean)
-    attrColors.value = (attrs.mauSac || []).map(c => ({ id: c.id, name: c.tenMauSac, hex: c.maHex || '#ccc' }))
-    attrSizes.value = (attrs.kichThuoc || []).map(s => ({ id: s.id, name: s.tenKichThuoc }))
-    attrMaterials.value = (attrs.chatLieu || []).map(m => ({ id: m.id, name: m.tenChatLieu }))
-    attrCategories.value = (attrs.loaiVay || []).map(l => ({ id: l.id, name: l.tenLoaiVay }))
-    attrSuppliers.value = (attrs.nhaCungCap || []).map(s => ({
-      id: s.id, name: s.tenNhaCungCap || '', address: s.diaChi || '', phone: s.soDienThoai || '', email: s.email || ''
+    nhaCungCapList.value = suppliers || []
+    categories.value = (attrs.loaiSanPham || []).map(category => category.tenLoaiSanPham).filter(Boolean)
+    attrColors.value = (attrs.mauSac || []).map(c => ({ id: c.id, name: c.tenMauSac, hex: c.maHex || '#ccc', trangThai: Number(c.trangThai) }))
+    attrSizes.value = (attrs.kichThuoc || []).map(s => ({ id: s.id, name: s.tenKichThuoc, description: s.moTa || '', trangThai: Number(s.trangThai) }))
+    attrMaterials.value = (attrs.chatLieu || []).map(m => ({ id: m.id, name: m.tenChatLieu, description: m.moTa || '', trangThai: Number(m.trangThai) }))
+    attrCategories.value = (attrs.loaiSanPham || []).map(category => ({ id: category.id, name: category.tenLoaiSanPham, description: category.moTa || '', trangThai: Number(category.trangThai) }))
+    attrSuppliers.value = (suppliers || []).map(s => ({
+      id: s.id, name: s.tenNhaCungCap || '', address: s.diaChi || '', phone: s.soDienThoai || '', email: s.email || '',
+      description: s.moTa || '', trangThai: Number(s.trangThai)
     }))
   } catch (e) { console.error(e) }
 }
@@ -760,66 +771,25 @@ async function loadAttrs() {
 async function loadProducts() {
   try {
     const category = activeFilter.value !== 'Tất cả' ? activeFilter.value : null
-    const data = await api().getVayPage({
+    const data = await api().getSanPhamPage({
       page: currentPage.value - 1,
       size: itemsPerPage.value,
       q: search.value.trim() || null,
       status: filterStatus.value || null,
       category
-    }).catch(() => null)
-    if (data && Array.isArray(data.content) && data.content.length > 0) {
-      allProducts.value = (data.content || []).map((p, i) => {
-        const m = mapProduct(p, i)
-        return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id, raw: p }
-      })
-      totalItems.value = Number(data.totalElements || 0)
-      totalPages.value = Number(data.totalPages || 0)
-    } else {
-      let filtered = [...MOCK_PRODUCTS]
-      if (search.value.trim()) {
-        const q = search.value.trim().toLowerCase()
-        filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q))
-      }
-      if (category) {
-        filtered = filtered.filter(p => p.category.toLowerCase().includes(category.toLowerCase()))
-      }
-      allProducts.value = filtered.map((m, i) => ({
-        ...m,
-        priceDisplay: fmtPrice(m.price),
-        rawId: m.id,
-        raw: {
-          id: m.id,
-          maVay: m.code,
-          tenVay: m.name,
-          loaiVay: m.category,
-          giaBan: m.price,
-          tonKho: m.stock,
-          trangThai: m.active ? 1 : 0,
-          anhUrl: m.image
-        }
-      }))
-      totalItems.value = filtered.length
-      totalPages.value = 1
-    }
+    })
+    if (!data || !Array.isArray(data.content)) throw new Error('Dữ liệu phân trang không hợp lệ')
+    allProducts.value = data.content.map((product, index) => {
+      const mapped = mapProduct(product, index)
+      return { ...mapped, priceDisplay: fmtPrice(mapped.price), rawId: product.id, raw: product }
+    })
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Number(data.totalPages || 0)
   } catch (e) {
-    let filtered = [...MOCK_PRODUCTS]
-    allProducts.value = filtered.map((m, i) => ({
-      ...m,
-      priceDisplay: fmtPrice(m.price),
-      rawId: m.id,
-      raw: {
-        id: m.id,
-        maVay: m.code,
-        tenVay: m.name,
-        loaiVay: m.category,
-        giaBan: m.price,
-        tonKho: m.stock,
-        trangThai: m.active ? 1 : 0,
-        anhUrl: m.image
-      }
-    }))
-    totalItems.value = filtered.length
-    totalPages.value = 1
+    allProducts.value = []
+    totalItems.value = 0
+    totalPages.value = 0
+    showToast(e.error || e.message || 'Không thể tải danh sách sản phẩm', 'error')
   }
 }
 
@@ -857,7 +827,11 @@ function resetProductPage() {
 }
 
 function addVariant() {
-  form.value.variants.push({ idMauSac: null, idKichThuoc: null, giaBan: null, soLuong: 0, anhUrl: null })
+  form.value.variants.push({ variantId: null, idMauSac: null, idKichThuoc: null, giaBan: null, soLuong: 0, anhUrl: null, trangThai: 1 })
+}
+
+function activeOptions(items, selectedId) {
+  return (items || []).filter(item => Number(item.trangThai) === 1 || Number(item.id) === Number(selectedId))
 }
 
 function formatPriceInput(value) {
@@ -874,7 +848,7 @@ function updateVariantPrice(variant, field, event) {
 
 function openAdd() {
   editingId.value = null
-  form.value = { ...defaultForm, variants: [{ idMauSac: null, idKichThuoc: null, giaBan: null, soLuong: 0, anhUrl: null }] }
+  form.value = { ...defaultForm, variants: [{ variantId: null, idMauSac: null, idKichThuoc: null, giaBan: null, soLuong: 0, anhUrl: null, trangThai: 1 }] }
   resetImages()
   showModal.value = true
 }
@@ -883,11 +857,11 @@ async function openEdit(p) {
   editingId.value = p.rawId || p.id
   resetImages()
   form.value = {
-    tenVay: p.name || '',
-    maVay: p.code || '',
+    tenSanPham: p.name || '',
+    maSanPham: p.code || '',
     moTa: p.raw?.moTa || '',
     trangThai: p.active ? 1 : 0,
-    idLoaiVay: p.raw?.idLoaiVay || null,
+    idLoaiSanPham: p.raw?.idLoaiSanPham || null,
     idChatLieu: p.raw?.idChatLieu || null,
     idNhaCungCap: p.raw?.idNhaCungCap || null,
     chieuCaoNguoiMau: p.raw?.chieuCaoNguoiMau || null,
@@ -897,7 +871,7 @@ async function openEdit(p) {
     variants: [],
   }
   try {
-    const detail = await api().getVayById(p.rawId || p.id)
+    const detail = await api().getSanPhamById(p.rawId || p.id)
     form.value.chieuCaoNguoiMau = detail.chieuCaoNguoiMau || null
     form.value.canNangNguoiMau = detail.canNangNguoiMau || null
     form.value.sizeNguoiMau = detail.sizeNguoiMau || ''
@@ -905,17 +879,19 @@ async function openEdit(p) {
     existingImages.value = detail.anhList || []
     if (detail.bienThe && detail.bienThe.length > 0) {
       form.value.variants = detail.bienThe.map(bt => ({
+        variantId: bt.id,
         idMauSac: bt.idMauSac || mauSacList.value.find(m => m.tenMauSac === bt.mauSac)?.id || null,
         idKichThuoc: bt.idKichThuoc || kichThuocList.value.find(k => k.tenKichThuoc === bt.kichThuoc)?.id || null,
         giaBan: Number(bt.giaBanCoSo ?? bt.giaBan) || null,
         soLuong: bt.soLuong || 0,
         anhUrl: bt.anhUrl || null,
+        trangThai: Number(bt.trangThai) === 1 ? 1 : 0,
       }))
     } else {
-      form.value.variants = [{ idMauSac: null, idKichThuoc: null, giaBan: p.price || 0, soLuong: p.stock || 0, anhUrl: null }]
+      form.value.variants = [{ variantId: null, idMauSac: null, idKichThuoc: null, giaBan: p.price || 0, soLuong: p.stock || 0, anhUrl: null, trangThai: 1 }]
     }
   } catch (e) {
-    form.value.variants = [{ idMauSac: null, idKichThuoc: null, giaBan: p.price || 0, soLuong: p.stock || 0, anhUrl: null }]
+    form.value.variants = [{ variantId: null, idMauSac: null, idKichThuoc: null, giaBan: p.price || 0, soLuong: p.stock || 0, anhUrl: null, trangThai: 1 }]
   }
   showModal.value = true
 }
@@ -924,7 +900,7 @@ async function openProductDetail(p) {
   showProductDetail.value = true
   loadingProductDetail.value = true
   try {
-    productDetail.value = await api().getVayById(p.rawId || p.id)
+    productDetail.value = await api().getSanPhamById(p.rawId || p.id)
   } catch (e) {
     productDetail.value = p.raw
   } finally {
@@ -933,7 +909,7 @@ async function openProductDetail(p) {
 }
 
 async function doSave() {
-  if (!form.value.tenVay) { showToast('Vui lòng nhập tên sản phẩm'); return }
+  if (!form.value.tenSanPham) { showToast('Vui lòng nhập tên sản phẩm'); return }
   
   // Validate variants list
   if (!form.value.variants || form.value.variants.length === 0) {
@@ -951,20 +927,39 @@ async function doSave() {
       showToast(`Biến thể số ${idx + 1} chưa chọn kích thước!`, 'error')
       return
     }
-    if (v.giaBan === null || v.giaBan === undefined || v.giaBan < 0) {
+    if (!Number.isFinite(Number(v.giaBan)) || Number(v.giaBan) <= 0 || Number(v.giaBan) > 999999999) {
       showToast(`Biến thể số ${idx + 1} chưa nhập giá bán hợp lệ!`, 'error')
       return
     }
+    if (!Number.isInteger(Number(v.soLuong)) || Number(v.soLuong) < 0 || Number(v.soLuong) > 1000000) {
+      showToast(`Tồn kho biến thể số ${idx + 1} phải là số nguyên từ 0 đến 1.000.000!`, 'error')
+      return
+    }
+  }
+
+  if (Number(form.value.trangThai) === 1 && !form.value.variants.some(variant => Number(variant.trangThai) === 1)) {
+    showToast('Sản phẩm đang bán phải có ít nhất một biến thể đang hoạt động!', 'error')
+    return
+  }
+
+  const variantCombinations = new Set()
+  for (const variant of form.value.variants) {
+    const combination = `${Number(variant.idMauSac)}-${Number(variant.idKichThuoc)}`
+    if (variantCombinations.has(combination)) {
+      showToast('Không thể lưu hai biến thể có cùng màu sắc và kích thước!', 'error')
+      return
+    }
+    variantCombinations.add(combination)
   }
 
   saving.value = true
   try {
     const firstVariant = form.value.variants[0] || {}
     const payload = {
-      tenVay: form.value.tenVay,
+      tenSanPham: form.value.tenSanPham,
       moTa: form.value.moTa,
       trangThai: form.value.trangThai,
-      idLoaiVay: form.value.idLoaiVay,
+      idLoaiSanPham: form.value.idLoaiSanPham,
       idChatLieu: form.value.idChatLieu,
       idNhaCungCap: form.value.idNhaCungCap,
       chieuCaoNguoiMau: form.value.chieuCaoNguoiMau,
@@ -974,34 +969,36 @@ async function doSave() {
       giaBan: firstVariant.giaBan,
       soLuong: firstVariant.soLuong || 0,
       variants: form.value.variants.map(v => ({
+        variantId: v.variantId || null,
         idMauSac: v.idMauSac,
         idKichThuoc: v.idKichThuoc,
         giaBan: v.giaBan,
         soLuong: v.soLuong || 0,
-        anhUrl: v.anhUrl || existingColorImage(v.idMauSac)
+        anhUrl: v.anhUrl || existingColorImage(v.idMauSac),
+        trangThai: Number(v.trangThai) === 1 ? 1 : 0
       }))
     }
     let result
     if (editingId.value) {
-      result = await api().updateVay(editingId.value, payload)
+      result = await api().updateSanPham(editingId.value, payload)
       showToast('Cập nhật sản phẩm thành công!')
     } else {
-      result = await api().createVay(payload)
+      result = await api().createSanPham(payload)
       showToast('Thêm sản phẩm thành công!')
     }
 
     // Xử lý ảnh: xoá ảnh đã bỏ + upload ảnh mới
     const pid = (result && result.id) || editingId.value
     for (const aid of deletedImageIds.value) {
-      try { await api().deleteVayAnh(aid) } catch (e) { /* bỏ qua */ }
+      try { await api().deleteSanPhamAnh(aid) } catch (e) { /* bỏ qua */ }
     }
     if (pid) {
       for (const f of newImageFiles.value) {
-        try { await api().uploadVayAnh(pid, f) } catch (e) { showToast('Lỗi upload ảnh: ' + (e.error || e.message || '')) }
+        try { await api().uploadSanPhamAnh(pid, f) } catch (e) { showToast('Lỗi upload ảnh: ' + (e.error || e.message || '')) }
       }
       for (const [colorId, file] of Object.entries(colorImageFiles.value)) {
         try {
-          await api().uploadVayColorImage(pid, colorId, file)
+          await api().uploadSanPhamColorImage(pid, colorId, file)
         } catch (e) {
           showToast(`Lỗi upload ảnh màu: ${e.error || e.message || ''}`)
         }
@@ -1010,7 +1007,7 @@ async function doSave() {
 
     showModal.value = false
     await loadProducts()
-  } catch (e) { showToast('Lỗi: ' + (e.message || 'Không thể lưu')) }
+  } catch (e) { showToast('Lỗi: ' + (e.error || e.message || 'Không thể lưu'), 'error') }
   finally { saving.value = false }
 }
 
@@ -1023,41 +1020,61 @@ async function addColor() {
   if (!newColor.value.tenMauSac) { showToast('Vui lòng nhập tên màu'); return }
   try { await api().addMauSac(newColor.value); showToast('Thêm màu thành công!'); newColor.value = { tenMauSac: '', maHex: '#c08b7e' }; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
-async function deleteColor(c) {
-  if (!await confirmDialog({ title: 'Xóa màu sắc', message: `Xóa màu "${c.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
-  try { await api().deleteMauSac(c.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
+async function toggleColor(c) {
+  await toggleAttribute(c, 'màu sắc', status => api().updateMauSac(c.id, { tenMauSac: c.name, maHex: c.hex, trangThai: status }))
 }
 async function addSize() {
   if (!newSize.value) { showToast('Vui lòng nhập kích thước'); return }
   try { await api().addKichThuoc({ tenKichThuoc: newSize.value }); showToast('Thêm kích thước thành công!'); newSize.value = ''; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
-async function deleteSize(s) {
-  if (!await confirmDialog({ title: 'Xóa kích thước', message: `Xóa kích thước "${s.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
-  try { await api().deleteKichThuoc(s.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
+async function toggleSize(s) {
+  await toggleAttribute(s, 'kích thước', status => api().updateKichThuoc(s.id, { tenKichThuoc: s.name, moTa: s.description, trangThai: status }))
 }
 async function addMaterial() {
   if (!newMaterial.value) { showToast('Vui lòng nhập chất liệu'); return }
   try { await api().addChatLieu({ tenChatLieu: newMaterial.value }); showToast('Thêm chất liệu thành công!'); newMaterial.value = ''; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
-async function deleteMaterial(m) {
-  if (!await confirmDialog({ title: 'Xóa chất liệu', message: `Xóa chất liệu "${m.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
-  try { await api().deleteChatLieu(m.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
+async function toggleMaterial(m) {
+  await toggleAttribute(m, 'chất liệu', status => api().updateChatLieu(m.id, { tenChatLieu: m.name, moTa: m.description, trangThai: status }))
 }
 async function addCategory() {
   if (!newCategory.value) { showToast('Vui lòng nhập tên danh mục'); return }
-  try { await api().addLoaiVay({ tenLoaiVay: newCategory.value }); showToast('Thêm danh mục thành công!'); newCategory.value = ''; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
+  try { await api().addLoaiSanPham({ tenLoaiSanPham: newCategory.value }); showToast('Thêm danh mục thành công!'); newCategory.value = ''; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
-async function deleteCategory(cat) {
-  if (!await confirmDialog({ title: 'Xóa danh mục', message: `Xóa danh mục "${cat.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
-  try { await api().deleteLoaiVay(cat.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
+async function toggleCategory(cat) {
+  await toggleAttribute(cat, 'danh mục', status => api().updateLoaiSanPham(cat.id, { tenLoaiSanPham: cat.name, moTa: cat.description, trangThai: status }))
 }
 async function addSupplier() {
   if (!newSupplier.value.tenNhaCungCap) { showToast('Vui lòng nhập tên nhà cung cấp'); return }
   try { await api().addNhaCungCap(newSupplier.value); showToast('Thêm nhà cung cấp thành công!'); newSupplier.value = { tenNhaCungCap: '', diaChi: '', soDienThoai: '', email: '' }; await loadAttrs() } catch (e) { showToast('Lỗi khi thêm') }
 }
-async function deleteSupplier(s) {
-  if (!await confirmDialog({ title: 'Xóa nhà cung cấp', message: `Xóa nhà cung cấp "${s.name}"?`, confirmText: 'Xóa', variant: 'danger' })) return
-  try { await api().deleteNhaCungCap(s.id); showToast('Đã xóa!'); await loadAttrs() } catch (e) { showToast('Lỗi khi xóa') }
+async function toggleSupplier(s) {
+  await toggleAttribute(s, 'nhà cung cấp', status => api().updateNhaCungCap(s.id, {
+    tenNhaCungCap: s.name,
+    diaChi: s.address,
+    soDienThoai: s.phone,
+    email: s.email,
+    moTa: s.description,
+    trangThai: status
+  }))
+}
+
+async function toggleAttribute(item, label, updateRequest) {
+  const nextStatus = item.trangThai === 1 ? 0 : 1
+  const action = nextStatus === 1 ? 'mở lại' : 'ngừng'
+  if (!await confirmDialog({
+    title: `${nextStatus === 1 ? 'Mở lại' : 'Ngừng'} ${label}`,
+    message: `Bạn có chắc muốn ${action} ${label} "${item.name}"?`,
+    confirmText: nextStatus === 1 ? 'Mở lại' : 'Ngừng',
+    variant: nextStatus === 1 ? 'success' : 'danger'
+  })) return
+  try {
+    await updateRequest(nextStatus)
+    showToast(`Đã ${action} ${label} thành công!`)
+    await loadAttrs()
+  } catch (e) {
+    showToast(e.error || e.message || `Không thể ${action} ${label}`, 'error')
+  }
 }
 
 async function toggleLock(p) {
@@ -1072,7 +1089,7 @@ async function toggleLock(p) {
   })) return
 
   try {
-    await api().updateVay(p.rawId || p.id, { trangThai: newStatus })
+    await api().updateSanPham(p.rawId || p.id, { trangThai: newStatus })
     showToast(`Đã ${actionText} sản phẩm thành công!`)
     await loadProducts()
   } catch (e) {
@@ -1145,6 +1162,17 @@ async function toggleLock(p) {
   padding: 6px 10px; border: 1px solid var(--z-gray-border); border-radius: var(--z-radius);
   font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;
 }
+.z-chip.inactive { color: var(--z-gray); background: var(--z-white); opacity: 0.72; }
+.z-attr-status {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 2px 7px;
+  background: #e9f8ef; color: #207547; font-size: 10px; font-weight: 600;
+  border-radius: var(--z-radius); white-space: nowrap;
+}
+.z-attr-status.inactive { background: var(--z-bg-alt); color: var(--z-gray); }
+.z-variant-row { background: var(--z-bg-alt); border-radius: var(--z-radius); border: 1px solid transparent; }
+.z-variant-row.inactive { background: var(--z-white); border-color: var(--z-gray-border); opacity: 0.78; }
+.z-variant-switch { display: inline-flex; align-items: center; gap: 5px; min-width: 67px; font-size: 11px; cursor: pointer; }
+.z-variant-switch input { accent-color: var(--z-dark); }
 .z-chip-x {
   width: 16px; height: 16px; border: none; background: transparent; cursor: pointer;
   color: var(--z-gray); font-size: 13px; display: flex; align-items: center; justify-content: center;

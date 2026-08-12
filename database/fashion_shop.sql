@@ -1,8 +1,9 @@
 -- ============================================================
 -- ZESTIA DATABASE fashion_shop
--- File SQL chinh de cai dat du lieu demo hoan chinh cho du an.
+-- File SQL chinh de RESET va cai dat du lieu demo hoan chinh cho du an.
 -- Cach dung: mo file nay trong SSMS/sqlcmd va Execute 1 lan.
--- Luu y: nen backup database cu truoc khi chay tren may that.
+-- CANH BAO: file se xoa toan bo database fashion_shop hien co.
+-- Bat buoc backup database cu neu co du lieu can giu.
 -- ============================================================
 -- ============================================================
 -- ZESTIA  -  fashion_shop  (schema + du lieu day du)
@@ -31,74 +32,6 @@ SET QUOTED_IDENTIFIER ON;
 GO
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;
-GO
-
--- ===== MIGRATION TỰ ĐỘNG TỪ BẢNG CŨ (NẾU CÓ) =====
-IF OBJECT_ID(N'dbo.Loai_vay', 'U') IS NOT NULL AND OBJECT_ID(N'dbo.loai_san_pham', 'U') IS NULL
-    EXEC sp_rename 'dbo.Loai_vay', 'loai_san_pham';
-
-IF OBJECT_ID(N'dbo.Vay', 'U') IS NOT NULL AND OBJECT_ID(N'dbo.san_pham', 'U') IS NULL
-    EXEC sp_rename 'dbo.Vay', 'san_pham';
-
-IF OBJECT_ID(N'dbo.Vay_chi_tiet', 'U') IS NOT NULL AND OBJECT_ID(N'dbo.san_pham_chi_tiet', 'U') IS NULL
-    EXEC sp_rename 'dbo.Vay_chi_tiet', 'san_pham_chi_tiet';
-
-IF COL_LENGTH('dbo.loai_san_pham', 'ten_loai_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.loai_san_pham.ten_loai_vay', 'ten_loai_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.san_pham', 'ma_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.san_pham.ma_vay', 'ma_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.san_pham', 'ten_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.san_pham.ten_vay', 'ten_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.san_pham', 'id_loai_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.san_pham.id_loai_vay', 'id_loai_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.san_pham_chi_tiet', 'id_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.san_pham_chi_tiet.id_vay', 'id_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.san_pham_chi_tiet', 'ma_vay_chi_tiet') IS NOT NULL
-    EXEC sp_rename 'dbo.san_pham_chi_tiet.ma_vay_chi_tiet', 'ma_san_pham_chi_tiet', 'COLUMN';
-
-IF COL_LENGTH('dbo.Anh', 'id_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.Anh.id_vay', 'id_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.Danh_gia', 'id_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.Danh_gia.id_vay', 'id_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.Gio_hang_chi_tiet', 'id_vay_chi_tiet') IS NOT NULL
-    EXEC sp_rename 'dbo.Gio_hang_chi_tiet.id_vay_chi_tiet', 'id_san_pham_chi_tiet', 'COLUMN';
-
-IF COL_LENGTH('dbo.Hoa_don_chi_tiet', 'id_vay_chi_tiet') IS NOT NULL
-    EXEC sp_rename 'dbo.Hoa_don_chi_tiet.id_vay_chi_tiet', 'id_san_pham_chi_tiet', 'COLUMN';
-
-IF COL_LENGTH('dbo.Bien_dong_ton_kho', 'id_vay_chi_tiet') IS NOT NULL
-    EXEC sp_rename 'dbo.Bien_dong_ton_kho.id_vay_chi_tiet', 'id_san_pham_chi_tiet', 'COLUMN';
-
-IF COL_LENGTH('dbo.Pham_vi_khuyen_mai', 'id_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.Pham_vi_khuyen_mai.id_vay', 'id_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.Pham_vi_khuyen_mai', 'id_loai_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.Pham_vi_khuyen_mai.id_loai_vay', 'id_loai_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.Huong_dan_kich_thuoc', 'id_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.Huong_dan_kich_thuoc.id_vay', 'id_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.Lich_su_xem', 'id_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.Lich_su_xem.id_vay', 'id_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.San_pham_yeu_thich', 'id_vay') IS NOT NULL
-    EXEC sp_rename 'dbo.San_pham_yeu_thich.id_vay', 'id_san_pham', 'COLUMN';
-
-IF COL_LENGTH('dbo.Pos_chi_tiet_giu_hang', 'id_vay_chi_tiet') IS NOT NULL
-    EXEC sp_rename 'dbo.Pos_chi_tiet_giu_hang.id_vay_chi_tiet', 'id_san_pham_chi_tiet', 'COLUMN';
-
-IF COL_LENGTH('dbo.Yeu_cau_doi_tra', 'id_vay_chi_tiet_cu') IS NOT NULL
-    EXEC sp_rename 'dbo.Yeu_cau_doi_tra.id_vay_chi_tiet_cu', 'id_san_pham_chi_tiet_cu', 'COLUMN';
-
-IF COL_LENGTH('dbo.Yeu_cau_doi_tra', 'id_vay_chi_tiet_moi') IS NOT NULL
-    EXEC sp_rename 'dbo.Yeu_cau_doi_tra.id_vay_chi_tiet_moi', 'id_san_pham_chi_tiet_moi', 'COLUMN';
 GO
 
 -- ===== Vai_tro =====
@@ -151,7 +84,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Nhan_vien])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Nhan_vien] ON;
 INSERT INTO [dbo].[Nhan_vien] ([id], [id_vai_tro], [ma_nhan_vien], [ho_va_ten], [gioi_tinh], [ngay_sinh], [so_dien_thoai], [dia_chi], [email], [ten_nguoi_dung], [mat_khau], [tinh_trang_lam_viec], [ngay_tao]) VALUES
-(1, 1, N'NV001', N'Admin', NULL, NULL, NULL, NULL, N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.193'),
+(1, 1, N'NV001', N'Nguyễn Tiến Thành', NULL, NULL, NULL, NULL, N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.193'),
 (2, 2, N'NV002', N'Trần Minh Tuấn', NULL, NULL, N'0901234567', NULL, N'tuan@zestia.vn', N'tuannv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.200'),
 (3, 2, N'NV003', N'Lê Hoàng Phúc', 1, '1997-09-12', N'0907654321', N'Quận 1, TP.HCM', N'phuc@zestia.vn', N'phucnv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-23T09:00:00.000');
 SET IDENTITY_INSERT [dbo].[Nhan_vien] OFF;
@@ -472,30 +405,6 @@ SET IDENTITY_INSERT [dbo].[Nha_cung_cap] OFF;
 END
 GO
 
--- ===== Tai_tro =====
-IF OBJECT_ID(N'dbo.Tai_tro','U') IS NULL
-BEGIN
-CREATE TABLE [dbo].[Tai_tro] (
-  [id] int IDENTITY(1,1) NOT NULL,
-  [ten_tai_tro] nvarchar(150) NOT NULL,
-  [trang_thai] tinyint NULL,
-  [mo_ta] nvarchar(max) NULL,
-  [ngay_tao] datetime2(7) NULL,
-  CONSTRAINT [PK_Tai_tro] PRIMARY KEY ([id])
-);
-END
-GO
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Tai_tro])
-BEGIN
-SET IDENTITY_INSERT [dbo].[Tai_tro] ON;
-INSERT INTO [dbo].[Tai_tro] ([id], [ten_tai_tro], [trang_thai], [mo_ta], [ngay_tao]) VALUES
-(1, N'Zestia Original', 1, NULL, '2026-06-10T23:44:29.130'),
-(2, N'Local Brand', 1, NULL, '2026-06-10T23:44:29.130'),
-(3, N'Premium Line', 1, NULL, '2026-06-10T23:44:29.130');
-SET IDENTITY_INSERT [dbo].[Tai_tro] OFF;
-END
-GO
-
 -- ===== Giam_gia =====
 IF OBJECT_ID(N'dbo.Giam_gia','U') IS NULL
 BEGIN
@@ -527,7 +436,7 @@ SET IDENTITY_INSERT [dbo].[Giam_gia] OFF;
 END
 GO
 
--- ===== Vay =====
+-- ===== San_pham =====
 IF OBJECT_ID(N'dbo.san_pham','U') IS NULL
 BEGIN
 CREATE TABLE [dbo].[san_pham] (
@@ -542,7 +451,7 @@ CREATE TABLE [dbo].[san_pham] (
   [trang_thai] tinyint NULL,
   [mo_ta] nvarchar(max) NULL,
   [ngay_tao] datetime2(7) NULL,
-  CONSTRAINT [PK_Vay] PRIMARY KEY ([id])
+  CONSTRAINT [PK_San_pham] PRIMARY KEY ([id])
 );
 END
 GO
@@ -1548,6 +1457,8 @@ CREATE TABLE [dbo].[Hoa_don] (
   [ma_hoa_don] nvarchar(80) NOT NULL,
   [ma_yeu_cau] nvarchar(100) NULL,
   [ma_giao_dich_cong] nvarchar(120) NULL,
+  [url_thanh_toan] nvarchar(2000) NULL,
+  [thanh_toan_het_han] datetime2(7) NULL,
   [tong_tien] decimal(15,2) NOT NULL,
   [phi_van_chuyen] decimal(15,2) NULL,
   [giam_gia_voucher] decimal(15,2) NULL,
@@ -1573,13 +1484,9 @@ CREATE TABLE [dbo].[Hoa_don] (
   [ma_so_thue_vat] varchar(50) NULL,
   [email_vat] varchar(100) NULL,
   [dia_chi_vat] nvarchar(500) NULL,
-  [so_hoa_don_vat] varchar(50) NULL,
-  [ma_tra_cuu_vat] varchar(50) NULL,
-  [trang_thai_vat] nvarchar(50) NULL,
-  [ngay_phat_hanh_vat] datetime2(7) NULL,
   CONSTRAINT [PK_Hoa_don] PRIMARY KEY ([id]),
   CONSTRAINT [UQ_Hoa_don_ma] UNIQUE ([ma_hoa_don]),
-  CONSTRAINT [CK_Hoa_don_trang_thai] CHECK ([trang_thai] BETWEEN 0 AND 9),
+  CONSTRAINT [CK_Hoa_don_trang_thai] CHECK ([trang_thai] BETWEEN 0 AND 7),
   CONSTRAINT [CK_Hoa_don_tong_tien] CHECK ([tong_tien] >= 0)
 );
 END
@@ -1633,18 +1540,6 @@ IF COL_LENGTH('dbo.Hoa_don', 'email_vat') IS NULL
 GO
 IF COL_LENGTH('dbo.Hoa_don', 'dia_chi_vat') IS NULL
   ALTER TABLE [dbo].[Hoa_don] ADD [dia_chi_vat] nvarchar(500) NULL;
-GO
-IF COL_LENGTH('dbo.Hoa_don', 'so_hoa_don_vat') IS NULL
-  ALTER TABLE [dbo].[Hoa_don] ADD [so_hoa_don_vat] varchar(50) NULL;
-GO
-IF COL_LENGTH('dbo.Hoa_don', 'ma_tra_cuu_vat') IS NULL
-  ALTER TABLE [dbo].[Hoa_don] ADD [ma_tra_cuu_vat] varchar(50) NULL;
-GO
-IF COL_LENGTH('dbo.Hoa_don', 'trang_thai_vat') IS NULL
-  ALTER TABLE [dbo].[Hoa_don] ADD [trang_thai_vat] nvarchar(50) NULL;
-GO
-IF COL_LENGTH('dbo.Hoa_don', 'ngay_phat_hanh_vat') IS NULL
-  ALTER TABLE [dbo].[Hoa_don] ADD [ngay_phat_hanh_vat] datetime2(7) NULL;
 GO
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Hoa_don])
 BEGIN
@@ -1767,7 +1662,7 @@ CREATE TABLE [dbo].[Danh_gia] (
   [trang_thai] tinyint NULL,
   [ngay_tao] datetime2(7) NULL,
   CONSTRAINT [PK_Danh_gia] PRIMARY KEY ([id]),
-  CONSTRAINT [UQ_Danh_gia_Khach_Vay_HoaDon] UNIQUE ([id_khach_hang], [id_san_pham], [id_hoa_don]),
+  CONSTRAINT [UQ_Danh_gia_Khach_SanPham_HoaDon] UNIQUE ([id_khach_hang], [id_san_pham], [id_hoa_don]),
   CONSTRAINT [CK_Danh_gia_so_sao] CHECK ([so_sao] BETWEEN 1 AND 5)
 );
 END
@@ -1776,10 +1671,10 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Danh_gia])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Danh_gia] ON;
 INSERT INTO [dbo].[Danh_gia] ([id], [id_khach_hang], [id_san_pham], [id_hoa_don], [so_sao], [noi_dung], [anh_danh_gia], [trang_thai], [ngay_tao]) VALUES
-(1, 1, 1, 1, 5, N'Váy rất đẹp, chất liệu lụa mềm mại, mặc rất thoải mái!', NULL, 1, '2026-06-10T23:44:29.286'),
-(2, 1, 2, 1, 4, N'Váy voan nhẹ nhàng, nhưng hơi dài so với mình', NULL, 1, '2026-06-10T23:44:29.286'),
+(1, 1, 1, 1, 5, N'Áo sơ mi rất đẹp, chất liệu lụa mềm mại, mặc rất thoải mái!', NULL, 1, '2026-06-10T23:44:29.286'),
+(2, 1, 2, 1, 4, N'Quần jeans đứng phom, nhưng hơi dài so với mình', NULL, 1, '2026-06-10T23:44:29.286'),
 (3, 2, 3, 3, 5, N'Váy dạ hội tuyệt vời, chất gấm sang trọng', NULL, 1, '2026-06-10T23:44:29.286'),
-(4, 3, 4, 4, 4, N'Váy công sở đẹp, giá hợp lý', NULL, 1, '2026-06-10T23:44:29.286');
+(4, 3, 4, 4, 4, N'Túi có phom đẹp, ngăn chứa hợp lý và đường may chắc chắn', NULL, 1, '2026-06-10T23:44:29.286');
 SET IDENTITY_INSERT [dbo].[Danh_gia] OFF;
 END
 GO
@@ -1793,7 +1688,7 @@ CREATE TABLE [dbo].[San_pham_yeu_thich] (
   [id_san_pham] int NOT NULL,
   [ngay_tao] datetime2(7) NULL,
   CONSTRAINT [PK_San_pham_yeu_thich] PRIMARY KEY ([id]),
-  CONSTRAINT [UQ_San_pham_yeu_thich_Khach_Vay] UNIQUE ([id_khach_hang], [id_san_pham])
+  CONSTRAINT [UQ_San_pham_yeu_thich_Khach_SanPham] UNIQUE ([id_khach_hang], [id_san_pham])
 );
 END
 GO
@@ -1807,7 +1702,7 @@ CREATE TABLE [dbo].[Lich_su_xem] (
   [id_san_pham] int NOT NULL,
   [ngay_xem] datetime2(7) NULL,
   CONSTRAINT [PK_Lich_su_xem] PRIMARY KEY ([id]),
-  CONSTRAINT [UQ_Lich_su_xem_Khach_Vay] UNIQUE ([id_khach_hang], [id_san_pham])
+  CONSTRAINT [UQ_Lich_su_xem_Khach_SanPham] UNIQUE ([id_khach_hang], [id_san_pham])
 );
 END
 GO
@@ -1831,7 +1726,7 @@ CREATE TABLE [dbo].[Huong_dan_kich_thuoc] (
   [vong_mong_den] int NULL,
   [ghi_chu] nvarchar(500) NULL,
   CONSTRAINT [PK_Huong_dan_kich_thuoc] PRIMARY KEY ([id]),
-  CONSTRAINT [UQ_Huong_dan_size_Vay_KichThuoc] UNIQUE ([id_san_pham], [id_kich_thuoc]),
+  CONSTRAINT [UQ_Huong_dan_size_SanPham_KichThuoc] UNIQUE ([id_san_pham], [id_kich_thuoc]),
   CONSTRAINT [FK_Huong_dan_size_san_pham] FOREIGN KEY ([id_san_pham]) REFERENCES [dbo].[san_pham]([id]),
   CONSTRAINT [FK_Huong_dan_size_KichThuoc] FOREIGN KEY ([id_kich_thuoc]) REFERENCES [dbo].[Kich_Thuoc]([id])
 );
@@ -1915,48 +1810,6 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Thong
     CREATE INDEX [IX_ThongBaoDaDoc_KhachHang_NgayDoc] ON [dbo].[Thong_bao_da_doc] ([id_khach_hang], [ngay_doc] DESC);
 GO
 
--- ===== Nhat_ky =====
-IF OBJECT_ID(N'dbo.Nhat_ky','U') IS NULL
-BEGIN
-CREATE TABLE [dbo].[Nhat_ky] (
-  [id] int IDENTITY(1,1) NOT NULL,
-  [id_nhan_vien] int NULL,
-  [hanh_dong] nvarchar(100) NOT NULL,
-  [bang_tac_dong] nvarchar(100) NULL,
-  [id_ban_ghi] int NULL,
-  [chi_tiet] nvarchar(max) NULL,
-  [dia_chi_ip] nvarchar(50) NULL,
-  [ngay_tao] datetime2(7) NULL,
-  CONSTRAINT [PK_Nhat_ky] PRIMARY KEY ([id])
-);
-END
-GO
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Nhat_ky])
-BEGIN
-SET IDENTITY_INSERT [dbo].[Nhat_ky] ON;
-INSERT INTO [dbo].[Nhat_ky] ([id], [id_nhan_vien], [hanh_dong], [bang_tac_dong], [id_ban_ghi], [chi_tiet], [dia_chi_ip], [ngay_tao]) VALUES
-(1, NULL, N'UPDATE', N'Hoa_don', 1, N'Trạng thái đổi từ 3 sang 1', NULL, '2026-06-11T12:12:14.160'),
-(2, NULL, N'UPDATE', N'Hoa_don', 1, N'Trạng thái đổi từ 1 sang 4', NULL, '2026-06-11T12:12:18.260'),
-(3, NULL, N'UPDATE', N'Hoa_don', 1, N'Trạng thái đổi từ 4 sang 3', NULL, '2026-06-11T12:36:28.690'),
-(4, NULL, N'UPDATE', N'Hoa_don', 2, N'Trạng thái đổi từ 2 sang 3', NULL, '2026-06-11T12:36:31.046'),
-(5, NULL, N'UPDATE', N'Hoa_don', 4, N'Trạng thái đổi từ 1 sang 3', NULL, '2026-06-11T12:36:33.296'),
-(6, NULL, N'UPDATE', N'Hoa_don', 5, N'Trạng thái đổi từ 0 sang 3', NULL, '2026-06-11T12:36:35.070'),
-(7, NULL, N'UPDATE', N'Hoa_don', 1, N'Trạng thái đổi từ 3 sang 1', NULL, '2026-06-11T12:38:26.426'),
-(8, NULL, N'UPDATE', N'Hoa_don', 2, N'Trạng thái đổi từ 3 sang 0', NULL, '2026-06-11T12:38:28.060'),
-(9, NULL, N'UPDATE', N'Hoa_don', 3, N'Trạng thái đổi từ 3 sang 2', NULL, '2026-06-11T12:38:29.970'),
-(10, NULL, N'UPDATE', N'Hoa_don', 4, N'Trạng thái đổi từ 3 sang 4', NULL, '2026-06-11T12:38:32.426'),
-(11, NULL, N'UPDATE', N'Hoa_don', 8, N'Trạng thái đổi từ 0 sang 1', NULL, '2026-06-11T13:55:09.140'),
-(12, NULL, N'UPDATE', N'Hoa_don', 2, N'Trạng thái đổi từ 0 sang 1', NULL, '2026-06-14T10:03:26.300'),
-(13, NULL, N'UPDATE', N'Hoa_don', 1, N'Trạng thái đổi từ 1 sang 3', NULL, '2026-06-14T10:57:35.533'),
-(14, NULL, N'UPDATE', N'Hoa_don', 1, N'Trạng thái đổi từ 3 sang 1', NULL, '2026-06-14T10:57:37.920'),
-(15, NULL, N'UPDATE', N'Hoa_don', 1, N'Trạng thái đổi từ 1 sang 0', NULL, '2026-06-14T13:08:20.150'),
-(16, NULL, N'UPDATE', N'Hoa_don', 19, N'Trạng thái đổi từ 0 sang 1', NULL, '2026-06-14T15:20:51.593'),
-(17, NULL, N'UPDATE', N'Hoa_don', 19, N'Trạng thái đổi từ 1 sang 2', NULL, '2026-06-14T15:20:55.976'),
-(18, NULL, N'UPDATE', N'Hoa_don', 19, N'Trạng thái đổi từ 2 sang 3', NULL, '2026-06-14T15:21:02.356');
-SET IDENTITY_INSERT [dbo].[Nhat_ky] OFF;
-END
-GO
-
 -- Tracking columns are safe to run repeatedly.
 IF COL_LENGTH('dbo.Hoa_don', 'trang_thai_tracking') IS NULL
     ALTER TABLE [dbo].[Hoa_don] ADD [trang_thai_tracking] nvarchar(50) DEFAULT 'pending';
@@ -1972,6 +1825,12 @@ IF COL_LENGTH('dbo.Hoa_don', 'ma_yeu_cau') IS NULL
 GO
 IF COL_LENGTH('dbo.Hoa_don', 'ma_giao_dich_cong') IS NULL
     ALTER TABLE [dbo].[Hoa_don] ADD [ma_giao_dich_cong] nvarchar(120) NULL;
+GO
+IF COL_LENGTH('dbo.Hoa_don', 'url_thanh_toan') IS NULL
+    ALTER TABLE [dbo].[Hoa_don] ADD [url_thanh_toan] nvarchar(2000) NULL;
+GO
+IF COL_LENGTH('dbo.Hoa_don', 'thanh_toan_het_han') IS NULL
+    ALTER TABLE [dbo].[Hoa_don] ADD [thanh_toan_het_han] datetime2(7) NULL;
 GO
 IF COL_LENGTH('dbo.Hoa_don', 'da_hoan_ton_kho') IS NULL
     ALTER TABLE [dbo].[Hoa_don] ADD [da_hoan_ton_kho] bit NOT NULL CONSTRAINT [DF_Hoa_don_da_hoan_ton_kho] DEFAULT 0 WITH VALUES;
@@ -2102,13 +1961,13 @@ BEGIN
     INSERT INTO dbo.Nhan_vien
         (id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung, mat_khau, tinh_trang_lam_viec, ngay_tao)
     VALUES
-        (@adminRoleId, N'NV001', N'Admin', 1, '1998-01-10', N'0900000001', N'Hà Nội', N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T09:00:00');
+        (@adminRoleId, N'NV001', N'Nguyễn Tiến Thành', 1, '1998-01-10', N'0900000001', N'Hà Nội', N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T09:00:00');
 END
 ELSE
 BEGIN
     UPDATE dbo.Nhan_vien
     SET id_vai_tro = @adminRoleId,
-        ho_va_ten = N'Admin',
+        ho_va_ten = N'Nguyễn Tiến Thành',
         email = N'admin@zestia.vn',
         mat_khau = N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6',
         tinh_trang_lam_viec = 1
@@ -2544,6 +2403,18 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_GiamGia_Ma_TrangThai' AND object_id = OBJECT_ID(N'dbo.Giam_gia'))
     CREATE INDEX IX_GiamGia_Ma_TrangThai ON dbo.Giam_gia (ma_giam_gia, trang_thai) INCLUDE (ngay_bat_dau, ngay_ket_thuc, so_luong);
+
+IF EXISTS (
+    SELECT LOWER(LTRIM(RTRIM(ma_giam_gia)))
+    FROM dbo.Giam_gia
+    WHERE ma_giam_gia IS NOT NULL
+    GROUP BY LOWER(LTRIM(RTRIM(ma_giam_gia)))
+    HAVING COUNT(*) > 1
+)
+    THROW 51046, N'Dữ liệu voucher có mã bị trùng; cần xử lý trước khi tạo ràng buộc duy nhất.', 1;
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UQ_GiamGia_Ma' AND object_id = OBJECT_ID(N'dbo.Giam_gia'))
+    CREATE UNIQUE INDEX UQ_GiamGia_Ma ON dbo.Giam_gia (ma_giam_gia) WHERE ma_giam_gia IS NOT NULL;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ThongBao_TrangThai_NgayTao' AND object_id = OBJECT_ID(N'dbo.Thong_bao'))
@@ -2647,12 +2518,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Gio_h
     CREATE UNIQUE INDEX UX_GioHangChiTiet_GioHang_BienThe ON dbo.Gio_hang_chi_tiet (id_gio_hang, id_san_pham_chi_tiet);
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.San_pham_yeu_thich') AND name IN (N'UQ_San_pham_yeu_thich_Khach_Vay', N'UX_YeuThich_Khach_Vay'))
-    CREATE UNIQUE INDEX UX_YeuThich_Khach_Vay ON dbo.San_pham_yeu_thich (id_khach_hang, id_san_pham);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.San_pham_yeu_thich') AND name IN (N'UQ_San_pham_yeu_thich_Khach_SanPham', N'UX_YeuThich_Khach_SanPham'))
+    CREATE UNIQUE INDEX UX_YeuThich_Khach_SanPham ON dbo.San_pham_yeu_thich (id_khach_hang, id_san_pham);
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Lich_su_xem') AND name IN (N'UQ_Lich_su_xem_Khach_Vay', N'UX_LichSuXem_Khach_Vay'))
-    CREATE UNIQUE INDEX UX_LichSuXem_Khach_Vay ON dbo.Lich_su_xem (id_khach_hang, id_san_pham) WHERE id_khach_hang IS NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Lich_su_xem') AND name IN (N'UQ_Lich_su_xem_Khach_SanPham', N'UX_LichSuXem_Khach_SanPham'))
+    CREATE UNIQUE INDEX UX_LichSuXem_Khach_SanPham ON dbo.Lich_su_xem (id_khach_hang, id_san_pham) WHERE id_khach_hang IS NOT NULL;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Lich_su_thanh_toan') AND name = N'UX_LichSuThanhToan_GatewayEvent')
@@ -3261,12 +3132,12 @@ IF EXISTS (
     ALTER TABLE dbo.Danh_gia ALTER COLUMN id_hoa_don INT NOT NULL;
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Danh_gia') AND name IN (N'UQ_Danh_gia_Khach_Vay_HoaDon', N'UX_DanhGia_Khach_Vay_HoaDon'))
-    CREATE UNIQUE INDEX UX_DanhGia_Khach_Vay_HoaDon ON dbo.Danh_gia (id_khach_hang, id_san_pham, id_hoa_don);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Danh_gia') AND name IN (N'UQ_Danh_gia_Khach_SanPham_HoaDon', N'UX_DanhGia_Khach_SanPham_HoaDon'))
+    CREATE UNIQUE INDEX UX_DanhGia_Khach_SanPham_HoaDon ON dbo.Danh_gia (id_khach_hang, id_san_pham, id_hoa_don);
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Danh_gia') AND name = N'IX_DanhGia_Vay_TrangThai_NgayTao')
-    CREATE INDEX IX_DanhGia_Vay_TrangThai_NgayTao ON dbo.Danh_gia (id_san_pham, trang_thai, ngay_tao DESC) INCLUDE (so_sao, id_khach_hang, id_hoa_don);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Danh_gia') AND name = N'IX_DanhGia_SanPham_TrangThai_NgayTao')
+    CREATE INDEX IX_DanhGia_SanPham_TrangThai_NgayTao ON dbo.Danh_gia (id_san_pham, trang_thai, ngay_tao DESC) INCLUDE (so_sao, id_khach_hang, id_hoa_don);
 GO
 
 -- ============================================================
@@ -3430,77 +3301,38 @@ SET DATEFIRST @previous_datefirst;
 PRINT N'Demo employees and shifts refreshed successfully.';
 GO
 
--- Keep product categories aligned with the product-code contract, including legacy databases.
-IF NOT EXISTS (SELECT 1 FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy dự tiệc')
-    INSERT INTO dbo.loai_san_pham (ten_loai_san_pham, trang_thai, mo_ta, ngay_tao)
-    VALUES (N'Váy dự tiệc', 1, N'Thiết kế dành cho tiệc tối, sinh nhật và các dịp gặp gỡ.', '2026-08-01T09:00:00');
-
-DECLARE @loai_truyen_thong INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy truyền thống' ORDER BY id);
-DECLARE @loai_cach_tan INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy cách tân' ORDER BY id);
-DECLARE @loai_da_hoi INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy dạ hội' ORDER BY id);
-DECLARE @loai_cuoi INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy cưới' ORDER BY id);
-DECLARE @loai_hoc_sinh INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy học sinh' ORDER BY id);
-DECLARE @loai_cong_so INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy công sở' ORDER BY id);
-DECLARE @loai_du_tiec INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy dự tiệc' ORDER BY id);
-
--- Repair a legacy mojibake duplicate created when an older script was executed
--- without UTF-8 input. Repoint every reference before removing the bad row.
-UPDATE dbo.san_pham
-SET id_loai_san_pham = @loai_du_tiec
-WHERE id_loai_san_pham IN (
-    SELECT id
-    FROM dbo.loai_san_pham
-    WHERE id <> @loai_du_tiec
-      AND (ten_loai_san_pham LIKE N'%Ã%' OR ten_loai_san_pham LIKE N'%áº%' OR ten_loai_san_pham LIKE N'%á»%')
-);
-
--- This migration also runs on a completely new database. The promotion scope
--- table is created later, so only reference it when upgrading an older schema.
-IF OBJECT_ID(N'dbo.Pham_vi_khuyen_mai', N'U') IS NOT NULL
-BEGIN
-    UPDATE dbo.Pham_vi_khuyen_mai
-    SET id_loai_san_pham = @loai_du_tiec
-    WHERE id_loai_san_pham IN (
-        SELECT id
-        FROM dbo.loai_san_pham
-        WHERE id <> @loai_du_tiec
-          AND (ten_loai_san_pham LIKE N'%Ã%' OR ten_loai_san_pham LIKE N'%áº%' OR ten_loai_san_pham LIKE N'%á»%')
-    );
-
-    DELETE dbo.loai_san_pham
-    WHERE id <> @loai_du_tiec
-      AND (ten_loai_san_pham LIKE N'%Ã%' OR ten_loai_san_pham LIKE N'%áº%' OR ten_loai_san_pham LIKE N'%á»%')
-      AND NOT EXISTS (SELECT 1 FROM dbo.san_pham WHERE id_loai_san_pham = dbo.loai_san_pham.id)
-      AND NOT EXISTS (SELECT 1 FROM dbo.Pham_vi_khuyen_mai WHERE id_loai_san_pham = dbo.loai_san_pham.id);
-END
-ELSE
-BEGIN
-    DELETE dbo.loai_san_pham
-    WHERE id <> @loai_du_tiec
-      AND (ten_loai_san_pham LIKE N'%Ã%' OR ten_loai_san_pham LIKE N'%áº%' OR ten_loai_san_pham LIKE N'%á»%')
-      AND NOT EXISTS (SELECT 1 FROM dbo.san_pham WHERE id_loai_san_pham = dbo.loai_san_pham.id);
-END
+-- Keep the category and product-code contract aligned with the current fashion
+-- catalogue. Older dress-only prefixes are intentionally not part of this data set.
+DECLARE @loai_ao INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Áo thời trang' ORDER BY id);
+DECLARE @loai_quan INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Quần & Jeans' ORDER BY id);
+DECLARE @loai_vay INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Váy & Đầm' ORDER BY id);
+DECLARE @loai_phu_kien INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Phụ kiện thời trang' ORDER BY id);
+DECLARE @loai_cong_so INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Trang phục công sở' ORDER BY id);
+DECLARE @loai_du_tiec INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Trang phục dự tiệc' ORDER BY id);
+DECLARE @loai_ao_khoac INT = (SELECT TOP 1 id FROM dbo.loai_san_pham WHERE ten_loai_san_pham = N'Áo khoác & Blazer' ORDER BY id);
 
 UPDATE dbo.san_pham
 SET id_loai_san_pham = CASE
-    WHEN ma_san_pham LIKE N'VTT%' THEN @loai_truyen_thong
-    WHEN ma_san_pham LIKE N'VCT%' THEN @loai_cach_tan
-    WHEN ma_san_pham LIKE N'VDH%' THEN @loai_da_hoi
-    WHEN ma_san_pham LIKE N'VDT%' THEN @loai_du_tiec
-    WHEN ma_san_pham LIKE N'VHS%' THEN @loai_hoc_sinh
-    WHEN ma_san_pham LIKE N'VCS%' THEN @loai_cong_so
-    WHEN ma_san_pham LIKE N'VCU%' THEN @loai_cuoi
-    WHEN LEFT(ma_san_pham, 2) = N'VC' THEN @loai_cuoi
+    WHEN ma_san_pham LIKE N'ASM%' THEN @loai_ao
+    WHEN ma_san_pham LIKE N'QJN%' OR ma_san_pham LIKE N'QTY%' THEN @loai_quan
+    WHEN ma_san_pham LIKE N'VDH%' THEN @loai_vay
+    WHEN ma_san_pham LIKE N'PKT%' THEN @loai_phu_kien
+    WHEN ma_san_pham LIKE N'TCS%' THEN @loai_cong_so
+    WHEN ma_san_pham LIKE N'DTP%' THEN @loai_du_tiec
+    WHEN ma_san_pham LIKE N'AKH%' THEN @loai_ao_khoac
     ELSE id_loai_san_pham
-END
-WHERE ma_san_pham LIKE N'VTT%'
-   OR ma_san_pham LIKE N'VCT%'
-   OR ma_san_pham LIKE N'VDH%'
-   OR ma_san_pham LIKE N'VDT%'
-   OR ma_san_pham LIKE N'VHS%'
-   OR ma_san_pham LIKE N'VCS%'
-   OR ma_san_pham LIKE N'VCU%'
-   OR LEFT(ma_san_pham, 2) = N'VC';
+END;
+
+-- Binary collation is required here: on the default accent-insensitive
+-- collation, a valid Vietnamese character such as "Á" can match "Ã".
+DELETE category
+FROM dbo.loai_san_pham category
+WHERE (
+       category.ten_loai_san_pham COLLATE Latin1_General_100_BIN2 LIKE N'%Ã%'
+    OR category.ten_loai_san_pham COLLATE Latin1_General_100_BIN2 LIKE N'%áº%'
+    OR category.ten_loai_san_pham COLLATE Latin1_General_100_BIN2 LIKE N'%á»%'
+)
+AND NOT EXISTS (SELECT 1 FROM dbo.san_pham product WHERE product.id_loai_san_pham = category.id);
 GO
 
 -- Normalize legacy state combinations before enforcing the final contract.
@@ -3513,7 +3345,10 @@ WHERE UPPER(ISNULL(hinh_thuc_thanh_toan, N'')) IN (N'MOMO', N'ZALOPAY')
   AND ISNULL(da_thanh_toan, 0) = 0
   AND trang_thai IN (1, 2, 3, 4, 6, 8, 9);
 
-UPDATE dbo.Hoa_don SET trang_thai = 0 WHERE trang_thai IS NULL OR trang_thai NOT BETWEEN 0 AND 9;
+-- 8/9 were legacy return/refund states. Return processing is stored in
+-- Yeu_cau_doi_tra; the delivered order itself remains completed.
+UPDATE dbo.Hoa_don SET trang_thai = 4 WHERE trang_thai IN (8, 9);
+UPDATE dbo.Hoa_don SET trang_thai = 0 WHERE trang_thai IS NULL OR trang_thai NOT BETWEEN 0 AND 7;
 UPDATE dbo.Hoa_don SET tong_tien = 0 WHERE tong_tien IS NULL OR tong_tien < 0;
 UPDATE dbo.Hoa_don SET da_thanh_toan = 1 WHERE hinh_thuc_nhan_hang = 0 OR (trang_thai = 4 AND UPPER(ISNULL(hinh_thuc_thanh_toan, N'')) = N'COD');
 UPDATE dbo.Hoa_don SET da_thanh_toan = 0 WHERE trang_thai = 7;
@@ -3564,7 +3399,7 @@ WHERE NOT EXISTS (SELECT 1 FROM dbo.san_pham v WHERE v.id = id_san_pham)
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.Hoa_don') AND name = N'CK_Hoa_don_trang_thai')
-    ALTER TABLE dbo.Hoa_don WITH CHECK ADD CONSTRAINT CK_Hoa_don_trang_thai CHECK (trang_thai BETWEEN 0 AND 9);
+    ALTER TABLE dbo.Hoa_don WITH CHECK ADD CONSTRAINT CK_Hoa_don_trang_thai CHECK (trang_thai BETWEEN 0 AND 7);
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.Hoa_don') AND name = N'CK_Hoa_don_tong_tien')
     ALTER TABLE dbo.Hoa_don WITH CHECK ADD CONSTRAINT CK_Hoa_don_tong_tien CHECK (tong_tien >= 0);
@@ -3578,8 +3413,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJE
 GO
 IF EXISTS (SELECT ma_san_pham FROM dbo.san_pham GROUP BY ma_san_pham HAVING COUNT(*) > 1)
     THROW 51019, N'Mã sản phẩm đang bị trùng, không thể tạo ràng buộc duy nhất.', 1;
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'UX_Vay_MaVay')
-    CREATE UNIQUE INDEX UX_Vay_MaVay ON dbo.san_pham(ma_san_pham);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'UX_SanPham_MaSanPham')
+    CREATE UNIQUE INDEX UX_SanPham_MaSanPham ON dbo.san_pham(ma_san_pham);
 GO
 IF EXISTS (SELECT ma_san_pham_chi_tiet FROM dbo.san_pham_chi_tiet WHERE ma_san_pham_chi_tiet IS NOT NULL GROUP BY ma_san_pham_chi_tiet HAVING COUNT(*) > 1)
     THROW 51020, N'Mã biến thể đang bị trùng, không thể tạo ràng buộc duy nhất.', 1;
@@ -3594,8 +3429,8 @@ IF EXISTS (
     HAVING COUNT(*) > 1
 )
     THROW 51021, N'Một sản phẩm đang có biến thể trùng màu và kích thước.', 1;
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'UX_SanPhamChiTiet_Vay_Mau_Size')
-    CREATE UNIQUE INDEX UX_SanPhamChiTiet_Vay_Mau_Size
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'UX_SanPhamChiTiet_SanPham_Mau_Size')
+    CREATE UNIQUE INDEX UX_SanPhamChiTiet_SanPham_Mau_Size
         ON dbo.san_pham_chi_tiet(id_san_pham, id_mau_sac, id_kich_thuoc)
         WHERE id_mau_sac IS NOT NULL AND id_kich_thuoc IS NOT NULL;
 GO
@@ -3616,8 +3451,8 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Hoa_don_chi_tiet') AND name = N'FK_HoaDonChiTiet_HoaDon')
     ALTER TABLE dbo.Hoa_don_chi_tiet WITH CHECK ADD CONSTRAINT FK_HoaDonChiTiet_HoaDon FOREIGN KEY (id_hoa_don) REFERENCES dbo.Hoa_don(id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'FK_SanPhamChiTiet_Vay')
-    ALTER TABLE dbo.san_pham_chi_tiet WITH CHECK ADD CONSTRAINT FK_SanPhamChiTiet_Vay FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'FK_SanPhamChiTiet_SanPham')
+    ALTER TABLE dbo.san_pham_chi_tiet WITH CHECK ADD CONSTRAINT FK_SanPhamChiTiet_SanPham FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'FK_SanPhamChiTiet_MauSac')
     ALTER TABLE dbo.san_pham_chi_tiet WITH CHECK ADD CONSTRAINT FK_SanPhamChiTiet_MauSac FOREIGN KEY (id_mau_sac) REFERENCES dbo.Mau_Sac(id);
@@ -3625,14 +3460,14 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'FK_SanPhamChiTiet_KichThuoc')
     ALTER TABLE dbo.san_pham_chi_tiet WITH CHECK ADD CONSTRAINT FK_SanPhamChiTiet_KichThuoc FOREIGN KEY (id_kich_thuoc) REFERENCES dbo.Kich_Thuoc(id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'FK_Vay_LoaiVay')
-    ALTER TABLE dbo.san_pham WITH CHECK ADD CONSTRAINT FK_Vay_LoaiVay FOREIGN KEY (id_loai_san_pham) REFERENCES dbo.loai_san_pham(id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'FK_SanPham_LoaiSanPham')
+    ALTER TABLE dbo.san_pham WITH CHECK ADD CONSTRAINT FK_SanPham_LoaiSanPham FOREIGN KEY (id_loai_san_pham) REFERENCES dbo.loai_san_pham(id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'FK_Vay_ChatLieu')
-    ALTER TABLE dbo.san_pham WITH CHECK ADD CONSTRAINT FK_Vay_ChatLieu FOREIGN KEY (id_chat_lieu) REFERENCES dbo.Chat_lieu(id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'FK_SanPham_ChatLieu')
+    ALTER TABLE dbo.san_pham WITH CHECK ADD CONSTRAINT FK_SanPham_ChatLieu FOREIGN KEY (id_chat_lieu) REFERENCES dbo.Chat_lieu(id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'FK_Vay_NhaCungCap')
-    ALTER TABLE dbo.san_pham WITH CHECK ADD CONSTRAINT FK_Vay_NhaCungCap FOREIGN KEY (id_nha_cung_cap) REFERENCES dbo.Nha_cung_cap(id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham') AND name = N'FK_SanPham_NhaCungCap')
+    ALTER TABLE dbo.san_pham WITH CHECK ADD CONSTRAINT FK_SanPham_NhaCungCap FOREIGN KEY (id_nha_cung_cap) REFERENCES dbo.Nha_cung_cap(id);
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Hoa_don') AND name = N'FK_HoaDon_KhachHang')
     ALTER TABLE dbo.Hoa_don WITH CHECK ADD CONSTRAINT FK_HoaDon_KhachHang FOREIGN KEY (id_khach_hang) REFERENCES dbo.Khach_hang(id);
@@ -3655,8 +3490,8 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Danh_gia') AND name = N'FK_DanhGia_KhachHang')
     ALTER TABLE dbo.Danh_gia WITH CHECK ADD CONSTRAINT FK_DanhGia_KhachHang FOREIGN KEY (id_khach_hang) REFERENCES dbo.Khach_hang(id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Danh_gia') AND name = N'FK_DanhGia_Vay')
-    ALTER TABLE dbo.Danh_gia WITH CHECK ADD CONSTRAINT FK_DanhGia_Vay FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Danh_gia') AND name = N'FK_DanhGia_SanPham')
+    ALTER TABLE dbo.Danh_gia WITH CHECK ADD CONSTRAINT FK_DanhGia_SanPham FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Danh_gia') AND name = N'FK_DanhGia_HoaDon')
     ALTER TABLE dbo.Danh_gia WITH CHECK ADD CONSTRAINT FK_DanhGia_HoaDon FOREIGN KEY (id_hoa_don) REFERENCES dbo.Hoa_don(id);
@@ -3664,14 +3499,14 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.San_pham_yeu_thich') AND name = N'FK_YeuThich_KhachHang')
     ALTER TABLE dbo.San_pham_yeu_thich WITH CHECK ADD CONSTRAINT FK_YeuThich_KhachHang FOREIGN KEY (id_khach_hang) REFERENCES dbo.Khach_hang(id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.San_pham_yeu_thich') AND name = N'FK_YeuThich_Vay')
-    ALTER TABLE dbo.San_pham_yeu_thich WITH CHECK ADD CONSTRAINT FK_YeuThich_Vay FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.San_pham_yeu_thich') AND name = N'FK_YeuThich_SanPham')
+    ALTER TABLE dbo.San_pham_yeu_thich WITH CHECK ADD CONSTRAINT FK_YeuThich_SanPham FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Lich_su_xem') AND name = N'FK_LichSuXem_KhachHang')
     ALTER TABLE dbo.Lich_su_xem WITH CHECK ADD CONSTRAINT FK_LichSuXem_KhachHang FOREIGN KEY (id_khach_hang) REFERENCES dbo.Khach_hang(id);
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Lich_su_xem') AND name = N'FK_LichSuXem_Vay')
-    ALTER TABLE dbo.Lich_su_xem WITH CHECK ADD CONSTRAINT FK_LichSuXem_Vay FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.Lich_su_xem') AND name = N'FK_LichSuXem_SanPham')
+    ALTER TABLE dbo.Lich_su_xem WITH CHECK ADD CONSTRAINT FK_LichSuXem_SanPham FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id);
 GO
 
 -- Reconcile real delivery-failed orders created before automatic restoration was added.
@@ -3760,7 +3595,7 @@ GO
 UPDATE dbo.Hoa_don
 SET da_hoan_ton_kho = 1
 WHERE (id BETWEEN 1 AND 20 OR ma_hoa_don LIKE N'HDS%')
-  AND trang_thai IN (5, 6, 7, 9)
+  AND trang_thai IN (5, 6, 7)
   AND ISNULL(da_hoan_ton_kho, 0) = 0;
 GO
 
@@ -3817,8 +3652,8 @@ BEGIN
         id_mau_sac int NULL,
         id_kich_thuoc int NULL,
         CONSTRAINT FK_PhamViKM_Dot FOREIGN KEY (id_dot_khuyen_mai) REFERENCES dbo.Dot_khuyen_mai(id),
-        CONSTRAINT FK_PhamViKM_Vay FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id),
-        CONSTRAINT FK_PhamViKM_LoaiVay FOREIGN KEY (id_loai_san_pham) REFERENCES dbo.loai_san_pham(id),
+        CONSTRAINT FK_PhamViKM_SanPham FOREIGN KEY (id_san_pham) REFERENCES dbo.san_pham(id),
+        CONSTRAINT FK_PhamViKM_LoaiSanPham FOREIGN KEY (id_loai_san_pham) REFERENCES dbo.loai_san_pham(id),
         CONSTRAINT FK_PhamViKM_MauSac FOREIGN KEY (id_mau_sac) REFERENCES dbo.Mau_Sac(id),
         CONSTRAINT FK_PhamViKM_KichThuoc FOREIGN KEY (id_kich_thuoc) REFERENCES dbo.Kich_Thuoc(id)
     );
@@ -3880,7 +3715,7 @@ IF NOT EXISTS (
     SELECT d.id, lv.id
     FROM dbo.Dot_khuyen_mai d
     CROSS JOIN dbo.loai_san_pham lv
-    WHERE d.ma_dot = N'AUGOFFICE15' AND lv.ten_loai_san_pham = N'Váy công sở';
+    WHERE d.ma_dot = N'AUGOFFICE15' AND lv.ten_loai_san_pham = N'Trang phục công sở';
 GO
 -- Return/exchange requests are line-item based, preventing one request from
 -- accidentally changing the status or inventory of an entire mixed order.
@@ -3955,8 +3790,11 @@ BEGIN
     );
 END
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Yeu_cau_doi_tra') AND name = N'UX_YeuCauDoiTra_ChiTiet')
-    CREATE UNIQUE INDEX UX_YeuCauDoiTra_ChiTiet ON dbo.Yeu_cau_doi_tra(id_hoa_don_chi_tiet);
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Yeu_cau_doi_tra') AND name = N'UX_YeuCauDoiTra_ChiTiet')
+    DROP INDEX UX_YeuCauDoiTra_ChiTiet ON dbo.Yeu_cau_doi_tra;
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Yeu_cau_doi_tra') AND name = N'IX_YeuCauDoiTra_ChiTiet_TrangThai')
+    CREATE INDEX IX_YeuCauDoiTra_ChiTiet_TrangThai
+        ON dbo.Yeu_cau_doi_tra(id_hoa_don_chi_tiet, trang_thai) INCLUDE (so_luong, ngay_tao);
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Yeu_cau_doi_tra') AND name = N'IX_YeuCauDoiTra_TrangThai_NgayTao')
     CREATE INDEX IX_YeuCauDoiTra_TrangThai_NgayTao ON dbo.Yeu_cau_doi_tra(loai_yeu_cau, trang_thai, ngay_tao DESC) INCLUDE (id_hoa_don, id_khach_hang);
@@ -4245,7 +4083,6 @@ classified AS (
     SELECT
         base.*,
         CAST(CASE
-            WHEN is_offline = 1 AND seq % 35 = 0 THEN 9
             WHEN is_offline = 1 THEN 4
             WHEN profile = 0 THEN 0
             WHEN profile = 1 THEN 1
@@ -4255,8 +4092,7 @@ classified AS (
             WHEN profile = 11 THEN 5
             WHEN profile = 12 THEN 6
             WHEN profile = 13 THEN 7
-            WHEN profile = 14 THEN 8
-            WHEN profile = 15 THEN 9
+            WHEN profile IN (14, 15) THEN 4
             ELSE 4
         END AS tinyint) AS order_status
     FROM base
@@ -4274,8 +4110,8 @@ SELECT
     customer.id,
     CASE WHEN classified.is_offline = 1 THEN employee.id ELSE NULL END,
     CASE
-        WHEN classified.order_status IN (1, 2, 3, 4, 8, 9) AND classified.seq % 10 = 0 THEN @aug_voucher_fixed
-        WHEN classified.order_status IN (1, 2, 3, 4, 8, 9) AND classified.seq % 6 = 0 THEN @aug_voucher_percent
+        WHEN classified.order_status IN (1, 2, 3, 4) AND classified.seq % 10 = 0 THEN @aug_voucher_fixed
+        WHEN classified.order_status IN (1, 2, 3, 4) AND classified.seq % 6 = 0 THEN @aug_voucher_percent
         ELSE NULL
     END,
     CASE WHEN classified.is_offline = 1 THEN 0 ELSE 1 END,
@@ -4302,10 +4138,10 @@ SELECT
     classified.created_at,
     CASE
         WHEN classified.is_offline = 1 THEN 1
-        WHEN classified.order_status IN (1, 2, 3, 4, 8, 9) THEN 1
+        WHEN classified.order_status IN (1, 2, 3, 4) THEN 1
         ELSE 0
     END,
-    CASE WHEN classified.order_status IN (5, 6, 7, 9) THEN 1 ELSE 0 END,
+    CASE WHEN classified.order_status IN (5, 6, 7) THEN 1 ELSE 0 END,
     customer.ho_va_ten,
     customer.so_dien_thoai,
     customer.email
@@ -4493,7 +4329,7 @@ SELECT detail.id_san_pham_chi_tiet, SUM(detail.so_luong)
 FROM dbo.Hoa_don order_row
 JOIN dbo.Hoa_don_chi_tiet detail ON detail.id_hoa_don = order_row.id
 WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-  AND order_row.trang_thai NOT IN (5, 6, 7, 9)
+  AND order_row.trang_thai NOT IN (5, 6, 7)
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Bien_dong_ton_kho movement
       WHERE movement.id_san_pham_chi_tiet = detail.id_san_pham_chi_tiet
@@ -4565,16 +4401,24 @@ INSERT INTO dbo.Lich_su_thanh_toan (
     trang_thai, noi_dung, ngay_tao
 )
 SELECT
-    order_row.id, order_row.tong_tien, order_row.hinh_thuc_thanh_toan,
+    order_row.id, -ABS(first_detail.thanh_tien), N'REFUND',
     N'AUG-REFUND-' + order_row.ma_hoa_don,
-    N'REFUNDED', N'Hoàn tiền dữ liệu mẫu tháng 8',
+    N'REFUND_SUCCESS', N'Hoàn tiền dữ liệu mẫu tháng 8',
     DATEADD(MINUTE, 60, order_row.ngay_tao)
 FROM dbo.Hoa_don order_row
+JOIN @aug_orders seed_order ON seed_order.ma_hoa_don = order_row.ma_hoa_don
+CROSS APPLY (
+    SELECT TOP 1 detail.thanh_tien
+    FROM dbo.Hoa_don_chi_tiet detail
+    WHERE detail.id_hoa_don = order_row.id
+    ORDER BY detail.id
+) first_detail
 WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-  AND order_row.trang_thai = 9
+  AND seed_order.seq % 20 = 15
+  AND order_row.id % 2 = 1
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Lich_su_thanh_toan payment
-      WHERE payment.id_hoa_don = order_row.id AND UPPER(payment.trang_thai) = N'REFUNDED'
+      WHERE payment.id_hoa_don = order_row.id AND UPPER(payment.trang_thai) = N'REFUND_SUCCESS'
   );
 
 INSERT INTO dbo.Lich_su_tracking(id_hoa_don, trang_thai, mo_ta, ngay_cap_nhat)
@@ -4584,7 +4428,7 @@ SELECT
         WHEN 0 THEN N'pending' WHEN 1 THEN N'confirmed' WHEN 2 THEN N'processing'
         WHEN 3 THEN N'shipped' WHEN 4 THEN N'delivered' WHEN 5 THEN N'cancelled'
         WHEN 6 THEN N'failed' WHEN 7 THEN N'payment_failed'
-        WHEN 8 THEN N'return_requested' ELSE N'refunded'
+        ELSE N'pending'
     END,
     N'Trạng thái dữ liệu nghiệp vụ tháng 8/2026',
     DATEADD(HOUR, 2, order_row.ngay_tao)
@@ -4813,8 +4657,8 @@ SELECT
     CASE WHEN order_row.id % 2 = 0 THEN N'DOI' ELSE N'TRA' END,
     CASE WHEN order_row.hinh_thuc_nhan_hang = 0 THEN N'OFFLINE' ELSE N'ONLINE' END,
     CASE
-        WHEN order_row.trang_thai = 8 AND order_row.id % 2 = 0 THEN N'CHO_NHAN_HANG'
-        WHEN order_row.trang_thai = 8 THEN N'CHO_XAC_NHAN_HOAN_TIEN'
+        WHEN seed_order.seq % 20 = 14 AND order_row.id % 2 = 0 THEN N'CHO_NHAN_HANG'
+        WHEN seed_order.seq % 20 = 14 THEN N'CHO_XAC_NHAN_HOAN_TIEN'
         WHEN order_row.id % 2 = 0 THEN N'DA_DOI'
         ELSE N'DA_HOAN_TIEN'
     END,
@@ -4823,14 +4667,15 @@ SELECT
     N'Sản phẩm còn nguyên tem, chưa qua giặt và có ảnh tình trạng kèm theo.',
     CASE WHEN order_row.id % 2 = 1 THEN N'VCB - 9869167207 - NGUYEN TIEN THANH' ELSE NULL END,
     CASE WHEN order_row.id % 2 = 1 THEN first_detail.thanh_tien ELSE NULL END,
-    CASE WHEN order_row.trang_thai = 9 AND order_row.id % 2 = 1 THEN N'AUG-REFUND-' + order_row.ma_hoa_don ELSE NULL END,
-    CASE WHEN order_row.trang_thai = 9 THEN N'Đã hoàn tất xử lý dữ liệu mẫu.' ELSE N'Đang chờ bước xử lý tiếp theo.' END,
-    CASE WHEN order_row.trang_thai = 9 THEN 1 ELSE 0 END,
+    CASE WHEN seed_order.seq % 20 = 15 AND order_row.id % 2 = 1 THEN N'AUG-REFUND-' + order_row.ma_hoa_don ELSE NULL END,
+    CASE WHEN seed_order.seq % 20 = 15 THEN N'Đã hoàn tất xử lý dữ liệu mẫu.' ELSE N'Đang chờ bước xử lý tiếp theo.' END,
+    CASE WHEN seed_order.seq % 20 = 15 THEN 1 ELSE 0 END,
     DATEADD(MINUTE, 30, order_row.ngay_tao),
-    CASE WHEN order_row.trang_thai = 9 THEN DATEADD(MINUTE, 60, order_row.ngay_tao) ELSE NULL END,
-    CASE WHEN order_row.trang_thai = 9 THEN DATEADD(MINUTE, 90, order_row.ngay_tao) ELSE NULL END,
-    CASE WHEN order_row.trang_thai = 9 THEN DATEADD(MINUTE, 120, order_row.ngay_tao) ELSE NULL END
+    CASE WHEN seed_order.seq % 20 = 15 THEN DATEADD(MINUTE, 60, order_row.ngay_tao) ELSE NULL END,
+    CASE WHEN seed_order.seq % 20 = 15 THEN DATEADD(MINUTE, 90, order_row.ngay_tao) ELSE NULL END,
+    CASE WHEN seed_order.seq % 20 = 15 THEN DATEADD(MINUTE, 120, order_row.ngay_tao) ELSE NULL END
 FROM dbo.Hoa_don order_row
+JOIN @aug_orders seed_order ON seed_order.ma_hoa_don = order_row.ma_hoa_don
 CROSS APPLY (
     SELECT TOP 1 detail.*
     FROM dbo.Hoa_don_chi_tiet detail
@@ -4850,7 +4695,7 @@ CROSS APPLY (
     SELECT TOP 1 id FROM dbo.Nhan_vien WHERE tinh_trang_lam_viec = 1 ORDER BY id
 ) employee
 WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-  AND order_row.trang_thai IN (8, 9)
+  AND seed_order.seq % 20 IN (14, 15)
   AND order_row.id_khach_hang IS NOT NULL
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Yeu_cau_doi_tra request
@@ -4873,16 +4718,75 @@ WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
       WHERE image.id_yeu_cau = request.id
   );
 
+-- Completed demo returns restore the purchased variant. Completed exchanges
+-- also reserve the replacement variant, matching the runtime inventory flow.
+DECLARE @aug_return_stock TABLE (
+    id_san_pham_chi_tiet int NOT NULL PRIMARY KEY,
+    quantity_change int NOT NULL
+);
+
+INSERT INTO @aug_return_stock(id_san_pham_chi_tiet, quantity_change)
+SELECT movement.id_san_pham_chi_tiet, SUM(movement.quantity_change)
+FROM (
+    SELECT detail.id_san_pham_chi_tiet, request.so_luong AS quantity_change
+    FROM dbo.Yeu_cau_doi_tra request
+    JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
+    JOIN dbo.Hoa_don_chi_tiet detail ON detail.id = request.id_hoa_don_chi_tiet
+    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+      AND request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN')
+
+    UNION ALL
+
+    SELECT request.id_bien_the_doi, -request.so_luong
+    FROM dbo.Yeu_cau_doi_tra request
+    JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
+    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+      AND request.trang_thai = N'DA_DOI'
+      AND request.id_bien_the_doi IS NOT NULL
+) movement
+GROUP BY movement.id_san_pham_chi_tiet
+HAVING SUM(movement.quantity_change) <> 0;
+
+IF EXISTS (
+    SELECT 1
+    FROM @aug_return_stock adjustment
+    JOIN dbo.san_pham_chi_tiet variant ON variant.id = adjustment.id_san_pham_chi_tiet
+    WHERE variant.so_luong + adjustment.quantity_change < 0
+)
+    THROW 51041, N'Tồn kho không đủ để tạo lịch sử đổi hàng tháng 8.', 1;
+
+INSERT INTO dbo.Bien_dong_ton_kho (
+    id_san_pham_chi_tiet, so_luong_truoc, so_luong_thay_doi, so_luong_sau,
+    loai_bien_dong, ma_tham_chieu, nguoi_thuc_hien, ghi_chu, ngay_tao
+)
+SELECT
+    variant.id,
+    variant.so_luong,
+    adjustment.quantity_change,
+    variant.so_luong + adjustment.quantity_change,
+    N'DOI_TRA_DEMO_T8',
+    N'AUGUST-2026-RETURNS',
+    N'Hệ thống dữ liệu mẫu',
+    N'Đối soát tồn kho đổi/trả hoàn tất trong tháng 8/2026',
+    CAST('2026-08-06T22:45:00' AS datetime2)
+FROM @aug_return_stock adjustment
+JOIN dbo.san_pham_chi_tiet variant ON variant.id = adjustment.id_san_pham_chi_tiet;
+
+UPDATE variant
+SET so_luong = variant.so_luong + adjustment.quantity_change
+FROM dbo.san_pham_chi_tiet variant
+JOIN @aug_return_stock adjustment ON adjustment.id_san_pham_chi_tiet = variant.id;
+
 -- Normalize every insert-only demo row as well. This makes the script repair
 -- data created by an older sqlcmd run that did not use UTF-8 input.
 UPDATE payment
 SET payment.noi_dung = CASE UPPER(payment.trang_thai)
         WHEN N'SUCCESS' THEN N'Thanh toán dữ liệu mẫu tháng 8 thành công'
         WHEN N'FAILED' THEN N'Thanh toán dữ liệu mẫu tháng 8 thất bại'
-        WHEN N'REFUNDED' THEN N'Hoàn tiền dữ liệu mẫu tháng 8'
+        WHEN N'REFUND_SUCCESS' THEN N'Hoàn tiền dữ liệu mẫu tháng 8'
         ELSE payment.noi_dung
     END,
-    payment.ngay_tao = CASE WHEN UPPER(payment.trang_thai) = N'REFUNDED'
+    payment.ngay_tao = CASE WHEN UPPER(payment.trang_thai) = N'REFUND_SUCCESS'
         THEN DATEADD(MINUTE, 60, order_row.ngay_tao)
         ELSE DATEADD(MINUTE, 5, order_row.ngay_tao) END
 FROM dbo.Lich_su_thanh_toan payment
@@ -4965,6 +4869,8 @@ WHERE notification.loai = N'Voucher'
   AND notification.ngay_tao < '2026-08-01'
   AND (notification.tieu_de LIKE N'%ZESTIA10%' OR notification.noi_dung LIKE N'%ZESTIA10%');
 
+DECLARE @duplicate_seed_notification_ids TABLE (id int PRIMARY KEY);
+
 ;WITH duplicate_seed_notifications AS (
     SELECT id,
            ROW_NUMBER() OVER (
@@ -4973,14 +4879,26 @@ WHERE notification.loai = N'Voucher'
            ) AS rn
     FROM dbo.Thong_bao
     WHERE tieu_de IN (
+        N'Chào tháng 8 cùng Zestia',
+        N'Lookbook đi làm tháng 8',
         N'Bộ sưu tập mới đã lên kệ',
         N'Voucher ZESTIA10 đang hoạt động'
-    )
+      )
 )
+INSERT INTO @duplicate_seed_notification_ids(id)
+SELECT id
+FROM duplicate_seed_notifications
+WHERE rn > 1;
+
+DELETE read_state
+FROM dbo.Thong_bao_da_doc read_state
+JOIN @duplicate_seed_notification_ids duplicate_row
+  ON duplicate_row.id = read_state.id_thong_bao;
+
 DELETE notification
 FROM dbo.Thong_bao notification
-JOIN duplicate_seed_notifications duplicate_row ON duplicate_row.id = notification.id
-WHERE duplicate_row.rn > 1;
+JOIN @duplicate_seed_notification_ids duplicate_row
+  ON duplicate_row.id = notification.id;
 
 UPDATE chat
 SET chat.tieu_de = CASE CONVERT(int, RIGHT(chat.ma_phien, 2)) % 3
@@ -5015,9 +4933,9 @@ SET request.ly_do = CASE request.loai_yeu_cau
         ELSE N'Đang chờ bước xử lý tiếp theo.'
     END,
     request.ngay_tao = DATEADD(MINUTE, 30, order_row.ngay_tao),
-    request.ngay_duyet = CASE WHEN order_row.trang_thai = 9 THEN DATEADD(MINUTE, 60, order_row.ngay_tao) ELSE NULL END,
-    request.ngay_nhan_hang = CASE WHEN order_row.trang_thai = 9 THEN DATEADD(MINUTE, 90, order_row.ngay_tao) ELSE NULL END,
-    request.ngay_hoan_tat = CASE WHEN order_row.trang_thai = 9 THEN DATEADD(MINUTE, 120, order_row.ngay_tao) ELSE NULL END
+    request.ngay_duyet = CASE WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN') THEN DATEADD(MINUTE, 60, order_row.ngay_tao) ELSE NULL END,
+    request.ngay_nhan_hang = CASE WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN') THEN DATEADD(MINUTE, 90, order_row.ngay_tao) ELSE NULL END,
+    request.ngay_hoan_tat = CASE WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN') THEN DATEADD(MINUTE, 120, order_row.ngay_tao) ELSE NULL END
 FROM dbo.Yeu_cau_doi_tra request
 JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
 WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
@@ -5102,16 +5020,80 @@ SET ly_do_bao_ban = COALESCE(NULLIF(LTRIM(RTRIM(ly_do_bao_ban)), N''), N'Yêu c�
 WHERE trang_thai = 3;
 GO
 
--- Final one-price invariant. gia_ban_goc is retained only because older local
--- databases declare it NOT NULL; backend and frontend never expose it.
-UPDATE dbo.san_pham_chi_tiet
-SET gia_ban_goc = gia_ban,
-    phan_tram_giam = 0
-WHERE gia_ban IS NOT NULL;
+-- Remove obsolete variant discount columns after importing the legacy seed.
+-- Campaign discounts are calculated from Dot_khuyen_mai; a variant owns one
+-- selling price only.
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'IX_SanPhamChiTiet_SanPham_TrangThai')
+    DROP INDEX IX_SanPhamChiTiet_SanPham_TrangThai ON dbo.san_pham_chi_tiet;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'CK_san_pham_chi_tiet_gia_ton')
+    ALTER TABLE dbo.san_pham_chi_tiet DROP CONSTRAINT CK_san_pham_chi_tiet_gia_ton;
+IF COL_LENGTH(N'dbo.san_pham_chi_tiet', N'gia_ban_goc') IS NOT NULL
+    ALTER TABLE dbo.san_pham_chi_tiet DROP COLUMN gia_ban_goc;
+IF COL_LENGTH(N'dbo.san_pham_chi_tiet', N'phan_tram_giam') IS NOT NULL
+    ALTER TABLE dbo.san_pham_chi_tiet DROP COLUMN phan_tram_giam;
+IF COL_LENGTH(N'dbo.san_pham_chi_tiet', N'gia_nhap') IS NOT NULL
+    ALTER TABLE dbo.san_pham_chi_tiet DROP COLUMN gia_nhap;
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'CK_san_pham_chi_tiet_gia_ton')
+    ALTER TABLE dbo.san_pham_chi_tiet WITH CHECK ADD CONSTRAINT CK_san_pham_chi_tiet_gia_ton
+        CHECK (gia_ban > 0 AND ISNULL(so_luong, 0) >= 0);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.san_pham_chi_tiet') AND name = N'IX_SanPhamChiTiet_SanPham_TrangThai')
+    CREATE INDEX IX_SanPhamChiTiet_SanPham_TrangThai ON dbo.san_pham_chi_tiet
+        (id_san_pham, trang_thai, id_mau_sac, id_kich_thuoc) INCLUDE (gia_ban, so_luong);
+GO
+
+-- Purchase cost was legacy seed data and had no report, accounting or UI flow.
+-- Keep historical selling price in order lines, but remove the unused cost field.
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Hoa_don_chi_tiet') AND name = N'IX_HoaDonChiTiet_HoaDon')
+    DROP INDEX IX_HoaDonChiTiet_HoaDon ON dbo.Hoa_don_chi_tiet;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.Hoa_don_chi_tiet') AND name = N'CK_Hoa_don_chi_tiet_gia_ton')
+    ALTER TABLE dbo.Hoa_don_chi_tiet DROP CONSTRAINT CK_Hoa_don_chi_tiet_gia_ton;
+IF COL_LENGTH(N'dbo.Hoa_don_chi_tiet', N'gia_nhap') IS NOT NULL
+    ALTER TABLE dbo.Hoa_don_chi_tiet DROP COLUMN gia_nhap;
+IF COL_LENGTH(N'dbo.Hoa_don_chi_tiet', N'ma_san_pham_snapshot') IS NULL
+    ALTER TABLE dbo.Hoa_don_chi_tiet ADD ma_san_pham_snapshot nvarchar(50) NULL;
+IF COL_LENGTH(N'dbo.Hoa_don_chi_tiet', N'ten_san_pham_snapshot') IS NULL
+    ALTER TABLE dbo.Hoa_don_chi_tiet ADD ten_san_pham_snapshot nvarchar(200) NULL;
+IF COL_LENGTH(N'dbo.Hoa_don_chi_tiet', N'mau_sac_snapshot') IS NULL
+    ALTER TABLE dbo.Hoa_don_chi_tiet ADD mau_sac_snapshot nvarchar(100) NULL;
+IF COL_LENGTH(N'dbo.Hoa_don_chi_tiet', N'kich_thuoc_snapshot') IS NULL
+    ALTER TABLE dbo.Hoa_don_chi_tiet ADD kich_thuoc_snapshot nvarchar(50) NULL;
+IF COL_LENGTH(N'dbo.Hoa_don_chi_tiet', N'anh_url_snapshot') IS NULL
+    ALTER TABLE dbo.Hoa_don_chi_tiet ADD anh_url_snapshot nvarchar(500) NULL;
+GO
+
+UPDATE detail
+SET detail.thanh_tien = detail.don_gia * detail.so_luong,
+    detail.ma_san_pham_snapshot = COALESCE(detail.ma_san_pham_snapshot, product.ma_san_pham),
+    detail.ten_san_pham_snapshot = COALESCE(detail.ten_san_pham_snapshot, product.ten_san_pham),
+    detail.mau_sac_snapshot = COALESCE(detail.mau_sac_snapshot, color.ten_mau_sac),
+    detail.kich_thuoc_snapshot = COALESCE(detail.kich_thuoc_snapshot, size.ten_kich_thuoc),
+    detail.anh_url_snapshot = COALESCE(detail.anh_url_snapshot, variant.anh_url, gallery.anh_url)
+FROM dbo.Hoa_don_chi_tiet detail
+JOIN dbo.san_pham_chi_tiet variant ON variant.id = detail.id_san_pham_chi_tiet
+JOIN dbo.san_pham product ON product.id = variant.id_san_pham
+LEFT JOIN dbo.Mau_Sac color ON color.id = variant.id_mau_sac
+LEFT JOIN dbo.Kich_Thuoc size ON size.id = variant.id_kich_thuoc
+OUTER APPLY (
+    SELECT TOP 1 image.anh_url
+    FROM dbo.Anh image
+    WHERE image.id_san_pham = product.id AND image.trang_thai = 1
+    ORDER BY image.id
+) gallery;
+
+ALTER TABLE dbo.Hoa_don_chi_tiet ALTER COLUMN thanh_tien decimal(15,2) NOT NULL;
+ALTER TABLE dbo.Hoa_don_chi_tiet ALTER COLUMN ma_san_pham_snapshot nvarchar(50) NOT NULL;
+ALTER TABLE dbo.Hoa_don_chi_tiet ALTER COLUMN ten_san_pham_snapshot nvarchar(200) NOT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.Hoa_don_chi_tiet') AND name = N'CK_Hoa_don_chi_tiet_gia_ton')
+    ALTER TABLE dbo.Hoa_don_chi_tiet WITH CHECK ADD CONSTRAINT CK_Hoa_don_chi_tiet_gia_ton
+        CHECK (so_luong > 0 AND don_gia > 0 AND thanh_tien >= 0);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Hoa_don_chi_tiet') AND name = N'IX_HoaDonChiTiet_HoaDon')
+    CREATE INDEX IX_HoaDonChiTiet_HoaDon ON dbo.Hoa_don_chi_tiet (id_hoa_don)
+        INCLUDE (id_san_pham_chi_tiet, so_luong, don_gia, thanh_tien,
+                 ma_san_pham_snapshot, ten_san_pham_snapshot, anh_url_snapshot);
 GO
 
 UPDATE dbo.Nhan_vien
-SET ho_va_ten = N'Admin'
+SET ho_va_ten = N'Nguyễn Tiến Thành'
 WHERE ten_nguoi_dung = N'admin';
 GO
 
@@ -5262,19 +5244,186 @@ WHEN NOT MATCHED THEN INSERT (
 );
 GO
 
+-- Remove legacy product metadata and the unused generic log table. Order audit
+-- and inventory movement tables are the canonical, explainable audit sources.
+DECLARE @dropLegacyProductConstraints nvarchar(max) = N'';
+SELECT @dropLegacyProductConstraints = @dropLegacyProductConstraints
+    + N'ALTER TABLE dbo.san_pham DROP CONSTRAINT ' + QUOTENAME(fk.name) + N';'
+FROM sys.foreign_keys fk
+JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id
+WHERE fk.parent_object_id = OBJECT_ID(N'dbo.san_pham')
+  AND c.name IN (N'id_tai_tro', N'link_youtube');
+SELECT @dropLegacyProductConstraints = @dropLegacyProductConstraints
+    + N'ALTER TABLE dbo.san_pham DROP CONSTRAINT ' + QUOTENAME(dc.name) + N';'
+FROM sys.default_constraints dc
+JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+WHERE dc.parent_object_id = OBJECT_ID(N'dbo.san_pham')
+  AND c.name IN (N'id_tai_tro', N'link_youtube');
+IF @dropLegacyProductConstraints <> N'' EXEC sys.sp_executesql @dropLegacyProductConstraints;
+
+DECLARE @dropLegacyProductColumns nvarchar(max);
+SELECT @dropLegacyProductColumns = STRING_AGG(QUOTENAME(c.name), N', ')
+FROM sys.columns c
+WHERE c.object_id = OBJECT_ID(N'dbo.san_pham')
+  AND c.name IN (N'id_tai_tro', N'link_youtube');
+IF @dropLegacyProductColumns IS NOT NULL
+BEGIN
+    DECLARE @dropLegacyProductColumnsSql nvarchar(max) =
+        N'ALTER TABLE dbo.san_pham DROP COLUMN ' + @dropLegacyProductColumns + N';';
+    EXEC sys.sp_executesql @dropLegacyProductColumnsSql;
+END;
+
+IF OBJECT_ID(N'dbo.Nhat_ky', N'U') IS NOT NULL DROP TABLE dbo.Nhat_ky;
+IF OBJECT_ID(N'dbo.Tai_tro', N'U') IS NOT NULL DROP TABLE dbo.Tai_tro;
+GO
+
+-- Global announcements and private order notifications share one table, but a
+-- private row must always identify its customer. Legacy global order updates
+-- are removed because they exposed one customer's order code to every account.
+IF COL_LENGTH(N'dbo.Thong_bao', N'id_khach_hang') IS NULL
+    ALTER TABLE dbo.Thong_bao ADD id_khach_hang int NULL;
+GO
+
+DELETE read_state
+FROM dbo.Thong_bao_da_doc read_state
+JOIN dbo.Thong_bao notification ON notification.id = read_state.id_thong_bao
+WHERE notification.id_khach_hang IS NULL
+  AND UPPER(ISNULL(notification.loai, N'')) = N'DONHANG';
+
+DELETE FROM dbo.Thong_bao
+WHERE id_khach_hang IS NULL
+  AND UPPER(ISNULL(loai, N'')) = N'DONHANG';
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.foreign_keys
+    WHERE parent_object_id = OBJECT_ID(N'dbo.Thong_bao')
+      AND referenced_object_id = OBJECT_ID(N'dbo.Khach_hang')
+)
+    ALTER TABLE dbo.Thong_bao WITH CHECK
+    ADD CONSTRAINT FK_ThongBao_KhachHang
+        FOREIGN KEY (id_khach_hang) REFERENCES dbo.Khach_hang(id);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'dbo.Thong_bao')
+      AND name = N'IX_ThongBao_KhachHang_TrangThai_NgayTao'
+)
+    CREATE INDEX IX_ThongBao_KhachHang_TrangThai_NgayTao
+        ON dbo.Thong_bao (id_khach_hang, trang_thai, ngay_tao DESC);
+GO
+
+DECLARE @dropObsoleteNotificationConstraints nvarchar(max) = N'';
+SELECT @dropObsoleteNotificationConstraints = @dropObsoleteNotificationConstraints
+    + N'ALTER TABLE dbo.Thong_bao DROP CONSTRAINT ' + QUOTENAME(fk.name) + N';'
+FROM sys.foreign_keys fk
+JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id
+WHERE fk.parent_object_id = OBJECT_ID(N'dbo.Thong_bao')
+  AND c.name IN (N'id_nhan_vien', N'da_doc');
+SELECT @dropObsoleteNotificationConstraints = @dropObsoleteNotificationConstraints
+    + N'ALTER TABLE dbo.Thong_bao DROP CONSTRAINT ' + QUOTENAME(dc.name) + N';'
+FROM sys.default_constraints dc
+JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+WHERE dc.parent_object_id = OBJECT_ID(N'dbo.Thong_bao')
+  AND c.name IN (N'id_nhan_vien', N'da_doc');
+IF @dropObsoleteNotificationConstraints <> N''
+    EXEC sys.sp_executesql @dropObsoleteNotificationConstraints;
+
+DECLARE @dropObsoleteNotificationColumns nvarchar(max);
+SELECT @dropObsoleteNotificationColumns = STRING_AGG(QUOTENAME(c.name), N', ')
+FROM sys.columns c
+WHERE c.object_id = OBJECT_ID(N'dbo.Thong_bao')
+  AND c.name IN (N'id_nhan_vien', N'da_doc');
+IF @dropObsoleteNotificationColumns IS NOT NULL
+BEGIN
+    DECLARE @dropObsoleteNotificationColumnsSql nvarchar(max) =
+        N'ALTER TABLE dbo.Thong_bao DROP COLUMN ' + @dropObsoleteNotificationColumns + N';';
+    EXEC sys.sp_executesql @dropObsoleteNotificationColumnsSql;
+END;
+GO
+
+-- Loyalty is derived from completed orders and signed refund adjustments so
+-- profile, customer administration and future recalculations start in sync.
+;WITH loyalty_totals AS (
+    SELECT customer.id,
+           CASE WHEN completed.total_spend + refunds.adjustment < 0 THEN CAST(0 AS decimal(18,2))
+                ELSE completed.total_spend + refunds.adjustment END AS net_spend
+    FROM dbo.Khach_hang customer
+    OUTER APPLY (
+        SELECT COALESCE(SUM(order_row.tong_tien), 0) AS total_spend
+        FROM dbo.Hoa_don order_row
+        WHERE order_row.id_khach_hang = customer.id AND order_row.trang_thai = 4
+    ) completed
+    OUTER APPLY (
+        SELECT COALESCE(SUM(payment.so_tien), 0) AS adjustment
+        FROM dbo.Lich_su_thanh_toan payment
+        JOIN dbo.Hoa_don order_row ON order_row.id = payment.id_hoa_don
+        WHERE order_row.id_khach_hang = customer.id
+          AND order_row.trang_thai = 4
+          AND UPPER(payment.trang_thai) = N'REFUND_SUCCESS'
+    ) refunds
+)
+UPDATE customer
+SET tong_chi_tieu = totals.net_spend,
+    diem_tich_luy = FLOOR(totals.net_spend / 100000),
+    hang_thanh_vien = CASE
+        WHEN totals.net_spend >= 30000000 THEN N'Kim Cương'
+        WHEN totals.net_spend >= 15000000 THEN N'Vàng'
+        WHEN totals.net_spend >= 5000000 THEN N'Bạc'
+        ELSE N'Đồng'
+    END
+FROM dbo.Khach_hang customer
+JOIN loyalty_totals totals ON totals.id = customer.id;
+GO
+
 -- A successful final message is emitted only after every invariant passes.
 IF (SELECT COUNT(*) FROM dbo.Vai_tro) <> 2
    OR EXISTS (SELECT 1 FROM dbo.Vai_tro WHERE ten_vai_tro NOT IN (N'Admin', N'Nhân viên'))
     THROW 51001, N'Database chỉ được có vai trò Admin và Nhân viên.', 1;
+IF OBJECT_ID(N'dbo.Nhat_ky', N'U') IS NOT NULL
+   OR OBJECT_ID(N'dbo.Tai_tro', N'U') IS NOT NULL
+   OR COL_LENGTH(N'dbo.san_pham', N'id_tai_tro') IS NOT NULL
+   OR COL_LENGTH(N'dbo.san_pham', N'link_youtube') IS NOT NULL
+    THROW 51002, N'Database còn cấu trúc cũ không có luồng nghiệp vụ.', 1;
+IF COL_LENGTH(N'dbo.Thong_bao', N'id_khach_hang') IS NULL
+   OR COL_LENGTH(N'dbo.Thong_bao', N'id_nhan_vien') IS NOT NULL
+   OR COL_LENGTH(N'dbo.Thong_bao', N'da_doc') IS NOT NULL
+   OR EXISTS (
+       SELECT 1 FROM dbo.Thong_bao
+       WHERE id_khach_hang IS NULL AND UPPER(ISNULL(loai, N'')) = N'DONHANG'
+   )
+    THROW 51045, N'Thông báo đơn hàng phải riêng tư theo khách hàng và không còn cột đích cũ.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Thong_bao
+    WHERE id_khach_hang IS NULL
+    GROUP BY tieu_de, noi_dung, loai, ngay_tao
+    HAVING COUNT(*) > 1
+)
+    THROW 51047, N'Thông báo công khai đang bị trùng nội dung và thời điểm.', 1;
 IF EXISTS (SELECT 1 FROM dbo.san_pham_chi_tiet WHERE so_luong < 0)
     THROW 51003, N'Tồn kho biến thể không được âm.', 1;
-IF EXISTS (SELECT 1 FROM dbo.san_pham_chi_tiet WHERE gia_ban IS NOT NULL AND (gia_ban_goc IS NULL OR gia_ban_goc <> gia_ban OR ISNULL(phan_tram_giam, 0) <> 0))
-    THROW 51004, N'Dữ liệu sản phẩm phải dùng một giá bán duy nhất.', 1;
+IF EXISTS (SELECT 1 FROM dbo.san_pham_chi_tiet WHERE gia_ban IS NULL OR gia_ban <= 0)
+    THROW 51004, N'Dữ liệu sản phẩm phải có đúng một giá bán hợp lệ.', 1;
+IF COL_LENGTH(N'dbo.san_pham_chi_tiet', N'gia_nhap') IS NOT NULL
+   OR COL_LENGTH(N'dbo.Hoa_don_chi_tiet', N'gia_nhap') IS NOT NULL
+    THROW 51043, N'Database còn trường giá nhập không có luồng nghiệp vụ.', 1;
+IF EXISTS (
+    SELECT 1 FROM dbo.Hoa_don_chi_tiet
+    WHERE NULLIF(LTRIM(RTRIM(ma_san_pham_snapshot)), N'') IS NULL
+       OR NULLIF(LTRIM(RTRIM(ten_san_pham_snapshot)), N'') IS NULL
+       OR thanh_tien IS NULL
+       OR ABS(thanh_tien - (don_gia * so_luong)) > 0.01
+)
+    THROW 51044, N'Chi tiết hóa đơn chưa lưu đầy đủ dữ liệu lịch sử tại thời điểm mua.', 1;
 IF EXISTS (
     SELECT 1 FROM dbo.Hoa_don
     WHERE UPPER(ISNULL(hinh_thuc_thanh_toan, N'')) IN (N'MOMO', N'ZALOPAY')
       AND ISNULL(da_thanh_toan, 0) = 0
-      AND trang_thai IN (1, 2, 3, 4, 6, 8, 9)
+      AND trang_thai IN (1, 2, 3, 4, 6)
 )
     THROW 51005, N'Có đơn thanh toán online chưa thành công nhưng đã đi tiếp trong quy trình.', 1;
 IF EXISTS (
@@ -5301,7 +5450,7 @@ IF EXISTS (SELECT ma_hoa_don FROM dbo.Hoa_don GROUP BY ma_hoa_don HAVING COUNT(*
     THROW 51008, N'Mã hóa đơn đang bị trùng.', 1;
 IF EXISTS (SELECT id_khach_hang FROM dbo.Gio_hang GROUP BY id_khach_hang HAVING COUNT(*) > 1)
     THROW 51009, N'Một khách hàng đang có nhiều hơn một giỏ hàng.', 1;
-IF EXISTS (SELECT 1 FROM dbo.Hoa_don WHERE trang_thai IN (5, 6, 7, 9) AND ISNULL(da_hoan_ton_kho, 0) = 0)
+IF EXISTS (SELECT 1 FROM dbo.Hoa_don WHERE trang_thai IN (5, 6, 7) AND ISNULL(da_hoan_ton_kho, 0) = 0)
     THROW 51016, N'Có đơn kết thúc chưa được đối soát tồn kho/voucher.', 1;
 IF EXISTS (
     SELECT 1 FROM dbo.Bien_dong_ton_kho
@@ -5354,19 +5503,23 @@ IF EXISTS (SELECT ma_giao_dich_cong FROM dbo.Hoa_don WHERE ma_giao_dich_cong IS 
     THROW 51014, N'Mã giao dịch cổng thanh toán đang bị trùng.', 1;
 IF EXISTS (
     SELECT 1
-    FROM dbo.san_pham v
-    JOIN dbo.loai_san_pham lv ON lv.id = v.id_loai_san_pham
-    WHERE (v.ma_san_pham LIKE N'VCS%' AND lv.ten_loai_san_pham <> N'Váy công sở')
-       OR (v.ma_san_pham LIKE N'VCU%' AND lv.ten_loai_san_pham <> N'Váy cưới')
-       OR (v.ma_san_pham LIKE N'VDT%' AND lv.ten_loai_san_pham <> N'Váy dự tiệc')
+    FROM dbo.san_pham product
+    JOIN dbo.loai_san_pham category ON category.id = product.id_loai_san_pham
+    WHERE (product.ma_san_pham LIKE N'ASM%' AND category.ten_loai_san_pham <> N'Áo thời trang')
+       OR ((product.ma_san_pham LIKE N'QJN%' OR product.ma_san_pham LIKE N'QTY%') AND category.ten_loai_san_pham <> N'Quần & Jeans')
+       OR (product.ma_san_pham LIKE N'VDH%' AND category.ten_loai_san_pham <> N'Váy & Đầm')
+       OR (product.ma_san_pham LIKE N'PKT%' AND category.ten_loai_san_pham <> N'Phụ kiện thời trang')
+       OR (product.ma_san_pham LIKE N'TCS%' AND category.ten_loai_san_pham <> N'Trang phục công sở')
+       OR (product.ma_san_pham LIKE N'DTP%' AND category.ten_loai_san_pham <> N'Trang phục dự tiệc')
+       OR (product.ma_san_pham LIKE N'AKH%' AND category.ten_loai_san_pham <> N'Áo khoác & Blazer')
 )
     THROW 51015, N'Phân loại sản phẩm không khớp với mã sản phẩm.', 1;
 IF EXISTS (
     SELECT 1
     FROM dbo.loai_san_pham
-    WHERE ten_loai_san_pham LIKE N'%Ã%'
-       OR ten_loai_san_pham LIKE N'%áº%'
-       OR ten_loai_san_pham LIKE N'%á»%'
+    WHERE ten_loai_san_pham COLLATE Latin1_General_100_BIN2 LIKE N'%Ã%'
+       OR ten_loai_san_pham COLLATE Latin1_General_100_BIN2 LIKE N'%áº%'
+       OR ten_loai_san_pham COLLATE Latin1_General_100_BIN2 LIKE N'%á»%'
 )
     THROW 51029, N'Danh mục sản phẩm còn dữ liệu lỗi mã hóa UTF-8.', 1;
 IF OBJECT_ID(N'dbo.Pos_phien_giu_hang', N'U') IS NULL
@@ -5445,7 +5598,8 @@ IF EXISTS (
     WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND return_image.ngay_tao >= @demo_data_cutoff
     UNION ALL
     SELECT movement.id FROM dbo.Bien_dong_ton_kho movement
-    WHERE movement.ma_tham_chieu = N'AUGUST-2026-SEED' AND movement.ngay_tao >= @demo_data_cutoff
+    WHERE movement.ma_tham_chieu IN (N'AUGUST-2026-SEED', N'AUGUST-2026-RETURNS')
+      AND movement.ngay_tao >= @demo_data_cutoff
     UNION ALL
     SELECT chat.id FROM dbo.Ho_tro_chat chat
     WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
@@ -5546,23 +5700,6 @@ CREATE TABLE [dbo].[Ai_visual_search_log] (
   [ngay_tao] datetime2(7) NULL DEFAULT GETDATE(),
   CONSTRAINT [PK_Ai_visual_search_log] PRIMARY KEY ([id]),
   CONSTRAINT [FK_Ai_visual_search_log_Khach_hang] FOREIGN KEY ([id_khach_hang]) REFERENCES [dbo].[Khach_hang]([id])
-);
-END
-GO
-
--- ===== BẢNG LƯU BẢN BẢN GỢI Ý PHỐI ĐỒ AI (Ai_recommendations) =====
-IF OBJECT_ID(N'dbo.Ai_recommendations','U') IS NULL
-BEGIN
-CREATE TABLE [dbo].[Ai_recommendations] (
-  [id] int IDENTITY(1,1) NOT NULL,
-  [id_san_pham_chinh] int NOT NULL,
-  [id_san_pham_goi_y] int NOT NULL,
-  [loai_goi_y] nvarchar(50) NULL,
-  [score_do_phu_hop] decimal(5,2) NULL,
-  [ngay_tao] datetime2(7) NULL DEFAULT GETDATE(),
-  CONSTRAINT [PK_Ai_recommendations] PRIMARY KEY ([id]),
-  CONSTRAINT [FK_Ai_recommendations_SP_Chinh] FOREIGN KEY ([id_san_pham_chinh]) REFERENCES [dbo].[san_pham]([id]),
-  CONSTRAINT [FK_Ai_recommendations_SP_GoiY] FOREIGN KEY ([id_san_pham_goi_y]) REFERENCES [dbo].[san_pham]([id])
 );
 END
 GO

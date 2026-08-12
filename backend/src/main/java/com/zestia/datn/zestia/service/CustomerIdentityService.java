@@ -22,23 +22,46 @@ public class CustomerIdentityService {
     @Transactional
     public KhachHang resolveForOrder(KhachHang authenticatedCustomer, String fullName,
                                      String phone, String email) {
+        return resolve(authenticatedCustomer, fullName, phone, email, true);
+    }
+
+    @Transactional
+    public KhachHang resolveForRegistration(String fullName, String phone, String email) {
+        return resolve(null, fullName, phone, email, false);
+    }
+
+    private KhachHang resolve(KhachHang authenticatedCustomer, String fullName,
+                              String phone, String email, boolean linkHistoricalOrders) {
         String normalizedPhone = normalizePhone(phone);
         String normalizedEmail = normalizeEmail(email);
 
         KhachHang customer;
         if (authenticatedCustomer != null) {
-            rejectContactOwnedByAnotherCustomer(authenticatedCustomer, normalizedPhone, normalizedEmail);
-            customer = authenticatedCustomer;
+            customer = lockExisting(authenticatedCustomer);
+            rejectContactOwnedByAnotherCustomer(customer, normalizedPhone, normalizedEmail);
         } else {
             Optional<KhachHang> byPhone = normalizedPhone == null
                     ? Optional.empty() : customerRepo.findBySoDienThoai(normalizedPhone);
             Optional<KhachHang> byEmail = normalizedEmail == null
                     ? Optional.empty() : customerRepo.findByEmailIgnoreCase(normalizedEmail);
+            if (!linkHistoricalOrders && (byPhone.isPresent() || byEmail.isPresent())) {
+                throw new IllegalStateException("Email hoặc số điện thoại vừa được sử dụng bởi một tài khoản khác");
+            }
             if (byPhone.isPresent() && byEmail.isPresent()
                     && !Objects.equals(byPhone.get().getId(), byEmail.get().getId())) {
                 throw new IllegalStateException(
                         "Số điện thoại và email đang thuộc hai hồ sơ khách hàng khác nhau. Vui lòng chọn đúng khách hàng hoặc nhờ quản trị viên kiểm tra."
                 );
+            }
+            if (byPhone.isPresent() && normalizedEmail != null
+                    && !isBlank(byPhone.get().getEmail())
+                    && !normalizedEmail.equalsIgnoreCase(byPhone.get().getEmail())) {
+                throw new IllegalStateException("Số điện thoại đang gắn với một email khác");
+            }
+            if (byEmail.isPresent() && normalizedPhone != null
+                    && !isBlank(byEmail.get().getSoDienThoai())
+                    && !normalizedPhone.equals(normalizePhone(byEmail.get().getSoDienThoai()))) {
+                throw new IllegalStateException("Email đang gắn với một số điện thoại khác");
             }
             customer = byPhone.or(() -> byEmail).orElseGet(() -> KhachHang.builder()
                     .maKhachHang(newCustomerCode())
@@ -47,6 +70,7 @@ public class CustomerIdentityService {
                     .email(normalizedEmail)
                     .ngayTao(LocalDateTime.now())
                     .build());
+            if (customer.getId() != null) customer = lockExisting(customer);
         }
 
         if (isBlank(customer.getHoVaTen()) || isPlaceholderName(customer.getHoVaTen())) {
@@ -62,7 +86,7 @@ public class CustomerIdentityService {
         if (isBlank(customer.getMaKhachHang())) customer.setMaKhachHang(newCustomerCode());
 
         customer = customerRepo.save(customer);
-        linkUnassignedOrders(customer);
+        if (linkHistoricalOrders) linkUnassignedOrders(customer);
         return customer;
     }
 
@@ -71,8 +95,7 @@ public class CustomerIdentityService {
         if (customer == null) return;
         String phone = normalizePhone(customer.getSoDienThoai());
         String email = normalizeEmail(customer.getEmail());
-        if (phone != null) orderRepo.linkUnassignedOrdersByPhone(customer, phone);
-        if (email != null) orderRepo.linkUnassignedOrdersByEmail(customer, email);
+        if (phone != null || email != null) orderRepo.linkUnassignedOrdersByIdentity(customer, phone, email);
     }
 
     private void rejectContactOwnedByAnotherCustomer(KhachHang customer, String phone, String email) {
@@ -90,6 +113,11 @@ public class CustomerIdentityService {
                         throw new IllegalStateException("Email đã thuộc một khách hàng khác");
                     });
         }
+    }
+
+    private KhachHang lockExisting(KhachHang customer) {
+        return customerRepo.findByIdForUpdate(customer.getId())
+                .orElseThrow(() -> new IllegalStateException("Hồ sơ khách hàng không còn tồn tại"));
     }
 
     public String normalizePhone(String value) {

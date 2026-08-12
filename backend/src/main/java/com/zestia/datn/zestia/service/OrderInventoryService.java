@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +36,12 @@ public class OrderInventoryService {
     }
 
     private void restoreStock(HoaDon order) {
-        List<HoaDonChiTiet> details = hoaDonChiTietRepo.findByHoaDonId(order.getId());
+        List<HoaDonChiTiet> details = hoaDonChiTietRepo.findByHoaDonId(order.getId()).stream()
+                .sorted(Comparator.comparing(detail -> detail.getSanPhamChiTiet() != null
+                        && detail.getSanPhamChiTiet().getId() != null
+                                ? detail.getSanPhamChiTiet().getId()
+                                : Integer.MAX_VALUE))
+                .toList();
         for (HoaDonChiTiet detail : details) {
             if (detail.getSanPhamChiTiet() == null || detail.getSanPhamChiTiet().getId() == null || detail.getSoLuong() == null) {
                 continue;

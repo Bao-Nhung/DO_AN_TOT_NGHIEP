@@ -99,6 +99,11 @@
       <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Tổng quan</h1>
       <p style="font-size:14px;color:var(--z-gray);margin-bottom:24px">Chào mừng trở lại, Admin. Đây là tình hình cửa hàng hôm nay.</p>
 
+      <div v-if="dashboardError" class="alert alert-warning d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>{{ dashboardError }}</span>
+      </div>
+
       <div v-if="lowStockVariants.length" class="z-admin-card mb-4" style="background:#FFFBEB;border:1px solid #FCD34D;padding:14px 20px">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <div class="d-flex align-items-center gap-3">
@@ -175,22 +180,22 @@
           <div class="z-admin-card">
             <h3 class="z-admin-card-title mb-3">Sản phẩm nổi bật</h3>
             <div v-if="topProducts.length" class="d-flex flex-column gap-3">
-              <div v-for="(p, i) in topProducts" :key="p.name" class="d-flex align-items-center gap-3">
-                <div style="width:20px;font-size:14px;font-weight:700;color:var(--z-gray-light)">#{{ i + 1 }}</div>
-                <div style="width:44px;height:52px;border-radius:var(--z-radius);overflow:hidden;flex-shrink:0;background:var(--z-bg-alt)">
+              <div v-for="(p, i) in topProducts" :key="p.name" class="z-top-product-row">
+                <div class="z-top-product-rank">#{{ i + 1 }}</div>
+                <div class="z-top-product-thumb">
                   <img v-if="p.image" :src="p.image" :alt="p.name" style="width:100%;height:100%;object-fit:cover">
                   <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                        :style="{ background: p.bg, fontFamily:'var(--z-font-display)', fontSize:'14px', color:'rgba(255,255,255,0.3)' }">
                     {{ p.letter }}
                   </div>
                 </div>
-                <div class="flex-grow-1">
-                  <div style="font-size:13px;font-weight:500;color:var(--z-dark)">{{ p.name }}</div>
-                  <div style="font-size:12px;color:var(--z-gray)">Đã bán: {{ p.sold }}</div>
-                </div>
-                <div class="z-top-product-revenue">
-                  <span>Doanh thu</span>
-                  <strong>{{ p.revenue }}</strong>
+                <div class="z-top-product-copy">
+                  <div class="z-top-product-name">{{ p.name }}</div>
+                  <div class="z-top-product-sold">Đã bán: {{ p.sold }}</div>
+                  <div class="z-top-product-revenue">
+                    <span>Doanh thu</span>
+                    <strong>{{ p.revenue }}</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -205,13 +210,13 @@
               <div v-for="v in lowStockVariants" :key="v.variantId" class="d-flex align-items-center justify-content-between gap-3">
                 <div class="d-flex align-items-center gap-3" style="min-width:0">
                   <div class="z-dashboard-product-thumb">
-                    <img v-if="v.image" :src="v.image" :alt="v.tenVay">
+                    <img v-if="v.image" :src="v.image" :alt="v.tenSanPham">
                     <i v-else class="bi bi-image"></i>
                   </div>
                   <div style="min-width:0">
-                    <div class="z-dashboard-product-name">{{ v.tenVay }}</div>
+                    <div class="z-dashboard-product-name">{{ v.tenSanPham }}</div>
                     <div style="font-size:12px;color:var(--z-gray)">
-                      {{ v.maVay }} · {{ v.mauSac || 'N/A' }} · Size {{ v.kichThuoc || 'N/A' }}
+                      {{ v.maSanPham }} · {{ v.mauSac || 'N/A' }} · Size {{ v.kichThuoc || 'N/A' }}
                     </div>
                   </div>
                 </div>
@@ -256,9 +261,6 @@ const statusMap = {
   7: { text: 'Thanh toán thất bại', cls: 'danger' },
 }
 
-statusMap[8] = { text: 'Yêu cầu đổi/trả', cls: 'warning' }
-statusMap[9] = { text: 'Đã hoàn tiền', cls: 'danger' }
-
 const stats = ref([
   { label: 'Doanh thu', value: '...', change: '', up: true, icon: 'bi-graph-up', color: '#16a34a' },
   { label: 'Đơn hàng', value: '...', change: '', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
@@ -268,6 +270,7 @@ const stats = ref([
 const recentOrders = ref([])
 const topProducts = ref([])
 const lowStockVariants = ref([])
+const dashboardError = ref('')
 const staffStats = ref([])
 const todayShifts = ref([])
 const myRecentOrders = ref([])
@@ -280,6 +283,7 @@ onMounted(async () => {
 })
 
 async function loadAdminDashboard() {
+  dashboardError.value = ''
   try {
     const [s, ordersPage] = await Promise.all([
       api().getDashboardStats().catch(() => null),
@@ -287,7 +291,7 @@ async function loadAdminDashboard() {
     ])
     if (s && s.doanhThu !== undefined) {
       stats.value = [
-        { label: 'Doanh thu', value: fmtPrice(s.doanhThu), change: `${s.tongLoaiVay} loại sản phẩm`, up: true, icon: 'bi-graph-up', color: '#16a34a' },
+        { label: 'Doanh thu', value: fmtPrice(s.doanhThu), change: `${s.tongLoaiSanPham} loại sản phẩm`, up: true, icon: 'bi-graph-up', color: '#16a34a' },
         { label: 'Đơn hàng', value: String(s.tongDonHang), change: 'Tổng đơn trong hệ thống', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
         { label: 'Khách hàng', value: String(s.tongKhachHang), change: 'Tài khoản khách hàng', up: true, icon: 'bi-people', color: '#6366f1' },
         { label: 'Sản phẩm', value: String(s.tongSanPham), change: `${s.tongBienThe || 0} biến thể`, up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
@@ -296,35 +300,22 @@ async function loadAdminDashboard() {
       lowStockVariants.value = (s.lowStockVariants || []).map(v => ({ ...v, image: v.anhUrl || null }))
       const topSelling = s.topSellingProducts || []
       topProducts.value = topSelling.map((p, i) => ({
-        name: p.tenVay,
+        name: p.tenSanPham,
         sold: String(p.soLuongBan || 0),
         revenue: fmtPrice(p.doanhThu || 0),
-        letter: (p.tenVay || 'Z').charAt(0),
+        letter: (p.tenSanPham || 'Z').charAt(0),
         bg: ['#D4A99E', '#C4A98E', '#A8A49E'][i % 3],
         image: p.anhUrl || null
       }))
     } else {
-      stats.value = [
-        { label: 'Doanh thu', value: '128.500.000đ', change: '7 loại sản phẩm', up: true, icon: 'bi-graph-up', color: '#16a34a' },
-        { label: 'Đơn hàng', value: '142', change: 'Tổng đơn trong hệ thống', up: true, icon: 'bi-receipt', color: 'var(--z-accent)' },
-        { label: 'Khách hàng', value: '86', change: 'Tài khoản khách hàng', up: true, icon: 'bi-people', color: '#6366f1' },
-        { label: 'Sản phẩm', value: '62', change: '240 biến thể', up: true, icon: 'bi-bag', color: 'var(--z-warm)' },
-      ]
-      topProducts.value = [
-        { name: 'Áo Sơ Mi Lụa Cổ Điển', sold: '48', revenue: '138.720.000đ', image: '/images/products/shirt1.jpg', letter: 'Á', bg: '#D4A99E' },
-        { name: 'Quần Jeans Wide Leg Thời Trang', sold: '42', revenue: '66.780.000đ', image: '/images/products/pants1.jpg', letter: 'Q', bg: '#C4A98E' },
-        { name: 'Váy Dạ Hội Gấm Hoàng Gia', sold: '29', revenue: '124.410.000đ', image: '/images/products/dress1.jpg', letter: 'V', bg: '#A8A49E' },
-        { name: 'Túi Xách Da Nữ Zestia Premium', sold: '25', revenue: '32.250.000đ', image: '/images/products/accessories1.jpg', letter: 'T', bg: '#D4A99E' },
-        { name: 'Set Áo Blazer & Quần Tây Công Sở', sold: '21', revenue: '29.190.000đ', image: '/images/products/shirt14.jpg', letter: 'S', bg: '#C4A98E' }
-      ]
-      lowStockVariants.value = [
-        { tenVay: 'Đầm Dự Tiệc Lụa Trắng', maVay: 'DTP001', mauSac: 'Trắng Tinh', kichThuoc: 'S', soLuong: 2, image: '/images/products/dress15.jpg' },
-        { tenVay: 'Váy Dạ Hội Gấm Hoàng Gia', maVay: 'VDH001', mauSac: 'Đỏ Đô', kichThuoc: 'S', soLuong: 3, image: '/images/products/dress1.jpg' },
-        { tenVay: 'Túi Xách Da Nữ Zestia Premium', maVay: 'PKT001', mauSac: 'Nâu Kem', kichThuoc: 'Freesize', soLuong: 4, image: '/images/products/accessories2.jpg' }
-      ]
+      throw new Error('API dashboard không trả về dữ liệu hợp lệ')
     }
   } catch (e) {
-    console.error('Dashboard load failed:', e)
+    stats.value = stats.value.map(item => ({ ...item, value: '—', change: 'Chưa tải được dữ liệu' }))
+    recentOrders.value = []
+    topProducts.value = []
+    lowStockVariants.value = []
+    dashboardError.value = 'Không thể tải số liệu quản trị. Hãy kiểm tra kết nối backend rồi thử lại.'
   }
 }
 
@@ -476,10 +467,36 @@ function shortTime(value) {
 .z-dashboard-table-wrap .z-table {
   min-width: 680px;
 }
-.z-top-product-revenue { flex-shrink: 0; text-align: right; }
+.z-top-product-row {
+  display: grid;
+  grid-template-columns: 20px 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+.z-top-product-rank { color: var(--z-gray-light); font-size: 14px; font-weight: 700; }
+.z-top-product-thumb {
+  width: 44px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--z-radius);
+  background: var(--z-bg-alt);
+}
+.z-top-product-copy { min-width: 0; }
+.z-top-product-name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--z-dark);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.z-top-product-sold { margin-top: 2px; color: var(--z-gray); font-size: 11px; }
+.z-top-product-revenue { margin-top: 4px; text-align: left; }
 .z-top-product-revenue span, .z-top-product-revenue strong { display: block; }
 .z-top-product-revenue span { margin-bottom: 2px; color: var(--z-gray); font-size: 9px; text-transform: uppercase; }
-.z-top-product-revenue strong { color: var(--z-dark); font-size: 13px; font-weight: 600; }
+.z-top-product-revenue strong { color: var(--z-dark); font-size: 12px; font-weight: 650; }
 @media (max-width: 575px) {
   .z-stat-card {
     min-height: 142px;

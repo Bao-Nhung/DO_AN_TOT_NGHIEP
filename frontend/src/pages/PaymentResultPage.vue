@@ -78,9 +78,9 @@
         </div>
 
         <!-- Banner Vòng quay may mắn -->
-        <div v-if="status === 'success' && (Number(amount) >= 1000000 || !amount)" class="p-3 mb-4 rounded-3 border text-start" style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f6 100%); border-color: #fcc2d7 !important;">
+        <div v-if="status === 'success' && (Number(amount) >= 1000000 || !amount)" class="z-lucky-eligibility-banner mb-4 text-start">
           <div class="d-flex align-items-center gap-3">
-            <div style="font-size: 32px;">🎉</div>
+            <div class="z-lucky-eligibility-icon"><i class="bi bi-gift" aria-hidden="true"></i></div>
             <div class="flex-grow-1">
               <div style="font-weight: 600; font-size: 14px; color: #c92a2a;">Đơn hàng đủ điều kiện Quay Thưởng!</div>
               <div style="font-size: 12px; color: #495057;">Đơn từ 1.000.000đ được nhận 1 lượt Vòng Quay May Mắn trúng quà 100%.</div>
@@ -137,6 +137,11 @@ const errorMsg = computed(() => {
 })
 
 onMounted(async () => {
+  if (status.value === 'failed') {
+    sessionStorage.removeItem('zestia_pending_payment')
+    sessionStorage.removeItem('zestia_checkout_request')
+    return
+  }
   if (status.value !== 'success') return
   const pending = readPendingPayment()
   if (!pending || !orderId.value || pending.orderCode === orderId.value) {

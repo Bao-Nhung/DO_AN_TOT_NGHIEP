@@ -61,7 +61,7 @@
               <i class="bi bi-search position-absolute" style="left: 18px; top: 50%; transform: translateY(-50%); color: var(--z-gray-light)"></i>
             </div>
             <div style="font-size: 13px; color: var(--z-gray)">
-              Có <strong>{{ currentTab === 'return' ? filteredReturnRequests.length : filteredOrders.length }}</strong> {{ currentTab === 'return' ? 'yêu cầu' : 'đơn hàng' }}
+              Có <strong>{{ currentTab === 'return' ? returnTotalElements : totalElements }}</strong> {{ currentTab === 'return' ? 'yêu cầu' : 'đơn hàng' }}
             </div>
           </div>
 
@@ -187,16 +187,15 @@
                     <span>Đổi / trả hàng</span>
                   </button>
 
-                  <!-- View VAT Invoice -->
-                  <button 
-                    v-if="order.yeuCauVat || order.soHoaDonVat"
-                    class="btn btn-sm btn-outline-danger py-2 px-3 d-flex align-items-center gap-2"
-                    style="font-size: 12px; height: auto;"
-                    @click="openEInvoiceModal(order.id)"
+                  <span
+                    v-if="order.yeuCauVat"
+                    class="z-status pending d-flex align-items-center gap-2 px-3"
+                    style="font-size:12px"
+                    title="Cửa hàng đã ghi nhận thông tin yêu cầu xuất hóa đơn VAT"
                   >
                     <i class="bi bi-file-earmark-text"></i>
-                    <span>Hóa đơn VAT</span>
-                  </button>
+                    <span>Đã yêu cầu VAT</span>
+                  </span>
 
                   <!-- View details -->
                   <button 
@@ -213,15 +212,15 @@
           </div>
 
           <!-- Pagination -->
-          <div v-if="currentTab !== 'return' && filteredOrders.length" class="d-flex justify-content-end mt-4">
+          <div v-if="(currentTab === 'return' ? filteredReturnRequests.length : filteredOrders.length)" class="d-flex justify-content-end mt-4">
             <PageSizeSelect v-model="itemsPerPage" :options="[3, 6, 12, 24]" />
           </div>
-          <div v-if="currentTab !== 'return' && totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
+          <div v-if="activeTotalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
             <button type="button" class="lm-pagination-btn" aria-label="Trang đơn hàng trước" :disabled="currentPage === 1" @click="currentPage--">
               <i class="bi bi-chevron-left"></i>
             </button>
             <button 
-              v-for="page in totalPages" 
+              v-for="page in pageNumbers"
               :key="page"
               class="lm-pagination-btn"
               :class="{ active: currentPage === page }"
@@ -229,7 +228,7 @@
             >
               {{ page }}
             </button>
-            <button type="button" class="lm-pagination-btn" aria-label="Trang đơn hàng sau" :disabled="currentPage === totalPages" @click="currentPage++">
+            <button type="button" class="lm-pagination-btn" aria-label="Trang đơn hàng sau" :disabled="currentPage === activeTotalPages" @click="currentPage++">
               <i class="bi bi-chevron-right"></i>
             </button>
           </div>
@@ -327,7 +326,7 @@
                   </div>
                 </div>
                 <div>
-                  <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ item.tenVay || 'Sản phẩm' }}</div>
+                  <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ item.tenSanPham || 'Sản phẩm' }}</div>
                   <div style="font-size:11px;color:var(--z-gray);margin-top:2px">
                     <span v-if="item.maSanPham">Mã SP: {{ item.maSanPham }} · </span>
                     <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
@@ -453,10 +452,10 @@
             <label class="z-return-label">Sản phẩm cần {{ returnType === 'DOI' ? 'đổi' : 'trả' }} *</label>
             <select v-model="selectedReturnDetailId" class="lm-input" @change="onReturnLineChanged">
               <option :value="null">Chọn sản phẩm trong đơn</option>
-              <option v-for="line in eligibleReturnLines" :key="line.id" :value="line.id">{{ line.maSanPham }} · {{ line.tenVay }} · {{ line.mauSac }} · Size {{ line.kichThuoc }}</option>
+              <option v-for="line in eligibleReturnLines" :key="line.id" :value="line.id">{{ line.maSanPham }} · {{ line.tenSanPham }} · {{ line.mauSac }} · Size {{ line.kichThuoc }} · còn {{ returnableQuantity(line) }}</option>
             </select>
           </div>
-          <div class="col-md-4"><label class="z-return-label">Số lượng *</label><input v-model.number="returnQuantity" class="lm-input" type="number" min="1" :max="selectedReturnLine?.soLuong || 1"></div>
+          <div class="col-md-4"><label class="z-return-label">Số lượng *</label><input v-model.number="returnQuantity" class="lm-input" type="number" min="1" :max="returnableQuantity(selectedReturnLine)"></div>
           <div v-if="returnType === 'DOI'" class="col-12">
             <label class="z-return-label">Màu / kích cỡ muốn đổi *</label>
             <select v-model="replacementVariantId" class="lm-input"><option :value="null">Chọn biến thể còn hàng</option><option v-for="variant in returnReplacementOptions" :key="variant.id" :value="variant.id">{{ variant.mauSac }} · Size {{ variant.kichThuoc }} · còn {{ variant.soLuong }}</option></select>
@@ -472,7 +471,7 @@
             <label class="z-return-label">Ảnh tình trạng hàng (1–5 ảnh) *</label>
             <input class="lm-input z-file-input" type="file" accept="image/jpeg,image/png" multiple @change="onReturnImages">
             <div class="z-return-help">Mỗi ảnh tối đa 5MB. Hãy chụp rõ sản phẩm, tem mác và vị trí lỗi.</div>
-            <div v-if="returnImagePreviews.length" class="z-return-preview-list"><div v-for="(url, index) in returnImagePreviews" :key="url"><img :src="url" alt="Ảnh tình trạng"><button type="button" title="Bỏ ảnh" aria-label="Bỏ ảnh tình trạng" @click="removeReturnImage(index)"><i class="bi bi-x"></i></button></div></div>
+            <div v-if="returnImagePreviews.length" class="z-return-preview-list"><div v-for="(url, index) in returnImagePreviews" :key="url"><img :src="url" alt="Ảnh tình trạng"><button type="button" class="z-return-remove-btn" title="Bỏ ảnh" aria-label="Bỏ ảnh tình trạng" @click="removeReturnImage(index)"><i class="bi bi-x"></i></button></div></div>
           </div>
         </div>
         <div class="d-flex gap-3 mt-4 pt-3 border-top">
@@ -482,34 +481,16 @@
       </div>
     </div>
 
-    <!-- E-Invoice Modal -->
-    <EInvoiceModal :show="showEInvoiceModal" :invoice="eInvoiceData" :orderId="selectedEInvoiceOrderId" @close="showEInvoiceModal = false" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import AppFooter from '@/components/layout/AppFooter.vue'
 import OrderTrackingCard from '@/components/OrderTrackingCard.vue'
-import EInvoiceModal from '@/components/EInvoiceModal.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
-
-const showEInvoiceModal = ref(false)
-const selectedEInvoiceOrderId = ref(null)
-const eInvoiceData = ref(null)
-
-async function openEInvoiceModal(orderId) {
-  selectedEInvoiceOrderId.value = orderId
-  try {
-    eInvoiceData.value = await api().getEInvoice(orderId)
-    showEInvoiceModal.value = true
-  } catch (error) {
-    toast.showToast(error.error || 'Không thể lấy dữ liệu Hóa Đơn Điện Tử')
-  }
-}
 
 const toast = useToast()
 const { confirmDialog } = useConfirm()
@@ -520,6 +501,13 @@ const currentTab = ref('all')
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(6)
+const totalPages = ref(0)
+const totalElements = ref(0)
+const returnTotalPages = ref(0)
+const returnTotalElements = ref(0)
+const returnCount = ref(0)
+const orderCounts = ref({ all: 0, unpaid: 0, pending: 0, processing: 0, completed: 0, cancelled: 0 })
+const loyalty = ref({ diemTichLuy: 0, tongChiTieu: 0, hangThanhVien: 'Đồng' })
 
 const showDetail = ref(false)
 const detailOrder = ref(null)
@@ -568,8 +556,6 @@ const statusMap = {
 const statusSteps = ['Chờ xử lý', 'Xác nhận', 'Chuẩn bị', 'Đang giao', 'Hoàn thành']
 
 statusMap[7] = { key: 'danger', label: 'Thanh toán thất bại' }
-statusMap[8] = { key: 'warning', label: 'Yêu cầu đổi/trả' }
-statusMap[9] = { key: 'danger', label: 'Đã hoàn tiền' }
 
 function copyOrderCode(code) {
   if (!code) return
@@ -577,102 +563,116 @@ function copyOrderCode(code) {
   toast.showToast(`Đã sao chép mã đơn hàng "${code}"!`, 'success')
 }
 
-onMounted(loadOrders)
-onBeforeUnmount(clearReturnImagePreviews)
+onMounted(() => loadOrders(true))
+onBeforeUnmount(() => {
+  clearTimeout(searchTimer)
+  clearReturnImagePreviews()
+})
 
-async function loadOrders() {
+let loadSequence = 0
+async function loadOrders(refreshReturns = false) {
+  const sequence = ++loadSequence
   loading.value = true
   try {
-    const [ordersRes, returnsRes] = await Promise.all([
-      api().getMyOrders(),
-      api().getMyReturnRequests().catch(() => [])
-    ])
-    orders.value = ordersRes.data || ordersRes || []
-    returnRequests.value = returnsRes || []
+    const ordersPromise = api().getMyOrdersPage({
+      page: Math.max(0, currentPage.value - 1),
+      size: itemsPerPage.value,
+      tab: currentTab.value === 'return' ? 'all' : currentTab.value,
+      q: searchQuery.value.trim() || undefined
+    })
+    const returnsPromise = refreshReturns || currentTab.value === 'return' || returnCount.value === 0
+      ? api().getMyReturnRequests({
+          page: currentTab.value === 'return' ? Math.max(0, currentPage.value - 1) : 0,
+          size: currentTab.value === 'return' ? itemsPerPage.value : 1,
+          q: currentTab.value === 'return' ? (searchQuery.value.trim() || undefined) : undefined
+        }).catch(() => ({ content: [], totalElements: 0, totalPages: 0 }))
+      : Promise.resolve({
+          content: returnRequests.value,
+          totalElements: returnTotalElements.value,
+          totalPages: returnTotalPages.value
+        })
+    const [ordersRes, returnsRes] = await Promise.all([ordersPromise, returnsPromise])
+    if (sequence !== loadSequence) return
+    orders.value = Array.isArray(ordersRes?.content) ? ordersRes.content : []
+    totalPages.value = Number(ordersRes?.totalPages || 0)
+    totalElements.value = Number(ordersRes?.totalElements || 0)
+    orderCounts.value = { ...orderCounts.value, ...(ordersRes?.counts || {}) }
+    loyalty.value = { ...loyalty.value, ...(ordersRes?.loyalty || {}) }
+    returnRequests.value = Array.isArray(returnsRes?.content) ? returnsRes.content : []
+    returnTotalPages.value = Number(returnsRes?.totalPages || 0)
+    returnTotalElements.value = Number(returnsRes?.totalElements || 0)
+    if (currentTab.value !== 'return' || !searchQuery.value.trim()) {
+      returnCount.value = returnTotalElements.value
+    }
+    if (currentPage.value > Math.max(1, activeTotalPages.value)) {
+      currentPage.value = Math.max(1, activeTotalPages.value)
+    }
   } catch (e) {
+    if (sequence !== loadSequence) return
     toast.showToast('Không thể tải danh sách đơn hàng', 'error')
   } finally {
-    loading.value = false
+    if (sequence === loadSequence) loading.value = false
   }
 }
 
-watch([currentTab, searchQuery, itemsPerPage], () => {
-  currentPage.value = 1
+let searchTimer
+watch(searchQuery, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    if (currentPage.value === 1) loadOrders(false)
+    else currentPage.value = 1
+  }, 300)
 })
+watch(currentTab, () => {
+  if (currentPage.value === 1) loadOrders(false)
+  else currentPage.value = 1
+})
+watch(itemsPerPage, () => {
+  if (currentPage.value === 1) loadOrders(false)
+  else currentPage.value = 1
+})
+watch(currentPage, () => loadOrders(false))
 
 // Statistics calculations
 const stats = computed(() => {
-  const total = orders.value.length
-  const spent = orders.value
-    .filter(o => o.trangThai === 4 || o.trangThai === 3)
-    .reduce((s, o) => s + Number(o.tongTien || 0), 0)
   return [
-    { num: String(total), label: 'Tổng đơn hàng', icon: 'bi bi-box2' },
-    { num: formatMoney(spent), label: 'Đã chi tiêu', icon: 'bi bi-wallet2' },
-    { num: String(Math.floor(spent / 10000)), label: 'Điểm tích luỹ', icon: 'bi bi-gem' },
-    { num: total >= 10 ? 'Vàng' : total >= 5 ? 'Bạc' : 'Mới', label: 'Hạng thành viên', icon: 'bi bi-award' },
+    { num: String(orderCounts.value.all || 0), label: 'Tổng đơn hàng', icon: 'bi bi-box2' },
+    { num: formatMoney(loyalty.value.tongChiTieu), label: 'Đã chi tiêu', icon: 'bi bi-wallet2' },
+    { num: Number(loyalty.value.diemTichLuy || 0).toLocaleString('vi-VN'), label: 'Điểm tích luỹ', icon: 'bi bi-gem' },
+    { num: loyalty.value.hangThanhVien || 'Đồng', label: 'Hạng thành viên', icon: 'bi bi-award' },
   ]
 })
 
 function getCountByTab(tabValue) {
-  if (tabValue === 'all') return orders.value.length
-  if (tabValue === 'unpaid') {
-    return orders.value.filter(o => o.hinhThucThanhToan !== 'COD' && !o.daThanhToan && o.trangThai !== 5 && o.trangThai !== 7).length
-  }
-  if (tabValue === 'pending') return orders.value.filter(o => o.trangThai === 0).length
-  if (tabValue === 'processing') return orders.value.filter(o => o.trangThai >= 1 && o.trangThai <= 3).length
-  if (tabValue === 'completed') return orders.value.filter(o => o.trangThai === 4).length
-  if (tabValue === 'return') return returnRequests.value.length
-  if (tabValue === 'cancelled') return orders.value.filter(o => o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7).length
-  return 0
+  if (tabValue === 'return') return returnCount.value
+  return Number(orderCounts.value[tabValue] || 0)
 }
 
 // Filtered Orders
 const filteredOrders = computed(() => {
-  return orders.value.filter(o => {
-    // Filter by Tab
-    let matchesTab = true
-    if (currentTab.value === 'unpaid') {
-      matchesTab = o.hinhThucThanhToan !== 'COD' && !o.daThanhToan && o.trangThai !== 5 && o.trangThai !== 7
-    } else if (currentTab.value === 'pending') {
-      matchesTab = o.trangThai === 0
-    } else if (currentTab.value === 'processing') {
-      matchesTab = o.trangThai >= 1 && o.trangThai <= 3
-    } else if (currentTab.value === 'completed') {
-      matchesTab = o.trangThai === 4
-    } else if (currentTab.value === 'return') {
-      matchesTab = false
-    } else if (currentTab.value === 'cancelled') {
-      matchesTab = o.trangThai === 5 || o.trangThai === 6 || o.trangThai === 7
-    }
-
-    // Filter by Search
-    const matchesSearch = !searchQuery.value.trim() || 
-      o.maHoaDon.toLowerCase().includes(searchQuery.value.toLowerCase())
-
-    return matchesTab && matchesSearch
-  }).sort((a, b) => {
-    const da = a.ngayTao ? new Date(a.ngayTao).getTime() : 0
-    const db = b.ngayTao ? new Date(b.ngayTao).getTime() : 0
-    return db - da
-  })
+  return currentTab.value === 'return' ? [] : orders.value
 })
 
 // Pagination
-const totalPages = computed(() => Math.ceil(filteredOrders.value.length / itemsPerPage.value))
-const paginatedOrders = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return filteredOrders.value.slice(start, start + itemsPerPage.value)
+const paginatedOrders = computed(() => filteredOrders.value)
+const activeTotalPages = computed(() => currentTab.value === 'return' ? returnTotalPages.value : totalPages.value)
+const pageNumbers = computed(() => {
+  const start = Math.max(1, Math.min(currentPage.value - 2, Math.max(1, activeTotalPages.value - 4)))
+  const end = Math.min(activeTotalPages.value, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
 })
 
 const filteredReturnRequests = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-  return returnRequests.value.filter(item => !query || String(item.orderCode || '').toLowerCase().includes(query))
+  return returnRequests.value
 })
 
-const eligibleReturnLines = computed(() => (orderToReturn.value?.chiTiets || []).filter(line =>
-  !returnRequests.value.some(request => Number(request.orderDetailId) === Number(line.id))
-))
+function returnableQuantity(line) {
+  if (!line) return 1
+  return Math.max(0, Number(line.soLuongConLaiDoiTra ?? line.soLuong ?? 0))
+}
+
+const eligibleReturnLines = computed(() => (orderToReturn.value?.chiTiets || [])
+  .filter(line => returnableQuantity(line) > 0))
 
 const selectedReturnLine = computed(() => eligibleReturnLines.value.find(line => Number(line.id) === Number(selectedReturnDetailId.value)))
 
@@ -738,7 +738,7 @@ async function loadReturnReplacementOptions() {
   returnReplacementOptions.value = []
   if (returnType.value !== 'DOI' || !selectedReturnLine.value?.productId) return
   try {
-    const product = await api().getVayById(selectedReturnLine.value.productId)
+    const product = await api().getSanPhamById(selectedReturnLine.value.productId)
     returnReplacementOptions.value = (product.bienThe || []).filter(variant =>
       Number(variant.id) !== Number(selectedReturnLine.value.variantId)
       && Number(variant.trangThai) === 1 && Number(variant.soLuong || 0) > 0
@@ -799,7 +799,7 @@ async function submitCancelOrder() {
 
 async function submitReturnOrder() {
   if (!selectedReturnLine.value) return toast.showToast('Vui lòng chọn sản phẩm', 'warning')
-  if (returnQuantity.value < 1 || returnQuantity.value > Number(selectedReturnLine.value.soLuong || 0)) return toast.showToast('Số lượng không hợp lệ', 'warning')
+  if (returnQuantity.value < 1 || returnQuantity.value > returnableQuantity(selectedReturnLine.value)) return toast.showToast('Số lượng không hợp lệ', 'warning')
   if (returnType.value === 'DOI' && !replacementVariantId.value) return toast.showToast('Vui lòng chọn màu và kích cỡ muốn đổi', 'warning')
   if (returnReason.value.trim().length < 5) return toast.showToast('Lý do cần ít nhất 5 ký tự', 'warning')
   if (returnCondition.value.trim().length < 10) return toast.showToast('Vui lòng mô tả tình trạng hàng ít nhất 10 ký tự', 'warning')
@@ -1023,7 +1023,7 @@ function formatDateTime(val) {
 .lm-pagination-btn {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid var(--z-gray-border);
   background: var(--z-white);
   color: var(--z-dark);
@@ -1152,7 +1152,8 @@ function formatDateTime(val) {
 .z-return-preview-list { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
 .z-return-preview-list > div { position: relative; flex: none; }
 .z-return-preview-list img { width: 78px; height: 92px; object-fit: cover; border: 1px solid var(--z-gray-border); border-radius: var(--z-radius); }
-.z-return-preview-list button {
+.z-return-preview-list button,
+.z-return-remove-btn {
   position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0;
   background: rgba(24,24,27,.86); color: white; display: grid; place-items: center; border-radius: 50%;
 }

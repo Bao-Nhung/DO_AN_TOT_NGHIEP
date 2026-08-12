@@ -6,6 +6,7 @@ import com.zestia.datn.zestia.service.RequestRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -30,6 +31,7 @@ public class AiChatController {
     @PostMapping
     public ResponseEntity<?> chat(@RequestBody Map<String, Object> body,
                                   @RequestHeader(value = "Authorization", required = false) String authHeader,
+                                  Authentication authentication,
                                   HttpServletRequest request) {
         if (!rateLimiter.tryAcquire("ai-chat", clientKey(request), MAX_REQUESTS, WINDOW_SECONDS)) {
             return ResponseEntity.status(429).body(Map.of(
@@ -40,11 +42,12 @@ public class AiChatController {
         String message = body != null ? String.valueOf(body.getOrDefault("message", "")) : "";
         List<?> history = body != null && body.get("history") instanceof List<?> list ? list : List.of();
         String mode = body != null && body.get("mode") instanceof String m ? m : null;
-        return ResponseEntity.ok(aiChatService.reply(message, history, extractUser(authHeader), mode));
+        return ResponseEntity.ok(aiChatService.reply(message, history, extractUser(authHeader, authentication), mode));
     }
 
-    private AiChatService.ChatUser extractUser(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+    private AiChatService.ChatUser extractUser(String authHeader, Authentication authentication) {
+        String role = authenticatedRole(authentication);
+        if (role == null || authHeader == null || !authHeader.startsWith("Bearer ")) {
             return new AiChatService.ChatUser(null, null);
         }
         try {
@@ -53,13 +56,29 @@ public class AiChatController {
                 return new AiChatService.ChatUser(null, null);
             }
             var claims = jwtUtil.extractClaims(token);
-            String role = claims.get("role", String.class);
             Object rawUserId = claims.get("userId");
             Integer userId = rawUserId instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(rawUserId));
             return new AiChatService.ChatUser(role, userId);
         } catch (Exception e) {
             return new AiChatService.ChatUser(null, null);
         }
+    }
+
+    private String authenticatedRole(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        return authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .map(authority -> switch (authority) {
+                    case "ROLE_Admin" -> "Admin";
+                    case "ROLE_NhanVien", "ROLE_Nh\u00E2n vi\u00EAn" -> "NhanVien";
+                    case "ROLE_KhachHang" -> "KhachHang";
+                    default -> null;
+                })
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
 
     private String clientKey(HttpServletRequest request) {

@@ -19,6 +19,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -57,14 +58,30 @@ public class GatewayPaymentResultService {
         String normalizedMethod = normalizeMethod(method);
         String safeTransactionId = normalizeTransactionId(transactionId, normalizedMethod, order.getId());
 
-        if (Boolean.TRUE.equals(order.getDaThanhToan())) {
-            return new PaymentOutcome(true, true, order.getMaHoaDon(), order.getTongTien(), "Đơn hàng đã được thanh toán");
+        String expectedMethod = normalizeMethod(order.getHinhThucThanhToan());
+        if (!Set.of("MOMO", "ZALOPAY").contains(normalizedMethod)
+                || !expectedMethod.equals(normalizedMethod)) {
+            return new PaymentOutcome(false, false, order.getMaHoaDon(), order.getTongTien(),
+                    "Cổng thanh toán không khớp với phương thức đã chọn cho đơn hàng");
         }
+
         String historyStatus = successful ? "SUCCESS" : "FAILED";
-        if (paymentHistoryRepo.existsByMaGiaoDichAndPhuongThucAndTrangThai(
-                safeTransactionId, normalizedMethod, historyStatus)) {
+        Optional<LichSuThanhToan> existingEvent = paymentHistoryRepo
+                .findFirstByMaGiaoDichAndPhuongThucAndTrangThai(
+                        safeTransactionId, normalizedMethod, historyStatus);
+        if (existingEvent.isPresent()) {
+            boolean belongsToOrder = existingEvent.get().getHoaDon() != null
+                    && existingEvent.get().getHoaDon().getId().equals(order.getId());
+            if (!belongsToOrder) {
+                return new PaymentOutcome(false, false, order.getMaHoaDon(), order.getTongTien(),
+                        "Mã giao dịch đã được ghi nhận cho một đơn hàng khác");
+            }
             return new PaymentOutcome(Boolean.TRUE.equals(order.getDaThanhToan()), true,
                     order.getMaHoaDon(), order.getTongTien(), "Kết quả thanh toán đã được xử lý");
+        }
+
+        if (Boolean.TRUE.equals(order.getDaThanhToan())) {
+            return new PaymentOutcome(true, true, order.getMaHoaDon(), order.getTongTien(), "Đơn hàng đã được thanh toán");
         }
 
         if (successful && !amountMatches(amount, order.getTongTien())) {
@@ -100,6 +117,10 @@ public class GatewayPaymentResultService {
             return new PaymentOutcome(false, true, order.getMaHoaDon(), order.getTongTien(),
                     "Đơn hàng đã ở trạng thái kết thúc");
         }
+        if (successful && order.getTrangThai() != null && order.getTrangThai() != 0) {
+            return new PaymentOutcome(false, false, order.getMaHoaDon(), order.getTongTien(),
+                    "Đơn hàng không còn ở trạng thái chờ thanh toán");
+        }
 
         if (successful) {
             byte oldStatus = order.getTrangThai() != null ? order.getTrangThai() : 0;
@@ -108,6 +129,8 @@ public class GatewayPaymentResultService {
             order.setDaThanhToan(true);
             order.setPhuongThucThanhToanOnline(normalizedMethod);
             order.setMaGiaoDichCong(safeTransactionId);
+            order.setUrlThanhToan(null);
+            order.setThanhToanHetHan(null);
             hoaDonRepo.save(order);
 
             paymentHistoryRepo.save(LichSuThanhToan.builder()
@@ -137,6 +160,8 @@ public class GatewayPaymentResultService {
         order.setDaThanhToan(false);
         order.setPhuongThucThanhToanOnline("FAILED");
         order.setMaGiaoDichCong(transactionId);
+        order.setUrlThanhToan(null);
+        order.setThanhToanHetHan(null);
         order.setTrangThai(STATUS_PAYMENT_FAILED);
         order.setTrangThaiTracking("payment_failed");
         hoaDonRepo.save(order);

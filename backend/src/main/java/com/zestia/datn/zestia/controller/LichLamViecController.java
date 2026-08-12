@@ -57,12 +57,15 @@ public class LichLamViecController {
         }
 
         List<LichLamViec> data;
-        if (nhanVienId != null) {
+        if (nhanVienId != null && startDate != null && endDate != null) {
+            data = lichLamViecRepo.findByNhanVienIdAndNgayLamBetweenOrderByNgayLamAscGioBatDauAsc(
+                    nhanVienId, startDate, endDate);
+        } else if (nhanVienId != null) {
             data = lichLamViecRepo.findByNhanVienIdOrderByNgayLamAscGioBatDauAsc(nhanVienId);
         } else if (startDate != null && endDate != null) {
             data = lichLamViecRepo.findByNgayLamBetweenOrderByNgayLamAscGioBatDauAsc(startDate, endDate);
         } else {
-            data = lichLamViecRepo.findAll();
+            data = lichLamViecRepo.findAllByOrderByNgayLamAscGioBatDauAsc();
         }
 
         return data.stream()
@@ -108,7 +111,7 @@ public class LichLamViecController {
     @GetMapping("/nhan-vien")
     public List<Map<String, Object>> getNhanVien() {
         return nhanVienRepo.findAll().stream()
-                .filter(nv -> nv.getTinhTrangLamViec() == null || nv.getTinhTrangLamViec() == 1)
+                .filter(this::isSchedulableEmployee)
                 .map(nv -> {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("id", nv.getId());
@@ -197,12 +200,19 @@ public class LichLamViecController {
     @PostMapping
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public ResponseEntity<?> create(@RequestBody LichLamViec lich) {
+        if (lich == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Dữ liệu ca làm không hợp lệ"));
+        }
+        lich.setId(null);
         if (lich.getNhanVien() == null || lich.getNhanVien().getId() == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng chọn nhân viên"));
         }
         NhanVien nhanVien = nhanVienRepo.findById(lich.getNhanVien().getId()).orElse(null);
         if (nhanVien == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "Nhân viên không tồn tại"));
+        }
+        if (!isSchedulableEmployee(nhanVien)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể xếp lịch cho nhân viên đang làm việc"));
         }
         lich.setNhanVien(nhanVien);
         lich.setTrangThai(ShiftAccessService.STATUS_PENDING);
@@ -266,6 +276,9 @@ public class LichLamViecController {
     @PutMapping("/{id}")
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody LichLamViec lich) {
+        if (lich == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Dữ liệu ca làm không hợp lệ"));
+        }
         return lichLamViecRepo.findByIdForUpdate(id).map(existing -> {
             if (!canAdminModify(existing)) {
                 return ResponseEntity.status(409).body(Map.of(
@@ -277,6 +290,9 @@ public class LichLamViecController {
                 requestedEmployee = nhanVienRepo.findById(lich.getNhanVien().getId()).orElse(null);
                 if (requestedEmployee == null) {
                     return ResponseEntity.badRequest().body(Map.of("message", "Nhân viên không tồn tại"));
+                }
+                if (!isSchedulableEmployee(requestedEmployee)) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể xếp lịch cho nhân viên đang làm việc"));
                 }
             }
 
@@ -311,7 +327,7 @@ public class LichLamViecController {
     public ResponseEntity<?> confirmShift(@PathVariable Integer id,
                                           @RequestHeader(value = "Authorization", required = false) String authHeader) {
         return lichLamViecRepo.findByIdForUpdate(id).map(shift -> {
-            ResponseEntity<?> accessError = authorizeOwnShift(shift, authHeader);
+            ResponseEntity<?> accessError = authorizeEmployeeOwnShift(shift, authHeader);
             if (accessError != null) return accessError;
             if (shift.getTrangThai() == null || shift.getTrangThai() != ShiftAccessService.STATUS_PENDING) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Chỉ ca đang chờ xác nhận mới có thể xác nhận"));
@@ -332,17 +348,19 @@ public class LichLamViecController {
                                                @RequestBody Map<String, Object> body,
                                                @RequestHeader(value = "Authorization", required = false) String authHeader) {
         return lichLamViecRepo.findByIdForUpdate(id).map(shift -> {
-            ResponseEntity<?> accessError = authorizeOwnShift(shift, authHeader);
+            ResponseEntity<?> accessError = authorizeEmployeeOwnShift(shift, authHeader);
             if (accessError != null) return accessError;
-            String reason = cleanText(body.get("lyDo"));
+            String reason = cleanText(body != null ? body.get("lyDo") : null);
             if (reason == null || reason.length() < 10 || reason.length() > 500) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Lý do báo bận phải từ 10 đến 500 ký tự"));
             }
             if (shiftAccessService.isPast(shift, LocalDateTime.now())) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Ca làm đã kết thúc, không thể báo bận"));
             }
-            if (shift.getGioCheckIn() != null && shift.getGioCheckOut() == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Bạn đã check-in. Vui lòng check-out và liên hệ admin nếu cần rời ca"));
+            if (shift.getGioCheckIn() != null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Ca làm đã được check-in nên không thể báo bận hồi tố. Vui lòng check-out và liên hệ admin nếu cần rời ca"
+                ));
             }
             byte currentStatus = shift.getTrangThai() != null ? shift.getTrangThai() : ShiftAccessService.STATUS_PENDING;
             if (currentStatus != ShiftAccessService.STATUS_PENDING
@@ -372,8 +390,8 @@ public class LichLamViecController {
             if (shift.getTrangThai() == null || shift.getTrangThai() != ShiftAccessService.STATUS_UNAVAILABLE_PENDING) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Ca làm không có yêu cầu báo bận đang chờ duyệt"));
             }
-            boolean approved = Boolean.TRUE.equals(body.get("approved"));
-            String feedback = cleanText(body.get("phanHoi"));
+            boolean approved = body != null && Boolean.TRUE.equals(body.get("approved"));
+            String feedback = cleanText(body != null ? body.get("phanHoi") : null);
             if (!approved && (feedback == null || feedback.length() < 5)) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập lý do từ chối"));
             }
@@ -393,7 +411,7 @@ public class LichLamViecController {
     public ResponseEntity<?> checkIn(@PathVariable Integer id,
                                      @RequestHeader(value = "Authorization", required = false) String authHeader) {
         return lichLamViecRepo.findByIdForUpdate(id).map(shift -> {
-            ResponseEntity<?> accessError = authorizeOwnShift(shift, authHeader);
+            ResponseEntity<?> accessError = authorizeEmployeeOwnShift(shift, authHeader);
             if (accessError != null) return accessError;
             LocalDateTime now = LocalDateTime.now();
             if (!shiftAccessService.canCheckIn(shift, now)) {
@@ -411,7 +429,7 @@ public class LichLamViecController {
     public ResponseEntity<?> checkOut(@PathVariable Integer id,
                                       @RequestHeader(value = "Authorization", required = false) String authHeader) {
         return lichLamViecRepo.findByIdForUpdate(id).map(shift -> {
-            ResponseEntity<?> accessError = authorizeOwnShift(shift, authHeader);
+            ResponseEntity<?> accessError = authorizeEmployeeOwnShift(shift, authHeader);
             if (accessError != null) return accessError;
             LocalDateTime now = LocalDateTime.now();
             if (!shiftAccessService.canCheckOut(shift, now)) {
@@ -426,7 +444,7 @@ public class LichLamViecController {
     public ResponseEntity<?> getShiftReport(@PathVariable Integer id,
                                            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         return lichLamViecRepo.findById(id).map(shift -> {
-            ResponseEntity<?> accessError = authorizeOwnShift(shift, authHeader);
+            ResponseEntity<?> accessError = authorizeShiftView(shift, authHeader);
             if (accessError != null) return accessError;
             var reports = shiftReportService.build(shift.getNgayLam(), shift.getNgayLam(), shift.getNhanVien() != null ? shift.getNhanVien().getId() : null);
             var report = reports.stream().filter(r -> Objects.equals(r.id(), shift.getId())).findFirst().orElse(null);
@@ -588,8 +606,12 @@ public class LichLamViecController {
         return map;
     }
 
-    private ResponseEntity<?> authorizeOwnShift(LichLamViec shift, String authHeader) {
-        if (isAdmin(authHeader)) return null;
+    private ResponseEntity<?> authorizeEmployeeOwnShift(LichLamViec shift, String authHeader) {
+        if (isAdmin(authHeader)) {
+            return ResponseEntity.status(403).body(Map.of(
+                    "error", "Admin không thể xác nhận hoặc chấm công thay nhân viên"
+            ));
+        }
         Integer employeeId = extractStaffUserId(authHeader);
         if (employeeId == null) {
             return ResponseEntity.status(401).body(Map.of("error", "Không xác định được tài khoản nhân viên"));
@@ -598,6 +620,19 @@ public class LichLamViecController {
             return ResponseEntity.status(403).body(Map.of("error", "Bạn không có quyền thao tác ca làm của nhân viên khác"));
         }
         return null;
+    }
+
+    private ResponseEntity<?> authorizeShiftView(LichLamViec shift, String authHeader) {
+        if (isAdmin(authHeader)) return null;
+        return authorizeEmployeeOwnShift(shift, authHeader);
+    }
+
+    private boolean isSchedulableEmployee(NhanVien employee) {
+        if (employee == null || employee.getTinhTrangLamViec() == null || employee.getTinhTrangLamViec() != 1) {
+            return false;
+        }
+        return employee.getVaiTro() != null
+                && !"Admin".equalsIgnoreCase(employee.getVaiTro().getTenVaiTro());
     }
 
     private String extractUsername(String authHeader) {
@@ -622,9 +657,15 @@ public class LichLamViecController {
         if (!shift.getGioKetThuc().isAfter(shift.getGioBatDau())) {
             return "Giờ kết thúc phải sau giờ bắt đầu";
         }
+        if (java.time.Duration.between(shift.getGioBatDau(), shift.getGioKetThuc()).toMinutes() > 12 * 60) {
+            return "Một ca làm không được dài quá 12 giờ";
+        }
+        if (LocalDateTime.of(shift.getNgayLam(), shift.getGioKetThuc()).isBefore(LocalDateTime.now())) {
+            return "Không thể xếp hoặc chuyển ca vào thời điểm đã kết thúc";
+        }
         String shiftName = cleanText(shift.getCaLam());
-        if (shiftName != null && shiftName.length() > 50) {
-            return "Tên ca làm không được vượt quá 50 ký tự";
+        if (shiftName == null || shiftName.length() < 2 || shiftName.length() > 50) {
+            return "Tên ca làm phải từ 2 đến 50 ký tự";
         }
         String note = cleanText(shift.getGhiChu());
         if (note != null && note.length() > 255) {

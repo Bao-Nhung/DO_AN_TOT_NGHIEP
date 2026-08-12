@@ -47,10 +47,10 @@ public class ThongKeController {
 
         // 2. Dữ liệu mốc thời gian (Line/Bar Chart) - Render động dựa vào timeType
         if ("thang".equalsIgnoreCase(timeType)) {
-            response.setDoanhThuLoiNhuan(thongKeRepository.getDoanhThuLoiNhuanTheoThang(startDate, endDate));
+            response.setDoanhThuTheoThoiGian(thongKeRepository.getDoanhThuTheoThang(startDate, endDate));
             response.setTangTruongKhachHang(thongKeRepository.getKhachHangTheoThang(startDate, endDate));
         } else {
-            response.setDoanhThuLoiNhuan(thongKeRepository.getDoanhThuLoiNhuanTheoNgay(startDate, endDate));
+            response.setDoanhThuTheoThoiGian(thongKeRepository.getDoanhThuTheoNgay(startDate, endDate));
             response.setTangTruongKhachHang(thongKeRepository.getKhachHangTheoNgay(startDate, endDate));
         }
 

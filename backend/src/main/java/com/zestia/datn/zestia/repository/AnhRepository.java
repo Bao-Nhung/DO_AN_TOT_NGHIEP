@@ -9,4 +9,5 @@ public interface AnhRepository extends JpaRepository<Anh, Integer> {
     List<Anh> findBySanPhamIdOrderByIdAsc(Integer sanPhamId);
     List<Anh> findBySanPhamIdAndTrangThai(Integer sanPhamId, Byte trangThai);
     List<Anh> findBySanPhamIdInAndTrangThaiOrderByIdAsc(List<Integer> sanPhamIds, Byte trangThai);
+    long countByAnhUrl(String anhUrl);
 }

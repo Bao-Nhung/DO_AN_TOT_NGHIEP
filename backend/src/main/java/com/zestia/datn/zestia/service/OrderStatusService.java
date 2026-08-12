@@ -3,15 +3,18 @@ package com.zestia.datn.zestia.service;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.HoaDonAuditLog;
 import com.zestia.datn.zestia.entity.LichSuTracking;
+import com.zestia.datn.zestia.entity.LichSuThanhToan;
 import com.zestia.datn.zestia.repository.HoaDonAuditLogRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import com.zestia.datn.zestia.repository.LichSuTrackingRepository;
+import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +34,7 @@ public class OrderStatusService {
     private final HoaDonRepository hoaDonRepo;
     private final LichSuTrackingRepository trackingRepo;
     private final HoaDonAuditLogRepository auditLogRepo;
+    private final LichSuThanhToanRepository paymentHistoryRepo;
     private final OrderInventoryService inventoryService;
     private final EmailService emailService;
     private final NotificationService notificationService;
@@ -63,7 +67,10 @@ public class OrderStatusService {
         order.setTrangThaiTracking(trackingStatus);
         if (newStatus == 4) {
             order.setNgayGiaoHangThucTe(LocalDateTime.now());
-            if ("COD".equalsIgnoreCase(order.getHinhThucThanhToan())) order.setDaThanhToan(true);
+            if ("COD".equalsIgnoreCase(order.getHinhThucThanhToan())) {
+                order.setDaThanhToan(true);
+                recordCodPayment(order);
+            }
             loyaltyService.earnPointsOnOrderCompletion(order);
         }
         if (newStatus == STATUS_CANCELLED || newStatus == STATUS_DELIVERY_FAILED) {
@@ -91,14 +98,29 @@ public class OrderStatusService {
 
         afterCommit(() -> {
             sendStatusEmail(order, newStatus, description);
-            notificationService.createNotification(
+            notificationService.createCustomerNotification(
+                    order.getKhachHang(),
                     "Cập nhật đơn hàng #" + order.getMaHoaDon(),
                     "Đơn hàng #" + order.getMaHoaDon() + " đã chuyển sang trạng thái: " + label(newStatus) + ". " + description,
-                    "DonHang",
-                    (byte) 1
+                    "DonHang"
             );
         });
         return order;
+    }
+
+    private void recordCodPayment(HoaDon order) {
+        if (paymentHistoryRepo.existsByHoaDonIdAndPhuongThucAndTrangThai(order.getId(), "COD", "SUCCESS")) {
+            return;
+        }
+        paymentHistoryRepo.save(LichSuThanhToan.builder()
+                .hoaDon(order)
+                .soTien(order.getTongTien() != null ? order.getTongTien() : BigDecimal.ZERO)
+                .phuongThuc("COD")
+                .maGiaoDich("COD-" + order.getId())
+                .trangThai("SUCCESS")
+                .noiDung("Thu tiền COD thành công - " + order.getMaHoaDon())
+                .ngayTao(LocalDateTime.now())
+                .build());
     }
 
     private boolean isOnline(HoaDon order) {
@@ -139,8 +161,6 @@ public class OrderStatusService {
             case 5 -> "cancelled";
             case 6 -> "failed";
             case 7 -> "payment_failed";
-            case 8 -> "return_requested";
-            case 9 -> "refunded";
             default -> "pending";
         };
     }
@@ -155,8 +175,6 @@ public class OrderStatusService {
             case 5 -> "Đã hủy";
             case 6 -> "Giao hàng thất bại";
             case 7 -> "Thanh toán thất bại";
-            case 8 -> "Yêu cầu đổi/trả";
-            case 9 -> "Đã hoàn tiền/hoàn tất";
             default -> "Không xác định";
         };
     }
@@ -169,8 +187,6 @@ public class OrderStatusService {
             case 4 -> "Giao hàng thành công đến tay người nhận.";
             case 5 -> "Đơn hàng đã bị hủy.";
             case 6 -> "Giao hàng thất bại. Sản phẩm và lượt voucher đã được hoàn lại.";
-            case 8 -> "Khách hàng yêu cầu đổi/trả hàng.";
-            case 9 -> "Đã xử lý đổi/trả và hoàn tiền.";
             default -> "Trạng thái đơn hàng đã được cập nhật.";
         };
     }

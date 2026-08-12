@@ -95,9 +95,9 @@
           <PageSizeSelect v-model="pageSize" :options="[6, 9, 18, 36]" />
         </div>
         <nav v-if="totalPages > 1" class="z-review-pagination" aria-label="Phân trang đánh giá">
-          <button type="button" :disabled="page === 0" title="Trang trước" aria-label="Trang đánh giá trước" @click="changePage(page - 1)"><i class="bi bi-chevron-left"></i></button>
+          <button type="button" class="z-page-button" :disabled="page === 0" title="Trang trước" aria-label="Trang đánh giá trước" @click="changePage(page - 1)"><i class="bi bi-chevron-left"></i></button>
           <button v-for="number in visiblePages" :key="number" type="button" :class="{ active: page === number }" @click="changePage(number)">{{ number + 1 }}</button>
-          <button type="button" :disabled="page + 1 >= totalPages" title="Trang sau" aria-label="Trang đánh giá sau" @click="changePage(page + 1)"><i class="bi bi-chevron-right"></i></button>
+          <button type="button" class="z-page-button" :disabled="page + 1 >= totalPages" title="Trang sau" aria-label="Trang đánh giá sau" @click="changePage(page + 1)"><i class="bi bi-chevron-right"></i></button>
         </nav>
       </div>
     </section>

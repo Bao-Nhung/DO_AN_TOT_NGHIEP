@@ -61,7 +61,7 @@
               <i class="bi bi-search position-absolute" style="left: 18px; top: 50%; transform: translateY(-50%); color: var(--z-gray-light)"></i>
             </div>
             <div style="font-size: 13px; color: var(--z-gray)">
-              Hiển thị <strong>{{ filteredNotifs.length }}</strong> thông báo
+              Có <strong>{{ totalItems }}</strong> thông báo phù hợp
             </div>
           </div>
 
@@ -72,7 +72,7 @@
           </div>
 
           <!-- Empty State -->
-          <div v-else-if="filteredNotifs.length === 0" class="z-empty-state text-center py-5">
+          <div v-else-if="notifs.length === 0" class="z-empty-state text-center py-5">
             <div class="mb-4">
               <i class="bi bi-bell-slash" style="font-size: 56px; color: var(--z-gray-light)"></i>
             </div>
@@ -85,7 +85,7 @@
           <!-- List -->
           <div v-else class="d-flex flex-column gap-3">
             <div 
-              v-for="(n, i) in paginatedNotifs" 
+              v-for="(n, i) in notifs"
               :key="n.id"
               class="z-notif-card"
               :class="{ unread: !n.read, expanded: expandedId === n.id }"
@@ -129,7 +129,7 @@
           </div>
 
           <!-- Pagination -->
-          <div v-if="filteredNotifs.length" class="d-flex justify-content-end mt-4">
+          <div v-if="totalItems" class="d-flex justify-content-end mt-4">
             <PageSizeSelect v-model="itemsPerPage" :options="[4, 8, 16, 32]" />
           </div>
           <div v-if="totalPages > 1" class="d-flex justify-content-center gap-2 mt-5">
@@ -137,7 +137,7 @@
               <i class="bi bi-chevron-left"></i>
             </button>
             <button 
-              v-for="page in totalPages" 
+              v-for="page in pageNumbers"
               :key="page"
               class="lm-pagination-btn"
               :class="{ active: currentPage === page }"
@@ -175,6 +175,17 @@ const searchQuery = ref('')
 const expandedId = ref(null)
 const currentPage = ref(1)
 const itemsPerPage = ref(8)
+const totalItems = ref(0)
+const totalPages = ref(0)
+const notificationCounts = ref({ all: 0 })
+const unreadTotal = ref(0)
+const pageNumbers = computed(() => {
+  const start = Math.max(1, Math.min(currentPage.value - 2, totalPages.value - 4))
+  const end = Math.min(totalPages.value, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
+})
+let notificationSearchTimer
+let notificationRequestId = 0
 
 const filterTabs = [
   { label: 'Tất cả', value: 'all' },
@@ -189,61 +200,65 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearTimeout(notificationSearchTimer)
   window.removeEventListener('zestia-auth-changed', loadNotifications)
 })
 
 async function loadNotifications() {
+  const requestId = ++notificationRequestId
   loading.value = true
   try {
     const authenticated = isLoggedIn()
-    const list = authenticated
-      ? await api().getCustomerNotifications()
-      : await api().getThongBaoActive()
+    const params = {
+      page: currentPage.value - 1,
+      size: itemsPerPage.value,
+      q: searchQuery.value.trim() || null,
+      type: currentTab.value === 'all' ? null : currentTab.value
+    }
+    const data = authenticated
+      ? await api().getCustomerNotifications(params)
+      : await api().getThongBaoActive(params)
+    if (requestId !== notificationRequestId) return
+    const list = Array.isArray(data.content) ? data.content : []
     const guestReadIds = authenticated ? new Set() : loadGuestReadIds()
     notifs.value = list.map(n => ({
       ...n,
-      read: authenticated ? Boolean(n.read) : guestReadIds.has(n.id)
+      read: authenticated ? Boolean(n.read) : isGuestNotificationRead(n, guestReadIds)
     }))
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Number(data.totalPages || 0)
+    notificationCounts.value = data.counts || { all: totalItems.value }
+    unreadTotal.value = authenticated
+      ? Number(data.unreadCount || 0)
+      : notifs.value.filter(n => !n.read).length
   } catch (e) {
-    console.error('Lỗi khi tải thông báo', e)
+    if (requestId === notificationRequestId) console.error('Lỗi khi tải thông báo', e)
   } finally {
-    loading.value = false
+    if (requestId === notificationRequestId) loading.value = false
   }
 }
 
-// Watch inputs to reset pagination
-watch([currentTab, searchQuery, itemsPerPage], () => {
-  currentPage.value = 1
-  expandedId.value = null
+watch(searchQuery, () => {
+  clearTimeout(notificationSearchTimer)
+  notificationSearchTimer = setTimeout(resetAndLoadNotifications, 300)
 })
+watch([currentTab, itemsPerPage], resetAndLoadNotifications)
+watch(currentPage, loadNotifications)
+
+function resetAndLoadNotifications() {
+  expandedId.value = null
+  if (currentPage.value === 1) loadNotifications()
+  else currentPage.value = 1
+}
 
 // Counts
 const unreadCount = computed(() => {
-  return notifs.value.filter(n => !n.read).length
+  return isLoggedIn() ? unreadTotal.value : notifs.value.filter(n => !n.read).length
 })
 
 function getCountByTab(tabValue) {
-  if (tabValue === 'all') return notifs.value.length
-  return notifs.value.filter(n => n.loai === tabValue).length
+  return Number(notificationCounts.value?.[tabValue] || 0)
 }
-
-// Filtered Notifications
-const filteredNotifs = computed(() => {
-  return notifs.value.filter(n => {
-    const matchesTab = currentTab.value === 'all' || n.loai === currentTab.value
-    const matchesSearch = !searchQuery.value.trim() || 
-      n.tieuDe.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
-      n.noiDung.toLowerCase().includes(searchQuery.value.toLowerCase())
-    return matchesTab && matchesSearch
-  })
-})
-
-// Paginated Notifications
-const totalPages = computed(() => Math.ceil(filteredNotifs.value.length / itemsPerPage.value))
-const paginatedNotifs = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return filteredNotifs.value.slice(start, start + itemsPerPage.value)
-})
 
 // Actions
 async function toggleExpand(n) {
@@ -256,6 +271,7 @@ async function toggleExpand(n) {
       if (isLoggedIn()) {
         try {
           await api().markCustomerNotificationRead(n.id)
+          unreadTotal.value = Math.max(0, unreadTotal.value - 1)
           window.dispatchEvent(new Event('notifs-changed'))
         } catch (e) {
           n.read = false
@@ -273,8 +289,9 @@ async function markAllRead() {
   if (unreadCount.value === 0) return
   try {
     if (isLoggedIn()) await api().markAllCustomerNotificationsRead()
-    else saveGuestReadIds(notifs.value.map(n => n.id))
+    else saveGuestReadBefore(new Date().toISOString())
     notifs.value.forEach(n => { n.read = true })
+    unreadTotal.value = 0
     window.dispatchEvent(new Event('notifs-changed'))
     toast.showToast('Đã đánh dấu tất cả thông báo là đã đọc', 'success')
   } catch (e) {
@@ -292,6 +309,17 @@ function loadGuestReadIds() {
 
 function saveGuestReadIds(ids) {
   sessionStorage.setItem('zestia_guest_read_notifications', JSON.stringify([...new Set(ids.map(Number))]))
+}
+
+function isGuestNotificationRead(notification, readIds = loadGuestReadIds()) {
+  if (readIds.has(Number(notification.id))) return true
+  const readBefore = Date.parse(sessionStorage.getItem('zestia_guest_notifications_read_before') || '')
+  const createdAt = Date.parse(notification.ngayTao || '')
+  return Number.isFinite(readBefore) && Number.isFinite(createdAt) && createdAt <= readBefore
+}
+
+function saveGuestReadBefore(value) {
+  sessionStorage.setItem('zestia_guest_notifications_read_before', value)
 }
 
 // Helper methods
@@ -394,7 +422,7 @@ function formatDateTime(val) {
 .z-icon-wrapper {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--z-radius);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -490,7 +518,7 @@ function formatDateTime(val) {
 .lm-pagination-btn {
   width: 40px;
   height: 40px;
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid var(--z-gray-border);
   background: var(--z-white);
   color: var(--z-dark);

@@ -86,10 +86,10 @@ function tokenIsCurrent(token) {
 export function api() {
   return {
     // Auth
-    login: (username, password) =>
+    login: (username, password, accountType) =>
       request('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password, accountType })
       }),
     googleLogin: (credential) =>
       request('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }),
@@ -150,17 +150,12 @@ export function api() {
 
     // Products (San Pham)
     getSanPham: () => request('/san-pham'),
-    getVay: () => request('/san-pham'),
     getSanPhamPage: (params) => request(`/san-pham/paged${toQuery(params)}`),
-    getVayPage: (params) => request(`/san-pham/paged${toQuery(params)}`),
     getStockMovements: (params) => request(`/san-pham/stock-movements${toQuery(params)}`),
     getSanPhamById: (id) => request(`/san-pham/${id}`),
-    getVayById: (id) => request(`/san-pham/${id}`),
     createSanPham: (data) => request('/san-pham', { method: 'POST', body: JSON.stringify(data) }),
-    createVay: (data) => request('/san-pham', { method: 'POST', body: JSON.stringify(data) }),
     updateSanPham: (id, data) => request(`/san-pham/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    updateVay: (id, data) => request(`/san-pham/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-    uploadVayAnh: async (id, file) => {
+    uploadSanPhamAnh: async (id, file) => {
       const fd = new FormData()
       fd.append('file', file)
       const headers = { 'Accept-Language': currentLocale() }
@@ -170,7 +165,7 @@ export function api() {
       if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload thất bại' }))
       return res.json()
     },
-    uploadVayColorImage: async (id, colorId, file) => {
+    uploadSanPhamColorImage: async (id, colorId, file) => {
       const fd = new FormData()
       fd.append('file', file)
       const headers = { 'Accept-Language': currentLocale() }
@@ -180,10 +175,9 @@ export function api() {
       if (!res.ok) throw await res.json().catch(() => ({ error: 'Upload ảnh màu thất bại' }))
       return res.json()
     },
-    deleteVayAnh: (anhId) => request(`/san-pham/anh/${anhId}`, { method: 'DELETE' }),
+    deleteSanPhamAnh: (anhId) => request(`/san-pham/anh/${anhId}`, { method: 'DELETE' }),
 
     // Orders & Tracking
-    getHoaDon: () => request('/hoa-don'),
     getHoaDonPage: (params) => request(`/hoa-don/paged${toQuery(params)}`),
     getHoaDonById: (id) => request(`/hoa-don/${id}`),
     updateOrderStatus: (id, trangThai, ghiChu) =>
@@ -228,7 +222,7 @@ export function api() {
       }
       return res.json()
     },
-    getMyReturnRequests: () => request('/returns/mine'),
+    getMyReturnRequests: (params = {}) => request(`/returns/mine${toQuery(params)}`),
     getReturnRequests: (params = {}) => request(`/returns${toQuery(params)}`),
     createOfflineReturnRequest: (data) => request('/returns/offline', {
       method: 'POST', body: JSON.stringify(data)
@@ -250,16 +244,12 @@ export function api() {
       if (token) headers.Authorization = `Bearer ${token}`
       const res = await fetch(`${API_BASE}/ai/visual-search`, { method: 'POST', headers, body: form })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Không thể phân tích hình ảnh AI' }))
+        const err = await res.json().catch(() => ({ error: 'Không thể phân tích màu trong ảnh' }))
         throw { status: res.status, ...err }
       }
       return res.json()
     },
     getFrequentlyBoughtTogether: (productId) => request(`/ai/frequently-bought-together/${productId}`),
-    // E-Invoice VAT
-    issueEInvoice: (orderId) => request(`/orders/${orderId}/issue-e-invoice`, { method: 'POST' }),
-    getEInvoice: (orderId) => request(`/orders/${orderId}/e-invoice`),
-    lookupEInvoice: (lookupCode) => request(`/e-invoice/lookup/${lookupCode}`),
     // Tracking
     searchOrder: (params) => {
       const query = new URLSearchParams()
@@ -267,20 +257,19 @@ export function api() {
       if (params.soDienThoai) query.append('soDienThoai', params.soDienThoai)
       return request(`/hoa-don/search?${query.toString()}`)
     },
-    searchOrderByPhone: (soDienThoai) => request(`/hoa-don/search-by-phone?soDienThoai=${soDienThoai}`),
-    getMyOrders: () => request('/hoa-don/my-orders'),
+    getMyOrdersPage: (params = {}) => request(`/hoa-don/my-orders/paged${toQuery(params)}`),
     getOrderTracking: (orderId) => request(`/hoa-don/${orderId}/tracking`),
     // Customers
     getKhachHangPage: (params) => request(`/khach-hang/paged${toQuery(params)}`),
     getKhachHangAddresses: (id) => request(`/khach-hang/${id}/addresses`),
-    getKhachHangHistory: (id) => request(`/khach-hang/${id}/history`),
+    getKhachHangHistory: (id, params = {}) => request(`/khach-hang/${id}/history${toQuery(params)}`),
     searchKhachHang: (q) => request(`/khach-hang/search?q=${encodeURIComponent(q)}`),
     quickCreateKhachHang: (data) => request('/khach-hang/quick', {
       method: 'POST', body: JSON.stringify(data)
     }),
 
     // Employees
-    getNhanVien: () => request('/nhan-vien'),
+    getNhanVienPage: (params = {}) => request(`/nhan-vien/paged${toQuery(params)}`),
     getNhanVienHieuSuat: (id) => request(`/nhan-vien/${id}/hieu-suat`),
     getVaiTroNhanVien: () => request('/nhan-vien/vai-tro'),
     addNhanVien: (data) => request('/nhan-vien', { method: 'POST', body: JSON.stringify(data) }),
@@ -324,7 +313,7 @@ export function api() {
     sendCustomerSupportMessage: (token, message) => request(`/support-chat/customer/${encodeURIComponent(token)}/messages`, {
       method: 'POST', body: JSON.stringify({ message })
     }),
-    getStaffSupportChats: () => request('/support-chat/staff/conversations'),
+    getStaffSupportChats: (params = {}) => request(`/support-chat/staff/conversations${toQuery(params)}`),
     getStaffSupportChat: (id) => request(`/support-chat/staff/conversations/${id}`),
     claimStaffSupportChat: (id) => request(`/support-chat/staff/conversations/${id}/claim`, { method: 'POST' }),
     sendStaffSupportMessage: (id, message) => request(`/support-chat/staff/conversations/${id}/messages`, {
@@ -351,21 +340,20 @@ export function api() {
 
     // Attributes CRUD
     addMauSac: (data) => request('/thuoc-tinh/mau-sac', { method: 'POST', body: JSON.stringify(data) }),
-    deleteMauSac: (id) => request(`/thuoc-tinh/mau-sac/${id}`, { method: 'DELETE' }),
+    updateMauSac: (id, data) => request(`/thuoc-tinh/mau-sac/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
     addKichThuoc: (data) => request('/thuoc-tinh/kich-thuoc', { method: 'POST', body: JSON.stringify(data) }),
-    deleteKichThuoc: (id) => request(`/thuoc-tinh/kich-thuoc/${id}`, { method: 'DELETE' }),
+    updateKichThuoc: (id, data) => request(`/thuoc-tinh/kich-thuoc/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
     addChatLieu: (data) => request('/thuoc-tinh/chat-lieu', { method: 'POST', body: JSON.stringify(data) }),
-    deleteChatLieu: (id) => request(`/thuoc-tinh/chat-lieu/${id}`, { method: 'DELETE' }),
+    updateChatLieu: (id, data) => request(`/thuoc-tinh/chat-lieu/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
     addLoaiSanPham: (data) => request('/thuoc-tinh/loai-san-pham', { method: 'POST', body: JSON.stringify(data) }),
-    addLoaiVay: (data) => request('/thuoc-tinh/loai-san-pham', { method: 'POST', body: JSON.stringify(data) }),
-    deleteLoaiSanPham: (id) => request(`/thuoc-tinh/loai-san-pham/${id}`, { method: 'DELETE' }),
-    deleteLoaiVay: (id) => request(`/thuoc-tinh/loai-san-pham/${id}`, { method: 'DELETE' }),
+    updateLoaiSanPham: (id, data) => request(`/thuoc-tinh/loai-san-pham/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
     addNhaCungCap: (data) => request('/thuoc-tinh/nha-cung-cap', { method: 'POST', body: JSON.stringify(data) }),
-    deleteNhaCungCap: (id) => request(`/thuoc-tinh/nha-cung-cap/${id}`, { method: 'DELETE' }),
+    updateNhaCungCap: (id, data) => request(`/thuoc-tinh/nha-cung-cap/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    getNhaCungCap: () => request('/thuoc-tinh/nha-cung-cap'),
 
     // Payment
     createOrder: (data) =>
@@ -460,9 +448,9 @@ export function api() {
     }),
     setDefaultProfileAddress: (id) => request(`/auth/profile/addresses/${id}/default`, { method: 'PUT' }),
     deleteProfileAddress: (id) => request(`/auth/profile/addresses/${id}`, { method: 'DELETE' }),
-    getThongBao: () => request('/thong-bao'),
-    getThongBaoActive: () => request('/thong-bao/active'),
-    getCustomerNotifications: () => request('/customer-notifications'),
+    getThongBao: (params = {}) => request(`/thong-bao${toQuery(params)}`),
+    getThongBaoActive: (params = {}) => request(`/thong-bao/active${toQuery(params)}`),
+    getCustomerNotifications: (params = {}) => request(`/customer-notifications${toQuery(params)}`),
     markCustomerNotificationRead: (id) => request(`/customer-notifications/${id}/read`, { method: 'PUT' }),
     markAllCustomerNotificationsRead: () => request('/customer-notifications/read-all', { method: 'PUT' }),
     addThongBao: (data) => request('/thong-bao', { method: 'POST', body: JSON.stringify(data) }),

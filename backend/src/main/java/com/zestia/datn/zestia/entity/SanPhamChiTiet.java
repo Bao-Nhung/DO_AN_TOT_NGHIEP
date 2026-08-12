@@ -34,17 +34,8 @@ public class SanPhamChiTiet {
     @Column(name = "ma_san_pham_chi_tiet")
     private String maSanPhamChiTiet;
 
-    @Column(name = "gia_ban_goc")
-    private BigDecimal giaBanGoc;
-
     @Column(name = "gia_ban")
     private BigDecimal giaBan;
-
-    @Column(name = "gia_nhap")
-    private BigDecimal giaNhap;
-
-    @Column(name = "phan_tram_giam")
-    private BigDecimal phanTramGiam;
 
     @Column(name = "so_luong")
     private Integer soLuong;
@@ -58,6 +49,4 @@ public class SanPhamChiTiet {
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
 
-    public SanPham getVay() { return sanPham; }
-    public void setVay(SanPham sp) { this.sanPham = sp; }
 }

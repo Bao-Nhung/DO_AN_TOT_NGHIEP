@@ -32,18 +32,11 @@ public class SanPham {
     @JoinColumn(name = "id_chat_lieu")
     private ChatLieu chatLieu;
 
-    @ManyToOne
-    @JoinColumn(name = "id_tai_tro")
-    private TaiTro taiTro;
-
     @Column(name = "ma_san_pham", unique = true)
     private String maSanPham;
 
     @Column(name = "ten_san_pham")
     private String tenSanPham;
-
-    @Column(name = "link_youtube")
-    private String linkYoutube;
 
     @Column(name = "trang_thai")
     private Byte trangThai;
@@ -74,10 +67,4 @@ public class SanPham {
     @OneToMany(mappedBy = "sanPham")
     private List<Anh> danhSachAnh;
 
-    public String getTenVay() { return tenSanPham; }
-    public void setTenVay(String val) { this.tenSanPham = val; }
-    public String getMaVay() { return maSanPham; }
-    public void setMaVay(String val) { this.maSanPham = val; }
-    public LoaiSanPham getLoaiVay() { return loaiSanPham; }
-    public void setLoaiVay(LoaiSanPham val) { this.loaiSanPham = val; }
 }

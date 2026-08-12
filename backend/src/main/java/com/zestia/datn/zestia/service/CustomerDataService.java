@@ -15,7 +15,12 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class CustomerDataService {
+    private static final int MAX_CART_LINES = 50;
+    private static final int MAX_QUANTITY_PER_LINE = 100;
+    private static final int MAX_TOTAL_QUANTITY = 200;
+
     private final CurrentCustomerService currentCustomerService;
+    private final KhachHangRepository customerRepo;
     private final GioHangRepository cartRepo;
     private final GioHangChiTietRepository cartItemRepo;
     private final SanPhamYeuThichRepository wishlistRepo;
@@ -45,19 +50,32 @@ public class CustomerDataService {
     @Transactional
     public List<Map<String, Object>> replaceCart(Authentication authentication, List<Map<String, Object>> requestedItems) {
         KhachHang customer = currentCustomerService.require(authentication);
-        GioHang cart = cartRepo.findByKhachHangIdForUpdate(customer.getId()).orElseGet(() -> cartRepo.save(
-                GioHang.builder().khachHang(customer).ngayTao(LocalDateTime.now()).chiTiets(new ArrayList<>()).build()
+        KhachHang lockedCustomer = customerRepo.findByIdForUpdate(customer.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách hàng"));
+        GioHang cart = cartRepo.findByKhachHangIdForUpdate(lockedCustomer.getId()).orElseGet(() -> cartRepo.save(
+                GioHang.builder().khachHang(lockedCustomer).ngayTao(LocalDateTime.now()).chiTiets(new ArrayList<>()).build()
         ));
 
         Map<Integer, Integer> quantities = new LinkedHashMap<>();
+        int totalQuantity = 0;
         if (requestedItems != null) {
+            if (requestedItems.size() > MAX_CART_LINES) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giỏ hàng chỉ được tối đa 50 dòng sản phẩm");
+            }
             for (Map<String, Object> item : requestedItems) {
                 Integer variantId = toInt(item.get("variantId"));
                 Integer quantity = toInt(item.get("qty"));
-                if (variantId == null || quantity == null || quantity <= 0 || quantity > 100) {
+                if (variantId == null || quantity == null || quantity <= 0 || quantity > MAX_QUANTITY_PER_LINE) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số lượng sản phẩm trong giỏ không hợp lệ");
                 }
-                quantities.merge(variantId, quantity, Integer::sum);
+                int mergedQuantity = quantities.merge(variantId, quantity, Integer::sum);
+                if (mergedQuantity > MAX_QUANTITY_PER_LINE) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mỗi biến thể trong giỏ không được vượt quá 100 sản phẩm");
+                }
+                totalQuantity += quantity;
+                if (totalQuantity > MAX_TOTAL_QUANTITY) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giỏ hàng chỉ được tối đa 200 sản phẩm");
+                }
             }
         }
 
@@ -82,7 +100,7 @@ public class CustomerDataService {
         cartItemRepo.deleteByGioHangId(cart.getId());
         cartItemRepo.flush();
         cartItemRepo.saveAll(replacements);
-        return cartItems(customer);
+        return cartItems(lockedCustomer);
     }
 
     @Transactional
@@ -146,7 +164,6 @@ public class CustomerDataService {
         map.put("variantId", variant.getId());
         map.put("productId", product.getId());
         map.put("name", product.getTenSanPham());
-        map.put("tenVay", product.getTenSanPham());
         map.put("tenSanPham", product.getTenSanPham());
         map.put("size", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
         map.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
@@ -168,9 +185,13 @@ public class CustomerDataService {
 
     private boolean isOrderable(SanPhamChiTiet variant) {
         return variant.getSanPham() != null
+                && variant.getMauSac() != null
+                && variant.getKichThuoc() != null
                 && variant.getSanPham().getTrangThai() != null
                 && variant.getSanPham().getTrangThai() == 1
-                && (variant.getTrangThai() == null || variant.getTrangThai() == 1);
+                && Objects.equals(variant.getTrangThai(), (byte) 1)
+                && Objects.equals(variant.getMauSac().getTrangThai(), (byte) 1)
+                && Objects.equals(variant.getKichThuoc().getTrangThai(), (byte) 1);
     }
 
     private Integer toInt(Object value) {

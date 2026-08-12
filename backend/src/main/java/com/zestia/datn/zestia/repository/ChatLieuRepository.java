@@ -4,4 +4,6 @@ import com.zestia.datn.zestia.entity.ChatLieu;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ChatLieuRepository extends JpaRepository<ChatLieu, Integer> {
+    boolean existsByTenChatLieuIgnoreCase(String name);
+    boolean existsByTenChatLieuIgnoreCaseAndIdNot(String name, Integer id);
 }

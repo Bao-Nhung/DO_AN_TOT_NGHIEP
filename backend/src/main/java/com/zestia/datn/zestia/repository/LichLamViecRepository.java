@@ -18,6 +18,11 @@ public interface LichLamViecRepository extends JpaRepository<LichLamViec, Intege
 
     List<LichLamViec> findByNhanVienIdOrderByNgayLamAscGioBatDauAsc(Integer nhanVienId);
 
+    List<LichLamViec> findByNhanVienIdAndNgayLamBetweenOrderByNgayLamAscGioBatDauAsc(
+            Integer nhanVienId, LocalDate startDate, LocalDate endDate);
+
+    List<LichLamViec> findAllByOrderByNgayLamAscGioBatDauAsc();
+
     List<LichLamViec> findByNhanVienIdAndNgayLamOrderByGioBatDauAsc(Integer nhanVienId, LocalDate ngayLam);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

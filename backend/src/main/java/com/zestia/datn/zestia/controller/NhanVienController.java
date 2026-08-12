@@ -8,7 +8,10 @@ import com.zestia.datn.zestia.repository.LichLamViecRepository;
 import com.zestia.datn.zestia.repository.HoaDonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -36,9 +39,43 @@ public class NhanVienController {
     private final LichLamViecRepository lichLamViecRepo;
     private final HoaDonRepository hoaDonRepo;
 
-    @GetMapping
-    public List<Map<String, Object>> getAll() {
-        return nhanVienRepo.findAll().stream().map(this::toMap).toList();
+    @GetMapping("/paged")
+    public Map<String, Object> getPage(@RequestParam(defaultValue = "0") int page,
+                                       @RequestParam(defaultValue = "10") int size,
+                                       @RequestParam(required = false) String q,
+                                       @RequestParam(required = false) String role,
+                                       @RequestParam(required = false) Byte status) {
+        if (status != null && status != 0 && status != 1) {
+            throw new IllegalArgumentException("Trạng thái nhân viên không hợp lệ");
+        }
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        String keyword = cleanFilter(q);
+        String roleFilter = cleanFilter(role);
+        var result = nhanVienRepo.findAdminPage(
+                keyword,
+                roleFilter,
+                status,
+                PageRequest.of(safePage, safeSize)
+        );
+
+        LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime nextMonthStart = monthStart.plusMonths(1);
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("active", nhanVienRepo.countByTinhTrangLamViec((byte) 1));
+        summary.put("inactive", nhanVienRepo.countByTinhTrangLamViec((byte) 0));
+        summary.put("admins", nhanVienRepo.countAdmins());
+        summary.put("createdThisMonth", nhanVienRepo.countByNgayTaoGreaterThanEqualAndNgayTaoLessThan(
+                monthStart, nextMonthStart));
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", result.getContent().stream().map(this::toMap).toList());
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        response.put("summary", summary);
+        return response;
     }
 
     @GetMapping("/{id}/hieu-suat")
@@ -57,12 +94,19 @@ public class NhanVienController {
                 }
             }
             
-            double totalHours = 0;
+            double scheduledHours = 0;
+            long workedMinutes = 0;
+            long completedShifts = 0;
             List<com.zestia.datn.zestia.entity.LichLamViec> schedules = lichLamViecRepo.findByNhanVienIdOrderByNgayLamAscGioBatDauAsc(id);
             for (com.zestia.datn.zestia.entity.LichLamViec sch : schedules) {
                 if (sch.getGioBatDau() != null && sch.getGioKetThuc() != null) {
                     double diff = java.time.Duration.between(sch.getGioBatDau(), sch.getGioKetThuc()).toMinutes() / 60.0;
-                    totalHours += Math.max(0.0, diff);
+                    scheduledHours += Math.max(0.0, diff);
+                }
+                if (sch.getGioCheckIn() != null && sch.getGioCheckOut() != null
+                        && !sch.getGioCheckOut().isBefore(sch.getGioCheckIn())) {
+                    workedMinutes += java.time.Duration.between(sch.getGioCheckIn(), sch.getGioCheckOut()).toMinutes();
+                    completedShifts++;
                 }
             }
 
@@ -70,7 +114,10 @@ public class NhanVienController {
             stats.put("totalSales", totalSales);
             stats.put("totalOrders", orderCount);
             stats.put("completedOrders", completedOrders);
-            stats.put("totalHours", totalHours);
+            stats.put("scheduledHours", scheduledHours);
+            stats.put("workedHours", workedMinutes / 60.0);
+            stats.put("completedShifts", completedShifts);
+            stats.put("totalHours", scheduledHours);
             stats.put("shiftCount", schedules.size());
             return ResponseEntity.ok(stats);
         }).orElse(ResponseEntity.notFound().build());
@@ -78,7 +125,7 @@ public class NhanVienController {
 
     @GetMapping("/vai-tro")
     public List<Map<String, Object>> getVaiTro() {
-        return vaiTroRepo.findAll().stream().map(vt -> {
+        return vaiTroRepo.findAll().stream().filter(this::isSupportedRole).map(vt -> {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", vt.getId());
             map.put("tenVaiTro", vt.getTenVaiTro());
@@ -87,7 +134,9 @@ public class NhanVienController {
     }
 
     @PostMapping
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("message", "Dữ liệu nhân viên không hợp lệ"));
         String hoVaTen = trim(toStringVal(body.get("hoVaTen")));
         String tenNguoiDung = trim(toStringVal(body.get("tenNguoiDung")));
         String email = normalizeEmail(toStringVal(body.get("email")));
@@ -95,10 +144,10 @@ public class NhanVienController {
 
         String validationError = validateEmployeeRequest(body, null, true);
         if (validationError != null) return ResponseEntity.badRequest().body(Map.of("message", validationError));
-        if (nhanVienRepo.existsByTenNguoiDung(tenNguoiDung)) {
+        if (nhanVienRepo.existsByTenNguoiDungIgnoreCase(tenNguoiDung)) {
             return ResponseEntity.badRequest().body(Map.of("message", "Tên đăng nhập đã tồn tại"));
         }
-        if (nhanVienRepo.existsByEmail(email)) {
+        if (nhanVienRepo.existsByEmailIgnoreCase(email)) {
             return ResponseEntity.badRequest().body(Map.of("message", "Email đã được sử dụng"));
         }
 
@@ -113,8 +162,10 @@ public class NhanVienController {
     }
 
     @PutMapping("/{id}")
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
-        return nhanVienRepo.findById(id).map(existing -> {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("message", "Dữ liệu nhân viên không hợp lệ"));
+        return nhanVienRepo.findByIdForUpdate(id).map(existing -> {
             String validationError = validateEmployeeRequest(body, existing, false);
             if (validationError != null) {
                 return ResponseEntity.badRequest().body(Map.of("message", validationError));
@@ -123,13 +174,18 @@ public class NhanVienController {
             String email = normalizeEmail(toStringVal(body.get("email")));
             String matKhau = toStringVal(body.get("matKhau"));
 
-            if (!isBlank(tenNguoiDung) && nhanVienRepo.findByTenNguoiDung(tenNguoiDung)
+            if (!isBlank(tenNguoiDung) && nhanVienRepo.findByTenNguoiDungIgnoreCase(tenNguoiDung)
                     .filter(nv -> !nv.getId().equals(id)).isPresent()) {
                 return ResponseEntity.badRequest().body(Map.of("message", "Tên đăng nhập đã tồn tại"));
             }
-            if (!isBlank(email) && nhanVienRepo.findByEmail(email)
+            if (!isBlank(email) && nhanVienRepo.findByEmailIgnoreCase(email)
                     .filter(nv -> !nv.getId().equals(id)).isPresent()) {
                 return ResponseEntity.badRequest().body(Map.of("message", "Email đã được sử dụng"));
+            }
+            if (wouldRemoveLastActiveAdmin(existing, body)) {
+                return ResponseEntity.status(409).body(Map.of(
+                        "message", "Phải giữ lại ít nhất một quản trị viên đang hoạt động"
+                ));
             }
             if (!isBlank(matKhau)) {
                 existing.setMatKhau(passwordEncoder.encode(matKhau));
@@ -141,12 +197,19 @@ public class NhanVienController {
     }
 
     @PutMapping("/{id}/trang-thai")
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public ResponseEntity<?> updateStatus(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("message", "Dữ liệu trạng thái không hợp lệ"));
         Integer status = parseInteger(toStringVal(body.get("tinhTrangLamViec")));
         if (status == null || (status != 0 && status != 1)) {
             return ResponseEntity.badRequest().body(Map.of("message", "Trạng thái nhân viên chỉ được là đang làm hoặc tạm khóa"));
         }
-        return nhanVienRepo.findById(id).map(existing -> {
+        return nhanVienRepo.findByIdForUpdate(id).map(existing -> {
+            if (status == 0 && isActiveAdmin(existing) && nhanVienRepo.countActiveAdmins() <= 1) {
+                return ResponseEntity.status(409).body(Map.of(
+                        "message", "Không thể tạm khóa quản trị viên đang hoạt động cuối cùng"
+                ));
+            }
             existing.setTinhTrangLamViec(status.byteValue());
             return ResponseEntity.ok(toMap(nhanVienRepo.save(existing)));
         }).orElse(ResponseEntity.notFound().build());
@@ -208,6 +271,11 @@ public class NhanVienController {
 
     private String trim(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private String cleanFilter(String value) {
+        String cleaned = trim(value);
+        return isBlank(cleaned) ? null : cleaned;
     }
 
     private boolean isBlank(String value) {
@@ -290,9 +358,34 @@ public class NhanVienController {
         }
         if (body.containsKey("vaiTroId")) {
             Integer roleId = parseInteger(toStringVal(body.get("vaiTroId")));
-            if (roleId == null || vaiTroRepo.findById(roleId).isEmpty()) return "Vai trò nhân viên không hợp lệ";
+            VaiTro role = roleId == null ? null : vaiTroRepo.findById(roleId).orElse(null);
+            if (!isSupportedRole(role)) return "Vai trò nhân viên không hợp lệ";
         }
         return null;
+    }
+
+    private boolean wouldRemoveLastActiveAdmin(NhanVien employee, Map<String, Object> body) {
+        if (!isActiveAdmin(employee) || !body.containsKey("vaiTroId")) return false;
+        Integer roleId = parseInteger(toStringVal(body.get("vaiTroId")));
+        VaiTro targetRole = roleId == null ? null : vaiTroRepo.findById(roleId).orElse(null);
+        return !isAdminRole(targetRole) && nhanVienRepo.countActiveAdmins() <= 1;
+    }
+
+    private boolean isActiveAdmin(NhanVien employee) {
+        return employee != null
+                && Byte.valueOf((byte) 1).equals(employee.getTinhTrangLamViec())
+                && isAdminRole(employee.getVaiTro());
+    }
+
+    private boolean isSupportedRole(VaiTro role) {
+        if (role == null || role.getTenVaiTro() == null) return false;
+        String name = role.getTenVaiTro().trim();
+        return "Admin".equalsIgnoreCase(name) || "Nhân viên".equalsIgnoreCase(name);
+    }
+
+    private boolean isAdminRole(VaiTro role) {
+        return role != null && role.getTenVaiTro() != null
+                && "Admin".equalsIgnoreCase(role.getTenVaiTro().trim());
     }
 
     private String value(Map<String, Object> body, String key, Object fallback) {

@@ -199,6 +199,15 @@
                 </div>
               </div>
               <div v-else class="z-info-value">Khách hàng chưa có lịch sử mua</div>
+              <div v-if="historyTotal > 0" class="z-history-pagination">
+                <span>{{ historyTotal }} đơn hàng</span>
+                <PageSizeSelect v-model="historyPageSize" />
+                <div class="d-flex gap-2">
+                  <button type="button" class="lm-btn-secondary z-history-page-btn" :disabled="historyPage === 1" @click="historyPage--">Trước</button>
+                  <span class="z-history-page-label">{{ historyPage }} / {{ Math.max(1, historyTotalPages) }}</span>
+                  <button type="button" class="lm-btn-secondary z-history-page-btn" :disabled="historyPage >= historyTotalPages" @click="historyPage++">Sau</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -222,6 +231,11 @@ const selectedCustomer = ref(null)
 const loadingAddresses = ref(false)
 const loadingHistory = ref(false)
 let addressRequestId = 0
+let historyRequestId = 0
+const historyPage = ref(1)
+const historyPageSize = ref(5)
+const historyTotal = ref(0)
+const historyTotalPages = ref(0)
 
 onMounted(loadCustomers)
 
@@ -279,27 +293,56 @@ watch(itemsPerPage, () => {
 async function openDetail(c) {
   const requestId = ++addressRequestId
   selectedCustomer.value = { ...c, addresses: [], history: [] }
+  historyPage.value = 1
+  historyTotal.value = 0
+  historyTotalPages.value = 0
   showDetail.value = true
   loadingAddresses.value = true
-  loadingHistory.value = true
   try {
-    const [addresses, history] = await Promise.all([
+    const [addresses] = await Promise.all([
       api().getKhachHangAddresses(c.id),
-      api().getKhachHangHistory(c.id)
+      loadCustomerHistory(c.id)
     ])
     if (requestId === addressRequestId && selectedCustomer.value?.id === c.id) {
       selectedCustomer.value.addresses = Array.isArray(addresses) ? addresses : []
-      selectedCustomer.value.history = Array.isArray(history) ? history : []
     }
   } catch (e) {
     console.error('Không thể tải địa chỉ khách hàng:', e)
   } finally {
     if (requestId === addressRequestId) {
       loadingAddresses.value = false
-      loadingHistory.value = false
     }
   }
 }
+
+async function loadCustomerHistory(customerId = selectedCustomer.value?.id) {
+  if (!customerId) return
+  const requestId = ++historyRequestId
+  loadingHistory.value = true
+  try {
+    const data = await api().getKhachHangHistory(customerId, {
+      page: historyPage.value - 1,
+      size: historyPageSize.value
+    })
+    if (requestId !== historyRequestId || selectedCustomer.value?.id !== customerId) return
+    selectedCustomer.value.history = Array.isArray(data.content) ? data.content : []
+    historyTotal.value = Number(data.totalElements || 0)
+    historyTotalPages.value = Number(data.totalPages || 0)
+  } catch (e) {
+    if (requestId === historyRequestId) console.error('Không thể tải lịch sử mua của khách hàng:', e)
+  } finally {
+    if (requestId === historyRequestId) loadingHistory.value = false
+  }
+}
+
+watch(historyPage, () => {
+  if (showDetail.value) loadCustomerHistory()
+})
+watch(historyPageSize, () => {
+  if (!showDetail.value) return
+  if (historyPage.value === 1) loadCustomerHistory()
+  else historyPage.value = 1
+})
 
 function formatAddress(address) {
   return [address.duong, address.xaPhuong, address.quanHuyen, address.tinhThanhPho]
@@ -334,10 +377,13 @@ function formatAddress(address) {
 .z-address-card { text-align: left; }
 .z-address-row { display: flex; align-items: flex-start; gap: 8px; color: var(--z-dark); font-size: 13px; }
 .z-address-row i { color: var(--z-accent); margin-top: 1px; }
-.z-default-address { margin-left: auto; flex-shrink: 0; color: #166534; background: #dcfce7; border-radius: 12px; padding: 2px 8px; font-size: 10px; font-weight: 600; }
+.z-default-address { margin-left: auto; flex-shrink: 0; color: #166534; background: #dcfce7; border-radius: 6px; padding: 2px 8px; font-size: 10px; font-weight: 600; }
 .z-customer-history { display: grid; gap: 10px; max-height: 360px; overflow-y: auto; }
 .z-history-order { border: 1px solid var(--z-gray-border); padding: 12px; }
 .z-history-items { display: grid; gap: 6px; }
 .z-history-item { display: flex; align-items: center; gap: 9px; padding-top: 6px; border-top: 1px dashed var(--z-gray-border); }
 .z-history-item img, .z-history-image-empty { width: 34px; height: 42px; object-fit: cover; background: var(--z-bg-alt); display: grid; place-items: center; flex: 0 0 34px; }
+.z-history-pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--z-gray-border); color: var(--z-gray); font-size: 12px; }
+.z-history-page-btn { min-width: 58px; height: 32px; padding: 5px 10px; font-size: 11px; }
+.z-history-page-label { display: inline-flex; min-width: 48px; align-items: center; justify-content: center; color: var(--z-dark); }
 </style>

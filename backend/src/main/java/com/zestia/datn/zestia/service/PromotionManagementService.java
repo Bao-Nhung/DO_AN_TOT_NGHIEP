@@ -61,6 +61,7 @@ public class PromotionManagementService {
     }
 
     private void apply(DotKhuyenMai campaign, Map<String, Object> body, boolean updating) {
+        if (body == null) throw badRequest("Dữ liệu đợt khuyến mãi không hợp lệ");
         String code = clean(body.get("maDot"));
         if (code == null) code = autoCode();
         code = code.toUpperCase(Locale.ROOT);
@@ -100,8 +101,8 @@ public class PromotionManagementService {
             Set<String> unique = new HashSet<>();
             for (Object rawScope : scopes) {
                 if (!(rawScope instanceof Map<?, ?> scope)) continue;
-                Integer productId = intValue(scope.get("idSanPham") != null ? scope.get("idSanPham") : scope.get("idVay"), null);
-                Integer categoryId = intValue(scope.get("idLoaiSanPham") != null ? scope.get("idLoaiSanPham") : scope.get("idLoaiVay"), null);
+                Integer productId = intValue(scope.get("idSanPham"), null);
+                Integer categoryId = intValue(scope.get("idLoaiSanPham"), null);
                 Integer colorId = intValue(scope.get("idMauSac"), null);
                 Integer sizeId = intValue(scope.get("idKichThuoc"), null);
                 String key = productId + ":" + categoryId + ":" + colorId + ":" + sizeId;
@@ -159,13 +160,9 @@ public class PromotionManagementService {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", scope.getId());
         map.put("idSanPham", scope.getSanPham() != null ? scope.getSanPham().getId() : null);
-        map.put("idVay", scope.getSanPham() != null ? scope.getSanPham().getId() : null);
         map.put("tenSanPham", scope.getSanPham() != null ? scope.getSanPham().getTenSanPham() : null);
-        map.put("tenVay", scope.getSanPham() != null ? scope.getSanPham().getTenSanPham() : null);
         map.put("idLoaiSanPham", scope.getLoaiSanPham() != null ? scope.getLoaiSanPham().getId() : null);
-        map.put("idLoaiVay", scope.getLoaiSanPham() != null ? scope.getLoaiSanPham().getId() : null);
         map.put("tenLoaiSanPham", scope.getLoaiSanPham() != null ? scope.getLoaiSanPham().getTenLoaiSanPham() : null);
-        map.put("tenLoaiVay", scope.getLoaiSanPham() != null ? scope.getLoaiSanPham().getTenLoaiSanPham() : null);
         map.put("idMauSac", scope.getMauSac() != null ? scope.getMauSac().getId() : null);
         map.put("tenMauSac", scope.getMauSac() != null ? scope.getMauSac().getTenMauSac() : null);
         map.put("idKichThuoc", scope.getKichThuoc() != null ? scope.getKichThuoc().getId() : null);

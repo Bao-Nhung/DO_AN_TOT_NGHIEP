@@ -17,7 +17,12 @@ public class CurrentCustomerService {
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập");
         }
-        return customerRepo.findByEmail(authentication.getName())
+        boolean customerRole = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_KhachHang".equalsIgnoreCase(authority.getAuthority()));
+        if (!customerRole) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chức năng này chỉ dành cho khách hàng");
+        }
+        return customerRepo.findByEmailIgnoreCase(authentication.getName())
                 .or(() -> customerRepo.findBySoDienThoai(authentication.getName()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Chức năng này chỉ dành cho khách hàng"));
     }

@@ -36,9 +36,8 @@ public class ShiftReportService {
         validateRange(startDate, endDate);
         List<LichLamViec> shifts = employeeId == null
                 ? scheduleRepository.findByNgayLamBetweenOrderByNgayLamAscGioBatDauAsc(startDate, endDate)
-                : scheduleRepository.findByNhanVienIdOrderByNgayLamAscGioBatDauAsc(employeeId).stream()
-                    .filter(shift -> !shift.getNgayLam().isBefore(startDate) && !shift.getNgayLam().isAfter(endDate))
-                    .toList();
+                : scheduleRepository.findByNhanVienIdAndNgayLamBetweenOrderByNgayLamAscGioBatDauAsc(
+                        employeeId, startDate, endDate);
 
         List<HoaDon> orders = orderRepository.findPosOrdersForShiftReport(
                 startDate.atStartOfDay(), endDate.plusDays(1).atStartOfDay(), employeeId

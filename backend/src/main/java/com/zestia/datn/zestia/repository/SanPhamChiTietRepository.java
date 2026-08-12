@@ -4,6 +4,7 @@ import com.zestia.datn.zestia.entity.SanPhamChiTiet;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -34,6 +35,10 @@ public interface SanPhamChiTietRepository extends JpaRepository<SanPhamChiTiet, 
 
     List<SanPhamChiTiet> findByKichThuocId(Integer kichThuocId);
 
+    boolean existsByMauSacIdAndTrangThai(Integer mauSacId, Byte trangThai);
+
+    boolean existsByKichThuocIdAndTrangThai(Integer kichThuocId, Byte trangThai);
+
     List<SanPhamChiTiet> findByTrangThai(Byte trangThai);
 
     @Query("""
@@ -46,6 +51,16 @@ public interface SanPhamChiTietRepository extends JpaRepository<SanPhamChiTiet, 
             """)
     List<Object[]> findLowStockSummary(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"sanPham", "mauSac", "kichThuoc"})
+    @Query("""
+            SELECT v FROM SanPhamChiTiet v
+            WHERE v.trangThai = 1
+              AND v.sanPham.trangThai = 1
+              AND COALESCE(v.soLuong, 0) <= 5
+            ORDER BY COALESCE(v.soLuong, 0), v.id
+            """)
+    List<SanPhamChiTiet> findLowStockVariants(Pageable pageable);
+
     @Query("""
             SELECT COUNT(v) FROM SanPhamChiTiet v
             WHERE v.trangThai = 1
@@ -55,6 +70,8 @@ public interface SanPhamChiTietRepository extends JpaRepository<SanPhamChiTiet, 
     long countLowStockVariants();
 
     Optional<SanPhamChiTiet> findByMaSanPhamChiTiet(String maSanPhamChiTiet);
+
+    long countByAnhUrl(String anhUrl);
 
     Optional<SanPhamChiTiet> findBySanPhamIdAndMauSacIdAndKichThuocId(
             Integer sanPhamId,

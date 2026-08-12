@@ -8,7 +8,7 @@ quản trị cửa hàng và POS cho nhân viên.
 - Backend: Java 21, Spring Boot 3, Spring Security, JPA/Hibernate, SQL Server.
 - Frontend: Vue 3, Vue Router, Vue I18n, Vite 8, Bootstrap 5, Chart.js.
 - Tích hợp: MoMo/ZaloPay sandbox, Google Sign-In, Gmail SMTP, OpenAI API, VietQR.
-- Database: một file cài đặt idempotent tại `database/fashion_shop.sql`.
+- Database: một file reset và cài đặt dữ liệu demo tại `database/fashion_shop.sql`.
 
 ## Chức năng chính
 
@@ -50,9 +50,11 @@ Mở `database/fashion_shop.sql` bằng SSMS và chạy toàn bộ file, hoặc:
 sqlcmd -S localhost,1433 -U sa -P 123456 -C -f 65001 -i database/fashion_shop.sql
 ```
 
-File SQL dùng UTF-8 và tự tạo database `fashion_shop`; có thể chạy lại nhiều lần. Nó kiểm
-tra các bất biến trước khi báo thành công và tạo dữ liệu tháng 8/2026 phủ đủ 31 ngày,
-bao gồm đơn hàng, thanh toán, ca làm, đánh giá, hỗ trợ và đổi/trả. Hệ thống chỉ có hai
+File SQL dùng UTF-8 và tự tạo database `fashion_shop`. **Mỗi lần chạy sẽ xóa toàn bộ database
+`fashion_shop` hiện có**, vì vậy phải sao lưu trước nếu có dữ liệu cần giữ. Nó kiểm
+tra các bất biến trước khi báo thành công và tạo dữ liệu nghiệp vụ từ 01/08 đến hết
+06/08/2026; riêng lịch làm việc được xếp đến hết 31/08/2026. Dữ liệu gồm đơn hàng,
+thanh toán, ca làm, đánh giá, hỗ trợ và đổi/trả. Hệ thống chỉ có hai
 role `Admin`, `Nhân viên`.
 
 ### 2. Backend

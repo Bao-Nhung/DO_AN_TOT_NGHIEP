@@ -3,6 +3,8 @@ package com.zestia.datn.zestia.service;
 import com.zestia.datn.zestia.entity.HoaDon;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
+import com.zestia.datn.zestia.repository.HoaDonRepository;
+import com.zestia.datn.zestia.repository.LichSuThanhToanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,8 @@ public class LoyaltyService {
     private static final BigDecimal THRESHOLD_DIAMOND = new BigDecimal("30000000");
 
     private final KhachHangRepository khachHangRepo;
+    private final HoaDonRepository hoaDonRepo;
+    private final LichSuThanhToanRepository paymentHistoryRepo;
 
     public String calculateTier(BigDecimal totalSpent) {
         if (totalSpent == null) return TIER_BRONZE;
@@ -35,16 +40,6 @@ public class LoyaltyService {
         if (totalSpent.compareTo(THRESHOLD_GOLD) >= 0) return TIER_GOLD;
         if (totalSpent.compareTo(THRESHOLD_SILVER) >= 0) return TIER_SILVER;
         return TIER_BRONZE;
-    }
-
-    public BigDecimal getTierDiscountPercent(String tier) {
-        if (tier == null) return BigDecimal.ZERO;
-        return switch (tier) {
-            case TIER_SILVER -> new BigDecimal("2");
-            case TIER_GOLD -> new BigDecimal("5");
-            case TIER_DIAMOND -> new BigDecimal("10");
-            default -> BigDecimal.ZERO;
-        };
     }
 
     public BigDecimal getNextTierThreshold(String tier) {
@@ -60,66 +55,40 @@ public class LoyaltyService {
     @Transactional
     public void earnPointsOnOrderCompletion(HoaDon order) {
         if (order == null || order.getKhachHang() == null || order.getKhachHang().getId() == null) return;
-        Integer customerId = order.getKhachHang().getId();
+        recalculate(order.getKhachHang().getId());
+    }
+
+    @Transactional
+    public void recalculate(Integer customerId) {
+        if (customerId == null) return;
         KhachHang customer = khachHangRepo.findById(customerId).orElse(null);
         if (customer == null) return;
-
-        BigDecimal paidAmount = order.getTongTien() != null ? order.getTongTien() : BigDecimal.ZERO;
-        if (paidAmount.compareTo(BigDecimal.ZERO) <= 0) return;
-
-        // Tích điểm: 1% giá trị đơn hàng (1 điểm = 1.000 VNĐ -> số điểm = tổng tiền / 100.000)
-        int pointsEarned = paidAmount.divide(new BigDecimal("100000"), 0, RoundingMode.FLOOR).intValue();
-        if (pointsEarned < 0) pointsEarned = 0;
-
-        int currentPoints = customer.getDiemTichLuy() != null ? customer.getDiemTichLuy() : 0;
-        customer.setDiemTichLuy(currentPoints + pointsEarned);
-
-        BigDecimal currentSpent = customer.getTongChiTieu() != null ? customer.getTongChiTieu() : BigDecimal.ZERO;
-        BigDecimal newSpent = currentSpent.add(paidAmount);
-        customer.setTongChiTieu(newSpent);
-
-        String newTier = calculateTier(newSpent);
-        customer.setHangThanhVien(newTier);
-
+        BigDecimal completedSpend = Objects.requireNonNullElse(
+                hoaDonRepo.sumCompletedSpendByCustomerId(customerId), BigDecimal.ZERO);
+        BigDecimal refundAdjustments = Objects.requireNonNullElse(
+                paymentHistoryRepo.sumRefundAdjustmentsForCompletedOrders(customerId), BigDecimal.ZERO);
+        BigDecimal netSpend = completedSpend.add(refundAdjustments).max(BigDecimal.ZERO);
+        int points = netSpend.divide(new BigDecimal("100000"), 0, RoundingMode.FLOOR).intValue();
+        customer.setDiemTichLuy(Math.max(points, 0));
+        customer.setTongChiTieu(netSpend);
+        customer.setHangThanhVien(calculateTier(netSpend));
         khachHangRepo.save(customer);
-        log.info("Tích điểm thành công cho khách hàng #{}: +{} điểm, Tổng tích lũy: {}, Hạng: {}",
-                customerId, pointsEarned, newSpent, newTier);
-    }
-
-    @Transactional
-    public boolean redeemPoints(KhachHang customer, int pointsToRedeem) {
-        if (customer == null || pointsToRedeem <= 0) return false;
-        int currentPoints = customer.getDiemTichLuy() != null ? customer.getDiemTichLuy() : 0;
-        if (currentPoints < pointsToRedeem) return false;
-
-        customer.setDiemTichLuy(currentPoints - pointsToRedeem);
-        khachHangRepo.save(customer);
-        return true;
-    }
-
-    @Transactional
-    public void restorePoints(KhachHang customer, int pointsToRestore) {
-        if (customer == null || pointsToRestore <= 0) return;
-        int currentPoints = customer.getDiemTichLuy() != null ? customer.getDiemTichLuy() : 0;
-        customer.setDiemTichLuy(currentPoints + pointsToRestore);
-        khachHangRepo.save(customer);
+        log.info("Đã đồng bộ thành viên #{}: {} điểm, tổng chi tiêu {}, hạng {}",
+                customerId, customer.getDiemTichLuy(), netSpend, customer.getHangThanhVien());
     }
 
     public Map<String, Object> toLoyaltySummaryMap(KhachHang customer) {
         int points = customer != null && customer.getDiemTichLuy() != null ? customer.getDiemTichLuy() : 0;
         BigDecimal spent = customer != null && customer.getTongChiTieu() != null ? customer.getTongChiTieu() : BigDecimal.ZERO;
         String tier = customer != null && customer.getHangThanhVien() != null ? customer.getHangThanhVien() : TIER_BRONZE;
-        BigDecimal discountPercent = getTierDiscountPercent(tier);
         BigDecimal nextThreshold = getNextTierThreshold(tier);
         BigDecimal neededForNext = nextThreshold.subtract(spent);
         if (neededForNext.compareTo(BigDecimal.ZERO) < 0) neededForNext = BigDecimal.ZERO;
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("diemTichLuy", points);
-        map.put("giaTriDiemQuyDoi", new BigDecimal(points).multiply(new BigDecimal("1000")));
         map.put("tongChiTieu", spent);
         map.put("hangThanhVien", tier);
-        map.put("chietKhauPhanTram", discountPercent);
         map.put("mocChiTieuKeTiep", nextThreshold);
         map.put("canChiTieuThem", neededForNext);
         return map;

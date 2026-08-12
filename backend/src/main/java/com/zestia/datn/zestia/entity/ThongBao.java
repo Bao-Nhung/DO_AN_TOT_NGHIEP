@@ -17,6 +17,10 @@ public class ThongBao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_khach_hang")
+    private KhachHang khachHang;
+
     @Column(name = "tieu_de", nullable = false, length = 255)
     private String tieuDe;
 

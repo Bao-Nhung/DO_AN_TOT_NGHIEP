@@ -17,7 +17,7 @@
         <option value="">Tất cả trạng thái</option>
         <option v-for="item in statusOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
       </select>
-      <span class="z-result-count">{{ requests.length }} yêu cầu</span>
+      <span class="z-result-count">{{ totalItems }} yêu cầu</span>
     </div>
 
     <div class="z-admin-card" style="padding:0;overflow:hidden">
@@ -31,7 +31,7 @@
         <table class="z-table" style="min-width:1040px">
           <thead><tr><th>Yêu cầu / Đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Nguồn</th><th>Trạng thái</th><th>Ngày tạo</th><th style="width:132px"></th></tr></thead>
           <tbody>
-            <tr v-for="item in pagedRequests" :key="item.id">
+            <tr v-for="item in requests" :key="item.id">
               <td><strong>#{{ item.id }}</strong><div class="z-subtext">{{ item.orderCode }}</div></td>
               <td><strong>{{ item.customerName }}</strong><div class="z-subtext">{{ item.customerPhone }}</div></td>
               <td>
@@ -50,16 +50,16 @@
         </table>
       </div>
     </div>
-    <div v-if="requests.length" class="z-list-pagination">
+    <div v-if="totalItems" class="z-list-pagination">
       <span>
-        Hiển thị {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, requests.length) }}
-        / {{ requests.length }} yêu cầu
+        Hiển thị {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, totalItems) }}
+        / {{ totalItems }} yêu cầu
       </span>
       <PageSizeSelect v-model="pageSize" :options="[5, 10, 20, 50]" />
       <div v-if="totalPages > 1" class="d-flex gap-2">
-        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === 1" @click="currentPage--">Trước</button>
+        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">Trước</button>
         <span class="z-page-label">Trang {{ currentPage }} / {{ totalPages }}</span>
-        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === totalPages" @click="currentPage++">Sau</button>
+        <button class="lm-btn-secondary z-page-button" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">Sau</button>
       </div>
     </div>
 
@@ -118,8 +118,8 @@
         <div class="row g-3">
           <div class="col-md-7"><label class="z-label">Hóa đơn *</label><select v-model="offlineForm.orderId" class="lm-input" @change="loadOfflineOrder"><option :value="null">Chọn hóa đơn tại quầy</option><option v-for="order in offlineOrders" :key="order.id" :value="order.id">{{ order.maHoaDon }} · {{ order.khachHang }} · {{ order.soDienThoai }}</option></select></div>
           <div class="col-md-5"><label class="z-label">Loại xử lý *</label><div class="z-segmented z-form-segment"><button :class="{ active: offlineForm.type === 'DOI' }" @click="offlineForm.type = 'DOI'; loadReplacementOptions()">Đổi</button><button :class="{ active: offlineForm.type === 'TRA' }" @click="offlineForm.type = 'TRA'">Trả</button></div></div>
-          <div class="col-md-8"><label class="z-label">Sản phẩm *</label><select v-model="offlineForm.orderDetailId" class="lm-input" @change="loadReplacementOptions"><option :value="null">Chọn sản phẩm</option><option v-for="line in offlineDetail?.chiTiets || []" :key="line.id" :value="line.id">{{ line.maSanPham }} · {{ line.tenVay }} · {{ line.mauSac }} · {{ line.kichThuoc }} · SL {{ line.soLuong }}</option></select></div>
-          <div class="col-md-4"><label class="z-label">Số lượng *</label><input v-model.number="offlineForm.quantity" type="number" min="1" :max="selectedOfflineLine?.soLuong || 1" class="lm-input"></div>
+          <div class="col-md-8"><label class="z-label">Sản phẩm *</label><select v-model="offlineForm.orderDetailId" class="lm-input" @change="loadReplacementOptions"><option :value="null">Chọn sản phẩm</option><option v-for="line in offlineReturnableLines" :key="line.id" :value="line.id">{{ line.maSanPham }} · {{ line.tenSanPham }} · {{ line.mauSac }} · {{ line.kichThuoc }} · còn {{ returnableQuantity(line) }}</option></select></div>
+          <div class="col-md-4"><label class="z-label">Số lượng *</label><input v-model.number="offlineForm.quantity" type="number" min="1" :max="returnableQuantity(selectedOfflineLine)" class="lm-input"></div>
           <div v-if="offlineForm.type === 'DOI'" class="col-12"><label class="z-label">Màu / kích cỡ đổi mới *</label><select v-model="offlineForm.replacementVariantId" class="lm-input"><option :value="null">Chọn biến thể còn hàng</option><option v-for="variant in replacementOptions" :key="variant.id" :value="variant.id">{{ variant.mauSac }} · {{ variant.kichThuoc }} · còn {{ variant.soLuong }}</option></select></div>
           <div class="col-12"><label class="z-label">Lý do *</label><textarea v-model="offlineForm.reason" class="lm-input" rows="3" placeholder="Tình trạng và lý do khách đổi/trả..."></textarea></div>
           <div v-if="offlineForm.type === 'TRA'" class="col-12"><label class="z-label">Phương thức / thông tin hoàn tiền *</label><textarea v-model="offlineForm.refundInfo" class="lm-input" rows="2" placeholder="Ví dụ: hoàn tiền mặt tại quầy, đã trả đủ cho khách..."></textarea></div>
@@ -145,6 +145,8 @@ const statusFilter = ref('')
 const requests = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
+const totalItems = ref(0)
+const totalPages = ref(1)
 const loading = ref(false)
 const saving = ref(false)
 const detail = ref(null)
@@ -155,15 +157,9 @@ const offlineOrders = ref([])
 const offlineDetail = ref(null)
 const replacementOptions = ref([])
 const offlineForm = ref(defaultOfflineForm())
-const totalPages = computed(() => Math.max(1, Math.ceil(requests.value.length / pageSize.value)))
-const pagedRequests = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return requests.value.slice(start, start + pageSize.value)
-})
-
-watch(pageSize, () => { currentPage.value = 1 })
-watch(totalPages, total => {
-  if (currentPage.value > total) currentPage.value = total
+watch(pageSize, () => {
+  currentPage.value = 1
+  loadRequests()
 })
 
 const statusOptions = [
@@ -174,6 +170,12 @@ const statusOptions = [
 ]
 
 const selectedOfflineLine = computed(() => (offlineDetail.value?.chiTiets || []).find(line => Number(line.id) === Number(offlineForm.value.orderDetailId)))
+function returnableQuantity(line) {
+  if (!line) return 1
+  return Math.max(0, Number(line.soLuongConLaiDoiTra ?? line.soLuong ?? 0))
+}
+const offlineReturnableLines = computed(() => (offlineDetail.value?.chiTiets || [])
+  .filter(line => returnableQuantity(line) > 0))
 const actionNeedsReason = computed(() => ['reject', 'sendBack'].includes(actionModal.value)
   || (actionModal.value === 'complete' && detail.value?.type === 'TRA'))
 const actionTitle = computed(() => ({ approve: 'Duyệt yêu cầu', reject: 'Từ chối yêu cầu', receive: 'Xác nhận đã nhận hàng', sendBack: 'Trả lại hàng cho khách', complete: detail.value?.type === 'DOI' ? 'Hoàn tất đổi hàng' : 'Xác nhận hoàn tiền' }[actionModal.value] || 'Xác nhận'))
@@ -182,13 +184,33 @@ onMounted(loadRequests)
 
 async function loadRequests() {
   loading.value = true
-  try { requests.value = await api().getReturnRequests({ type: activeType.value, status: statusFilter.value }) || [] }
+  try {
+    const data = await api().getReturnRequests({
+      type: activeType.value,
+      status: statusFilter.value || null,
+      page: currentPage.value - 1,
+      size: pageSize.value
+    }) || {}
+    requests.value = data.content || []
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Math.max(1, Number(data.totalPages || 0))
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+      await loadRequests()
+    }
+  }
   catch (error) { showToast(error.error || error.message || 'Không thể tải danh sách đổi trả', 'error') }
   finally { loading.value = false }
 }
 
 function setType(type) { activeType.value = type; currentPage.value = 1; loadRequests() }
 function changeStatus() { currentPage.value = 1; loadRequests() }
+function goToPage(page) {
+  const target = Math.max(1, Math.min(totalPages.value, page))
+  if (target === currentPage.value) return
+  currentPage.value = target
+  loadRequests()
+}
 function openDetail(item) { detail.value = item }
 function openAction(type) { actionModal.value = type; actionReason.value = '' }
 
@@ -237,7 +259,7 @@ async function loadReplacementOptions() {
   replacementOptions.value = []
   if (offlineForm.value.type !== 'DOI' || !selectedOfflineLine.value?.productId) return
   try {
-    const product = await api().getVayById(selectedOfflineLine.value.productId)
+    const product = await api().getSanPhamById(selectedOfflineLine.value.productId)
     replacementOptions.value = (product.bienThe || []).filter(variant => Number(variant.id) !== Number(selectedOfflineLine.value.variantId) && Number(variant.trangThai) === 1 && Number(variant.soLuong) > 0)
   } catch (error) { showToast(error.error || 'Không thể tải biến thể đổi', 'error') }
 }
@@ -245,11 +267,11 @@ async function loadReplacementOptions() {
 async function submitOffline() {
   const form = offlineForm.value
   if (!form.orderId || !form.orderDetailId) return showToast('Vui lòng chọn hóa đơn và sản phẩm', 'warning')
-  if (!form.quantity || form.quantity < 1 || form.quantity > Number(selectedOfflineLine.value?.soLuong || 0)) return showToast('Số lượng không hợp lệ', 'warning')
+  if (!form.quantity || form.quantity < 1 || form.quantity > returnableQuantity(selectedOfflineLine.value)) return showToast('Số lượng không hợp lệ', 'warning')
   if (form.reason.trim().length < 5) return showToast('Vui lòng nhập lý do ít nhất 5 ký tự', 'warning')
   if (form.type === 'DOI' && !form.replacementVariantId) return showToast('Vui lòng chọn biến thể đổi mới', 'warning')
   if (form.type === 'TRA' && form.refundInfo.trim().length < 3) return showToast('Vui lòng ghi thông tin hoàn tiền', 'warning')
-  const accepted = await confirmDialog({ title: `Xác nhận ${form.type === 'DOI' ? 'đổi' : 'trả'} tại quầy`, message: 'Tồn kho sẽ được cập nhật ngay và thao tác không thể thực hiện lại trên dòng hàng này.', confirmText: 'Xác nhận xử lý', variant: 'danger' })
+  const accepted = await confirmDialog({ title: `Xác nhận ${form.type === 'DOI' ? 'đổi' : 'trả'} tại quầy`, message: 'Tồn kho sẽ được cập nhật ngay theo đúng số lượng đã chọn.', confirmText: 'Xác nhận xử lý', variant: 'danger' })
   if (!accepted) return
   saving.value = true
   try {

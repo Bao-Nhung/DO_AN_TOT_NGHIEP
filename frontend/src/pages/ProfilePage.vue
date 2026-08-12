@@ -32,7 +32,7 @@
             </div>
 
             <!-- Thẻ Thành Viên Zestia VIP Card -->
-            <div class="p-4 rounded-4 text-white mb-4 position-relative overflow-hidden shadow-sm"
+            <div class="p-4 rounded-3 text-white mb-4 position-relative overflow-hidden shadow-sm"
                  :style="{ background: loyaltyCardBg }">
               <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
                 <div>
@@ -44,7 +44,7 @@
                 <div class="text-end">
                   <div style="font-size: 11px; opacity: 0.85;">ĐIỂM TÍCH LŨY HIỆN CÓ</div>
                   <div class="fw-bold" style="font-size: 26px;">{{ (loyalty.diemTichLuy || 0).toLocaleString('vi-VN') }} <small style="font-size:13px">điểm</small></div>
-                  <div style="font-size: 11px; opacity: 0.85;">Tương đương: {{ fmtMoney(loyalty.giaTriDiemQuyDoi || 0) }}</div>
+                  <div style="font-size: 11px; opacity: 0.85;">1 điểm cho mỗi 100.000đ chi tiêu hợp lệ</div>
                 </div>
               </div>
 
@@ -53,7 +53,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 12px; opacity: 0.9;">
                   <span>Tổng chi tiêu: <strong>{{ fmtMoney(loyalty.tongChiTieu || 0) }}</strong></span>
                   <span v-if="loyalty.canChiTieuThem > 0">Cần mua thêm {{ fmtMoney(loyalty.canChiTieuThem) }} để thăng hạng</span>
-                  <span v-else>🎉 Đã đạt hạng cao nhất!</span>
+                  <span v-else><i class="bi bi-award me-1" aria-hidden="true"></i>Đã đạt hạng cao nhất</span>
                 </div>
                 <div class="progress" style="height: 6px; background: rgba(255,255,255,0.3);">
                   <div class="progress-bar bg-white" role="progressbar" :style="{ width: loyaltyProgressPercent + '%' }"></div>
@@ -62,8 +62,8 @@
 
               <!-- Quyền lợi hạng -->
               <div class="d-flex align-items-center gap-4 mt-3 pt-3 border-top border-white-50 flex-wrap" style="font-size: 12px; opacity: 0.95;">
-                <div><i class="bi bi-percent me-1"></i> Chiết khấu hạng: <strong>{{ loyalty.chietKhauPhanTram || 0 }}%</strong> mọi đơn hàng</div>
-                <div><i class="bi bi-lightning-charge-fill me-1"></i> Tích điểm: <strong>1%</strong> giá trị đơn thành công</div>
+                <div><i class="bi bi-award me-1"></i> Hạng được tính theo tổng chi tiêu sau hoàn tiền</div>
+                <div><i class="bi bi-lightning-charge-fill me-1"></i> Điểm hiện dùng để theo dõi mức độ gắn bó, chưa quy đổi thành tiền</div>
               </div>
             </div>
 
@@ -75,7 +75,7 @@
 
             <div class="z-section-header">
               <h3>Đơn gần nhất</h3>
-              <span>{{ orders.length }} đơn trong tài khoản</span>
+              <span>{{ orderCounts.all }} đơn trong tài khoản</span>
             </div>
             <div v-if="loadingOrders" class="z-profile-loading"><span class="spinner-border spinner-border-sm"></span> Đang tải đơn hàng...</div>
             <div v-else-if="!recentOrders.length" class="z-profile-empty">
@@ -232,6 +232,7 @@ const { showToast } = useToast()
 const activeTab = ref('overview')
 const user = ref(getUser() || {})
 const orders = ref([])
+const orderCounts = ref({ all: 0, unpaid: 0, pending: 0, processing: 0, completed: 0, cancelled: 0 })
 const loadingOrders = ref(false)
 const savingProfile = ref(false)
 const savingAddress = ref(false)
@@ -259,22 +260,21 @@ const statusMap = {
   0: { label: 'Chờ xử lý', className: 'pending' }, 1: { label: 'Đã xác nhận', className: 'warning' },
   2: { label: 'Đang chuẩn bị', className: 'info' }, 3: { label: 'Đang giao', className: 'info' },
   4: { label: 'Hoàn thành', className: 'success' }, 5: { label: 'Đã hủy', className: 'danger' },
-  6: { label: 'Giao thất bại', className: 'danger' }, 7: { label: 'Thanh toán thất bại', className: 'danger' },
-  8: { label: 'Đang đổi / trả', className: 'warning' }, 9: { label: 'Đã hoàn tiền', className: 'danger' }
+  6: { label: 'Giao thất bại', className: 'danger' }, 7: { label: 'Thanh toán thất bại', className: 'danger' }
 }
 
 const userInitial = computed(() => (user.value.hoVaTen || user.value.username || 'Z').trim().charAt(0).toUpperCase())
 const sortedOrders = computed(() => [...orders.value].sort((a, b) => new Date(b.ngayTao || 0) - new Date(a.ngayTao || 0)))
 const recentOrders = computed(() => sortedOrders.value.slice(0, 5))
 const stats = computed(() => {
-  const completed = orders.value.filter(order => Number(order.trangThai) === 4)
-  const inProgress = orders.value.filter(order => [0, 1, 2, 3, 8].includes(Number(order.trangThai)))
-  const spent = completed.reduce((sum, order) => sum + Number(order.tongTien || 0) - Number(order.returnRefundAmount || 0), 0)
+  const inProgress = Number(orderCounts.value.unpaid || 0)
+    + Number(orderCounts.value.pending || 0)
+    + Number(orderCounts.value.processing || 0)
   return [
-    { value: String(orders.value.length), label: 'Tổng đơn' },
-    { value: String(inProgress.length), label: 'Đang xử lý' },
-    { value: String(completed.length), label: 'Hoàn thành' },
-    { value: fmtMoney(spent), label: 'Đã chi tiêu' }
+    { value: String(orderCounts.value.all || 0), label: 'Tổng đơn' },
+    { value: String(inProgress), label: 'Đang xử lý' },
+    { value: String(orderCounts.value.completed || 0), label: 'Hoàn thành' },
+    { value: fmtMoney(loyalty.value.tongChiTieu || 0), label: 'Đã chi tiêu' }
   ]
 })
 const availableDistricts = computed(() => addressData.value.find(city => city.code === selectedCity.value)?.districts || [])
@@ -282,10 +282,8 @@ const availableWards = computed(() => availableDistricts.value.find(district => 
 
 const loyalty = ref({
   diemTichLuy: 0,
-  giaTriDiemQuyDoi: 0,
   tongChiTieu: 0,
   hangThanhVien: 'Đồng',
-  chietKhauPhanTram: 0,
   mocChiTieuKeTiep: 5000000,
   canChiTieuThem: 5000000
 })
@@ -332,9 +330,14 @@ async function loadCurrentUser() {
 async function loadOrders() {
   loadingOrders.value = true
   try {
-    const result = await api().getMyOrders()
-    orders.value = Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : []
-  } catch { orders.value = [] }
+    const result = await api().getMyOrdersPage({ page: 0, size: 5, tab: 'all' })
+    orders.value = Array.isArray(result?.content) ? result.content : []
+    orderCounts.value = { ...orderCounts.value, ...(result?.counts || {}) }
+    if (result?.loyalty) loyalty.value = { ...loyalty.value, ...result.loyalty }
+  } catch {
+    orders.value = []
+    orderCounts.value = { all: 0, unpaid: 0, pending: 0, processing: 0, completed: 0, cancelled: 0 }
+  }
   finally { loadingOrders.value = false }
 }
 

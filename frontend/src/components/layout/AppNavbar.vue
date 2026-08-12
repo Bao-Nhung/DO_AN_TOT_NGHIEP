@@ -7,7 +7,7 @@
         <span>Zest<span class="lm-gold-text">ia</span></span>
       </RouterLink>
 
-      <ul class="d-none d-xl-flex list-unstyled mb-0 gap-3 align-items-center">
+      <ul class="d-none d-xxl-flex list-unstyled mb-0 gap-3 align-items-center">
         <li><RouterLink class="lm-nav-link" to="/">{{ t('home') }}</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/collections">{{ t('products') }}</RouterLink></li>
         <li><RouterLink class="lm-nav-link" to="/lookbook">{{ t('lookbook') }}</RouterLink></li>
@@ -41,12 +41,12 @@
           <i class="bi bi-stars"></i>
           <span class="z-new-feature-dot" aria-hidden="true"></span>
         </button>
-        <button type="button" class="lm-nav-icon-btn text-danger" @click="$router.push('/collections?aiSearch=true')" title="Tìm bằng ảnh AI (AI Vision Search)" aria-label="Tìm bằng ảnh AI">
+        <button type="button" class="lm-nav-icon-btn text-danger" @click="$router.push('/collections?aiSearch=true')" title="Tìm sản phẩm theo màu từ ảnh" aria-label="Tìm sản phẩm theo màu từ ảnh">
           <i class="bi bi-camera-fill"></i>
         </button>
 
         <!-- Notifications Dropdown -->
-        <div class="position-relative d-inline-block z-notif-container">
+        <div v-if="!isStaffUser" class="position-relative d-inline-block z-notif-container">
           <button type="button" class="lm-nav-icon-btn" @click="toggleNotifs" :title="t('notifications')" :aria-label="t('notifications')" :aria-expanded="notifOpen">
             <i class="bi bi-bell"></i>
             <span v-if="unreadCount > 0" class="lm-cart-badge" style="background:var(--z-accent)">{{ unreadCount }}</span>
@@ -55,7 +55,7 @@
           <div v-if="notifOpen" class="z-notif-dropdown shadow">
             <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
               <strong style="font-size:12px;color:var(--z-dark)">{{ t('notifTitle') }}</strong>
-              <button @click="markAllAsRead" style="border:none;background:none;font-size:11px;color:var(--z-accent);font-weight:600;cursor:pointer">{{ t('notifMarkAll') }}</button>
+              <button type="button" class="z-text-action" @click="markAllAsRead">{{ t('notifMarkAll') }}</button>
             </div>
             <div class="z-notif-list">
               <div v-if="loadingNotif" class="text-center py-4">
@@ -88,7 +88,7 @@
         <button type="button" class="lm-nav-icon-btn d-none d-md-flex" @click="$router.push('/profile')" :title="t('account')" :aria-label="t('account')">
           <i class="bi bi-person"></i>
         </button>
-        <button type="button" class="lm-nav-icon-btn d-xl-none" @click="mobileOpen = !mobileOpen" :title="t('menu')" :aria-label="t('menu')" :aria-expanded="mobileOpen">
+        <button type="button" class="lm-nav-icon-btn d-xxl-none" @click="mobileOpen = !mobileOpen" :title="t('menu')" :aria-label="t('menu')" :aria-expanded="mobileOpen">
           <i class="bi" :class="mobileOpen ? 'bi-x-lg' : 'bi-list'"></i>
         </button>
       </div>
@@ -131,8 +131,7 @@
         <input ref="searchInput" class="z-search-input" v-model="searchQuery"
                :placeholder="t('searchPlaceholder')"
                @keydown.enter="doSearch" @keydown.esc="searchOpen = false">
-        <button v-if="searchQuery" type="button" :aria-label="t('clearSearch')" @click="searchQuery = ''"
-                style="border:none;background:none;cursor:pointer;color:var(--z-gray);font-size:18px">
+        <button v-if="searchQuery" type="button" class="z-input-icon-btn" :aria-label="t('clearSearch')" @click="searchQuery = ''">
           <i class="bi bi-x-lg"></i>
         </button>
       </div>
@@ -206,7 +205,7 @@ const searchQuery = ref('')
 const searchInput = ref(null)
 
 onMounted(() => {
-  loadProducts()
+  loadProducts().catch(() => {})
   fetchNotifs()
 })
 
@@ -248,12 +247,14 @@ onMounted(() => {
   window.addEventListener('scroll', onScroll)
   window.addEventListener('notifs-changed', fetchNotifs)
   window.addEventListener('zestia-auth-changed', fetchNotifs)
+  window.addEventListener('zestia-close-notifications', closeNotifications)
 })
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
   document.removeEventListener('click', closeNotifsOutside)
   window.removeEventListener('notifs-changed', fetchNotifs)
   window.removeEventListener('zestia-auth-changed', fetchNotifs)
+  window.removeEventListener('zestia-close-notifications', closeNotifications)
 })
 
 // Notifications State & Actions
@@ -261,23 +262,33 @@ const notifOpen = ref(false)
 const notifs = ref([])
 const loadingNotif = ref(false)
 const activeNotifDetail = ref(null)
+const notifUnreadTotal = ref(0)
 
 const unreadCount = computed(() => {
-  return notifs.value.filter(n => !n.read).length
+  return isLoggedIn() ? notifUnreadTotal.value : notifs.value.filter(n => !n.read).length
 })
 
 async function fetchNotifs() {
+  if (isStaffUser.value) {
+    notifs.value = []
+    notifUnreadTotal.value = 0
+    return
+  }
   loadingNotif.value = true
   try {
     const authenticated = isLoggedIn()
-    const list = authenticated
-      ? await api().getCustomerNotifications()
-      : await api().getThongBaoActive()
+    const data = authenticated
+      ? await api().getCustomerNotifications({ page: 0, size: 6 })
+      : await api().getThongBaoActive({ page: 0, size: 6 })
+    const list = Array.isArray(data.content) ? data.content : []
     const guestReadIds = authenticated ? new Set() : loadGuestReadIds()
     notifs.value = list.map(n => ({
       ...n,
-      read: authenticated ? Boolean(n.read) : guestReadIds.has(n.id)
+      read: authenticated ? Boolean(n.read) : isGuestNotificationRead(n, guestReadIds)
     }))
+    notifUnreadTotal.value = authenticated
+      ? Number(data.unreadCount || 0)
+      : notifs.value.filter(n => !n.read).length
   } catch (e) {
     console.error('Lỗi khi tải thông báo', e)
   } finally {
@@ -288,6 +299,7 @@ async function fetchNotifs() {
 function toggleNotifs() {
   notifOpen.value = !notifOpen.value
   if (notifOpen.value) {
+    window.dispatchEvent(new Event('zestia-close-customer-chat'))
     fetchNotifs()
     setTimeout(() => {
       document.addEventListener('click', closeNotifsOutside)
@@ -295,6 +307,11 @@ function toggleNotifs() {
   } else {
     document.removeEventListener('click', closeNotifsOutside)
   }
+}
+
+function closeNotifications() {
+  notifOpen.value = false
+  document.removeEventListener('click', closeNotifsOutside)
 }
 
 function closeNotifsOutside(e) {
@@ -308,8 +325,9 @@ function closeNotifsOutside(e) {
 async function markAllAsRead() {
   try {
     if (isLoggedIn()) await api().markAllCustomerNotificationsRead()
-    else saveGuestReadIds(notifs.value.map(n => n.id))
+    else saveGuestReadBefore(new Date().toISOString())
     notifs.value.forEach(n => { n.read = true })
+    notifUnreadTotal.value = 0
     window.dispatchEvent(new Event('notifs-changed'))
   } catch (e) {
     console.error('Không thể đánh dấu thông báo', e)
@@ -320,10 +338,12 @@ function viewNotif(n) {
   if (!n.read) {
     n.read = true
     if (isLoggedIn()) {
+      notifUnreadTotal.value = Math.max(0, notifUnreadTotal.value - 1)
       api().markCustomerNotificationRead(n.id)
         .then(() => window.dispatchEvent(new Event('notifs-changed')))
         .catch(e => {
           n.read = false
+          notifUnreadTotal.value++
           console.error('Không thể đánh dấu thông báo', e)
         })
     } else {
@@ -374,6 +394,17 @@ function loadGuestReadIds() {
 
 function saveGuestReadIds(ids) {
   sessionStorage.setItem('zestia_guest_read_notifications', JSON.stringify([...new Set(ids.map(Number))]))
+}
+
+function isGuestNotificationRead(notification, readIds = loadGuestReadIds()) {
+  if (readIds.has(Number(notification.id))) return true
+  const readBefore = Date.parse(sessionStorage.getItem('zestia_guest_notifications_read_before') || '')
+  const createdAt = Date.parse(notification.ngayTao || '')
+  return Number.isFinite(readBefore) && Number.isFinite(createdAt) && createdAt <= readBefore
+}
+
+function saveGuestReadBefore(value) {
+  sessionStorage.setItem('zestia_guest_notifications_read_before', value)
 }
 </script>
 

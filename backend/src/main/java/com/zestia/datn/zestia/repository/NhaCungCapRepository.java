@@ -4,4 +4,6 @@ import com.zestia.datn.zestia.entity.NhaCungCap;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NhaCungCapRepository extends JpaRepository<NhaCungCap, Integer> {
+    boolean existsByTenNhaCungCapIgnoreCase(String name);
+    boolean existsByTenNhaCungCapIgnoreCaseAndIdNot(String name, Integer id);
 }

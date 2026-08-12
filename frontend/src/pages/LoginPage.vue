@@ -73,8 +73,7 @@
               <label class="lm-form-label d-block mb-2">Mật khẩu</label>
               <input class="lm-input" v-model="password" :type="showPw ? 'text' : 'password'" placeholder="••••••••" aria-label="Mật khẩu"
                      @keydown.enter="doLogin">
-              <button type="button" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw"
-                      style="position:absolute;right:14px;bottom:12px;border:none;background:none;cursor:pointer;color:var(--z-gray-light)">
+              <button type="button" class="z-password-toggle" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw">
                 <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'" style="font-size:16px"></i>
               </button>
             </div>
@@ -126,8 +125,7 @@
               <label class="lm-form-label d-block mb-2">Mật khẩu</label>
               <input class="lm-input" v-model="regForm.matKhau" :type="showPw ? 'text' : 'password'" placeholder="Tối thiểu 8 ký tự, gồm chữ và số" aria-label="Mật khẩu đăng ký"
                      @keydown.enter="doRegister">
-              <button type="button" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw"
-                      style="position:absolute;right:14px;bottom:12px;border:none;background:none;cursor:pointer;color:var(--z-gray-light)">
+              <button type="button" class="z-password-toggle" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw">
                 <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'" style="font-size:16px"></i>
               </button>
             </div>
@@ -190,8 +188,7 @@
               <label class="lm-form-label d-block mb-2">Mật khẩu mới</label>
               <input class="lm-input" v-model="resetPassword" :type="showPw ? 'text' : 'password'" placeholder="Tối thiểu 8 ký tự, gồm chữ và số" aria-label="Mật khẩu mới"
                      @keydown.enter="doResetPassword">
-              <button type="button" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw"
-                      style="position:absolute;right:14px;bottom:12px;border:none;background:none;cursor:pointer;color:var(--z-gray-light)">
+              <button type="button" class="z-password-toggle" :aria-label="showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'" @click="showPw = !showPw">
                 <i class="bi" :class="showPw ? 'bi-eye-slash' : 'bi-eye'" style="font-size:16px"></i>
               </button>
             </div>
@@ -262,7 +259,7 @@ const googleCredentialHandler = response => handleGoogleCredential(response)
 
 const roles = [
   { key: 'customer', label: 'Khách hàng', icon: 'bi-person' },
-  { key: 'employee', label: 'Nhân viên', icon: 'bi-shield-lock' },
+  { key: 'staff', label: 'Nhân viên', icon: 'bi-shield-lock' },
 ]
 
 const features = [
@@ -325,13 +322,13 @@ async function doLogin() {
   error.value = ''
   loading.value = true
   try {
-    const data = await api().login(username.value, password.value)
+    const data = await api().login(username.value, password.value, loginRole.value)
     saveLogin(data)
     
     const isStaff = ['Admin', 'NhanVien', 'Nhân viên'].includes(data.role)
     const redirectPath = route.query.redirect ? String(route.query.redirect) : ''
     if (isStaff) {
-      showToast('Đăng nhập thành công — Chào mừng đến với Admin!')
+      showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')
       await router.replace('/admin')
     } else if (redirectPath && !redirectPath.startsWith('/admin')) {
       showToast('Đăng nhập thành công — Chào mừng ' + (data.hoVaTen || data.username) + '!')

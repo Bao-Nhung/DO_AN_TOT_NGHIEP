@@ -2,23 +2,21 @@
   <AdminLayout>
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
       <div>
-        <h1 class="z-display mb-1" style="font-size:26px;font-weight:600;color:var(--z-dark)">Báo cáo & Phân tích kinh doanh</h1>
-        <p style="font-size:14px;color:var(--z-gray);margin:0">Theo dõi doanh thu, hiệu suất đơn hàng, xu hướng sản phẩm & khách hàng thời gian thực</p>
+        <h1 class="z-display mb-1 page-title">Báo cáo & Phân tích kinh doanh</h1>
+        <p class="page-subtitle">Số liệu được tổng hợp từ các đơn hàng hoàn thành trong khoảng đã chọn.</p>
       </div>
       <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-dark btn-sm d-flex align-items-center gap-2" @click="exportReportExcel">
-          <i class="bi bi-file-earmark-excel"></i> Xuất Báo Cáo Excel
+        <button type="button" class="btn btn-outline-dark btn-sm d-flex align-items-center gap-2" :disabled="loading || !hasData" @click="exportCsv">
+          <i class="bi bi-file-earmark-spreadsheet"></i> Xuất CSV
         </button>
-        <button type="button" class="btn btn-dark btn-sm d-flex align-items-center gap-2" @click="printReport">
-          <i class="bi bi-printer"></i> In Báo Cáo
+        <button type="button" class="btn btn-dark btn-sm d-flex align-items-center gap-2" :disabled="loading" @click="printReport">
+          <i class="bi bi-printer"></i> In báo cáo
         </button>
       </div>
     </div>
 
-    <!-- Thanh Lọc Thời Gian Nhanh & Tùy Chỉnh -->
-    <div class="z-admin-card mb-4" style="padding:16px 20px">
+    <div class="z-admin-card mb-4 filter-panel">
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <!-- Quick Preset Chips -->
         <div class="d-flex gap-2 flex-wrap">
           <button
             v-for="preset in presets"
@@ -26,168 +24,123 @@
             type="button"
             class="lm-filter-tag"
             :class="{ active: activePreset === preset.id }"
-            style="padding:6px 14px;font-size:12px;font-weight:600"
             @click="applyPreset(preset.id)"
           >
             <i class="bi" :class="preset.icon"></i> {{ preset.label }}
           </button>
         </div>
 
-        <!-- Custom Date Range inputs -->
         <div class="d-flex align-items-center gap-2 flex-wrap">
-          <select v-model="filter.timeType" class="form-select form-select-sm" style="width:130px;font-size:12px">
-            <option value="ngay">Theo ngày</option>
-            <option value="thang">Theo tháng</option>
+          <input v-model="filter.startDate" type="date" class="form-control form-control-sm date-input" aria-label="Từ ngày" @change="activePreset = ''" />
+          <span class="text-muted small">đến</span>
+          <input v-model="filter.endDate" type="date" class="form-control form-control-sm date-input" aria-label="Đến ngày" @change="activePreset = ''" />
+          <select v-model="filter.timeType" class="form-select form-select-sm grouping-select" aria-label="Cách nhóm biểu đồ">
+            <option value="ngay">Nhóm theo ngày</option>
+            <option value="thang">Nhóm theo tháng</option>
           </select>
-
-          <template v-if="filter.timeType === 'ngay'">
-            <input type="date" v-model="filter.startDate" class="form-control form-control-sm" style="width:140px;font-size:12px" />
-            <span style="font-size:12px;color:#999">-</span>
-            <input type="date" v-model="filter.endDate" class="form-control form-control-sm" style="width:140px;font-size:12px" />
-          </template>
-          <template v-else>
-            <input type="month" v-model="filter.startMonth" class="form-control form-control-sm" style="width:140px;font-size:12px" />
-            <span style="font-size:12px;color:#999">-</span>
-            <input type="month" v-model="filter.endMonth" class="form-control form-control-sm" style="width:140px;font-size:12px" />
-          </template>
-
-          <button class="btn btn-dark btn-sm" style="font-size:12px" @click="loadThongKe">
-            <i class="bi bi-filter"></i> Lọc
+          <button class="btn btn-dark btn-sm" :disabled="loading" @click="loadThongKe">
+            <span v-if="loading" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+            <i v-else class="bi bi-filter me-1"></i>Lọc
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 4 THẺ KPI CHÍNH CÓ MINI TREND PILLS -->
+    <div v-if="errorMessage" class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+      <i class="bi bi-exclamation-circle"></i>
+      <span>{{ errorMessage }}</span>
+      <button type="button" class="btn btn-sm btn-outline-danger ms-auto" @click="loadThongKe">Thử lại</button>
+    </div>
+
     <div class="row g-3 mb-4">
-      <div class="col-12 col-sm-6 col-xl-3" v-for="item in kpiCards" :key="item.label">
+      <div v-for="item in kpiCards" :key="item.label" class="col-12 col-sm-6 col-xl-3">
         <div class="card-box h-100">
           <div class="d-flex align-items-center justify-content-between mb-2">
-            <span class="text-muted" style="font-size:13px;font-weight:600">{{ item.label }}</span>
+            <span class="kpi-label">{{ item.label }}</span>
             <div class="z-stat-icon-wrap" :style="{ background: item.bg, color: item.color }">
               <i class="bi" :class="item.icon"></i>
             </div>
           </div>
-          <h2 style="font-size:24px;font-weight:700;color:#111;margin-bottom:8px">{{ item.value }}</h2>
-          <div class="d-flex align-items-center gap-2">
-            <span class="badge" :class="item.isPositive ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'" style="font-size:11px">
-              <i class="bi" :class="item.isPositive ? 'bi-arrow-up-right' : 'bi-arrow-down-right'"></i> {{ item.trend }}
-            </span>
-            <span class="text-muted" style="font-size:11px">so với kỳ trước</span>
-          </div>
+          <h2 class="kpi-value">{{ item.value }}</h2>
+          <span class="text-muted small">{{ item.note }}</span>
         </div>
       </div>
     </div>
 
-    <!-- HÀNG BIỂU ĐỒ CHÍNH (DOANH THU & KHÁCH HÀNG) -->
     <div class="row g-4 mb-4">
       <div class="col-lg-8">
         <div class="chart-box h-100">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h3 class="m-0" style="font-size:16px;font-weight:700">Xu hướng Doanh thu</h3>
-              <small class="text-muted" style="font-size:12px">Đơn vị: VNĐ</small>
-            </div>
-            <span class="badge bg-light text-dark border">Cập nhật realtime</span>
+          <div class="mb-3">
+            <h3 class="section-title">Xu hướng doanh thu</h3>
+            <small class="text-muted">Đơn vị: VNĐ</small>
           </div>
-          <div class="chart">
-            <LineChartUI v-if="lineRevenue.labels.length" :chartData="lineRevenue" />
-          </div>
+          <div v-if="lineRevenue.labels.length" class="chart"><LineChartUI :chartData="lineRevenue" /></div>
+          <div v-else class="empty-chart">Chưa có doanh thu trong khoảng thời gian này.</div>
         </div>
       </div>
-
       <div class="col-lg-4">
         <div class="chart-box h-100">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <h3 class="m-0" style="font-size:16px;font-weight:700">Doanh thu Theo Danh Mục</h3>
-          </div>
-          <div class="chart small">
-            <PieChartUI v-if="pieCategory.labels.length" :chartData="pieCategory" />
-          </div>
+          <h3 class="section-title mb-3">Doanh thu theo danh mục</h3>
+          <div v-if="pieCategory.labels.length" class="chart chart-small"><PieChartUI :chartData="pieCategory" /></div>
+          <div v-else class="empty-chart">Chưa có dữ liệu danh mục.</div>
         </div>
       </div>
     </div>
 
-    <!-- BẢNG TOP SẢN PHẨM BÁN CHẠY NHẤT (RICH RANKING TABLE) -->
-    <div class="z-admin-card mb-4" style="padding:22px">
+    <div class="z-admin-card mb-4 table-card">
       <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
-          <h3 style="font-size:17px;font-weight:700;margin:0">Bảng Xếp Hạng Top Sản Phẩm Bán Chạy</h3>
-          <p style="font-size:12px;color:var(--z-gray);margin-top:2px">Thống kê số lượng bán ra và tổng đóng góp doanh thu</p>
+          <h3 class="section-title">Top sản phẩm bán chạy</h3>
+          <p class="section-note">Chỉ tính các đơn đã hoàn thành trong khoảng đã chọn.</p>
         </div>
-        <RouterLink to="/admin/products" class="btn btn-outline-dark btn-sm style-btn">Xem tất cả kho</RouterLink>
+        <RouterLink to="/admin/products" class="btn btn-outline-dark btn-sm">Xem kho</RouterLink>
       </div>
 
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" style="font-size:13px">
+        <table class="table table-hover align-middle mb-0 report-table">
           <thead class="table-light">
             <tr>
-              <th style="width:60px">Hạng</th>
-              <th>Sản phẩm</th>
-              <th>Danh mục</th>
-              <th>Giá bán</th>
-              <th class="text-center">Đã bán</th>
-              <th>Doanh thu đóng góp</th>
-              <th>Tỷ trọng</th>
+              <th>Hạng</th><th>Sản phẩm</th><th>Danh mục</th><th>Giá hiện tại</th>
+              <th class="text-center">Đã bán</th><th>Doanh thu sản phẩm</th><th>Tỷ trọng top 5</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(prod, index) in topSellingProductsList" :key="prod.id || index">
-              <td>
-                <span
-                  class="badge rounded-pill"
-                  :class="index === 0 ? 'bg-warning text-dark' : (index === 1 ? 'bg-secondary text-white' : (index === 2 ? 'bg-danger text-white' : 'bg-light text-dark border'))"
-                  style="font-size:12px;padding:5px 10px"
-                >
-                  #{{ index + 1 }}
-                </span>
-              </td>
+            <tr v-for="(prod, index) in topSellingProductsList" :key="prod.id || prod.code || index">
+              <td>#{{ index + 1 }}</td>
               <td>
                 <div class="d-flex align-items-center gap-3">
-                  <img :src="prod.image" :alt="prod.name" style="width:40px;height:50px;object-fit:cover;border-radius:6px;background:#f5f5f5" @error="onImgErr" />
-                  <div>
-                    <strong style="color:var(--z-dark)">{{ prod.name }}</strong>
-                    <div style="font-size:11px;color:#888">Mã: {{ prod.code }}</div>
-                  </div>
+                  <img v-if="prod.image" :src="prod.image" :alt="prod.name" class="product-thumb" @error="prod.image = ''" />
+                  <div v-else class="product-placeholder" aria-hidden="true"><i class="bi bi-image"></i></div>
+                  <div><strong>{{ prod.name }}</strong><div class="product-code">Mã: {{ prod.code || '—' }}</div></div>
                 </div>
               </td>
-              <td><span class="badge bg-light text-dark border">{{ prod.category }}</span></td>
-              <td><strong>{{ formatMoney(prod.price) }}</strong></td>
-              <td class="text-center">
-                <span class="badge bg-dark text-white" style="font-size:12px;padding:6px 12px">{{ prod.sold }} chiếc</span>
-              </td>
-              <td style="color:var(--z-accent);font-weight:700">{{ formatMoney(prod.revenue) }}</td>
-              <td style="width:160px">
-                <div class="d-flex align-items-center gap-2">
-                  <div class="progress flex-grow-1" style="height:6px">
-                    <div class="progress-bar bg-dark" :style="{ width: prod.share + '%' }"></div>
-                  </div>
-                  <span style="font-size:11px;font-weight:600;color:#666">{{ prod.share }}%</span>
-                </div>
-              </td>
+              <td>{{ prod.category || 'Chưa phân loại' }}</td>
+              <td>{{ formatMoney(prod.price) }}</td>
+              <td class="text-center"><strong>{{ formatNumber(prod.sold) }}</strong></td>
+              <td class="revenue-cell">{{ formatMoney(prod.revenue) }}</td>
+              <td>{{ formatPercent(prod.share) }}</td>
+            </tr>
+            <tr v-if="!topSellingProductsList.length">
+              <td colspan="7" class="text-center text-muted py-4">Chưa có sản phẩm bán ra trong khoảng thời gian này.</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- HÀNG BIỂU ĐỒ SIZE & MÀU SẮC -->
     <div class="row g-4 mb-4">
       <div class="col-lg-6">
         <div class="chart-box h-100">
-          <h3 style="font-size:16px;font-weight:700" class="mb-3">Tỷ lệ bán theo Kích thước (Size)</h3>
-          <div class="chart">
-            <BarChartUI v-if="barSize.labels.length" :chartData="barSize" />
-          </div>
+          <h3 class="section-title mb-3">Số lượng bán theo kích thước</h3>
+          <div v-if="barSize.labels.length" class="chart"><BarChartUI :chartData="barSize" /></div>
+          <div v-else class="empty-chart">Chưa có dữ liệu kích thước.</div>
         </div>
       </div>
-
       <div class="col-lg-6">
         <div class="chart-box h-100">
-          <h3 style="font-size:16px;font-weight:700" class="mb-3">Tỷ lệ bán theo Màu sắc</h3>
-          <div class="chart">
-            <BarChartUI v-if="barColor.labels.length" :chartData="barColor" />
-          </div>
+          <h3 class="section-title mb-3">Số lượng bán theo màu sắc</h3>
+          <div v-if="barColor.labels.length" class="chart"><BarChartUI :chartData="barColor" /></div>
+          <div v-else class="empty-chart">Chưa có dữ liệu màu sắc.</div>
         </div>
       </div>
     </div>
@@ -195,235 +148,232 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import AdminLayout from "@/components/layout/AdminLayout.vue";
-import { api } from "@/composables/useApi";
-import { useToast } from "@/composables/useToast";
-import LineChartUI from "@/components/charts/LineChartUI.vue";
-import BarChartUI from "@/components/charts/BarChartUI.vue";
-import PieChartUI from "@/components/charts/PieChartUI.vue";
+import { computed, onMounted, ref } from 'vue'
+import AdminLayout from '@/components/layout/AdminLayout.vue'
+import LineChartUI from '@/components/charts/LineChartUI.vue'
+import BarChartUI from '@/components/charts/BarChartUI.vue'
+import PieChartUI from '@/components/charts/PieChartUI.vue'
+import { api } from '@/composables/useApi'
+import { useToast } from '@/composables/useToast'
 
-const { showToast } = useToast();
+const { showToast } = useToast()
+const loading = ref(false)
+const errorMessage = ref('')
+const activePreset = ref('thisMonth')
+const reportData = ref(null)
 
 const presets = [
-  { id: "today", label: "Hôm nay", icon: "bi-calendar-event" },
-  { id: "7days", label: "7 ngày qua", icon: "bi-calendar-week" },
-  { id: "thisMonth", label: "Tháng này", icon: "bi-calendar-month" },
-  { id: "thisQuarter", label: "Quý này", icon: "bi-pie-chart" }
-];
-const activePreset = ref("thisMonth");
+  { id: 'today', label: 'Hôm nay', icon: 'bi-calendar-event' },
+  { id: '7days', label: '7 ngày qua', icon: 'bi-calendar-week' },
+  { id: 'thisMonth', label: 'Tháng này', icon: 'bi-calendar-month' },
+  { id: 'thisQuarter', label: 'Quý này', icon: 'bi-pie-chart' }
+]
 
-const initDates = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const date = String(now.getDate()).padStart(2, "0");
+const toDateInput = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
-  return {
-    startDate: `${year}-${month}-01`,
-    endDate: `${year}-${month}-${date}`,
-    startMonth: `${year}-${month}`,
-    endMonth: `${year}-${month}`,
-    timeType: "ngay",
-  };
-};
+const today = new Date()
+const filter = ref({
+  startDate: toDateInput(new Date(today.getFullYear(), today.getMonth(), 1)),
+  endDate: toDateInput(today),
+  timeType: 'ngay'
+})
 
-const filter = ref(initDates());
+const kpiCards = ref([])
+const lineRevenue = ref({ labels: [], datasets: [] })
+const barSize = ref({ labels: [], datasets: [] })
+const barColor = ref({ labels: [], datasets: [] })
+const pieCategory = ref({ labels: [], datasets: [] })
+const topSellingProductsList = ref([])
+const hasData = computed(() => Number(reportData.value?.tongQuan?.tongDonHang || 0) > 0)
 
-const kpiCards = ref([]);
-const lineRevenue = ref({ labels: [], datasets: [] });
-const lineCustomer = ref({ labels: [], datasets: [] });
-const barProduct = ref({ labels: [], datasets: [] });
-const barSize = ref({ labels: [], datasets: [] });
-const barColor = ref({ labels: [], datasets: [] });
-const pieCategory = ref({ labels: [], datasets: [] });
-const topSellingProductsList = ref([]);
+const chartColors = ['#1f2937', '#d4564e', '#2563eb', '#15803d', '#d97706', '#7c3aed', '#0e7490', '#be123c']
 
-const defaultColors = [
-  "#111827", "#D4564E", "#2563EB", "#16A34A", "#F59E0B",
-  "#9333EA", "#0891B2", "#E11D48", "#0F766E", "#7C3AED"
-];
+function applyPreset(id) {
+  activePreset.value = id
+  const now = new Date()
+  let start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (id === '7days') start.setDate(start.getDate() - 6)
+  if (id === 'thisMonth') start = new Date(now.getFullYear(), now.getMonth(), 1)
+  if (id === 'thisQuarter') start = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
+  filter.value.startDate = toDateInput(start)
+  filter.value.endDate = toDateInput(now)
+  filter.value.timeType = id === 'thisQuarter' ? 'thang' : 'ngay'
+  loadThongKe()
+}
 
-function applyPreset(presetId) {
-  activePreset.value = presetId;
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const date = String(now.getDate()).padStart(2, "0");
+function endExclusive(dateText) {
+  const [year, month, day] = dateText.split('-').map(Number)
+  const date = new Date(year, month - 1, day + 1)
+  return `${toDateInput(date)}T00:00`
+}
 
-  if (presetId === "today") {
-    filter.value.timeType = "ngay";
-    filter.value.startDate = `${year}-${month}-${date}`;
-    filter.value.endDate = `${year}-${month}-${date}`;
-  } else if (presetId === "7days") {
-    filter.value.timeType = "ngay";
-    const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const pYear = past.getFullYear();
-    const pMonth = String(past.getMonth() + 1).padStart(2, "0");
-    const pDate = String(past.getDate()).padStart(2, "0");
-    filter.value.startDate = `${pYear}-${pMonth}-${pDate}`;
-    filter.value.endDate = `${year}-${month}-${date}`;
-  } else if (presetId === "thisMonth") {
-    filter.value.timeType = "ngay";
-    filter.value.startDate = `${year}-${month}-01`;
-    filter.value.endDate = `${year}-${month}-${date}`;
-  } else if (presetId === "thisQuarter") {
-    filter.value.timeType = "thang";
-    const qMonth = Math.floor(now.getMonth() / 3) * 3 + 1;
-    const qStartMonth = String(qMonth).padStart(2, "0");
-    filter.value.startMonth = `${year}-${qStartMonth}`;
-    filter.value.endMonth = `${year}-${month}`;
+function resetReport() {
+  reportData.value = null
+  kpiCards.value = [
+    makeKpi('Doanh thu thuần', formatMoney(0), 'Đơn đã hoàn thành', 'bi-currency-dollar', '#eef2ff', '#3730a3'),
+    makeKpi('Đơn hàng hoàn tất', '0 / 0', 'Hoàn tất / tổng đơn', 'bi-check-circle', '#ecfdf5', '#047857'),
+    makeKpi('Khách hàng mới', '0', 'Tài khoản tạo trong kỳ', 'bi-people', '#fff7ed', '#c2410c'),
+    makeKpi('Giá trị đơn trung bình', formatMoney(0), 'Trên đơn hoàn tất', 'bi-cart-check', '#fdf2f8', '#be185d')
+  ]
+  lineRevenue.value = { labels: [], datasets: [] }
+  pieCategory.value = { labels: [], datasets: [] }
+  barSize.value = { labels: [], datasets: [] }
+  barColor.value = { labels: [], datasets: [] }
+  topSellingProductsList.value = []
+}
+
+function makeKpi(label, value, note, icon, bg, color) {
+  return { label, value, note, icon, bg, color }
+}
+
+function mapReport(data) {
+  reportData.value = data
+  const total = Number(data?.tongQuan?.tongDonHang || 0)
+  const completed = Number(data?.tongQuan?.donHangThanhCong || 0)
+  const revenue = Number(data?.tongQuan?.doanhThu || 0)
+  const newCustomers = Number(data?.tongQuan?.khachHangMoi || 0)
+  const aov = completed > 0 ? revenue / completed : 0
+
+  kpiCards.value = [
+    makeKpi('Doanh thu thuần', formatMoney(revenue), 'Đơn đã hoàn thành', 'bi-currency-dollar', '#eef2ff', '#3730a3'),
+    makeKpi('Đơn hàng hoàn tất', `${formatNumber(completed)} / ${formatNumber(total)}`, 'Hoàn tất / tổng đơn', 'bi-check-circle', '#ecfdf5', '#047857'),
+    makeKpi('Khách hàng mới', formatNumber(newCustomers), 'Tài khoản tạo trong kỳ', 'bi-people', '#fff7ed', '#c2410c'),
+    makeKpi('Giá trị đơn trung bình', formatMoney(aov), 'Trên đơn hoàn tất', 'bi-cart-check', '#fdf2f8', '#be185d')
+  ]
+
+  const revenueTimeline = data?.doanhThuTheoThoiGian || []
+  lineRevenue.value = {
+    labels: revenueTimeline.map((item) => item.thoiGian),
+    datasets: [{ label: 'Doanh thu', data: revenueTimeline.map((item) => Number(item.doanhThu || 0)), borderWidth: 3, borderColor: '#1f2937', backgroundColor: '#1f2937' }]
   }
-  loadThongKe();
-}
 
-function onImgErr(e) {
-  e.target.src = "/images/products/shirt1.jpg";
-}
+  const categories = data?.doanhThuDanhMuc || []
+  pieCategory.value = {
+    labels: categories.map((item) => item.tenDanhMuc),
+    datasets: [{ data: categories.map((item) => Number(item.tongDoanhThu || 0)), backgroundColor: chartColors, borderWidth: 2 }]
+  }
 
-function exportReportExcel() {
-  showToast("Đã khởi tạo lệnh xuất báo cáo doanh thu Excel!");
-}
+  const sizes = data?.theoSize || []
+  barSize.value = {
+    labels: sizes.map((item) => item.ten),
+    datasets: [{ label: 'Số lượng bán', data: sizes.map((item) => Number(item.tongSoLuong || 0)), backgroundColor: '#1f2937', borderWidth: 0 }]
+  }
 
-function printReport() {
-  window.print();
+  const colors = data?.theoMau || []
+  barColor.value = {
+    labels: colors.map((item) => item.ten),
+    datasets: [{ label: 'Số lượng bán', data: colors.map((item) => Number(item.tongSoLuong || 0)), backgroundColor: colors.map((item, index) => item.maHex || chartColors[index % chartColors.length]), borderColor: '#d1d5db', borderWidth: 1 }]
+  }
+
+  const top = data?.topSanPham || []
+  const topRevenue = top.reduce((sum, item) => sum + Number(item.doanhThu || 0), 0)
+  topSellingProductsList.value = top.map((item) => ({
+    id: item.id,
+    name: item.ten || 'Sản phẩm',
+    code: item.ma,
+    category: item.danhMuc,
+    price: Number(item.giaBan || 0),
+    sold: Number(item.tongSoLuong || 0),
+    revenue: Number(item.doanhThu || 0),
+    image: item.anhUrl || '',
+    share: topRevenue > 0 ? Number(item.doanhThu || 0) * 100 / topRevenue : 0
+  }))
 }
 
 async function loadThongKe() {
+  if (!filter.value.startDate || !filter.value.endDate || filter.value.startDate > filter.value.endDate) {
+    showToast('Khoảng ngày thống kê không hợp lệ', 'error')
+    return
+  }
+  loading.value = true
+  errorMessage.value = ''
   try {
-    const payload = { timeType: filter.value.timeType };
-    if (filter.value.timeType === "ngay") {
-      payload.startDate = filter.value.startDate;
-      payload.endDate = filter.value.endDate;
-    } else {
-      payload.startMonth = filter.value.startMonth;
-      payload.endMonth = filter.value.endMonth;
-    }
-
-    const data = await api().getThongKe(payload);
-    const t = data.tongQuan;
-
-    kpiCards.value = [
-      { label: "Doanh Thu Thuần", value: formatMoney(t?.doanhThu || 128500000), trend: "+14.2%", isPositive: true, icon: "bi-currency-dollar", bg: "#EFF6FF", color: "#2563EB" },
-      { label: "Đơn Hàng Hoàn Tất", value: `${t?.donHangThanhCong ?? 128} / ${t?.tongDonHang ?? 142}`, trend: "90.1%", isPositive: true, icon: "bi-check-circle", bg: "#F0FDF4", color: "#16A34A" },
-      { label: "Khách Hàng Mới", value: `${t?.khachHangMoi ?? 34} khách`, trend: "+18.5%", isPositive: true, icon: "bi-people", bg: "#F3E8FF", color: "#9333EA" },
-      { label: "Giá Trị Đơn TB (AOV)", value: formatMoney(1003900), trend: "+5.8%", isPositive: true, icon: "bi-cart-check", bg: "#FFF7ED", color: "#EA580C" }
-    ];
-
-    lineRevenue.value = {
-      labels: data.doanhThuLoiNhuan?.map(x => x.thoiGian) || ["T1", "T2", "T3", "T4", "T5", "T6", "T7"],
-      datasets: [{ label: "Doanh thu", data: data.doanhThuLoiNhuan?.map(x => Number(x.doanhThu)) || [12000000, 18000000, 15000000, 22000000, 19000000, 24000000, 28000000], borderWidth: 3, borderColor: "#111827", backgroundColor: "#111827" }]
-    };
-
-    pieCategory.value = {
-      labels: data.doanhThuDanhMuc?.map(x => x.tenDanhMuc) || ["Áo", "Quần & Jeans", "Váy & Đầm", "Phụ kiện", "Trang phục công sở"],
-      datasets: [{ data: data.doanhThuDanhMuc?.map(x => Number(x.tongDoanhThu)) || [35000000, 28000000, 42000000, 15000000, 22000000], backgroundColor: defaultColors, borderWidth: 2 }]
-    };
-
-    barSize.value = {
-      labels: data.theoSize?.map(x => x.ten) || ["S", "M", "L", "XL", "Freesize"],
-      datasets: [{ label: "Số lượng bán", data: data.theoSize?.map(x => x.tongSoLuong) || [45, 68, 32, 12, 25], backgroundColor: ["#0ea5e9", "#14b8a6", "#8b5cf6", "#f97316", "#ef4444"], borderWidth: 1 }]
-    };
-
-    barColor.value = {
-      labels: data.theoMau?.map(x => x.ten) || ["Trắng", "Đen", "Xanh Jeans", "Đỏ Đô", "Hồng Nude"],
-      datasets: [{ label: "Số lượng bán", data: data.theoMau?.map(x => x.tongSoLuong) || [52, 44, 38, 26, 22], backgroundColor: ["#ffffff", "#000000", "#4A6B82", "#800020", "#FFC0CB"], borderColor: "#d1d5db", borderWidth: 1 }]
-    };
-
-    setupTopProducts(data.topSanPham);
-  } catch (e) {
-    setupFallbackData();
+    const data = await api().getThongKeTongHop({
+      startDate: `${filter.value.startDate}T00:00`,
+      endDate: endExclusive(filter.value.endDate),
+      timeType: filter.value.timeType
+    })
+    mapReport(data)
+  } catch (error) {
+    resetReport()
+    errorMessage.value = error?.message || 'Không thể tải báo cáo lúc này.'
+  } finally {
+    loading.value = false
   }
 }
 
-function setupTopProducts(apiTop) {
-  if (apiTop && apiTop.length) {
-    topSellingProductsList.value = apiTop.map((p, idx) => ({
-      id: p.id || idx + 1,
-      name: p.ten || "Sản phẩm Zestia",
-      code: p.ma || `SP00${idx + 1}`,
-      category: p.danhMuc || "Thời trang",
-      price: p.giaBan || 890000,
-      sold: p.tongSoLuong || (50 - idx * 6),
-      revenue: p.tongDoanhThu || ((50 - idx * 6) * 890000),
-      image: p.anhUrl || `/images/products/shirt${idx + 1}.jpg`,
-      share: Math.max(10, 35 - idx * 5)
-    }));
-  } else {
-    setupDefaultTopProducts();
-  }
+function csvCell(value) {
+  return `"${String(value ?? '').replaceAll('"', '""')}"`
 }
 
-function setupDefaultTopProducts() {
-  topSellingProductsList.value = [
-    { id: 1, name: "Áo Sơ Mi Lụa Cổ Điển", code: "ASM001", category: "Áo thời trang", price: 2890000, sold: 48, revenue: 138720000, image: "/images/products/shirt1.jpg", share: 32 },
-    { id: 2, name: "Váy Dạ Hội Gấm Hoàng Gia", code: "VDH001", category: "Váy & Đầm", price: 4290000, sold: 29, revenue: 124410000, image: "/images/products/dress1.jpg", share: 28 },
-    { id: 3, name: "Quần Jeans Wide Leg Thời Trang", code: "QJN001", category: "Quần & Jeans", price: 1590000, sold: 42, revenue: 66780000, image: "/images/products/pants1.jpg", share: 18 },
-    { id: 4, name: "Túi Xách Da Nữ Zestia Premium", code: "PKT001", category: "Phụ kiện", price: 1290000, sold: 25, revenue: 32250000, image: "/images/products/accessories1.jpg", share: 12 },
-    { id: 5, name: "Set Áo Blazer & Quần Tây Công Sở", code: "TCS001", category: "Công sở", price: 1390000, sold: 21, revenue: 29190000, image: "/images/products/shirt5.jpg", share: 10 }
-  ];
+function exportCsv() {
+  const rows = [
+    ['BÁO CÁO KINH DOANH ZESTIA'],
+    [`Từ ${filter.value.startDate} đến ${filter.value.endDate}`],
+    [],
+    ['Chỉ số', 'Giá trị'],
+    ...kpiCards.value.map((item) => [item.label, item.value]),
+    [],
+    ['Hạng', 'Mã sản phẩm', 'Tên sản phẩm', 'Danh mục', 'Giá hiện tại', 'Đã bán', 'Doanh thu sản phẩm'],
+    ...topSellingProductsList.value.map((item, index) => [index + 1, item.code, item.name, item.category, item.price, item.sold, item.revenue])
+  ]
+  const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `bao-cao-kinh-doanh-${filter.value.startDate}-${filter.value.endDate}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
-function setupFallbackData() {
-  kpiCards.value = [
-    { label: "Doanh Thu Thuần", value: "128.500.000 ₫", trend: "+14.2%", isPositive: true, icon: "bi-currency-dollar", bg: "#EFF6FF", color: "#2563EB" },
-    { label: "Đơn Hàng Hoàn Tất", value: "128 / 142", trend: "90.1%", isPositive: true, icon: "bi-check-circle", bg: "#F0FDF4", color: "#16A34A" },
-    { label: "Khách Hàng Mới", value: "34 khách", trend: "+18.5%", isPositive: true, icon: "bi-people", bg: "#F3E8FF", color: "#9333EA" },
-    { label: "Giá Trị Đơn TB (AOV)", value: "1.003.900 ₫", trend: "+5.8%", isPositive: true, icon: "bi-cart-check", bg: "#FFF7ED", color: "#EA580C" }
-  ];
-
-  lineRevenue.value = {
-    labels: ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7"],
-    datasets: [{ label: "Doanh thu", data: [12000000, 18000000, 15000000, 22000000, 19000000, 24000000, 28000000], borderWidth: 3, borderColor: "#111827", backgroundColor: "#111827" }]
-  };
-
-  pieCategory.value = {
-    labels: ["Áo thời trang", "Quần & Jeans", "Váy & Đầm", "Phụ kiện thời trang", "Trang phục công sở"],
-    datasets: [{ data: [35000000, 28000000, 42000000, 15000000, 22000000], backgroundColor: defaultColors, borderWidth: 2 }]
-  };
-
-  barSize.value = {
-    labels: ["S", "M", "L", "XL", "Freesize"],
-    datasets: [{ label: "Số lượng bán", data: [45, 68, 32, 12, 25], backgroundColor: ["#0ea5e9", "#14b8a6", "#8b5cf6", "#f97316", "#ef4444"], borderWidth: 1 }]
-  };
-
-  barColor.value = {
-    labels: ["Trắng", "Đen", "Xanh Jeans", "Đỏ Đô", "Hồng Nude"],
-    datasets: [{ label: "Số lượng bán", data: [52, 44, 38, 26, 22], backgroundColor: ["#ffffff", "#000000", "#4A6B82", "#800020", "#FFC0CB"], borderColor: "#d1d5db", borderWidth: 1 }]
-  };
-
-  setupDefaultTopProducts();
+function printReport() {
+  window.print()
 }
 
 function formatMoney(value) {
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value || 0);
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Number(value || 0))
 }
 
-onMounted(() => {
-  loadThongKe();
-});
+function formatNumber(value) {
+  return new Intl.NumberFormat('vi-VN').format(Number(value || 0))
+}
+
+function formatPercent(value) {
+  return `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(Number(value || 0))}%`
+}
+
+resetReport()
+onMounted(loadThongKe)
 </script>
 
 <style scoped>
-.card-box {
-  background: white;
-  padding: 20px;
-  border-radius: var(--z-radius-lg);
-  border: 1px solid #eee;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-.z-stat-icon-wrap {
-  width: 40px; height: 40px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-}
-.chart-box {
-  background: white;
-  padding: 22px;
-  border-radius: var(--z-radius-lg);
-  border: 1px solid #eee;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-.chart { height: 350px; }
-.small { height: 300px; }
+.page-title { font-size: 26px; font-weight: 600; color: var(--z-dark); }
+.page-subtitle, .section-note { margin: 0; color: var(--z-gray); font-size: 13px; }
+.filter-panel { padding: 16px 20px; }
+.lm-filter-tag { padding: 6px 14px; font-size: 12px; font-weight: 600; }
+.date-input { width: 142px; }
+.grouping-select { width: 155px; }
+.card-box, .chart-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,.035); }
+.card-box { padding: 20px; }
+.chart-box { padding: 22px; }
+.kpi-label { color: var(--z-gray); font-size: 13px; font-weight: 600; }
+.kpi-value { margin: 0 0 8px; color: #111; font-size: 24px; font-weight: 700; }
+.z-stat-icon-wrap { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.section-title { margin: 0; font-size: 16px; font-weight: 700; }
+.chart { height: 340px; }
+.chart-small { height: 300px; }
+.empty-chart { min-height: 300px; display: grid; place-items: center; color: #6b7280; text-align: center; }
+.table-card { padding: 22px; }
+.report-table { font-size: 13px; }
+.product-thumb, .product-placeholder { width: 40px; height: 50px; border-radius: 6px; background: #f3f4f6; }
+.product-thumb { object-fit: cover; }
+.product-placeholder { display: grid; place-items: center; color: #9ca3af; font-size: 18px; }
+.product-code { margin-top: 2px; color: #6b7280; font-size: 11px; }
+.revenue-cell { color: var(--z-accent); font-weight: 700; }
+@media (max-width: 575px) { .date-input, .grouping-select { width: 100%; } }
 </style>

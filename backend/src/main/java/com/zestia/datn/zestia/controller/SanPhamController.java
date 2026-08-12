@@ -24,10 +24,14 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
-@RequestMapping({"/api/san-pham", "/api/vay"})
+@RequestMapping("/api/san-pham")
 @RequiredArgsConstructor
 @Slf4j
 public class SanPhamController {
+
+    private static final int MAX_VARIANTS_PER_PRODUCT = 200;
+    private static final int MAX_STOCK_PER_VARIANT = 1_000_000;
+    private static final BigDecimal MAX_SELLING_PRICE = new BigDecimal("999999999");
 
     private final SanPhamRepository sanPhamRepo;
     private final SanPhamChiTietRepository sanPhamCtRepo;
@@ -91,7 +95,7 @@ public class SanPhamController {
                     if (!staff && (v.getTrangThai() == null || v.getTrangThai() != 1)) {
                         return ResponseEntity.notFound().build();
                     }
-                    return ResponseEntity.ok(toDetailMap(v));
+                    return ResponseEntity.ok(toDetailMap(v, staff));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -117,7 +121,11 @@ public class SanPhamController {
     }
 
     private static boolean activeVariant(SanPhamChiTiet variant) {
-        return variant != null && (variant.getTrangThai() == null || variant.getTrangThai() == 1);
+        return variant != null && Byte.valueOf((byte) 1).equals(variant.getTrangThai());
+    }
+
+    private static boolean isActive(Byte status) {
+        return Byte.valueOf((byte) 1).equals(status);
     }
 
     private Integer toInt(Object val) {
@@ -133,7 +141,8 @@ public class SanPhamController {
     @PostMapping
     @Transactional
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
-        String productName = cleanText(body.get("tenSanPham") != null ? body.get("tenSanPham") : body.get("tenVay"));
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu sản phẩm không hợp lệ"));
+        String productName = cleanText(body.get("tenSanPham"));
         if (productName == null || productName.length() < 2 || productName.length() > 200) {
             return ResponseEntity.badRequest().body(Map.of("error", "Tên sản phẩm phải có từ 2 đến 200 ký tự"));
         }
@@ -141,17 +150,27 @@ public class SanPhamController {
         if (status == null || (status != 0 && status != 1)) {
             return ResponseEntity.badRequest().body(Map.of("error", "Trạng thái sản phẩm không hợp lệ"));
         }
-        Integer categoryId = toInt(body.get("idLoaiSanPham") != null ? body.get("idLoaiSanPham") : body.get("idLoaiVay"));
+        Integer categoryId = toInt(body.get("idLoaiSanPham"));
         Integer materialId = toInt(body.get("idChatLieu"));
         LoaiSanPham category = categoryId != null ? loaiSanPhamRepo.findById(categoryId).orElse(null) : null;
         ChatLieu material = materialId != null ? chatLieuRepo.findById(materialId).orElse(null) : null;
         if (category == null || material == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng chọn loại sản phẩm và chất liệu hợp lệ"));
         }
+        if (!isActive(category.getTrangThai()) || !isActive(material.getTrangThai())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Không thể dùng danh mục hoặc chất liệu đã ngừng hoạt động"));
+        }
         if (body.get("variants") == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Sản phẩm phải có ít nhất một biến thể màu sắc và kích thước"));
         }
         ResponseEntity<?> validationError = validateVariants(body.get("variants"));
+        if (validationError != null) return validationError;
+        if (status == 1 && !hasActiveVariantAfterUpdate(body.get("variants"), List.of())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Sản phẩm đang bán phải có ít nhất một biến thể đang hoạt động"
+            ));
+        }
+        validationError = validateProductDetails(body);
         if (validationError != null) return validationError;
 
         SanPham v = new SanPham();
@@ -168,6 +187,9 @@ public class SanPhamController {
             NhaCungCap supplier = supplierId != null ? nhaCungCapRepo.findById(supplierId).orElse(null) : null;
             if (supplier == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Nhà cung cấp không tồn tại"));
+            }
+            if (!isActive(supplier.getTrangThai())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Nhà cung cấp đã ngừng hoạt động"));
             }
             v.setNhaCungCap(supplier);
         }
@@ -186,10 +208,8 @@ public class SanPhamController {
                 ct.setMaSanPhamChiTiet(saved.getMaSanPham() + "-" + String.format("%03d", varIdx++));
                 BigDecimal sellingPrice = new BigDecimal(bt.get("giaBan").toString());
                 ct.setGiaBan(sellingPrice);
-                ct.setGiaBanGoc(sellingPrice);
-                ct.setGiaNhap(toDecimal(bt.get("giaNhap")));
                 ct.setAnhUrl(cleanText(bt.get("anhUrl")));
-                int initialStock = bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0;
+                int initialStock = toInt(bt.get("soLuong"));
                 ct.setSoLuong(initialStock);
                 
                 Integer idMau = toInt(bt.get("idMauSac"));
@@ -201,7 +221,8 @@ public class SanPhamController {
                     kichThuocRepo.findById(idKich).ifPresent(ct::setKichThuoc);
                 }
                 
-                ct.setTrangThai((byte) 1);
+                Integer variantStatus = bt.containsKey("trangThai") ? toInt(bt.get("trangThai")) : 1;
+                ct.setTrangThai(variantStatus.byteValue());
                 ct.setNgayTao(LocalDateTime.now());
                 SanPhamChiTiet savedVariant = sanPhamCtRepo.save(ct);
                 inventoryMovementService.record(
@@ -209,17 +230,6 @@ public class SanPhamController {
                         saved.getMaSanPham(), "Admin", "Tạo biến thể sản phẩm"
                 );
             }
-        } else if (body.get("giaBan") != null) {
-            SanPhamChiTiet ct = new SanPhamChiTiet();
-            ct.setSanPham(saved);
-            ct.setMaSanPhamChiTiet(saved.getMaSanPham() + "-001");
-            BigDecimal sellingPrice = new BigDecimal(body.get("giaBan").toString());
-            ct.setGiaBan(sellingPrice);
-            ct.setGiaBanGoc(sellingPrice);
-            ct.setSoLuong(body.get("soLuong") != null ? ((Number) body.get("soLuong")).intValue() : 0);
-            ct.setTrangThai((byte) 1);
-            ct.setNgayTao(LocalDateTime.now());
-            sanPhamCtRepo.save(ct);
         }
 
         saveSizeGuides(saved, body.get("huongDanSize"));
@@ -228,11 +238,16 @@ public class SanPhamController {
 
     @PutMapping("/{id}")
     @Transactional
-    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> update(@PathVariable Integer id,
+                                    @RequestBody Map<String, Object> body,
+                                    Authentication authentication) {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu sản phẩm không hợp lệ"));
         ResponseEntity<?> validationError = validateVariants(body.get("variants"));
         if (validationError != null) return validationError;
-        if (body.containsKey("tenSanPham") || body.containsKey("tenVay")) {
-            String name = cleanText(body.get("tenSanPham") != null ? body.get("tenSanPham") : body.get("tenVay"));
+        validationError = validateProductDetails(body);
+        if (validationError != null) return validationError;
+        if (body.containsKey("tenSanPham")) {
+            String name = cleanText(body.get("tenSanPham"));
             if (name == null || name.length() < 2 || name.length() > 200) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Tên sản phẩm phải có từ 2 đến 200 ký tự"));
             }
@@ -244,113 +259,149 @@ public class SanPhamController {
             }
         }
 
-        return sanPhamRepo.findById(id).map(v -> {
-            if (body.get("tenSanPham") != null) v.setTenSanPham(cleanText(body.get("tenSanPham")));
-            else if (body.get("tenVay") != null) v.setTenSanPham(cleanText(body.get("tenVay")));
-            if (body.get("moTa") != null) v.setMoTa(cleanText(body.get("moTa")));
-            if (body.get("trangThai") != null) v.setTrangThai(toInt(body.get("trangThai")).byteValue());
-            applyFitFields(v, body);
-            if (body.get("idLoaiSanPham") != null) {
-                loaiSanPhamRepo.findById(((Number) body.get("idLoaiSanPham")).intValue()).ifPresent(v::setLoaiSanPham);
-            } else if (body.get("idLoaiVay") != null) {
-                loaiSanPhamRepo.findById(((Number) body.get("idLoaiVay")).intValue()).ifPresent(v::setLoaiSanPham);
-            }
-            if (body.get("idChatLieu") != null) {
-                chatLieuRepo.findById(((Number) body.get("idChatLieu")).intValue()).ifPresent(v::setChatLieu);
-            }
-            if (body.get("idNhaCungCap") != null) {
-                nhaCungCapRepo.findById(((Number) body.get("idNhaCungCap")).intValue()).ifPresent(v::setNhaCungCap);
-            }
-            
-            SanPham saved = sanPhamRepo.save(v);
-            
-            if (body.get("variants") != null) {
-                List<SanPhamChiTiet> oldVariants = sanPhamCtRepo.findBySanPhamId(saved.getId());
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> newVariants = (List<Map<String, Object>>) body.get("variants");
-                
-                Set<Integer> keptIds = new HashSet<>();
-                int varIdx = oldVariants.size() + 1;
-                
-                for (Map<String, Object> bt : newVariants) {
-                    Integer idMau = toInt(bt.get("idMauSac"));
-                    Integer idKich = toInt(bt.get("idKichThuoc"));
-                    
-                    SanPhamChiTiet match = null;
-                    for (SanPhamChiTiet ov : oldVariants) {
-                        Integer ovMau = ov.getMauSac() != null ? ov.getMauSac().getId() : null;
-                        Integer ovKich = ov.getKichThuoc() != null ? ov.getKichThuoc().getId() : null;
-                        if (Objects.equals(ovMau, idMau) && Objects.equals(ovKich, idKich)) {
-                            match = ov;
-                            break;
-                        }
-                    }
-                    
-                    if (match != null) {
-                        BigDecimal sellingPrice = new BigDecimal(bt.get("giaBan").toString());
-                        match.setGiaBan(sellingPrice);
-                        match.setGiaBanGoc(sellingPrice);
-                        if (bt.containsKey("giaNhap")) match.setGiaNhap(toDecimal(bt.get("giaNhap")));
-                        match.setAnhUrl(cleanText(bt.get("anhUrl")));
-                        int beforeStock = Optional.ofNullable(match.getSoLuong()).orElse(0);
-                        int afterStock = bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0;
-                        match.setSoLuong(afterStock);
-                        match.setTrangThai((byte) 1);
-                        sanPhamCtRepo.save(match);
-                        inventoryMovementService.record(
-                                match, beforeStock, afterStock, "DIEU_CHINH_ADMIN",
-                                saved.getMaSanPham(), "Admin", "Cập nhật tồn kho biến thể"
-                        );
-                        keptIds.add(match.getId());
-                    } else {
-                        SanPhamChiTiet ct = new SanPhamChiTiet();
-                        ct.setSanPham(saved);
-                        ct.setMaSanPhamChiTiet(saved.getMaSanPham() + "-" + String.format("%03d", varIdx++));
-                        BigDecimal sellingPrice = new BigDecimal(bt.get("giaBan").toString());
-                        ct.setGiaBan(sellingPrice);
-                        ct.setGiaBanGoc(sellingPrice);
-                        ct.setGiaNhap(toDecimal(bt.get("giaNhap")));
-                        ct.setAnhUrl(cleanText(bt.get("anhUrl")));
-                        int initialStock = bt.get("soLuong") != null ? ((Number) bt.get("soLuong")).intValue() : 0;
-                        ct.setSoLuong(initialStock);
-                        
-                        if (idMau != null) {
-                            mauSacRepo.findById(idMau).ifPresent(ct::setMauSac);
-                        }
-                        if (idKich != null) {
-                            kichThuocRepo.findById(idKich).ifPresent(ct::setKichThuoc);
-                        }
-                        ct.setTrangThai((byte) 1);
-                        ct.setNgayTao(LocalDateTime.now());
-                        SanPhamChiTiet savedCt = sanPhamCtRepo.save(ct);
-                        inventoryMovementService.record(
-                                savedCt, 0, initialStock, "NHAP_KHO_BAN_DAU",
-                                saved.getMaSanPham(), "Admin", "Thêm biến thể sản phẩm"
-                        );
-                        keptIds.add(savedCt.getId());
-                    }
-                }
-                
-                for (SanPhamChiTiet ov : oldVariants) {
-                    if (!keptIds.contains(ov.getId())) {
-                        ov.setTrangThai((byte) 0);
-                        sanPhamCtRepo.save(ov);
-                    }
-                }
-            }
-            
-            saveSizeGuides(saved, body.get("huongDanSize"));
-            return ResponseEntity.ok(toMap(saved));
-        }).orElse(ResponseEntity.notFound().build());
-    }
+        SanPham product = sanPhamRepo.findById(id).orElse(null);
+        if (product == null) return ResponseEntity.notFound().build();
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Integer id) {
-        return sanPhamRepo.findById(id).map(v -> {
-            v.setTrangThai((byte) 0);
-            sanPhamRepo.save(v);
-            return ResponseEntity.ok().build();
-        }).orElse(ResponseEntity.notFound().build());
+        LoaiSanPham category = product.getLoaiSanPham();
+        if (body.containsKey("idLoaiSanPham")) {
+            Integer referenceId = toInt(body.get("idLoaiSanPham"));
+            category = referenceId != null ? loaiSanPhamRepo.findById(referenceId).orElse(null) : null;
+            if (category == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Loại sản phẩm không tồn tại"));
+            }
+            if (!isActive(category.getTrangThai())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Không thể chọn loại sản phẩm đã ngừng hoạt động"));
+            }
+        }
+        ChatLieu material = product.getChatLieu();
+        if (body.containsKey("idChatLieu")) {
+            Integer referenceId = toInt(body.get("idChatLieu"));
+            material = referenceId != null ? chatLieuRepo.findById(referenceId).orElse(null) : null;
+            if (material == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Chất liệu không tồn tại"));
+            }
+            if (!isActive(material.getTrangThai())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Không thể chọn chất liệu đã ngừng hoạt động"));
+            }
+        }
+        NhaCungCap supplier = product.getNhaCungCap();
+        if (body.containsKey("idNhaCungCap")) {
+            Integer referenceId = toInt(body.get("idNhaCungCap"));
+            supplier = referenceId != null ? nhaCungCapRepo.findById(referenceId).orElse(null) : null;
+            if (body.get("idNhaCungCap") != null && referenceId == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Nhà cung cấp không hợp lệ"));
+            }
+            if (referenceId != null && supplier == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Nhà cung cấp không tồn tại"));
+            }
+            if (supplier != null && !isActive(supplier.getTrangThai())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Không thể chọn nhà cung cấp đã ngừng hoạt động"));
+            }
+        }
+
+        boolean variantsProvided = body.get("variants") != null;
+        List<SanPhamChiTiet> oldVariants = variantsProvided
+                ? sanPhamCtRepo.findBySanPhamIdForUpdate(id)
+                : sanPhamCtRepo.findBySanPhamId(id);
+        validationError = validateVariantIdentities(body.get("variants"), oldVariants);
+        if (validationError != null) return validationError;
+
+        int targetProductStatus = body.containsKey("trangThai")
+                ? toInt(body.get("trangThai"))
+                : Optional.ofNullable(product.getTrangThai()).orElse((byte) 0).intValue();
+        if (targetProductStatus == 1) {
+            if (category == null || material == null
+                    || !isActive(category.getTrangThai()) || !isActive(material.getTrangThai())
+                    || (supplier != null && !isActive(supplier.getTrangThai()))) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Sản phẩm đang bán chỉ được dùng danh mục, chất liệu và nhà cung cấp đang hoạt động"
+                ));
+            }
+            if (!hasActiveVariantAfterUpdate(body.get("variants"), oldVariants)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Sản phẩm đang bán phải có ít nhất một biến thể đang hoạt động"
+                ));
+            }
+        }
+
+        if (body.containsKey("tenSanPham")) product.setTenSanPham(cleanText(body.get("tenSanPham")));
+        if (body.containsKey("moTa")) product.setMoTa(cleanText(body.get("moTa")));
+        if (body.containsKey("trangThai")) product.setTrangThai(toInt(body.get("trangThai")).byteValue());
+        applyFitFields(product, body);
+        product.setLoaiSanPham(category);
+        product.setChatLieu(material);
+        product.setNhaCungCap(supplier);
+        SanPham saved = sanPhamRepo.save(product);
+
+        if (body.get("variants") != null) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> newVariants = (List<Map<String, Object>>) body.get("variants");
+            Map<Integer, SanPhamChiTiet> variantsById = new HashMap<>();
+            oldVariants.forEach(variant -> variantsById.put(variant.getId(), variant));
+            Set<Integer> keptIds = new HashSet<>();
+            int nextVariantNumber = nextVariantNumber(oldVariants);
+            String actor = authentication != null && authentication.getName() != null
+                    ? authentication.getName()
+                    : "Admin";
+
+            for (Map<String, Object> variantPayload : newVariants) {
+                Integer colorId = toInt(variantPayload.get("idMauSac"));
+                Integer sizeId = toInt(variantPayload.get("idKichThuoc"));
+                Integer variantId = toInt(variantPayload.get("variantId"));
+                SanPhamChiTiet match = variantId != null
+                        ? variantsById.get(variantId)
+                        : findVariantByAttributes(oldVariants, colorId, sizeId);
+
+                if (match != null) {
+                    int beforeStock = Optional.ofNullable(match.getSoLuong()).orElse(0);
+                    int afterStock = toInt(variantPayload.get("soLuong"));
+                    match.setGiaBan(toDecimal(variantPayload.get("giaBan")));
+                    match.setAnhUrl(cleanText(variantPayload.get("anhUrl")));
+                    match.setSoLuong(afterStock);
+                    if (variantPayload.containsKey("trangThai")) {
+                        match.setTrangThai(toInt(variantPayload.get("trangThai")).byteValue());
+                    }
+                    sanPhamCtRepo.save(match);
+                    inventoryMovementService.record(
+                            match, beforeStock, afterStock, "DIEU_CHINH_ADMIN",
+                            saved.getMaSanPham(), actor, "Cập nhật tồn kho biến thể"
+                    );
+                    keptIds.add(match.getId());
+                    continue;
+                }
+
+                SanPhamChiTiet created = new SanPhamChiTiet();
+                created.setSanPham(saved);
+                created.setMaSanPhamChiTiet(saved.getMaSanPham() + "-" + String.format("%03d", nextVariantNumber++));
+                created.setGiaBan(toDecimal(variantPayload.get("giaBan")));
+                created.setAnhUrl(cleanText(variantPayload.get("anhUrl")));
+                int initialStock = toInt(variantPayload.get("soLuong"));
+                created.setSoLuong(initialStock);
+                created.setMauSac(mauSacRepo.findById(colorId).orElseThrow());
+                created.setKichThuoc(kichThuocRepo.findById(sizeId).orElseThrow());
+                Integer variantStatus = variantPayload.containsKey("trangThai")
+                        ? toInt(variantPayload.get("trangThai"))
+                        : 1;
+                created.setTrangThai(variantStatus.byteValue());
+                created.setNgayTao(LocalDateTime.now());
+                SanPhamChiTiet savedVariant = sanPhamCtRepo.save(created);
+                inventoryMovementService.record(
+                        savedVariant, 0, initialStock, "NHAP_KHO_BAN_DAU",
+                        saved.getMaSanPham(), actor, "Thêm biến thể sản phẩm"
+                );
+                keptIds.add(savedVariant.getId());
+            }
+
+            for (SanPhamChiTiet oldVariant : oldVariants) {
+                if (!keptIds.contains(oldVariant.getId())) {
+                    oldVariant.setTrangThai((byte) 0);
+                    sanPhamCtRepo.save(oldVariant);
+                }
+            }
+        }
+
+        saveSizeGuides(saved, body.get("huongDanSize"));
+        return ResponseEntity.ok(toMap(saved));
     }
 
     // ===== Quản lý ảnh sản phẩm =====
@@ -358,15 +409,15 @@ public class SanPhamController {
     @PostMapping("/{id}/anh")
     @Transactional
     public ResponseEntity<?> uploadAnh(@PathVariable Integer id, @RequestParam("file") MultipartFile file) {
-        var vayOpt = sanPhamRepo.findById(id);
-        if (vayOpt.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Sản phẩm không tồn tại"));
+        var product = sanPhamRepo.findById(id);
+        if (product.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Sản phẩm không tồn tại"));
         if (file == null || file.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "Chưa chọn ảnh"));
         try {
             String imageUrl = storeImage(file, "sanpham" + id);
             registerFileRollback(imageUrl);
 
             Anh anh = new Anh();
-            anh.setSanPham(vayOpt.get());
+            anh.setSanPham(product.get());
             anh.setAnhUrl(imageUrl);
             anh.setTrangThai((byte) 1);
             anh.setNgayTao(LocalDateTime.now());
@@ -409,8 +460,15 @@ public class SanPhamController {
     }
 
     @DeleteMapping("/anh/{anhId}")
+    @Transactional
     public ResponseEntity<?> deleteAnh(@PathVariable Integer anhId) {
-        anhRepo.deleteById(anhId);
+        Anh image = anhRepo.findById(anhId).orElse(null);
+        if (image == null) return ResponseEntity.notFound().build();
+        String imageUrl = image.getAnhUrl();
+        boolean shared = imageUrl != null && (anhRepo.countByAnhUrl(imageUrl) > 1
+                || sanPhamCtRepo.countByAnhUrl(imageUrl) > 0);
+        anhRepo.delete(image);
+        if (!shared) registerFileDeleteAfterCommit(imageUrl);
         return ResponseEntity.ok().build();
     }
 
@@ -437,7 +495,7 @@ public class SanPhamController {
         }
         Path directory = resolveUploadDir();
         Files.createDirectories(directory);
-        String filename = prefix + "_" + System.currentTimeMillis() + extension;
+        String filename = prefix + "_" + UUID.randomUUID().toString().replace("-", "") + extension;
         Files.write(directory.resolve(filename), bytes);
         return "/images/products/" + filename;
     }
@@ -471,11 +529,26 @@ public class SanPhamController {
     }
 
     private void deleteStoredImage(String imageUrl) {
+        if (imageUrl == null || !imageUrl.startsWith("/images/products/")) return;
         try {
             String filename = Paths.get(imageUrl).getFileName().toString();
             Files.deleteIfExists(resolveUploadDir().resolve(filename));
         } catch (Exception ignored) {
         }
+    }
+
+    private void registerFileDeleteAfterCommit(String imageUrl) {
+        if (imageUrl == null) return;
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteStoredImage(imageUrl);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteStoredImage(imageUrl);
+            }
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -484,8 +557,12 @@ public class SanPhamController {
         if (!(variantsObj instanceof List<?> variants) || variants.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Sản phẩm phải có ít nhất một biến thể"));
         }
+        if (variants.size() > MAX_VARIANTS_PER_PRODUCT) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Một sản phẩm chỉ được có tối đa " + MAX_VARIANTS_PER_PRODUCT + " biến thể"));
+        }
 
         Set<String> uniqueKeys = new HashSet<>();
+        Set<Integer> uniqueVariantIds = new HashSet<>();
         int idx = 1;
         for (Object obj : variants) {
             if (!(obj instanceof Map<?, ?> raw)) {
@@ -496,6 +573,19 @@ public class SanPhamController {
             Integer idKich = toInt(bt.get("idKichThuoc"));
             BigDecimal giaBan = toDecimal(bt.get("giaBan"));
             Integer soLuong = toInt(bt.get("soLuong"));
+            Object rawVariantId = bt.get("variantId");
+            Integer variantId = toInt(rawVariantId);
+            Integer requestedStatus = bt.containsKey("trangThai") ? toInt(bt.get("trangThai")) : null;
+
+            if (rawVariantId != null && (variantId == null || variantId <= 0)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " có mã định danh không hợp lệ"));
+            }
+            if (variantId != null && !uniqueVariantIds.add(variantId)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Mã định danh biến thể bị lặp trong yêu cầu"));
+            }
+            if (bt.containsKey("trangThai") && (requestedStatus == null || (requestedStatus != 0 && requestedStatus != 1))) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " có trạng thái không hợp lệ"));
+            }
 
             if (idMau == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " chưa chọn màu sắc"));
@@ -503,20 +593,26 @@ public class SanPhamController {
             if (idKich == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " chưa chọn kích thước"));
             }
-            if (!mauSacRepo.existsById(idMau)) {
+            MauSac color = mauSacRepo.findById(idMau).orElse(null);
+            if (color == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " có màu sắc không tồn tại"));
             }
-            if (!kichThuocRepo.existsById(idKich)) {
+            KichThuoc size = kichThuocRepo.findById(idKich).orElse(null);
+            if (size == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " có kích thước không tồn tại"));
             }
-            if (giaBan == null || giaBan.compareTo(BigDecimal.ZERO) <= 0) {
+            boolean requiresActiveAttributes = variantId == null
+                    ? !Integer.valueOf(0).equals(requestedStatus)
+                    : Integer.valueOf(1).equals(requestedStatus);
+            if (requiresActiveAttributes && (!isActive(color.getTrangThai()) || !isActive(size.getTrangThai()))) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Biến thể " + idx + " không thể hoạt động với màu sắc hoặc kích thước đã ngừng"
+                ));
+            }
+            if (giaBan == null || giaBan.compareTo(BigDecimal.ZERO) <= 0 || giaBan.compareTo(MAX_SELLING_PRICE) > 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " chưa có giá bán hợp lệ"));
             }
-            BigDecimal giaNhap = toDecimal(bt.get("giaNhap"));
-            if (giaNhap != null && giaNhap.compareTo(BigDecimal.ZERO) < 0) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Giá vốn biến thể " + idx + " không hợp lệ"));
-            }
-            if (soLuong == null || soLuong < 0) {
+            if (soLuong == null || soLuong < 0 || soLuong > MAX_STOCK_PER_VARIANT) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " chưa có số lượng hợp lệ"));
             }
             String key = idMau + "-" + idKich;
@@ -524,6 +620,120 @@ public class SanPhamController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Biến thể " + idx + " bị trùng màu sắc và kích thước"));
             }
             idx++;
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean hasActiveVariantAfterUpdate(Object variantsObj, List<SanPhamChiTiet> existingVariants) {
+        if (!(variantsObj instanceof List<?> payloads)) {
+            return existingVariants.stream().anyMatch(this::isSellableVariantReference);
+        }
+        Map<Integer, SanPhamChiTiet> existingById = new HashMap<>();
+        existingVariants.forEach(variant -> existingById.put(variant.getId(), variant));
+        for (Object raw : payloads) {
+            if (!(raw instanceof Map<?, ?> payload)) continue;
+            Integer variantId = toInt(payload.get("variantId"));
+            SanPhamChiTiet existing = variantId != null ? existingById.get(variantId) : null;
+            int status = payload.containsKey("trangThai")
+                    ? Optional.ofNullable(toInt(payload.get("trangThai"))).orElse(0)
+                    : existing != null && existing.getTrangThai() != null ? existing.getTrangThai() : 1;
+            if (status != 1) continue;
+            MauSac color = mauSacRepo.findById(toInt(payload.get("idMauSac"))).orElse(null);
+            KichThuoc size = kichThuocRepo.findById(toInt(payload.get("idKichThuoc"))).orElse(null);
+            if (color != null && size != null && isActive(color.getTrangThai()) && isActive(size.getTrangThai())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isSellableVariantReference(SanPhamChiTiet variant) {
+        return activeVariant(variant)
+                && variant.getMauSac() != null
+                && isActive(variant.getMauSac().getTrangThai())
+                && variant.getKichThuoc() != null
+                && isActive(variant.getKichThuoc().getTrangThai());
+    }
+
+    @SuppressWarnings("unchecked")
+    private ResponseEntity<?> validateVariantIdentities(Object variantsObj, List<SanPhamChiTiet> existingVariants) {
+        if (variantsObj == null) return null;
+        List<Map<String, Object>> variants = (List<Map<String, Object>>) variantsObj;
+        Map<Integer, SanPhamChiTiet> existingById = new HashMap<>();
+        existingVariants.forEach(variant -> existingById.put(variant.getId(), variant));
+
+        for (int index = 0; index < variants.size(); index++) {
+            Map<String, Object> payload = variants.get(index);
+            Integer variantId = toInt(payload.get("variantId"));
+            if (variantId == null) continue;
+            SanPhamChiTiet existing = existingById.get(variantId);
+            if (existing == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Biến thể " + (index + 1) + " không thuộc sản phẩm đang sửa"
+                ));
+            }
+            Integer existingColorId = existing.getMauSac() != null ? existing.getMauSac().getId() : null;
+            Integer existingSizeId = existing.getKichThuoc() != null ? existing.getKichThuoc().getId() : null;
+            if (!Objects.equals(existingColorId, toInt(payload.get("idMauSac")))
+                    || !Objects.equals(existingSizeId, toInt(payload.get("idKichThuoc")))) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Không thể đổi màu hoặc kích thước của biến thể đã tồn tại; hãy thêm biến thể mới"
+                ));
+            }
+        }
+        return null;
+    }
+
+    private SanPhamChiTiet findVariantByAttributes(List<SanPhamChiTiet> variants, Integer colorId, Integer sizeId) {
+        return variants.stream()
+                .filter(variant -> Objects.equals(
+                        variant.getMauSac() != null ? variant.getMauSac().getId() : null,
+                        colorId
+                ))
+                .filter(variant -> Objects.equals(
+                        variant.getKichThuoc() != null ? variant.getKichThuoc().getId() : null,
+                        sizeId
+                ))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private int nextVariantNumber(List<SanPhamChiTiet> variants) {
+        int max = 0;
+        for (SanPhamChiTiet variant : variants) {
+            String code = variant.getMaSanPhamChiTiet();
+            if (code == null) continue;
+            int separator = code.lastIndexOf('-');
+            if (separator < 0 || separator == code.length() - 1) continue;
+            try {
+                max = Math.max(max, Integer.parseInt(code.substring(separator + 1)));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return max + 1;
+    }
+
+    private ResponseEntity<?> validateProductDetails(Map<String, Object> body) {
+        String description = cleanText(body.get("moTa"));
+        if (description != null && description.length() > 5000) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mô tả sản phẩm không được vượt quá 5.000 ký tự"));
+        }
+        Integer height = toInt(body.get("chieuCaoNguoiMau"));
+        if (body.get("chieuCaoNguoiMau") != null && (height == null || height < 120 || height > 220)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Chiều cao người mẫu phải từ 120 đến 220 cm"));
+        }
+        Integer weight = toInt(body.get("canNangNguoiMau"));
+        if (body.get("canNangNguoiMau") != null && (weight == null || weight < 30 || weight > 200)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Cân nặng người mẫu phải từ 30 đến 200 kg"));
+        }
+        String modelSize = cleanText(body.get("sizeNguoiMau"));
+        if (modelSize != null && modelSize.length() > 30) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Size người mẫu không được vượt quá 30 ký tự"));
+        }
+        String fitDescription = cleanText(body.get("moTaPhom"));
+        if (fitDescription != null && fitDescription.length() > 500) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Mô tả phom không được vượt quá 500 ký tự"));
         }
         return null;
     }
@@ -639,13 +849,9 @@ public class SanPhamController {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", v.getId());
         map.put("maSanPham", v.getMaSanPham());
-        map.put("maVay", v.getMaSanPham()); // Alias tương thích
         map.put("tenSanPham", v.getTenSanPham());
-        map.put("tenVay", v.getTenSanPham()); // Alias tương thích
         map.put("idLoaiSanPham", v.getLoaiSanPham() != null ? v.getLoaiSanPham().getId() : null);
-        map.put("idLoaiVay", v.getLoaiSanPham() != null ? v.getLoaiSanPham().getId() : null);
         map.put("loaiSanPham", v.getLoaiSanPham() != null ? v.getLoaiSanPham().getTenLoaiSanPham() : null);
-        map.put("loaiVay", v.getLoaiSanPham() != null ? v.getLoaiSanPham().getTenLoaiSanPham() : null);
         map.put("idChatLieu", v.getChatLieu() != null ? v.getChatLieu().getId() : null);
         map.put("chatLieu", v.getChatLieu() != null ? v.getChatLieu().getTenChatLieu() : null);
         map.put("idNhaCungCap", v.getNhaCungCap() != null ? v.getNhaCungCap().getId() : null);
@@ -682,20 +888,21 @@ public class SanPhamController {
         return map;
     }
 
-    private Map<String, Object> toDetailMap(SanPham v) {
-        List<SanPhamChiTiet> bienThe = sanPhamCtRepo.findBySanPhamId(v.getId()).stream()
+    private Map<String, Object> toDetailMap(SanPham v, boolean includeInactiveVariants) {
+        List<SanPhamChiTiet> allVariants = sanPhamCtRepo.findBySanPhamId(v.getId());
+        List<SanPhamChiTiet> activeVariants = allVariants.stream()
                 .filter(SanPhamController::activeVariant)
                 .toList();
+        List<SanPhamChiTiet> visibleVariants = includeInactiveVariants ? allVariants : activeVariants;
         List<Anh> anhs = anhRepo.findBySanPhamIdAndTrangThai(v.getId(), (byte) 1);
-        Map<String, Object> map = toMap(v, bienThe, anhs, danhGiaRepo.summarizeProduct(v.getId()));
+        Map<String, Object> map = toMap(v, activeVariants, anhs, danhGiaRepo.summarizeProduct(v.getId()));
         String defaultImage = (String) map.get("anhUrl");
         List<Map<String, Object>> variants = new ArrayList<>();
-        for (SanPhamChiTiet bt : bienThe) {
+        for (SanPhamChiTiet bt : visibleVariants) {
             PromotionPricingService.PriceQuote quote = promotionPricingService.quote(bt);
             Map<String, Object> btMap = new LinkedHashMap<>();
             btMap.put("id", bt.getId());
             btMap.put("maSanPhamChiTiet", bt.getMaSanPhamChiTiet());
-            btMap.put("maVayChiTiet", bt.getMaSanPhamChiTiet());
             btMap.put("idMauSac", bt.getMauSac() != null ? bt.getMauSac().getId() : null);
             btMap.put("mauSac", bt.getMauSac() != null ? bt.getMauSac().getTenMauSac() : null);
             btMap.put("maHex", bt.getMauSac() != null ? bt.getMauSac().getMaHex() : null);
@@ -837,12 +1044,9 @@ public class SanPhamController {
             map.put("id", b.getId());
             if (b.getSanPhamChiTiet() != null) {
                 map.put("sanPhamChiTietId", b.getSanPhamChiTiet().getId());
-                map.put("vayChiTietId", b.getSanPhamChiTiet().getId());
                 if (b.getSanPhamChiTiet().getSanPham() != null) {
                     map.put("tenSanPham", b.getSanPhamChiTiet().getSanPham().getTenSanPham());
-                    map.put("tenVay", b.getSanPhamChiTiet().getSanPham().getTenSanPham());
                     map.put("maSanPham", b.getSanPhamChiTiet().getSanPham().getMaSanPham());
-                    map.put("maVay", b.getSanPhamChiTiet().getSanPham().getMaSanPham());
                 }
                 if (b.getSanPhamChiTiet().getMauSac() != null) {
                     map.put("mauSac", b.getSanPhamChiTiet().getMauSac().getTenMauSac());

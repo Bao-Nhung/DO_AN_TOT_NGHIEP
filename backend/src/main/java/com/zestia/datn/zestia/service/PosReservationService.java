@@ -73,7 +73,7 @@ public class PosReservationService {
         if (delta != 0) {
             SanPhamChiTiet variant = variantRepository.findByIdForUpdate(variantId)
                     .orElseThrow(() -> new IllegalArgumentException("Biến thể sản phẩm không tồn tại"));
-            requireOrderable(variant);
+            if (delta > 0) requireOrderable(variant);
 
             int before = Optional.ofNullable(variant.getSoLuong()).orElse(0);
             int after = before - delta;
@@ -319,8 +319,10 @@ public class PosReservationService {
         if (variant.getSanPham() == null
                 || variant.getMauSac() == null
                 || variant.getKichThuoc() == null
-                || (variant.getTrangThai() != null && variant.getTrangThai() != 1)
-                || (variant.getSanPham().getTrangThai() != null && variant.getSanPham().getTrangThai() != 1)) {
+                || !Byte.valueOf((byte) 1).equals(variant.getTrangThai())
+                || !Byte.valueOf((byte) 1).equals(variant.getSanPham().getTrangThai())
+                || !Byte.valueOf((byte) 1).equals(variant.getMauSac().getTrangThai())
+                || !Byte.valueOf((byte) 1).equals(variant.getKichThuoc().getTrangThai())) {
             throw new IllegalArgumentException("Biến thể sản phẩm đã ngừng bán hoặc không hợp lệ");
         }
     }
@@ -432,9 +434,7 @@ public class PosReservationService {
             item.put("variantId", variant.getId());
             item.put("productId", product.getId());
             item.put("productCode", product.getMaSanPham());
-            item.put("maVay", product.getMaSanPham());
             item.put("productName", product.getTenSanPham());
-            item.put("tenVay", product.getTenSanPham());
             item.put("color", variant.getMauSac().getTenMauSac());
             item.put("size", variant.getKichThuoc().getTenKichThuoc());
             item.put("quantity", quantity);

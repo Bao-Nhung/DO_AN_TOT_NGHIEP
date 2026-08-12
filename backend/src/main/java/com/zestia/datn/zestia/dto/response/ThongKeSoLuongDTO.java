@@ -4,5 +4,5 @@ public interface ThongKeSoLuongDTO {
     String getTen();
     Integer getTongSoLuong();
     Double getDoanhThu();
-    String getMaHex(); // Dùng riêng cho màu sắc
+    String getMaHex();
 }

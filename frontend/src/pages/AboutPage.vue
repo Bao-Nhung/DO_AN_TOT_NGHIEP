@@ -45,7 +45,7 @@
         <div class="row g-4">
           <div v-for="v in values" :key="v.title" class="col-md-6 col-lg-3">
             <div style="padding:32px;background:var(--z-white);border-radius:var(--z-radius-lg);height:100%;border:1px solid var(--z-gray-border)">
-              <div style="width:48px;height:48px;border-radius:12px;background:var(--z-accent-soft);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
+              <div style="width:48px;height:48px;border-radius:var(--z-radius);background:var(--z-accent-soft);display:flex;align-items:center;justify-content:center;margin-bottom:20px">
                 <i class="bi" :class="v.icon" style="font-size:20px;color:var(--z-accent)"></i>
               </div>
               <h4 style="font-size:16px;font-weight:600;color:var(--z-dark);margin-bottom:8px">{{ v.title }}</h4>

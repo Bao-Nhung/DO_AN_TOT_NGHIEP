@@ -1,7 +1,16 @@
 <template>
   <div>
     <div class="container" style="padding-top:100px;padding-bottom:80px">
-      <div class="row g-5">
+      <div v-if="productLoading" class="text-center py-5" aria-live="polite">
+        <span class="spinner-border spinner-border-sm me-2"></span>Đang tải sản phẩm...
+      </div>
+      <div v-else-if="productLoadError" class="text-center py-5">
+        <i class="bi bi-exclamation-circle d-block mb-3" style="font-size:36px;color:var(--z-accent)"></i>
+        <h2 class="z-display" style="font-size:24px">Không thể tải sản phẩm</h2>
+        <p style="color:var(--z-gray)">{{ productLoadError }}</p>
+        <button type="button" class="lm-btn-primary" @click="loadProductPage"><span>Thử lại</span></button>
+      </div>
+      <div v-else class="row g-5">
 
         <div class="col-lg-6">
           <div class="d-grid gap-3" style="grid-template-columns:72px 1fr">
@@ -17,7 +26,7 @@
               </div>
             </div>
             <div style="aspect-ratio:3/4;position:relative;overflow:hidden;border-radius:var(--z-radius-lg)">
-              <img v-if="galleryImages[activeThumb]" :src="galleryImages[activeThumb]" :alt="product.tenVay"
+              <img v-if="galleryImages[activeThumb]" :src="galleryImages[activeThumb]" :alt="product.tenSanPham"
                    style="width:100%;height:100%;object-fit:cover" />
               <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
                    style="background:linear-gradient(160deg,#F3E8E6,#D4A99E 60%,#C08B7E);font-family:var(--z-font-display);font-size:80px;color:rgba(255,255,255,0.15);font-style:italic;font-weight:300">
@@ -28,7 +37,7 @@
         </div>
 
         <div class="col-lg-6 pt-lg-2">
-          <p class="lm-eyebrow mb-3">Zestia — {{ product.loaiVay || 'Bộ Sưu Tập' }}</p>
+          <p class="lm-eyebrow mb-3">Zestia — {{ product.loaiSanPham || 'Bộ Sưu Tập' }}</p>
           <h1 class="z-display mb-3" style="font-size:36px;font-weight:400;line-height:1.15;color:var(--z-dark)">
             {{ productName.main }}<br><em style="font-style:italic;color:var(--z-gray)">{{ productName.sub }}</em>
           </h1>
@@ -100,8 +109,7 @@
             <button class="lm-btn-primary justify-content-center" @click="addToCart()">
               <span>Thêm vào giỏ hàng</span>
             </button>
-            <button type="button" :aria-label="isLiked ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'" @click="toggleWish"
-                    style="border:1px solid var(--z-gray-border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s;border-radius:var(--z-radius)"
+            <button type="button" class="z-detail-wish-btn" :aria-label="isLiked ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'" @click="toggleWish"
                     :style="isLiked ? 'border-color:var(--z-accent);background:var(--z-accent-soft)' : ''">
               <i class="bi" :class="isLiked ? 'bi-heart-fill' : 'bi-heart'"
                  :style="{ color: isLiked ? 'var(--z-accent)' : 'var(--z-dark)', fontSize:'20px' }"></i>
@@ -133,10 +141,10 @@
       <div class="container" style="max-width: 900px;">
         <div class="d-flex align-items-center gap-2 mb-3">
           <i class="bi bi-stars text-danger fs-4"></i>
-          <h3 class="z-display mb-0" style="font-size: 20px; font-weight: 600;">Thường Được Mua Cùng (Combo Gợi Ý AI)</h3>
+          <h3 class="z-display mb-0" style="font-size: 20px; font-weight: 600;">Khách hàng thường mua cùng</h3>
         </div>
         
-        <div class="p-4 rounded-4 bg-white border shadow-sm">
+        <div class="p-4 rounded-3 bg-white border shadow-sm">
           <div class="row align-items-center g-4">
             <div class="col-md-8">
               <div class="d-flex align-items-center gap-3 flex-wrap">
@@ -152,13 +160,11 @@
             </div>
             
             <div class="col-md-4 text-end border-start ps-md-4">
-              <div style="font-size: 12px; color: var(--z-gray);">Tổng tiền Combo:</div>
-              <div class="text-decoration-line-through text-muted" style="font-size: 14px;">{{ fmtPrice(frequentlyBoughtTogether.originalTotal) }}</div>
-              <div class="display-6 fw-bold text-danger my-1" style="font-size: 24px;">{{ fmtPrice(frequentlyBoughtTogether.bundlePrice) }}</div>
-              <div class="badge bg-danger mb-3">{{ frequentlyBoughtTogether.savingsText }}</div>
+              <div style="font-size: 12px; color: var(--z-gray);">Tổng tiền các sản phẩm:</div>
+              <div class="display-6 fw-bold text-danger my-3" style="font-size: 24px;">{{ fmtPrice(frequentlyBoughtTogether.totalPrice) }}</div>
               
               <button type="button" class="btn btn-danger w-100 py-2 font-weight-bold shadow-sm d-flex align-items-center justify-content-center gap-2" @click="addBundleToCart">
-                <i class="bi bi-cart-plus-fill"></i> Thêm cả 2 vào giỏ
+                <i class="bi bi-cart-plus-fill"></i> Thêm các sản phẩm vào giỏ
               </button>
             </div>
           </div>
@@ -203,7 +209,7 @@
             <div class="col-md-4">
               <label class="z-review-label">Số sao</label>
               <div class="z-review-star-input">
-                <button v-for="star in 5" :key="star" type="button" :title="`${star} sao`" :aria-label="`Đánh giá ${star} sao`" @click="reviewForm.stars = star">
+                <button v-for="star in 5" :key="star" type="button" class="z-review-star-btn" :title="`${star} sao`" :aria-label="`Đánh giá ${star} sao`" @click="reviewForm.stars = star">
                   <i class="bi" :class="star <= reviewForm.stars ? 'bi-star-fill' : 'bi-star'"></i>
                 </button>
               </div>
@@ -262,7 +268,7 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
-import { fmtPrice, products, loadProducts, MOCK_PRODUCTS } from '@/composables/useProducts'
+import { fmtPrice } from '@/composables/useProducts'
 import { useWishlist } from '@/composables/useWishlist'
 import { useI18n } from '@/composables/useI18n'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
@@ -276,6 +282,8 @@ const { isLoggedIn } = useAuth()
 const { isEn } = useI18n()
 
 const product = ref({})
+const productLoading = ref(true)
+const productLoadError = ref('')
 const activeThumb = ref(0)
 // Thay đổi: Để mặc định là null để bắt buộc người dùng click chọn
 const activeColor = ref(null) 
@@ -341,7 +349,7 @@ const galleryImages = computed(() => {
   const productImages = [product.value.anhUrl, ...(product.value.danhSachAnh || [])].filter(Boolean)
   const uniqueImages = [...new Set([colorImage, ...productImages].filter(Boolean))]
   if (uniqueImages.length === 0) {
-    const cat = String(product.value.loaiVay || '').toLowerCase()
+    const cat = String(product.value.loaiSanPham || '').toLowerCase()
     if (cat.includes('quần') || cat.includes('jeans')) uniqueImages.push('/images/products/pants1.jpg')
     else if (cat.includes('áo khoác') || cat.includes('blazer')) uniqueImages.push('/images/products/shirt5.jpg')
     else if (cat.includes('áo') || cat.includes('sơ mi')) uniqueImages.push('/images/products/shirt1.jpg')
@@ -353,7 +361,7 @@ const galleryImages = computed(() => {
 })
 
 const productName = computed(() => {
-  const name = product.value.tenVay || ''
+  const name = product.value.tenSanPham || ''
   const words = name.split(' ')
   if (words.length <= 2) return { main: name, sub: '' }
   const mid = Math.ceil(words.length / 2)
@@ -427,7 +435,11 @@ async function loadFrequentlyBoughtTogether(id) {
 async function addBundleToCart() {
   if (!frequentlyBoughtTogether.value?.items?.length) return
   for (const item of frequentlyBoughtTogether.value.items) {
-    const variantId = item.variantId || (item.id * 100 + 1)
+    const variantId = item.variantId
+    if (!variantId) {
+      showToast(`Sản phẩm "${item.name}" chưa có biến thể còn hàng để thêm vào giỏ`)
+      return
+    }
     await addItem({
       id: item.id,
       variantId: variantId,
@@ -437,53 +449,38 @@ async function addBundleToCart() {
       qty: 1
     })
   }
-  showToast('Đã thêm trọn bộ Combo vào giỏ hàng (Được áp dụng ưu đãi Combo)!')
+  showToast('Đã thêm các sản phẩm gợi ý vào giỏ hàng')
 }
 
-onMounted(async () => {
+async function loadProductPage() {
+  productLoading.value = true
+  productLoadError.value = ''
   try {
     const id = route.params.id
     loadFrequentlyBoughtTogether(id)
     const [productData, reviewData, policyData] = await Promise.all([
-      api().getVayById(id).catch(() => null),
+      api().getSanPhamById(id),
       api().getProductReviews(id, 0, reviewPageSize.value).catch(() => null),
       api().getStorePolicies().catch(() => null)
     ])
-    if (productData && productData.id) {
-      product.value = productData
-    } else {
-      await loadProducts()
-      const found = products.value.find(p => String(p.id) === String(id)) || MOCK_PRODUCTS[0]
-      product.value = {
-        id: found.id,
-        tenVay: found.name || found.tenVay,
-        loaiVay: found.category || found.loaiVay,
-        chatLieu: found.material || found.chatLieu,
-        moTaPhom: found.fit || found.moTaPhom,
-        giaBan: found.price || found.giaBan,
-        coKhuyenMai: found.promotionActive,
-        dotKhuyenMai: found.campaign,
-        tonKho: found.stock || found.tonKho || 10,
-        trangThai: 1,
-        anhUrl: found.image || found.anhUrl,
-        danhSachAnh: found.images || found.danhSachAnh || [found.image || found.anhUrl],
-        diemDanhGia: found.rating || 5.0,
-        soDanhGia: found.reviewCount || 10,
-        bienThe: found.bienThe || [
-          { id: found.id * 100 + 1, mauSac: 'Trắng Ngà', maHex: '#FFF8F0', kichThuoc: 'S', soLuong: 10, giaBan: found.price || found.giaBan, trangThai: 1, anhUrl: found.image || found.anhUrl },
-          { id: found.id * 100 + 2, mauSac: 'Trắng Ngà', maHex: '#FFF8F0', kichThuoc: 'M', soLuong: 15, giaBan: found.price || found.giaBan, trangThai: 1, anhUrl: found.image || found.anhUrl },
-          { id: found.id * 100 + 3, mauSac: 'Đen Tuyền', maHex: '#1A1A1A', kichThuoc: 'M', soLuong: 12, giaBan: found.price || found.giaBan, trangThai: 1, anhUrl: (found.images || found.danhSachAnh)?.[1] || found.image }
-        ]
-      }
-    }
+    product.value = productData
     applyReviewData(reviewData)
     policies.value = policyData || []
     if (isLoggedIn()) {
       api().recordCustomerView(id).catch(() => {})
       reviewEligibility.value = await api().getReviewEligibility(id).catch(() => ({ canReview: false, orders: [] }))
     }
-  } catch (e) { console.error('Failed to load product:', e) }
-})
+  } catch (error) {
+    product.value = {}
+    productLoadError.value = error?.status === 404
+      ? 'Sản phẩm không tồn tại hoặc đã ngừng bán.'
+      : 'Không kết nối được dữ liệu sản phẩm. Vui lòng kiểm tra backend và thử lại.'
+  } finally {
+    productLoading.value = false
+  }
+}
+
+onMounted(loadProductPage)
 
 function applyReviewData(data, append = false) {
   if (!data) return
@@ -562,7 +559,7 @@ function addToCart() {
   addItem({
     id: uniqueCartId,       // ID ảo để tách giỏ hàng
     productId: p.id,        // ID gốc bắt buộc phải có cho Backend
-    name: p.tenVay || 'Sản phẩm',
+    name: p.tenSanPham || 'Sản phẩm',
     size: activeSize.value, // Lưu size vào giỏ
     color: colorName,       // Lưu màu vào giỏ
     variant: [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · '),
@@ -583,6 +580,18 @@ function toggleWish() {
 </script>
 
 <style scoped>
+.z-detail-wish-btn {
+  width: 52px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-detail-wish-btn:hover { border-color: var(--z-accent); background: var(--z-accent-soft); transform: translateY(-1px); }
 .z-size-btn.active       { background: var(--z-dark) !important; color: var(--z-white); border-color: var(--z-dark) !important; }
 .z-size-btn.sold-out     { opacity: 0.3; cursor: not-allowed !important; text-decoration: line-through; }
 .z-size-btn:not(.sold-out):not(.active):hover { border-color: var(--z-dark); }
@@ -627,7 +636,21 @@ function toggleWish() {
 .z-review-form h3 { margin-bottom: 18px; font-size: 16px; }
 .z-review-label { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 600; }
 .z-review-star-input { display: flex; min-height: 43px; align-items: center; }
-.z-review-star-input button { border: 0; background: transparent; color: var(--z-accent); font-size: 20px; }
+.z-review-star-input button,
+.z-review-star-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--z-accent);
+  font-size: 20px;
+  transition: var(--z-ease);
+}
+.z-review-star-input button:hover,
+.z-review-star-btn:hover { border-color: var(--z-accent-light); background: var(--z-accent-soft); transform: translateY(-1px); }
 .z-review-list { border-top: 1px solid var(--z-gray-border); }
 .z-review-item { display: grid; grid-template-columns: minmax(180px, .35fr) 1fr; gap: 32px; padding: 30px 0; border-bottom: 1px solid var(--z-gray-border); }
 .z-review-author strong { display: block; font-size: 13px; }

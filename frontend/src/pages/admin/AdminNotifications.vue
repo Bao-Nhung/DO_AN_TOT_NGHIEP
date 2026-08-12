@@ -56,10 +56,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="paginatedAnnouncements.length === 0">
+            <tr v-if="announcements.length === 0">
               <td colspan="6" class="text-center py-4" style="color:var(--z-gray)">Chưa có thông báo nào phù hợp</td>
             </tr>
-            <tr v-for="item in paginatedAnnouncements" :key="item.id">
+            <tr v-for="item in announcements" :key="item.id">
               <td>#{{ item.id }}</td>
               <td>
                 <span :class="['z-status', getLabelClass(item.loai)]">
@@ -82,9 +82,9 @@
                     {{ item.trangThai === 1 ? 'Đang hiển thị' : (item.trangThai === 2 ? 'Hẹn giờ' : 'Bản nháp') }}
                   </span>
                   <div v-if="item.guiEmail === 1" class="d-flex align-items-center gap-1" style="font-size: 11px; margin-left: 4px;">
-                    <i :class="['bi', item.daGui === 1 ? 'bi-envelope-check-fill text-success' : 'bi-envelope-exclamation-fill text-warning']"></i>
-                    <span :class="item.daGui === 1 ? 'text-success' : 'text-warning'">
-                      {{ item.daGui === 1 ? 'Đã gửi mail' : 'Chờ gửi mail' }}
+                    <i :class="['bi', emailDispatchIcon(item.daGui), emailDispatchClass(item.daGui)]"></i>
+                    <span :class="emailDispatchClass(item.daGui)">
+                      {{ emailDispatchLabel(item.daGui) }}
                     </span>
                   </div>
                 </div>
@@ -108,16 +108,16 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="filteredAnnouncements.length" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+      <div v-if="totalItems" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
         <span style="font-size: 13px; color: var(--z-gray)">
-          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredAnnouncements.length) }} trong tổng số {{ filteredAnnouncements.length }} thông báo
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} thông báo
         </span>
         <PageSizeSelect v-model="itemsPerPage" />
         <div v-if="totalPages > 1" class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
-          <button v-for="page in totalPages" :key="page" 
+          <button v-for="page in pageNumbers" :key="page"
                   class="lm-btn-secondary" 
                   :style="{
                     padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
@@ -234,9 +234,9 @@
 
         <div v-if="selectedItem.guiEmail === 1" class="p-3 mb-3 rounded" style="background: var(--z-bg-alt); border: 1px solid var(--z-gray-border); font-size: 13px;">
           <div class="d-flex align-items-center gap-2 mb-1">
-            <i :class="['bi', selectedItem.daGui === 1 ? 'bi-envelope-check-fill text-success' : 'bi-clock-history text-primary']" style="font-size: 16px;"></i>
-            <strong :class="selectedItem.daGui === 1 ? 'text-success' : 'text-primary'">
-              {{ selectedItem.daGui === 1 ? 'Đã gửi Email thành công' : 'Đang chờ gửi Email' }}
+            <i :class="['bi', emailDispatchIcon(selectedItem.daGui), emailDispatchClass(selectedItem.daGui)]" style="font-size: 16px;"></i>
+            <strong :class="emailDispatchClass(selectedItem.daGui)">
+              {{ emailDispatchDetailLabel(selectedItem.daGui) }}
             </strong>
           </div>
           <div v-if="selectedItem.ngayGui" class="text-secondary" style="font-size: 12px;">
@@ -259,7 +259,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
@@ -280,6 +280,17 @@ const filterType = ref('')
 const filterStatus = ref('')
 
 const announcements = ref([])
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const totalItems = ref(0)
+const totalPages = ref(0)
+const pageNumbers = computed(() => {
+  const start = Math.max(1, Math.min(currentPage.value - 2, totalPages.value - 4))
+  const end = Math.min(totalPages.value, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
+})
+let announcementSearchTimer
+let announcementRequestId = 0
 
 const form = ref({
   tieuDe: '',
@@ -296,39 +307,39 @@ onMounted(() => {
 })
 
 async function loadAnnouncements() {
+  const requestId = ++announcementRequestId
   loading.value = true
   try {
-    announcements.value = await api().getThongBao()
+    const data = await api().getThongBao({
+      page: currentPage.value - 1,
+      size: itemsPerPage.value,
+      q: search.value.trim() || null,
+      type: filterType.value || null,
+      status: filterStatus.value === '' ? null : Number(filterStatus.value)
+    })
+    if (requestId !== announcementRequestId) return
+    announcements.value = Array.isArray(data.content) ? data.content : []
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Number(data.totalPages || 0)
   } catch (e) {
-    showToast('Không thể tải danh sách thông báo')
+    if (requestId === announcementRequestId) showToast(e.message || 'Không thể tải danh sách thông báo')
   } finally {
-    loading.value = false
+    if (requestId === announcementRequestId) loading.value = false
   }
 }
 
-const filteredAnnouncements = computed(() => {
-  return announcements.value.filter(item => {
-    const matchesSearch = !search.value.trim() || 
-      (item.tieuDe || '').toLowerCase().includes(search.value.toLowerCase()) || 
-      (item.noiDung || '').toLowerCase().includes(search.value.toLowerCase())
-    const matchesType = !filterType.value || item.loai === filterType.value
-    const matchesStatus = !filterStatus.value || String(item.trangThai) === filterStatus.value
-    return matchesSearch && matchesType && matchesStatus
-  })
+watch(search, () => {
+  clearTimeout(announcementSearchTimer)
+  announcementSearchTimer = setTimeout(resetAndLoadAnnouncements, 300)
 })
+watch([filterType, filterStatus, itemsPerPage], resetAndLoadAnnouncements)
+watch(currentPage, loadAnnouncements)
+onBeforeUnmount(() => clearTimeout(announcementSearchTimer))
 
-// Pagination
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-const totalPages = computed(() => Math.ceil(filteredAnnouncements.value.length / itemsPerPage.value))
-const paginatedAnnouncements = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return filteredAnnouncements.value.slice(start, start + itemsPerPage.value)
-})
-
-watch([search, filterType, filterStatus, itemsPerPage], () => {
-  currentPage.value = 1
-}, { deep: true })
+function resetAndLoadAnnouncements() {
+  if (currentPage.value === 1) loadAnnouncements()
+  else currentPage.value = 1
+}
 
 function openAdd() {
   editingId.value = null
@@ -391,7 +402,8 @@ async function saveItem() {
       showToast('Tạo thông báo thành công', 'success')
     }
     showModal.value = false
-    await loadAnnouncements()
+    if (currentPage.value === 1) await loadAnnouncements()
+    else currentPage.value = 1
   } catch (e) {
     showToast('Lỗi khi lưu thông báo')
   } finally {
@@ -409,7 +421,8 @@ async function deleteItem(id) {
   try {
     await api().deleteThongBao(id)
     showToast('Xoá thông báo thành công', 'success')
-    await loadAnnouncements()
+    if (announcements.value.length === 1 && currentPage.value > 1) currentPage.value--
+    else await loadAnnouncements()
   } catch (e) {
     showToast('Lỗi khi xoá thông báo')
   }
@@ -437,6 +450,30 @@ function formatDateTime(val) {
   if (!val) return ''
   const d = new Date(val)
   return d.toLocaleString('vi-VN')
+}
+
+function emailDispatchLabel(status) {
+  if (Number(status) === 2) return 'Đang gửi mail'
+  if (Number(status) === 1) return 'Đã xử lý gửi mail'
+  return 'Chờ gửi mail'
+}
+
+function emailDispatchDetailLabel(status) {
+  if (Number(status) === 2) return 'Hệ thống đang gửi Email'
+  if (Number(status) === 1) return 'Đã hoàn tất tác vụ gửi Email'
+  return 'Đang chờ gửi Email'
+}
+
+function emailDispatchIcon(status) {
+  if (Number(status) === 2) return 'bi-arrow-repeat'
+  if (Number(status) === 1) return 'bi-envelope-check-fill'
+  return 'bi-clock-history'
+}
+
+function emailDispatchClass(status) {
+  if (Number(status) === 2) return 'text-primary'
+  if (Number(status) === 1) return 'text-success'
+  return 'text-warning'
 }
 </script>
 

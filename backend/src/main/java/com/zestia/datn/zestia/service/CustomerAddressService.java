@@ -3,6 +3,7 @@ package com.zestia.datn.zestia.service;
 import com.zestia.datn.zestia.entity.DiaChi;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.repository.DiaChiRepository;
+import com.zestia.datn.zestia.repository.KhachHangRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.Map;
 public class CustomerAddressService {
     private static final int MAX_ADDRESSES = 10;
     private final DiaChiRepository addressRepo;
+    private final KhachHangRepository customerRepo;
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> list(KhachHang customer) {
@@ -28,6 +30,8 @@ public class CustomerAddressService {
 
     @Transactional
     public Map<String, Object> create(KhachHang customer, Map<String, ?> body) {
+        requireBody(body);
+        customer = lockCustomer(customer);
         if (addressRepo.countByKhachHangId(customer.getId()) >= MAX_ADDRESSES) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mỗi tài khoản được lưu tối đa 10 địa chỉ");
         }
@@ -42,6 +46,8 @@ public class CustomerAddressService {
 
     @Transactional
     public Map<String, Object> update(KhachHang customer, Integer id, Map<String, ?> body) {
+        requireBody(body);
+        customer = lockCustomer(customer);
         DiaChi address = owned(customer, id);
         apply(address, body);
         boolean makeDefault = truthy(body.get("macDinh"));
@@ -54,6 +60,7 @@ public class CustomerAddressService {
 
     @Transactional
     public Map<String, Object> setDefault(KhachHang customer, Integer id) {
+        customer = lockCustomer(customer);
         DiaChi address = owned(customer, id);
         addressRepo.clearDefault(customer.getId());
         address.setMacDinh((byte) 1);
@@ -62,6 +69,7 @@ public class CustomerAddressService {
 
     @Transactional
     public void delete(KhachHang customer, Integer id) {
+        customer = lockCustomer(customer);
         DiaChi address = owned(customer, id);
         boolean wasDefault = Byte.valueOf((byte) 1).equals(address.getMacDinh());
         addressRepo.delete(address);
@@ -78,6 +86,7 @@ public class CustomerAddressService {
     @Transactional
     public void saveCheckoutAddress(KhachHang customer, Map<String, Object> body) {
         if (customer == null) return;
+        customer = lockCustomer(customer);
         String city = clean(body.get("tinhThanhPho"));
         String district = clean(body.get("quanHuyen"));
         String ward = clean(body.get("xaPhuong"));
@@ -105,6 +114,20 @@ public class CustomerAddressService {
     private DiaChi owned(KhachHang customer, Integer id) {
         return addressRepo.findByIdAndKhachHangId(id, customer.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy địa chỉ"));
+    }
+
+    private void requireBody(Map<String, ?> body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dữ liệu địa chỉ không hợp lệ");
+        }
+    }
+
+    private KhachHang lockCustomer(KhachHang customer) {
+        if (customer == null || customer.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Không xác định được tài khoản khách hàng");
+        }
+        return customerRepo.findByIdForUpdate(customer.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khách hàng"));
     }
 
     private void apply(DiaChi address, Map<String, ?> body) {

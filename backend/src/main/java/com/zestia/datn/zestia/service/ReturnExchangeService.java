@@ -5,6 +5,8 @@ import com.zestia.datn.zestia.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,13 @@ public class ReturnExchangeService {
     public static final String SEND_BACK = "TRA_LAI_KHACH";
     public static final String EXCHANGED = "DA_DOI";
     public static final String REFUNDED = "DA_HOAN_TIEN";
+    private static final Set<String> ALL_STATUSES = Set.of(
+            PENDING, WAITING_FOR_GOODS, READY_TO_COMPLETE, REFUND_PENDING,
+            REJECTED, SEND_BACK, EXCHANGED, REFUNDED
+    );
+    public static final Set<String> QUANTITY_CONSUMING_STATUSES = Set.of(
+            PENDING, WAITING_FOR_GOODS, READY_TO_COMPLETE, REFUND_PENDING, EXCHANGED, REFUNDED
+    );
 
     private static final int MAX_IMAGES = 5;
     private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
@@ -52,25 +61,55 @@ public class ReturnExchangeService {
     private final HoaDonAuditLogRepository auditRepo;
     private final CurrentCustomerService currentCustomerService;
     private final PaymentRefundService paymentRefundService;
+    private final LichSuThanhToanRepository paymentHistoryRepo;
     private final InventoryMovementService inventoryMovementService;
+    private final LoyaltyService loyaltyService;
 
     @Value("${app.upload.return-dir:}")
     private String configuredUploadDir;
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> mine(Authentication authentication) {
+    public Map<String, Object> mine(Authentication authentication, int page, int size, String query) {
         KhachHang customer = currentCustomerService.require(authentication);
-        return mapAll(requestRepo.findByKhachHangIdOrderByNgayTaoDesc(customer.getId()));
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(48, Math.max(1, size));
+        String keyword = clean(query);
+        var result = requestRepo.findCustomerPage(
+                customer.getId(), keyword,
+                PageRequest.of(safePage, safeSize,
+                        Sort.by(Sort.Direction.DESC, "ngayTao").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", mapAll(result.getContent()));
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        return response;
     }
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> all(String type, String status) {
+    public Map<String, Object> all(String type, String status, int page, int size) {
         String normalizedType = optionalType(type);
-        String normalizedStatus = clean(status);
-        return mapAll(requestRepo.findAllByOrderByNgayTaoDesc().stream()
-                .filter(item -> normalizedType == null || normalizedType.equals(item.getLoaiYeuCau()))
-                .filter(item -> normalizedStatus == null || normalizedStatus.equalsIgnoreCase(item.getTrangThai()))
-                .toList());
+        if (clean(type) != null && normalizedType == null) {
+            throw badRequest("Loại yêu cầu không hợp lệ");
+        }
+        String normalizedStatus = optionalStatus(status);
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        var result = requestRepo.findForAdmin(
+                normalizedType,
+                normalizedStatus,
+                PageRequest.of(safePage, safeSize,
+                        Sort.by(Sort.Direction.DESC, "ngayTao").and(Sort.by(Sort.Direction.DESC, "id")))
+        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", mapAll(result.getContent()));
+        response.put("page", result.getNumber());
+        response.put("size", result.getSize());
+        response.put("totalElements", result.getTotalElements());
+        response.put("totalPages", result.getTotalPages());
+        return response;
     }
 
     @Transactional
@@ -88,15 +127,11 @@ public class ReturnExchangeService {
         if (!Objects.equals(order.getTrangThai(), (byte) 4)) {
             throw badRequest("Chỉ đơn đã giao thành công mới được yêu cầu đổi hoặc trả");
         }
-        if (order.getNgayGiaoHangThucTe() != null
-                && order.getNgayGiaoHangThucTe().isBefore(LocalDateTime.now().minusDays(30))) {
-            throw badRequest("Đơn hàng đã quá thời hạn đổi trả 30 ngày");
-        }
+        requireWithinReturnWindow(order);
 
         HoaDonChiTiet detail = requireOrderDetail(order, detailId);
         String normalizedType = requireType(type);
-        int safeQuantity = requireQuantity(quantity, detail.getSoLuong());
-        requireNewRequest(detail);
+        int safeQuantity = requireAvailableQuantity(detail, quantity);
         String safeReason = requireText(reason, 5, 1000, "Vui lòng nhập lý do từ 5 đến 1000 ký tự");
         String safeCondition = requireText(condition, 10, 2000, "Vui lòng mô tả tình trạng hàng từ 10 đến 2000 ký tự");
         if (images == null || images.stream().filter(file -> file != null && !file.isEmpty()).count() == 0) {
@@ -145,17 +180,17 @@ public class ReturnExchangeService {
         if (order.getKhachHang() == null) {
             throw badRequest("Hóa đơn chưa liên kết với hồ sơ khách hàng");
         }
+        requireWithinReturnWindow(order);
 
         HoaDonChiTiet detail = requireOrderDetail(order, detailId);
-        requireNewRequest(detail);
         String normalizedType = requireType(type);
-        int safeQuantity = requireQuantity(quantity, detail.getSoLuong());
+        int safeQuantity = requireAvailableQuantity(detail, quantity);
         String safeReason = requireText(reason, 5, 1000, "Vui lòng nhập lý do từ 5 đến 1000 ký tự");
         SanPhamChiTiet replacement = EXCHANGE.equals(normalizedType)
                 ? requireReplacement(detail, replacementVariantId, safeQuantity)
                 : null;
         String safeRefundInfo = RETURN.equals(normalizedType)
-                ? requireText(refundInfo, 3, 500, "Vui lòng ghi phương thức hoặc thông tin hoàn tiền")
+                ? requireText(refundInfo, 5, 500, "Vui lòng ghi phương thức hoặc thông tin hoàn tiền từ 5 đến 500 ký tự")
                 : null;
 
         YeuCauDoiTra request = requestRepo.save(YeuCauDoiTra.builder()
@@ -209,6 +244,11 @@ public class ReturnExchangeService {
         request.setNhanVienXuLy(employee);
         request.setNgayNhanHang(LocalDateTime.now());
         if (accepted) {
+            if (RETURN.equals(request.getLoaiYeuCau())) {
+                restoreReturnedInventory(request);
+            } else {
+                processExchangeInventory(request);
+            }
             request.setTrangThai(READY_TO_COMPLETE);
             request.setGhiChuNhanVien(clean(reason));
         } else {
@@ -225,6 +265,10 @@ public class ReturnExchangeService {
     @Transactional
     public Map<String, Object> complete(Integer id, String note, Authentication authentication) {
         NhanVien employee = requireEmployee(authentication);
+        YeuCauDoiTra snapshot = requestRepo.findById(id)
+                .orElseThrow(() -> notFound("Không tìm thấy yêu cầu đổi trả"));
+        orderRepo.findByIdForUpdate(snapshot.getHoaDon().getId())
+                .orElseThrow(() -> notFound("Không tìm thấy đơn hàng"));
         YeuCauDoiTra request = locked(id);
         if (EXCHANGE.equals(request.getLoaiYeuCau())) {
             requireStatus(request, READY_TO_COMPLETE);
@@ -260,6 +304,9 @@ public class ReturnExchangeService {
                 return false;
             }
             paymentRefundService.recordSuccess(request, amount, outcome);
+            if (request.getHoaDon().getKhachHang() != null) {
+                loyaltyService.recalculate(request.getHoaDon().getKhachHang().getId());
+            }
         }
         finishInventory(request);
         return true;
@@ -280,16 +327,44 @@ public class ReturnExchangeService {
                 ? voucherDiscount.multiply(lineAmount).divide(goodsTotal, 0, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
         BigDecimal result = lineAmount.subtract(allocatedDiscount);
-        return result.max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal paidGoods = Optional.ofNullable(request.getHoaDon().getTongTien()).orElse(BigDecimal.ZERO)
+                .subtract(Optional.ofNullable(request.getHoaDon().getPhiVanChuyen()).orElse(BigDecimal.ZERO))
+                .max(BigDecimal.ZERO);
+        BigDecimal refundAdjustments = Optional.ofNullable(
+                paymentHistoryRepo.sumRefundAdjustmentsByOrderId(request.getHoaDon().getId())
+        ).orElse(BigDecimal.ZERO);
+        BigDecimal alreadyRefunded = refundAdjustments.signum() < 0
+                ? refundAdjustments.abs()
+                : refundAdjustments;
+        BigDecimal remainingRefundable = paidGoods.subtract(alreadyRefunded).max(BigDecimal.ZERO);
+        BigDecimal safeResult = result.max(BigDecimal.ZERO).min(remainingRefundable)
+                .setScale(0, RoundingMode.HALF_UP);
+        if (safeResult.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Đơn hàng không còn số tiền hàng có thể hoàn");
+        }
+        return safeResult;
     }
 
     private void finishInventory(YeuCauDoiTra request) {
-        if (Boolean.TRUE.equals(request.getDaHoanTonKho())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu này đã cập nhật tồn kho trước đó");
+        if (RETURN.equals(request.getLoaiYeuCau())) {
+            restoreReturnedInventory(request);
+            request.setTrangThai(REFUNDED);
+            return;
         }
+        if (Boolean.TRUE.equals(request.getDaHoanTonKho())) {
+            request.setTrangThai(EXCHANGED);
+            return;
+        }
+        processExchangeInventory(request);
+        request.setTrangThai(EXCHANGED);
+    }
+
+    private void processExchangeInventory(YeuCauDoiTra request) {
+        if (Boolean.TRUE.equals(request.getDaHoanTonKho())) return;
         Integer oldId = request.getHoaDonChiTiet().getSanPhamChiTiet().getId();
-        Integer newId = request.getBienTheDoi() != null ? request.getBienTheDoi().getId() : null;
-        List<Integer> lockIds = new ArrayList<>(new LinkedHashSet<>(newId == null ? List.of(oldId) : List.of(oldId, newId)));
+        Integer newId = request.getBienTheDoi().getId();
+        List<Integer> lockIds = new ArrayList<>(new LinkedHashSet<>(List.of(oldId, newId)));
         Collections.sort(lockIds);
         Map<Integer, SanPhamChiTiet> locked = new HashMap<>();
         for (Integer id : lockIds) {
@@ -310,25 +385,47 @@ public class ReturnExchangeService {
                 "Nhập lại sản phẩm khách gửi trả"
         );
 
-        if (EXCHANGE.equals(request.getLoaiYeuCau())) {
-            SanPhamChiTiet newVariant = locked.get(newId);
-            if (value(newVariant.getSoLuong()) < quantity) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Biến thể đổi không còn đủ tồn kho");
-            }
-            int newBefore = value(newVariant.getSoLuong());
-            int newAfter = newBefore - quantity;
-            newVariant.setSoLuong(newAfter);
-            variantRepo.save(newVariant);
-            inventoryMovementService.record(
-                    newVariant, newBefore, newAfter, "XUAT_HANG_DOI",
-                    "RETURN-" + request.getId(),
-                    request.getNhanVienXuLy() != null ? request.getNhanVienXuLy().getHoVaTen() : "System",
-                    "Xuất biến thể thay thế cho khách"
-            );
-            request.setTrangThai(EXCHANGED);
-        } else {
-            request.setTrangThai(REFUNDED);
+        SanPhamChiTiet newVariant = locked.get(newId);
+        if (newVariant.getSanPham() == null
+                || !Objects.equals(newVariant.getSanPham().getTrangThai(), (byte) 1)
+                || !Objects.equals(newVariant.getTrangThai(), (byte) 1)
+                || newVariant.getMauSac() == null
+                || !Objects.equals(newVariant.getMauSac().getTrangThai(), (byte) 1)
+                || newVariant.getKichThuoc() == null
+                || !Objects.equals(newVariant.getKichThuoc().getTrangThai(), (byte) 1)
+                || value(newVariant.getSoLuong()) < quantity) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Biến thể đổi đã ngừng bán hoặc không còn đủ tồn kho");
         }
+        int newBefore = value(newVariant.getSoLuong());
+        int newAfter = newBefore - quantity;
+        newVariant.setSoLuong(newAfter);
+        variantRepo.save(newVariant);
+        inventoryMovementService.record(
+                newVariant, newBefore, newAfter, "XUAT_HANG_DOI",
+                "RETURN-" + request.getId(),
+                request.getNhanVienXuLy() != null ? request.getNhanVienXuLy().getHoVaTen() : "System",
+                "Xuất biến thể thay thế cho khách"
+        );
+        request.setDaHoanTonKho(true);
+    }
+
+    private void restoreReturnedInventory(YeuCauDoiTra request) {
+        if (Boolean.TRUE.equals(request.getDaHoanTonKho())) return;
+        Integer variantId = request.getHoaDonChiTiet().getSanPhamChiTiet().getId();
+        SanPhamChiTiet variant = variantRepo.findByIdForUpdate(variantId)
+                .orElseThrow(() -> notFound("Không tìm thấy biến thể sản phẩm"));
+        int quantity = request.getSoLuong();
+        int before = value(variant.getSoLuong());
+        int after = before + quantity;
+        variant.setSoLuong(after);
+        variantRepo.save(variant);
+        inventoryMovementService.record(
+                variant, before, after, "NHAN_HANG_DOI_TRA",
+                "RETURN-" + request.getId(),
+                request.getNhanVienXuLy() != null ? request.getNhanVienXuLy().getHoVaTen() : "System",
+                "Nhập lại sản phẩm khách gửi trả"
+        );
         request.setDaHoanTonKho(true);
     }
 
@@ -344,7 +441,13 @@ public class ReturnExchangeService {
                 || !Objects.equals(current.getSanPham().getId(), replacement.getSanPham().getId())) {
             throw badRequest("Chỉ được đổi màu hoặc kích cỡ của cùng sản phẩm");
         }
-        if (!Objects.equals(replacement.getTrangThai(), (byte) 1) || value(replacement.getSoLuong()) < quantity) {
+        if (!Objects.equals(replacement.getTrangThai(), (byte) 1)
+                || !Objects.equals(replacement.getSanPham().getTrangThai(), (byte) 1)
+                || replacement.getMauSac() == null
+                || !Objects.equals(replacement.getMauSac().getTrangThai(), (byte) 1)
+                || replacement.getKichThuoc() == null
+                || !Objects.equals(replacement.getKichThuoc().getTrangThai(), (byte) 1)
+                || value(replacement.getSoLuong()) < quantity) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Biến thể muốn đổi không còn đủ tồn kho");
         }
         return replacement;
@@ -361,9 +464,28 @@ public class ReturnExchangeService {
         return detail;
     }
 
-    private void requireNewRequest(HoaDonChiTiet detail) {
-        if (requestRepo.existsByHoaDonChiTietId(detail.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Sản phẩm này đã có hồ sơ đổi hoặc trả hàng");
+    private int requireAvailableQuantity(HoaDonChiTiet detail, Integer requestedQuantity) {
+        int purchased = value(detail.getSoLuong());
+        int consumed = Optional.ofNullable(requestRepo.sumQuantityByOrderDetailAndStatuses(
+                detail.getId(), QUANTITY_CONSUMING_STATUSES)).orElse(0L).intValue();
+        int available = Math.max(0, purchased - consumed);
+        int requested = requestedQuantity != null ? requestedQuantity : 0;
+        if (available == 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Sản phẩm này đã được đổi hoặc trả đủ số lượng đã mua");
+        }
+        if (requested < 1 || requested > available) {
+            throw badRequest("Số lượng đổi trả không hợp lệ. Có thể yêu cầu tối đa " + available + " sản phẩm");
+        }
+        return requested;
+    }
+
+    private void requireWithinReturnWindow(HoaDon order) {
+        LocalDateTime deliveredAt = order.getNgayGiaoHangThucTe() != null
+                ? order.getNgayGiaoHangThucTe()
+                : order.getNgayTao();
+        if (deliveredAt == null || deliveredAt.isBefore(LocalDateTime.now().minusDays(30))) {
+            throw badRequest("Đơn hàng đã quá thời hạn đổi trả 30 ngày");
         }
     }
 
@@ -378,8 +500,8 @@ public class ReturnExchangeService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập");
         }
         String identity = authentication.getName();
-        return employeeRepo.findByTenNguoiDung(identity)
-                .or(() -> employeeRepo.findByEmail(identity))
+        return employeeRepo.findByTenNguoiDungIgnoreCase(identity)
+                .or(() -> employeeRepo.findByEmailIgnoreCase(identity))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Không tìm thấy hồ sơ nhân viên"));
     }
 
@@ -391,14 +513,6 @@ public class ReturnExchangeService {
         if (!expected.equals(request.getTrangThai())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Yêu cầu không còn ở bước xử lý này");
         }
-    }
-
-    private int requireQuantity(Integer quantity, Integer purchased) {
-        int result = quantity != null ? quantity : 0;
-        if (result < 1 || result > value(purchased)) {
-            throw badRequest("Số lượng đổi trả không hợp lệ");
-        }
-        return result;
     }
 
     private String requireType(String type) {
@@ -413,6 +527,14 @@ public class ReturnExchangeService {
         normalized = normalized.toUpperCase(Locale.ROOT);
         if (EXCHANGE.equals(normalized) || RETURN.equals(normalized)) return normalized;
         return null;
+    }
+
+    private String optionalStatus(String status) {
+        String normalized = clean(status);
+        if (normalized == null) return null;
+        normalized = normalized.toUpperCase(Locale.ROOT);
+        if (!ALL_STATUSES.contains(normalized)) throw badRequest("Trạng thái yêu cầu không hợp lệ");
+        return normalized;
     }
 
     private String requireText(String value, int min, int max, String message) {
@@ -468,18 +590,24 @@ public class ReturnExchangeService {
         map.put("customerPhone", request.getKhachHang().getSoDienThoai());
         map.put("employeeName", request.getNhanVienXuLy() != null ? request.getNhanVienXuLy().getHoVaTen() : null);
         map.put("productId", variant.getSanPham().getId());
-        map.put("productCode", variant.getSanPham().getMaSanPham());
-        map.put("productName", variant.getSanPham().getTenSanPham());
+        map.put("productCode", firstNonBlank(detail.getMaSanPhamSnapshot(), variant.getSanPham().getMaSanPham()));
+        map.put("productName", firstNonBlank(detail.getTenSanPhamSnapshot(), variant.getSanPham().getTenSanPham()));
         map.put("variantId", variant.getId());
-        map.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
-        map.put("size", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
-        map.put("productImage", variant.getAnhUrl());
+        map.put("color", firstNonBlank(detail.getMauSacSnapshot(),
+                variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null));
+        map.put("size", firstNonBlank(detail.getKichThuocSnapshot(),
+                variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null));
+        map.put("productImage", firstNonBlank(detail.getAnhUrlSnapshot(), variant.getAnhUrl()));
         map.put("replacement", replacement != null ? variantMap(replacement) : null);
         map.put("createdAt", request.getNgayTao());
         map.put("reviewedAt", request.getNgayDuyet());
         map.put("receivedAt", request.getNgayNhanHang());
         map.put("completedAt", request.getNgayHoanTat());
         return map;
+    }
+
+    private String firstNonBlank(String preferred, String fallback) {
+        return preferred != null && !preferred.isBlank() ? preferred : fallback;
     }
 
     private Map<String, Object> variantMap(SanPhamChiTiet variant) {

@@ -77,7 +77,7 @@
               Đã giữ tồn kho
               <template v-if="holdCountdown">· còn {{ holdCountdown }}</template>
             </span>
-            <button type="button" :disabled="releasingCart" @click="clearReservedCart">
+            <button type="button" class="z-pos-clear-cart" :disabled="releasingCart" @click="clearReservedCart">
               {{ releasingCart ? 'Đang xóa...' : 'Xóa giỏ' }}
             </button>
           </div>
@@ -132,7 +132,7 @@
                 <i class="bi bi-search"></i>
                 <input v-model="customerSearch" class="lm-input" placeholder="Nhập tên, mã, SĐT hoặc email..." style="font-size:13px;padding:8px 12px 8px 34px">
                 <div v-if="customerResults.length" class="z-customer-results">
-                  <button v-for="customer in customerResults" :key="customer.id" type="button" @click="selectCustomer(customer)">
+                  <button v-for="customer in customerResults" :key="customer.id" type="button" class="z-customer-result" @click="selectCustomer(customer)">
                     <strong>{{ customer.hoVaTen }}</strong>
                     <span>{{ customer.soDienThoai }}<template v-if="customer.email"> · {{ customer.email }}</template></span>
                   </button>
@@ -165,7 +165,7 @@
             <div v-if="selectedCustomerId" class="z-selected-customer mb-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <span><i class="bi bi-person-check me-1"></i>Hồ sơ: {{ selectedCustomerCode }}</span>
-                <button type="button" @click="clearSelectedCustomer">Đổi khách</button>
+                <button type="button" class="z-inline-action-btn" @click="clearSelectedCustomer">Đổi khách</button>
               </div>
               <div class="d-flex align-items-center gap-2 mt-2">
                 <span class="badge bg-warning text-dark"><i class="bi bi-award-fill me-1"></i>Hạng {{ selectedCustomerTier || 'Đồng' }}</span>
@@ -469,7 +469,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api, useAuth } from '@/composables/useApi'
-import { mapProduct, fmtPrice, MOCK_PRODUCTS } from '@/composables/useProducts'
+import { mapProduct, fmtPrice } from '@/composables/useProducts'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { createVietQrUrl, isVietQrConfigured } from '@/config/paymentConfig'
@@ -679,28 +679,20 @@ async function restoreReservation() {
 
 async function loadProducts() {
   try {
-    const data = await api().getVay().catch(() => null)
-    if (Array.isArray(data) && data.length > 0) {
-      const sortedData = [...data].sort((a, b) => {
-        const da = a.ngayTao ? new Date(a.ngayTao).getTime() : Number(a.id || 0)
-        const db = b.ngayTao ? new Date(b.ngayTao).getTime() : Number(b.id || 0)
-        return db - da
-      })
-      allProducts.value = sortedData.filter(p => p.trangThai === 1).map((p, i) => {
-        const m = mapProduct(p, i)
-        return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
-      })
-    } else {
-      allProducts.value = MOCK_PRODUCTS.map((p, i) => {
-        const m = mapProduct(p, i)
-        return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
-      })
-    }
-  } catch (e) {
-    allProducts.value = MOCK_PRODUCTS.map((p, i) => {
-      const m = mapProduct(p, i)
-      return { ...m, priceDisplay: fmtPrice(m.price), rawId: p.id }
+    const data = await api().getSanPham()
+    if (!Array.isArray(data)) throw new Error('Dữ liệu sản phẩm không hợp lệ')
+    const sortedData = [...data].sort((a, b) => {
+      const da = a.ngayTao ? new Date(a.ngayTao).getTime() : Number(a.id || 0)
+      const db = b.ngayTao ? new Date(b.ngayTao).getTime() : Number(b.id || 0)
+      return db - da
     })
+    allProducts.value = sortedData.filter(product => product.trangThai === 1).map((product, index) => {
+      const mapped = mapProduct(product, index)
+      return { ...mapped, priceDisplay: fmtPrice(mapped.price), rawId: product.id }
+    })
+  } catch (e) {
+    allProducts.value = []
+    showToast(e.error || e.message || 'Không thể tải sản phẩm POS')
   }
 }
 
@@ -728,8 +720,8 @@ const filteredProducts = computed(() => {
 
   if (activeFilter.value !== 'Tất cả') {
     result = result.filter(p => {
-      const cat = (p.category || p.loaiVay || '').toLowerCase()
-      const code = (p.code || p.maVay || '').toUpperCase()
+      const cat = (p.category || '').toLowerCase()
+      const code = (p.code || '').toUpperCase()
       const filter = activeFilter.value.toLowerCase()
 
       if (filter.includes('khoác') || filter.includes('blazer')) {
@@ -857,7 +849,7 @@ const canPay = computed(() => {
 
 async function addToCart(p) {
   try {
-    const detail = await api().getVayById(p.rawId || p.id)
+    const detail = await api().getSanPhamById(p.rawId || p.id)
     selectedProduct.value = p
     productVariants.value = detail.bienThe || []
     
@@ -1196,6 +1188,16 @@ async function createOrder() {
     showToast('Số điện thoại phải có 10 chữ số và bắt đầu bằng 03, 05, 07, 08 hoặc 09')
     return
   }
+  if (posVat.value.isRequested) {
+    if (posVat.value.tenCongTy.trim().length < 2) return showToast('Vui lòng nhập tên công ty xuất hóa đơn')
+    if (!/^\d{10}(?:-\d{3})?$/.test(posVat.value.maSoThue.trim())) {
+      return showToast('Mã số thuế phải gồm 10 số hoặc dạng 10 số-3 số')
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(posVat.value.email.trim())) {
+      return showToast('Email nhận hóa đơn không hợp lệ')
+    }
+    if (posVat.value.diaChi.trim().length < 5) return showToast('Vui lòng nhập địa chỉ xuất hóa đơn')
+  }
   if (!await confirmDialog({
     title: 'Xác nhận thanh toán POS',
     message: `Hoàn tất đơn tại quầy với tổng tiền ${fmtPrice(finalTotal.value)} bằng ${paymentLabel()}?`,
@@ -1232,11 +1234,12 @@ async function createOrder() {
       email: customerEmail.value.trim() || null,
       customerId: selectedCustomerId.value,
       posReservationToken: reservationToken.value,
+      checkoutRequestId: `POS:${reservationToken.value}`,
       yeuCauVat: posVat.value.isRequested,
-      tenCongTyVat: posVat.value.isRequested ? posVat.value.tenCongTy : null,
-      maSoThueVat: posVat.value.isRequested ? posVat.value.maSoThue : null,
-      emailVat: posVat.value.isRequested ? posVat.value.email : null,
-      diaChiVat: posVat.value.isRequested ? posVat.value.diaChi : null
+      tenCongTyVat: posVat.value.isRequested ? posVat.value.tenCongTy.trim() : null,
+      maSoThueVat: posVat.value.isRequested ? posVat.value.maSoThue.trim() : null,
+      emailVat: posVat.value.isRequested ? posVat.value.email.trim().toLowerCase() : null,
+      diaChiVat: posVat.value.isRequested ? posVat.value.diaChi.trim() : null
     }
     await api().createOrder(orderData)
     showToast('Tạo đơn & thanh toán thành công!')
@@ -1269,11 +1272,13 @@ async function createOrder() {
   padding: 8px 10px; border: 1px solid #bbf7d0; background: #f0fdf4;
   color: #166534; font-size: 11px;
 }
-.z-pos-hold-status button {
+.z-pos-hold-status button,
+.z-pos-clear-cart {
   border: 0; padding: 0; background: transparent; color: #991b1b;
   font-size: 11px; font-weight: 600;
 }
-.z-pos-hold-status button:disabled { opacity: .55; }
+.z-pos-hold-status button:disabled,
+.z-pos-clear-cart:disabled { opacity: .55; }
 .z-customer-search { position: relative; }
 .z-customer-search > i { position: absolute; z-index: 2; left: 12px; top: 10px; color: var(--z-gray); }
 .z-customer-results {
@@ -1281,12 +1286,14 @@ async function createOrder() {
   max-height: 210px; overflow-y: auto; border: 1px solid var(--z-gray-border);
   background: var(--z-white); box-shadow: 0 10px 28px rgba(0,0,0,.12);
 }
-.z-customer-results button {
+.z-customer-results button,
+.z-customer-result {
   width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px;
   border: 0; border-bottom: 1px solid var(--z-gray-border); background: var(--z-white);
   color: var(--z-dark); text-align: left; font-size: 12px;
 }
-.z-customer-results button:hover { background: var(--z-accent-soft); }
+.z-customer-results button:hover,
+.z-customer-result:hover { background: var(--z-accent-soft); }
 .z-customer-results span { color: var(--z-gray); font-size: 11px; }
 .z-selected-customer {
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
@@ -1405,7 +1412,7 @@ async function createOrder() {
 .z-pos-voucher-item small { grid-column: 1 / -1; color: var(--z-gray); }
 .z-pos-voucher-item.disabled { border-color: var(--z-gray-border); background: var(--z-bg-alt); color: var(--z-gray); opacity: .7; cursor: not-allowed; }
 .z-pos-voucher-item.selected { border-style: solid; box-shadow: inset 0 0 0 1px #16a34a; }
-.z-best-voucher { align-self: start; border-radius: 10px; background: #dcfce7; color: #166534; padding: 2px 7px; font-size: 9px; font-weight: 700; }
+.z-best-voucher { align-self: start; border-radius: 6px; background: #dcfce7; color: #166534; padding: 2px 7px; font-size: 10px; font-weight: 700; }
 </style>
 
 

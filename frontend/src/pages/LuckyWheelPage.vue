@@ -131,7 +131,7 @@
               </div>
               <div v-if="result.trungThuong" class="z-claim-code">
                 <span>Mã nhận quà</span>
-                <button type="button" title="Sao chép mã nhận quà" @click="copyClaimCode">
+                <button type="button" class="z-claim-copy-btn" title="Sao chép mã nhận quà" aria-label="Sao chép mã nhận quà" @click="copyClaimCode">
                   <strong>{{ result.maNhanThuong }}</strong><i class="bi bi-copy"></i>
                 </button>
                 <small>Mang mã đơn, số điện thoại và mã này tới showroom Zestia để nhận quà.</small>
@@ -397,7 +397,8 @@ function formatDate(value) { return value ? `Kết thúc ${new Date(value).toLoc
 .z-result-copy strong { color: var(--z-dark); font-size: 14px; }
 .z-claim-code { grid-column: 1 / -1; }
 .z-claim-code > span, .z-claim-code small { display: block; color: var(--z-gray); font-size: 9px; }
-.z-claim-code button { width: 100%; display: flex; align-items: center; justify-content: space-between; margin: 5px 0; padding: 10px 12px; border: 1px dashed var(--z-accent); background: var(--z-white); color: var(--z-dark); cursor: pointer; }
+.z-claim-code button,
+.z-claim-copy-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; margin: 5px 0; padding: 10px 12px; border: 1px dashed var(--z-accent); background: var(--z-white); color: var(--z-dark); cursor: pointer; }
 .z-claim-code button strong { letter-spacing: 1px; }
 .z-gift-edit { margin-top:88px; }
 .z-gift-heading { display: grid; grid-template-columns: 1fr minmax(280px, .72fr); gap: 40px; align-items: end; margin-bottom: 22px; }

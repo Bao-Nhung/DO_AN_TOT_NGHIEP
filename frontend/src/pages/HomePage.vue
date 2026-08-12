@@ -199,7 +199,7 @@
       <p>Đăng ký để nhận bộ sưu tập mới, voucher thành viên và gợi ý phối đồ theo mùa.</p>
       <form class="z-newsletter-form" @submit.prevent="subscribeNewsletter">
         <input v-model="newsletterEmail" class="lm-input" type="email" placeholder="Email của bạn..." :disabled="newsletterLoading">
-        <button type="submit" :disabled="newsletterLoading">
+        <button type="submit" class="z-newsletter-submit" :disabled="newsletterLoading">
           {{ newsletterLoading ? 'Đang gửi...' : 'Đăng ký' }}
         </button>
       </form>
@@ -276,7 +276,9 @@ function formatMoney(value) { return Number(value || 0).toLocaleString('vi-VN') 
 
 onMounted(async () => {
   await Promise.all([
-    loadProducts(),
+    loadProducts().catch(error => {
+      console.warn('Không tải được danh sách sản phẩm', error)
+    }),
     api().getStorefrontSummary().then(data => Object.assign(storefront, data || {})).catch(error => {
       console.warn('Không tải được số liệu trang chủ', error)
     }),
@@ -597,18 +599,21 @@ async function subscribeNewsletter() {
   border: none;
   border-radius: 0;
 }
-.z-newsletter-form button {
+.z-newsletter-form button,
+.z-newsletter-submit {
   padding: 0 28px;
   border: 0;
   background: var(--z-dark);
   color: var(--z-white);
   font-weight: 700;
 }
-.z-newsletter-form button:hover {
+.z-newsletter-form button:hover,
+.z-newsletter-submit:hover {
   background: var(--z-accent);
   color: var(--z-white);
 }
-.z-newsletter-form button:disabled {
+.z-newsletter-form button:disabled,
+.z-newsletter-submit:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }

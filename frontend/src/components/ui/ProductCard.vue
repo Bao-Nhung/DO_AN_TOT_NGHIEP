@@ -56,7 +56,7 @@ const imgSrc = ref(props.product.image)
 watch(() => props.product.image, newImg => { imgSrc.value = newImg })
 
 function onImgError() {
-  const cat = String(props.product.category || props.product.loaiVay || '').toLowerCase()
+  const cat = String(props.product.category || '').toLowerCase()
   if (cat.includes('quần') || cat.includes('jeans')) imgSrc.value = '/images/products/pants1.jpg'
   else if (cat.includes('áo khoác') || cat.includes('blazer')) imgSrc.value = '/images/products/shirt5.jpg'
   else if (cat.includes('áo') || cat.includes('sơ mi')) imgSrc.value = '/images/products/shirt1.jpg'
@@ -101,8 +101,10 @@ function toggleComparison() {
   display: flex; align-items: center; justify-content: center;
   background: var(--z-white); color: var(--z-dark);
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  opacity: 0; transition: opacity .25s ease, background .2s ease, color .2s ease;
+  opacity: 0; cursor: pointer; transition: var(--z-ease);
 }
-.lm-product-card:hover .lm-product-compare { opacity: 1; }
+.lm-product-card:hover .lm-product-compare,
+.lm-product-compare:focus-visible { opacity: 1; }
+.lm-product-compare:hover { background: var(--z-accent-soft); color: var(--z-accent-dark); transform: translateY(-1px); }
 .lm-product-compare.active { background: var(--z-dark); color: var(--z-white); opacity: 1; }
 </style>

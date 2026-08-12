@@ -25,15 +25,19 @@ public class PaymentController {
     private static final byte STATUS_PENDING = 0;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
     private static final Pattern PHONE_PATTERN = Pattern.compile("0[35789]\\d{8}");
+    private static final Pattern TAX_CODE_PATTERN = Pattern.compile("^\\d{10}(?:-\\d{3})?$");
+    private static final Pattern CHECKOUT_REQUEST_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9:_-]{15,99}$");
     private static final int MAX_ORDER_LINES = 50;
     private static final int MAX_QUANTITY_PER_LINE = 100;
     private static final int MAX_TOTAL_QUANTITY = 200;
 
     private final HoaDonRepository hoaDonRepo;
     private final HoaDonChiTietRepository hoaDonCtRepo;
-    private final SanPhamChiTietRepository vayCtRepo;
+    private final SanPhamChiTietRepository sanPhamChiTietRepo;
+    private final AnhRepository anhRepo;
     private final KhachHangRepository khachHangRepo;
     private final LichSuThanhToanRepository lichSuRepo;
+    private final LichSuTrackingRepository lichSuTrackingRepo;
     private final GiamGiaRepository giamGiaRepo;
     private final NhanVienRepository nhanVienRepo;
     private final JwtUtil jwtUtil;
@@ -45,6 +49,7 @@ public class PaymentController {
     private final InventoryMovementService inventoryMovementService;
     private final PosReservationService posReservationService;
     private final VoucherApplicationService voucherApplicationService;
+    private final LoyaltyService loyaltyService;
     private final RequestRateLimiter rateLimiter;
 
     @PostMapping("/create-order")
@@ -95,9 +100,9 @@ public class PaymentController {
             items.add(item);
         }
         items.sort(Comparator.comparingInt(item -> {
-            Integer variantId = firstInt(item, "variantId", "sanPhamChiTietId", "idSanPhamChiTiet", "vayChiTietId", "idVayChiTiet");
+            Integer variantId = firstInt(item, "variantId", "sanPhamChiTietId", "idSanPhamChiTiet");
             if (variantId != null) return variantId;
-            Integer productId = firstInt(item, "productId", "idSanPham", "sanPhamId", "idVay", "vayId", "id");
+            Integer productId = firstInt(item, "productId", "idSanPham", "sanPhamId", "id");
             return productId != null ? productId : Integer.MAX_VALUE;
         }));
 
@@ -111,16 +116,24 @@ public class PaymentController {
                 if (!jwtUtil.isValid(token)) {
                     return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
                 }
-                String username = jwtUtil.extractUsername(token);
                 var claims = jwtUtil.extractClaims(token);
                 tokenRole = claims.get("role", String.class);
                 tokenUserId = toInt(claims.get("userId"));
-                if (isCustomerRole(tokenRole)) {
-                    kh = khachHangRepo.findByEmail(username)
-                            .or(() -> khachHangRepo.findBySoDienThoai(username))
-                            .orElse(null);
+                if (isCustomerRole(tokenRole) && tokenUserId != null) {
+                    kh = khachHangRepo.findById(tokenUserId).orElse(null);
+                    if (kh == null) {
+                        return ResponseEntity.status(401).body(Map.of("error", "Tài khoản khách hàng không còn tồn tại"));
+                    }
                 } else if (isStaffRole(tokenRole) && tokenUserId != null) {
                     nv = nhanVienRepo.findById(tokenUserId).orElse(null);
+                    if (nv == null
+                            || !Byte.valueOf((byte) 1).equals(nv.getTinhTrangLamViec())
+                            || nv.getVaiTro() == null
+                            || !isStaffRole(nv.getVaiTro().getTenVaiTro())) {
+                        return ResponseEntity.status(403).body(Map.of(
+                                "error", "Tài khoản nhân viên không còn quyền thực hiện giao dịch"
+                        ));
+                    }
                 }
             } catch (Exception ignored) {
                 return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
@@ -140,13 +153,39 @@ public class PaymentController {
             ));
         }
         boolean staffDirectSale = nv != null && requestedOffline;
+        Integer selectedCustomerId = toInt(body.get("customerId"));
+        if (!staffDirectSale && selectedCustomerId != null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "customerId chỉ được dùng trong luồng bán tại quầy"
+            ));
+        }
+        if (staffDirectSale && selectedCustomerId != null) {
+            kh = khachHangRepo.findById(selectedCustomerId).orElse(null);
+            if (kh == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Khách hàng đã chọn không còn tồn tại"));
+            }
+        }
         String posReservationToken = cleanString(body.get("posReservationToken"));
+        if (staffDirectSale && posReservationToken == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Giỏ POS chưa có phiên giữ hàng. Vui lòng thêm lại sản phẩm"
+            ));
+        }
         if (!staffDirectSale && posReservationToken != null) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "Phiên giữ hàng POS chỉ được dùng cho đơn bán tại quầy"
             ));
         }
-        if (nv != null && nv.getTinhTrangLamViec() != null && nv.getTinhTrangLamViec() != 1) {
+        if (staffDirectSale) {
+            String posRequestId = "POS:" + posReservationToken;
+            if (checkoutRequestId != null && !posRequestId.equals(checkoutRequestId)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Mã yêu cầu POS không khớp với phiên giữ hàng"
+                ));
+            }
+            checkoutRequestId = posRequestId;
+        }
+        if (nv != null && !Byte.valueOf((byte) 1).equals(nv.getTinhTrangLamViec())) {
             return ResponseEntity.status(403).body(Map.of("error", "Tài khoản nhân viên đang bị tạm khóa"));
         }
 
@@ -163,6 +202,12 @@ public class PaymentController {
         }
         if (!PHONE_PATTERN.matcher(Objects.toString(soDienThoai, "")).matches()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập số điện thoại Việt Nam hợp lệ"));
+        }
+        if (staffDirectSale && selectedCustomerId != null && kh.getSoDienThoai() != null
+                && !Objects.equals(customerIdentityService.normalizePhone(kh.getSoDienThoai()), soDienThoai)) {
+            return ResponseEntity.status(409).body(Map.of(
+                    "error", "Số điện thoại không khớp với hồ sơ khách hàng đã chọn"
+            ));
         }
         if (!staffDirectSale && (diaChi == null || diaChi.length() < 5 || diaChi.length() > 500)) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ địa chỉ giao hàng"));
@@ -182,9 +227,40 @@ public class PaymentController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email khach hang khong hop le"));
         }
 
+        boolean yeuCauVat = isTruthy(body.get("yeuCauVat")) || isTruthy(body.get("isVatRequested"));
+        String tenCongTyVat = cleanString(body.get("tenCongTyVat"));
+        String maSoThueVat = cleanString(body.get("maSoThueVat"));
+        String emailVat = cleanString(body.get("emailVat"));
+        String diaChiVat = cleanString(body.get("diaChiVat"));
+        if (yeuCauVat) {
+            if (tenCongTyVat == null || tenCongTyVat.length() < 2 || tenCongTyVat.length() > 255) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập tên công ty hợp lệ"));
+            }
+            if (maSoThueVat == null || !TAX_CODE_PATTERN.matcher(maSoThueVat).matches()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Mã số thuế phải gồm 10 số hoặc dạng 10 số-3 số"));
+            }
+            if (emailVat == null || emailVat.length() > 100 || !EMAIL_PATTERN.matcher(emailVat).matches()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập email nhận hóa đơn hợp lệ"));
+            }
+            if (diaChiVat == null || diaChiVat.length() < 5 || diaChiVat.length() > 500) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập địa chỉ xuất hóa đơn hợp lệ"));
+            }
+            emailVat = emailVat.toLowerCase(Locale.ROOT);
+        } else {
+            tenCongTyVat = null;
+            maSoThueVat = null;
+            emailVat = null;
+            diaChiVat = null;
+        }
+
         String paymentMethod = normalizePaymentMethod(hinhThuc, staffDirectSale);
         if (paymentMethod == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Phương thức thanh toán không hợp lệ"));
+        }
+        if (checkoutRequestId == null || !CHECKOUT_REQUEST_PATTERN.matcher(checkoutRequestId).matches()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Phiên đặt hàng không hợp lệ. Vui lòng tải lại trang thanh toán"
+            ));
         }
 
         if (checkoutRequestId != null) {
@@ -202,7 +278,7 @@ public class PaymentController {
         if (staffDirectSale && posReservationToken != null) {
             Map<Integer, Integer> requestedQuantities = new LinkedHashMap<>();
             for (Map<String, Object> item : items) {
-                Integer variantId = firstInt(item, "variantId", "sanPhamChiTietId", "idSanPhamChiTiet", "vayChiTietId", "idVayChiTiet");
+                Integer variantId = firstInt(item, "variantId", "sanPhamChiTietId", "idSanPhamChiTiet");
                 Integer quantity = firstInt(item, "qty", "quantity", "soLuong");
                 if (variantId == null || quantity == null || quantity <= 0) {
                     return ResponseEntity.badRequest().body(Map.of(
@@ -211,18 +287,12 @@ public class PaymentController {
                 }
                 requestedQuantities.merge(variantId, quantity, Integer::sum);
             }
-            try {
-                posReservation = posReservationService.prepareCheckout(
-                        posReservationToken,
-                        tokenUserId,
-                        requestedQuantities,
-                        cleanString(body.get("maGiamGia"))
-                );
-            } catch (IllegalArgumentException exception) {
-                return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
-            } catch (IllegalStateException exception) {
-                return ResponseEntity.status(409).body(Map.of("error", exception.getMessage()));
-            }
+            posReservation = posReservationService.prepareCheckout(
+                    posReservationToken,
+                    tokenUserId,
+                    requestedQuantities,
+                    cleanString(body.get("maGiamGia"))
+            );
         }
 
         String maHoaDon = generateOrderCode();
@@ -234,10 +304,10 @@ public class PaymentController {
         int totalQuantity = 0;
 
         for (Map<String, Object> item : items) {
-            Integer productId = firstInt(item, "productId", "idSanPham", "sanPhamId", "idVay", "vayId");
+            Integer productId = firstInt(item, "productId", "idSanPham", "sanPhamId");
             if (productId == null) productId = toInt(item.get("id"));
             
-            Integer variantId = firstInt(item, "variantId", "sanPhamChiTietId", "idSanPhamChiTiet", "vayChiTietId", "idVayChiTiet");
+            Integer variantId = firstInt(item, "variantId", "sanPhamChiTietId", "idSanPhamChiTiet");
             Integer qty = firstInt(item, "qty", "quantity", "soLuong");
             if (qty == null || qty <= 0 || qty > MAX_QUANTITY_PER_LINE) {
                 return ResponseEntity.badRequest().body(Map.of("error", "So luong san pham khong hop le"));
@@ -247,52 +317,21 @@ public class PaymentController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Mỗi đơn hàng chỉ được tối đa 200 sản phẩm"));
             }
 
-            SanPhamChiTiet selectedById = null;
-            if (variantId != null) {
-                selectedById = vayCtRepo.findByIdForUpdate(variantId).orElse(null);
-                if (!isOrderableVariant(selectedById)) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Bien the san pham khong ton tai hoac da ngung ban"));
-                }
-                if (productId != null && !Objects.equals(productId, selectedById.getSanPham().getId())) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Bien the khong thuoc san pham da chon"));
-                }
-                productId = selectedById.getSanPham().getId();
+            if (variantId == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Mỗi dòng sản phẩm phải có variantId để xác định chính xác màu và kích thước"
+                ));
             }
-            if (productId == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Thieu thong tin san pham"));
+            SanPhamChiTiet variant = sanPhamChiTietRepo.findByIdForUpdate(variantId).orElse(null);
+            if (!isOrderableVariant(variant)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Biến thể sản phẩm không tồn tại hoặc đã ngừng bán"));
             }
-
-            var variants = selectedById != null
-                    ? List.of(selectedById)
-                    : vayCtRepo.findBySanPhamIdForUpdate(productId).stream()
-                            .filter(PaymentController::isOrderableVariant)
-                            .toList();
-            if (variants.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "San pham khong co bien the dang ban"));
+            if (productId != null && !Objects.equals(productId, variant.getSanPham().getId())) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Biến thể không thuộc sản phẩm đã chọn"));
             }
-
-            SanPhamChiTiet variant;
-            String size = cleanString(item.get("size"));
-            String color = cleanString(item.get("color"));
-            variant = selectedById;
-
-            if (variant == null) {
-                if (size == null || color == null) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Vui long chon day du mau sac va kich thuoc"));
-                }
-                for (SanPhamChiTiet v : variants) {
-                    boolean matchSize = size == null || (v.getKichThuoc() != null && size.equalsIgnoreCase(v.getKichThuoc().getTenKichThuoc()));
-                    boolean matchColor = color == null || (v.getMauSac() != null && color.equalsIgnoreCase(v.getMauSac().getTenMauSac()));
-                    
-                    if (matchSize && matchColor) {
-                        variant = v;
-                        break;
-                    }
-                }
-            }
-            if (variant == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Bien the mau/size khong ton tai hoac da ngung ban"));
-            }
+            productId = variant.getSanPham().getId();
+            String size = variant.getKichThuoc().getTenKichThuoc();
+            String color = variant.getMauSac().getTenMauSac();
 
             int soLuongKho = variant.getSoLuong() != null ? variant.getSoLuong() : 0;
             int reservedQuantity = posReservation != null
@@ -314,7 +353,7 @@ public class PaymentController {
             BigDecimal price = posReservation != null
                     ? posReservation.prices().get(variant.getId())
                     : priceQuote.effectivePrice();
-            if (price == null || price.compareTo(BigDecimal.ZERO) < 0) {
+            if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
                 return ResponseEntity.status(409).body(Map.of(
                         "error", "Giá sản phẩm trong phiên POS không còn hợp lệ. Vui lòng tạo lại giỏ"
                 ));
@@ -324,20 +363,24 @@ public class PaymentController {
 
             BigDecimal phanTramGiam = priceQuote.discountPercent();
 
-            BigDecimal giaNhap = variant.getGiaNhap();
-
             chiTietList.add(HoaDonChiTiet.builder()
                     .sanPhamChiTiet(variant)
                     .soLuong(qty)
                     .donGia(price)
-                    .giaNhap(giaNhap)
                     .phanTramGiam(phanTramGiam)
+                    .thanhTien(lineTotal)
+                    .maSanPhamSnapshot(variant.getSanPham() != null ? variant.getSanPham().getMaSanPham() : null)
+                    .tenSanPhamSnapshot(variant.getSanPham() != null ? variant.getSanPham().getTenSanPham() : null)
+                    .mauSacSnapshot(variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null)
+                    .kichThuocSnapshot(variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null)
+                    .anhUrlSnapshot(cleanString(variant.getAnhUrl()))
                     .build());
         }
 
         if (chiTietList.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Không có sản phẩm hợp lệ"));
         }
+        populateMissingOrderImages(chiTietList);
 
         BigDecimal phiVanChuyen;
         try {
@@ -354,7 +397,7 @@ public class PaymentController {
         // Áp dụng voucher (mã giảm giá) nếu có
         GiamGia voucher = null;
         BigDecimal giamGia = BigDecimal.ZERO;
-        String maGiamGia = (String) body.get("maGiamGia");
+        String maGiamGia = cleanString(body.get("maGiamGia"));
         if (posReservation != null) {
             voucher = posReservation.voucher();
             if (voucher != null) {
@@ -391,11 +434,7 @@ public class PaymentController {
             }
         }
 
-        try {
-            kh = customerIdentityService.resolveForOrder(kh, hoTen, soDienThoai, emailKhachHang);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
-        }
+        kh = customerIdentityService.resolveForOrder(kh, hoTen, soDienThoai, emailKhachHang);
 
         for (Map.Entry<Integer, Integer> entry : stockDeductions.entrySet()) {
             SanPhamChiTiet variant = plannedVariants.get(entry.getKey());
@@ -406,7 +445,7 @@ public class PaymentController {
             int quantityToDeductNow = entry.getValue() - heldQuantity;
             int afterStock = currentStock - quantityToDeductNow;
             variant.setSoLuong(afterStock);
-            vayCtRepo.save(variant);
+            sanPhamChiTietRepo.save(variant);
             inventoryMovementService.record(
                     variant, currentStock, afterStock,
                     staffDirectSale ? "BAN_TAI_QUAY" : "GIU_TON_CHECKOUT",
@@ -419,12 +458,6 @@ public class PaymentController {
         byte trangThai = staffDirectSale ? (byte) 4 : STATUS_PENDING;
         boolean daThanhToan = staffDirectSale;
         byte hinhThucNhanHang = (byte) (staffDirectSale ? 0 : 1);
-
-        Boolean yeuCauVat = Boolean.TRUE.equals(body.get("yeuCauVat")) || Boolean.TRUE.equals(body.get("isVatRequested"));
-        String tenCongTyVat = cleanString(body.get("tenCongTyVat"));
-        String maSoThueVat = cleanString(body.get("maSoThueVat"));
-        String emailVat = cleanString(body.get("emailVat"));
-        String diaChiVat = cleanString(body.get("diaChiVat"));
 
         HoaDon hoaDon = HoaDon.builder()
                 .maHoaDon(maHoaDon)
@@ -439,10 +472,12 @@ public class PaymentController {
                 .diaChiGiaoHang(staffDirectSale ? "Mua trực tiếp tại cửa hàng" : diaChi)
                 .hinhThucThanhToan(paymentMethod)
                 .trangThai(trangThai)
+                .trangThaiTracking(staffDirectSale ? "delivered" : "pending")
                 .daThanhToan(daThanhToan)
                 .daHoanTonKho(false)
                 .ghiChu(ghiChu)
                 .ngayTao(LocalDateTime.now())
+                .ngayGiaoHangThucTe(staffDirectSale ? LocalDateTime.now() : null)
                 .tenKhachHang(hoTen)
                 .soDienThoai(soDienThoai)
                 .emailKhachHang(emailKhachHang)
@@ -451,7 +486,6 @@ public class PaymentController {
                 .maSoThueVat(yeuCauVat ? maSoThueVat : null)
                 .emailVat(yeuCauVat ? emailVat : null)
                 .diaChiVat(yeuCauVat ? diaChiVat : null)
-                .trangThaiVat(yeuCauVat ? "CHO_PHAT_HANH" : null)
                 .build();
 
         hoaDon = hoaDonRepo.save(hoaDon);
@@ -464,6 +498,15 @@ public class PaymentController {
             ct.setHoaDon(hoaDon);
         }
         hoaDonCtRepo.saveAll(chiTietList);
+
+        lichSuTrackingRepo.save(LichSuTracking.builder()
+                .hoaDon(hoaDon)
+                .trangThai(staffDirectSale ? "delivered" : "pending")
+                .moTa(staffDirectSale
+                        ? "Đơn hàng đã được thanh toán và hoàn tất tại quầy."
+                        : "Đơn hàng đã được tạo và đang chờ xử lý.")
+                .ngayCapNhat(LocalDateTime.now())
+                .build());
 
         if (posReservation == null
                 && voucher != null
@@ -487,6 +530,7 @@ public class PaymentController {
                     .noiDung("Thanh toán tại quầy - " + maHoaDon)
                     .ngayTao(LocalDateTime.now())
                     .build());
+            loyaltyService.earnPointsOnOrderCompletion(hoaDon);
         }
 
         if (staffDirectSale || "COD".equalsIgnoreCase(paymentMethod)) {
@@ -510,7 +554,8 @@ public class PaymentController {
 
     @PostMapping("/apply-voucher")
     public ResponseEntity<?> applyVoucher(@RequestBody Map<String, Object> body) {
-        String ma = (String) body.get("maGiamGia");
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Dữ liệu voucher không hợp lệ"));
+        String ma = cleanString(body.get("maGiamGia"));
         BigDecimal tamTinh = parseMoney(body.get("tongTien"));
         if (tamTinh == null || tamTinh.compareTo(BigDecimal.ZERO) < 0) {
             return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Tổng tiền không hợp lệ"));
@@ -533,6 +578,7 @@ public class PaymentController {
 
     @PostMapping("/best-voucher")
     public ResponseEntity<?> findBestVoucher(@RequestBody Map<String, Object> body) {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Dữ liệu voucher không hợp lệ"));
         BigDecimal tamTinh = parseMoney(body.get("tongTien"));
         if (tamTinh == null || tamTinh.compareTo(BigDecimal.ZERO) <= 0) {
             return ResponseEntity.ok(Map.of("valid", false, "message", "Chưa có voucher phù hợp"));
@@ -561,25 +607,6 @@ public class PaymentController {
         }
     }
 
-    @GetMapping("/order/{id}")
-    public ResponseEntity<?> getOrder(@PathVariable Integer id,
-                                       @RequestHeader(value = "Authorization", required = false) String authHeader) {
-        return hoaDonRepo.findById(id)
-                .map(hd -> {
-                    ResponseEntity<?> authError = authorizeOrderAccess(hd, authHeader);
-                    if (authError != null) return authError;
-                    Map<String, Object> map = new LinkedHashMap<>();
-                    map.put("id", hd.getId());
-                    map.put("maHoaDon", hd.getMaHoaDon());
-                    map.put("tongTien", hd.getTongTien());
-                    map.put("trangThai", hd.getTrangThai());
-                    map.put("hinhThucThanhToan", hd.getHinhThucThanhToan());
-                    map.put("ngayTao", hd.getNgayTao());
-                    return ResponseEntity.ok(map);
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
     private static Integer firstInt(Map<String, Object> map, String... keys) {
         if (map == null || keys == null) return null;
         for (String key : keys) {
@@ -604,8 +631,36 @@ public class PaymentController {
                 && variant.getSanPham() != null
                 && variant.getMauSac() != null
                 && variant.getKichThuoc() != null
-                && (variant.getTrangThai() == null || variant.getTrangThai() == 1)
-                && (variant.getSanPham().getTrangThai() == null || variant.getSanPham().getTrangThai() == 1);
+                && Byte.valueOf((byte) 1).equals(variant.getTrangThai())
+                && Byte.valueOf((byte) 1).equals(variant.getSanPham().getTrangThai())
+                && Byte.valueOf((byte) 1).equals(variant.getMauSac().getTrangThai())
+                && Byte.valueOf((byte) 1).equals(variant.getKichThuoc().getTrangThai());
+    }
+
+    private void populateMissingOrderImages(List<HoaDonChiTiet> details) {
+        List<Integer> productIds = details.stream()
+                .filter(detail -> cleanString(detail.getAnhUrlSnapshot()) == null)
+                .map(HoaDonChiTiet::getSanPhamChiTiet)
+                .filter(Objects::nonNull)
+                .map(SanPhamChiTiet::getSanPham)
+                .filter(Objects::nonNull)
+                .map(SanPham::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (productIds.isEmpty()) return;
+
+        Map<Integer, String> firstImages = new HashMap<>();
+        for (Anh image : anhRepo.findBySanPhamIdInAndTrangThaiOrderByIdAsc(productIds, (byte) 1)) {
+            if (image.getSanPham() == null || cleanString(image.getAnhUrl()) == null) continue;
+            firstImages.putIfAbsent(image.getSanPham().getId(), image.getAnhUrl().trim());
+        }
+        for (HoaDonChiTiet detail : details) {
+            if (cleanString(detail.getAnhUrlSnapshot()) != null
+                    || detail.getSanPhamChiTiet() == null
+                    || detail.getSanPhamChiTiet().getSanPham() == null) continue;
+            detail.setAnhUrlSnapshot(firstImages.get(detail.getSanPhamChiTiet().getSanPham().getId()));
+        }
     }
 
     private String generateOrderCode() {
@@ -709,27 +764,4 @@ public class PaymentController {
         emailService.sendOrderConfirmationEmail(hoaDon);
     }
 
-    private ResponseEntity<?> authorizeOrderAccess(HoaDon hd, String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
-        }
-        try {
-            String token = authHeader.substring(7);
-            if (!jwtUtil.isValid(token)) {
-                return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
-            }
-            var claims = jwtUtil.extractClaims(token);
-            String role = claims.get("role", String.class);
-            Integer userId = toInt(claims.get("userId"));
-            if (isStaffRole(role)) return null;
-            if (isCustomerRole(role)
-                    && hd.getKhachHang() != null
-                    && Objects.equals(hd.getKhachHang().getId(), userId)) {
-                return null;
-            }
-            return ResponseEntity.status(403).body(Map.of("error", "Khong co quyen xem don hang nay"));
-        } catch (Exception e) {
-            return ResponseEntity.status(401).body(Map.of("error", "Token khong hop le"));
-        }
-    }
 }

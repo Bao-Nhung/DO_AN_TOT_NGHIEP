@@ -3,9 +3,11 @@ package com.zestia.datn.zestia.controller;
 import com.zestia.datn.zestia.service.ReturnExchangeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -17,8 +19,11 @@ public class ReturnExchangeController {
     private final ReturnExchangeService returnService;
 
     @GetMapping("/mine")
-    public List<Map<String, Object>> mine(Authentication authentication) {
-        return returnService.mine(authentication);
+    public Map<String, Object> mine(@RequestParam(defaultValue = "0") int page,
+                                    @RequestParam(defaultValue = "6") int size,
+                                    @RequestParam(required = false) String q,
+                                    Authentication authentication) {
+        return returnService.mine(authentication, page, size, q);
     }
 
     @PostMapping(value = "/online", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -37,14 +42,17 @@ public class ReturnExchangeController {
     }
 
     @GetMapping
-    public List<Map<String, Object>> all(@RequestParam(required = false) String type,
-                                         @RequestParam(required = false) String status) {
-        return returnService.all(type, status);
+    public Map<String, Object> all(@RequestParam(required = false) String type,
+                                   @RequestParam(required = false) String status,
+                                   @RequestParam(defaultValue = "0") int page,
+                                   @RequestParam(defaultValue = "10") int size) {
+        return returnService.all(type, status, page, size);
     }
 
     @PostMapping("/offline")
     public Map<String, Object> createOffline(@RequestBody Map<String, Object> body,
                                               Authentication authentication) {
+        requireBody(body);
         return returnService.createOffline(
                 integer(body.get("orderId")),
                 integer(body.get("orderDetailId")),
@@ -61,6 +69,7 @@ public class ReturnExchangeController {
     public Map<String, Object> review(@PathVariable Integer id,
                                        @RequestBody Map<String, Object> body,
                                        Authentication authentication) {
+        requireBody(body);
         return returnService.review(id, bool(body.get("approved")), string(body.get("reason")), authentication);
     }
 
@@ -68,6 +77,7 @@ public class ReturnExchangeController {
     public Map<String, Object> receive(@PathVariable Integer id,
                                         @RequestBody Map<String, Object> body,
                                         Authentication authentication) {
+        requireBody(body);
         return returnService.receive(id, bool(body.get("accepted")), string(body.get("reason")), authentication);
     }
 
@@ -86,6 +96,10 @@ public class ReturnExchangeController {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private void requireBody(Map<String, Object> body) {
+        if (body == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dữ liệu đổi trả không hợp lệ");
     }
 
     private String string(Object value) {

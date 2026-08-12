@@ -21,6 +21,12 @@ public interface SanPhamRepository extends JpaRepository<SanPham, Integer> {
 
     List<SanPham> findByLoaiSanPhamId(Integer loaiSanPhamId);
 
+    boolean existsByLoaiSanPhamIdAndTrangThai(Integer loaiSanPhamId, Byte trangThai);
+
+    boolean existsByChatLieuIdAndTrangThai(Integer chatLieuId, Byte trangThai);
+
+    boolean existsByNhaCungCapIdAndTrangThai(Integer nhaCungCapId, Byte trangThai);
+
     boolean existsByMaSanPham(String maSanPham);
 
     long countByTrangThai(Byte trangThai);

@@ -95,8 +95,8 @@
         </div>
         <div class="z-promotion-scopes">
           <div v-for="(scope, index) in form.phamVis" :key="index" class="z-promotion-scope">
-            <select v-model="scope.idVay" class="lm-input"><option :value="null">Tất cả sản phẩm</option><option v-for="product in products" :key="product.id" :value="product.id">{{ product.maVay }} · {{ product.tenVay }}</option></select>
-            <select v-model="scope.idLoaiVay" class="lm-input"><option :value="null">Tất cả loại</option><option v-for="item in attributes.loaiVay" :key="item.id" :value="item.id">{{ item.tenLoaiVay }}</option></select>
+            <select v-model="scope.idSanPham" class="lm-input"><option :value="null">Tất cả sản phẩm</option><option v-for="product in products" :key="product.id" :value="product.id">{{ product.maSanPham }} · {{ product.tenSanPham }}</option></select>
+            <select v-model="scope.idLoaiSanPham" class="lm-input"><option :value="null">Tất cả loại</option><option v-for="item in attributes.loaiSanPham" :key="item.id" :value="item.id">{{ item.tenLoaiSanPham }}</option></select>
             <select v-model="scope.idMauSac" class="lm-input"><option :value="null">Tất cả màu</option><option v-for="item in attributes.mauSac" :key="item.id" :value="item.id">{{ item.tenMauSac }}</option></select>
             <select v-model="scope.idKichThuoc" class="lm-input"><option :value="null">Tất cả size</option><option v-for="item in attributes.kichThuoc" :key="item.id" :value="item.id">{{ item.tenKichThuoc }}</option></select>
             <button type="button" class="z-icon-btn" title="Bỏ phạm vi" aria-label="Bỏ phạm vi áp dụng" :disabled="form.phamVis.length === 1" @click="form.phamVis.splice(index, 1)"><i class="bi bi-trash"></i></button>
@@ -126,7 +126,7 @@ const campaigns = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const products = ref([])
-const attributes = ref({ loaiVay: [], mauSac: [], kichThuoc: [] })
+const attributes = ref({ loaiSanPham: [], mauSac: [], kichThuoc: [] })
 const showModal = ref(false)
 const editingId = ref(null)
 const saving = ref(false)
@@ -141,7 +141,7 @@ watch(totalPages, total => {
   if (currentPage.value > total) currentPage.value = total
 })
 
-function emptyScope() { return { idVay: null, idLoaiVay: null, idMauSac: null, idKichThuoc: null } }
+function emptyScope() { return { idSanPham: null, idLoaiSanPham: null, idMauSac: null, idKichThuoc: null } }
 function defaultForm() {
   const start = new Date(Date.now() + 60 * 60 * 1000)
   const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -164,7 +164,7 @@ async function loadCampaigns() {
 
 async function loadOptions() {
   try {
-    const [productData, attrData] = await Promise.all([api().getVay(), api().getThuocTinh()])
+    const [productData, attrData] = await Promise.all([api().getSanPham(), api().getThuocTinh()])
     products.value = productData || []
     attributes.value = attrData || attributes.value
   } catch (e) { showToast(e.error || 'Không thể tải phạm vi áp dụng') }
@@ -184,7 +184,7 @@ function openEdit(campaign) {
     ngayKetThuc: toLocalInput(campaign.ngayKetThuc), doUuTien: Number(campaign.doUuTien || 0),
     active: Number(campaign.trangThai) === 1,
     phamVis: campaign.phamVis?.length ? campaign.phamVis.map(scope => ({
-      idVay: scope.idVay || null, idLoaiVay: scope.idLoaiVay || null,
+      idSanPham: scope.idSanPham || null, idLoaiSanPham: scope.idLoaiSanPham || null,
       idMauSac: scope.idMauSac || null, idKichThuoc: scope.idKichThuoc || null
     })) : [emptyScope()]
   }
@@ -244,8 +244,8 @@ function toLocalInput(value) {
   return local.toISOString().slice(0, 16)
 }
 function scopeSummary(scopes = []) {
-  if (!scopes.length || scopes.some(scope => !scope.idVay && !scope.idLoaiVay && !scope.idMauSac && !scope.idKichThuoc)) return 'Toàn bộ sản phẩm'
-  return scopes.map(scope => [scope.tenVay, scope.tenLoaiVay, scope.tenMauSac, scope.tenKichThuoc].filter(Boolean).join(' · ')).join('; ')
+  if (!scopes.length || scopes.some(scope => !scope.idSanPham && !scope.idLoaiSanPham && !scope.idMauSac && !scope.idKichThuoc)) return 'Toàn bộ sản phẩm'
+  return scopes.map(scope => [scope.tenSanPham, scope.tenLoaiSanPham, scope.tenMauSac, scope.tenKichThuoc].filter(Boolean).join(' · ')).join('; ')
 }
 </script>
 

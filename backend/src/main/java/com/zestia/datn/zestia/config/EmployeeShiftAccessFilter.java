@@ -54,20 +54,9 @@ public class EmployeeShiftAccessFilter extends OncePerRequestFilter {
             return;
         }
 
+        ShiftAccessService.WorkStatus status;
         try {
-            ShiftAccessService.WorkStatus status = shiftAccessService.getWorkStatus(employeeId, LocalDateTime.now());
-            if (status.canOperate()) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            objectMapper.writeValue(response.getWriter(), Map.of(
-                    "error", status.reason(),
-                    "code", "SHIFT_REQUIRED"
-            ));
+            status = shiftAccessService.getWorkStatus(employeeId, LocalDateTime.now());
         } catch (Exception ignored) {
             response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -76,7 +65,21 @@ public class EmployeeShiftAccessFilter extends OncePerRequestFilter {
                     "error", "Không thể kiểm tra ca làm lúc này. Vui lòng thử lại",
                     "code", "SHIFT_CHECK_UNAVAILABLE"
             ));
+            return;
         }
+
+        if (status.canOperate()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        objectMapper.writeValue(response.getWriter(), Map.of(
+                "error", status.reason(),
+                "code", "SHIFT_REQUIRED"
+        ));
     }
 
     private boolean isExempt(HttpServletRequest request) {

@@ -21,6 +21,17 @@ public interface VongQuayMayManRepository extends JpaRepository<VongQuayMayMan, 
             """)
     List<VongQuayMayMan> findActiveAt(@Param("now") LocalDateTime now);
 
+    @Query("""
+            SELECT COUNT(campaign) FROM VongQuayMayMan campaign
+            WHERE campaign.trangThai = 1
+              AND (:excludedId IS NULL OR campaign.id <> :excludedId)
+              AND campaign.ngayBatDau < :endsAt
+              AND campaign.ngayKetThuc > :startsAt
+            """)
+    long countActiveOverlaps(@Param("excludedId") Integer excludedId,
+                             @Param("startsAt") LocalDateTime startsAt,
+                             @Param("endsAt") LocalDateTime endsAt);
+
     @Query("SELECT campaign FROM VongQuayMayMan campaign ORDER BY campaign.ngayBatDau DESC, campaign.id DESC")
     List<VongQuayMayMan> findAllLatest();
 }

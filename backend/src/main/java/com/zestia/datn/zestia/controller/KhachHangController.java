@@ -12,6 +12,8 @@ import com.zestia.datn.zestia.repository.DiaChiRepository;
 import com.zestia.datn.zestia.service.CustomerIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -32,11 +34,6 @@ public class KhachHangController {
     private final HoaDonChiTietRepository hoaDonChiTietRepo;
     private final AnhRepository anhRepo;
     private final CustomerIdentityService customerIdentityService;
-
-    @GetMapping
-    public List<Map<String, Object>> getAll() {
-        return khachHangRepo.findCustomerSummaries().stream().map(this::toMap).toList();
-    }
 
     @GetMapping("/paged")
     public Map<String, Object> getPage(@RequestParam(defaultValue = "0") int page,
@@ -90,6 +87,7 @@ public class KhachHangController {
 
     @PostMapping("/quick")
     public ResponseEntity<?> quickCreate(@RequestBody Map<String, Object> body) {
+        if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu khách hàng không hợp lệ"));
         String name = clean(body.get("hoVaTen"));
         String phone = customerIdentityService.normalizePhone(clean(body.get("soDienThoai")));
         String email = customerIdentityService.normalizeEmail(clean(body.get("email")));
@@ -112,13 +110,22 @@ public class KhachHangController {
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<?> purchaseHistory(@PathVariable Integer id) {
+    public ResponseEntity<?> purchaseHistory(@PathVariable Integer id,
+                                             @RequestParam(defaultValue = "0") int page,
+                                             @RequestParam(defaultValue = "5") int size) {
         if (!khachHangRepo.existsById(id)) return ResponseEntity.notFound().build();
-        List<HoaDon> orders = hoaDonRepo.findByCustomerIdOrderByLatest(id);
-        if (orders.isEmpty()) return ResponseEntity.ok(List.of());
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(50, Math.max(1, size));
+        var orderPage = hoaDonRepo.findCustomerHistoryPage(
+                id,
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "ngayTao", "id"))
+        );
+        List<HoaDon> orders = orderPage.getContent();
 
         List<Integer> orderIds = orders.stream().map(HoaDon::getId).toList();
-        List<HoaDonChiTiet> details = hoaDonChiTietRepo.findByHoaDonIdIn(orderIds);
+        List<HoaDonChiTiet> details = orderIds.isEmpty()
+                ? List.of()
+                : hoaDonChiTietRepo.findByHoaDonIdIn(orderIds);
         Map<Integer, List<HoaDonChiTiet>> detailsByOrder = details.stream()
                 .collect(Collectors.groupingBy(detail -> detail.getHoaDon().getId()));
         List<Integer> productIds = details.stream()
@@ -136,10 +143,16 @@ public class KhachHangController {
             }
         }
 
-        List<Map<String, Object>> result = orders.stream()
+        List<Map<String, Object>> content = orders.stream()
                 .map(order -> historyMap(order, detailsByOrder.getOrDefault(order.getId(), List.of()), firstImages))
                 .toList();
-        return ResponseEntity.ok(result);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", content);
+        response.put("page", orderPage.getNumber());
+        response.put("size", orderPage.getSize());
+        response.put("totalElements", orderPage.getTotalElements());
+        response.put("totalPages", orderPage.getTotalPages());
+        return ResponseEntity.ok(response);
     }
 
     private Map<String, Object> historyMap(HoaDon order, List<HoaDonChiTiet> details,
@@ -170,14 +183,17 @@ public class KhachHangController {
             map.put("variantId", variant.getId());
             map.put("maBienThe", variant.getMaSanPhamChiTiet());
             map.put("productId", product != null ? product.getId() : null);
-            map.put("maSanPham", product != null ? product.getMaSanPham() : null);
-            map.put("maVay", product != null ? product.getMaSanPham() : null);
-            map.put("tenSanPham", product != null ? product.getTenSanPham() : null);
-            map.put("tenVay", product != null ? product.getTenSanPham() : null);
-            map.put("mauSac", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
-            map.put("kichThuoc", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
-            map.put("anhUrl", variant.getAnhUrl() != null ? variant.getAnhUrl()
-                    : product != null ? firstImages.get(product.getId()) : null);
+            map.put("maSanPham", firstNonBlank(detail.getMaSanPhamSnapshot(),
+                    product != null ? product.getMaSanPham() : null));
+            map.put("tenSanPham", firstNonBlank(detail.getTenSanPhamSnapshot(),
+                    product != null ? product.getTenSanPham() : null));
+            map.put("mauSac", firstNonBlank(detail.getMauSacSnapshot(),
+                    variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null));
+            map.put("kichThuoc", firstNonBlank(detail.getKichThuocSnapshot(),
+                    variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null));
+            String currentImage = variant.getAnhUrl() != null ? variant.getAnhUrl()
+                    : product != null ? firstImages.get(product.getId()) : null;
+            map.put("anhUrl", firstNonBlank(detail.getAnhUrlSnapshot(), currentImage));
         }
         return map;
     }
@@ -198,6 +214,10 @@ public class KhachHangController {
         if (value == null) return null;
         String text = String.valueOf(value).trim();
         return text.isEmpty() ? null : text;
+    }
+
+    private String firstNonBlank(String preferred, String fallback) {
+        return preferred != null && !preferred.isBlank() ? preferred : fallback;
     }
 
     private Map<String, Object> toMap(KhachHangRepository.KhachHangSummary kh) {

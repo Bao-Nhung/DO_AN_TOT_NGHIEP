@@ -89,7 +89,7 @@ Toàn bộ dữ liệu mẫu (sản phẩm, **giá tiền**, **hình ảnh**, bi
 sqlcmd -S localhost,1433 -U sa -P 123456 -C -f 65001 -i database/fashion_shop.sql
 ```
 
-> 💡 File này **an toàn khi chạy lại nhiều lần**: dữ liệu chuẩn được thêm/cập nhật theo khóa nghiệp vụ, dữ liệu trùng được hợp nhất và các bất biến được kiểm tra trước khi báo thành công.
+> ⚠️ **Cảnh báo:** file này là kịch bản reset dữ liệu demo. Mỗi lần chạy, nó ngắt các kết nối tới database `fashion_shop`, xóa toàn bộ database cũ rồi tạo lại từ đầu. Hãy sao lưu dữ liệu cần giữ và không chạy trên database có dữ liệu thật.
 >
 > 💡 Sau khi nạp xong, Spring Boot dùng `ddl-auto=validate` để kiểm tra schema khớp entity và không tự ý thay đổi dữ liệu.
 

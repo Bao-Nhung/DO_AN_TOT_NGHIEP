@@ -24,15 +24,21 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,13 +61,13 @@ class AuthControllerLoginTests {
 
     @BeforeEach
     void allowLoginAttempt() {
-        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
-        when(rateLimiter.tryAcquire(anyString(), anyString(), anyInt(), anyLong())).thenReturn(true);
+        lenient().when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        lenient().when(rateLimiter.tryAcquire(anyString(), anyString(), anyInt(), anyLong())).thenReturn(true);
     }
 
     @Test
     void employeeLoginTrimsIdentifierAndIgnoresCase() {
-        LoginRequest request = loginRequest("  ADMIN  ");
+        LoginRequest request = loginRequest("  ADMIN  ", "staff");
         NhanVien employee = NhanVien.builder()
                 .id(1)
                 .tenNguoiDung("admin")
@@ -83,12 +89,12 @@ class AuthControllerLoginTests {
         assertThat(body).isNotNull();
         assertThat(body.getToken()).isEqualTo("jwt-token");
         assertThat(body.getRole()).isEqualTo("Admin");
-        verify(rateLimiter).reset("login", "127.0.0.1|admin");
+        verify(rateLimiter).reset("login", "127.0.0.1|staff|admin");
     }
 
     @Test
     void customerLoginTrimsEmailAndIgnoresCase() {
-        LoginRequest request = loginRequest("  CUSTOMER@ZESTIA.VN  ");
+        LoginRequest request = loginRequest("  CUSTOMER@ZESTIA.VN  ", "customer");
         KhachHang customer = KhachHang.builder()
                 .id(12)
                 .hoVaTen("Customer")
@@ -97,10 +103,6 @@ class AuthControllerLoginTests {
                 .matKhau("bcrypt-hash")
                 .build();
 
-        when(nhanVienRepository.findByTenNguoiDungIgnoreCase("CUSTOMER@ZESTIA.VN"))
-                .thenReturn(Optional.empty());
-        when(nhanVienRepository.findByEmailIgnoreCase("CUSTOMER@ZESTIA.VN"))
-                .thenReturn(Optional.empty());
         when(khachHangRepository.findByEmailIgnoreCase("CUSTOMER@ZESTIA.VN"))
                 .thenReturn(Optional.of(customer));
         when(passwordEncoder.matches("123456", "bcrypt-hash")).thenReturn(true);
@@ -113,13 +115,79 @@ class AuthControllerLoginTests {
         assertThat(body).isNotNull();
         assertThat(body.getUsername()).isEqualTo("customer@zestia.vn");
         assertThat(body.getRole()).isEqualTo("KhachHang");
-        verify(rateLimiter).reset("login", "127.0.0.1|customer@zestia.vn");
+        verify(rateLimiter).reset("login", "127.0.0.1|customer|customer@zestia.vn");
+        verify(nhanVienRepository, never()).findByTenNguoiDungIgnoreCase(anyString());
     }
 
-    private LoginRequest loginRequest(String username) {
+    @Test
+    void customerTabCannotAuthenticateEmployeeAccount() {
+        LoginRequest request = loginRequest("admin", "customer");
+        when(khachHangRepository.findByEmailIgnoreCase("admin")).thenReturn(Optional.empty());
+        when(customerIdentityService.normalizePhone("admin")).thenReturn(null);
+
+        ResponseEntity<?> response = controller.login(request, httpRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verify(nhanVienRepository, never()).findByTenNguoiDungIgnoreCase(anyString());
+        verify(nhanVienRepository, never()).findByEmailIgnoreCase(anyString());
+    }
+
+    @Test
+    void staffTabCannotAuthenticateCustomerAccount() {
+        LoginRequest request = loginRequest("customer@zestia.vn", "staff");
+        when(nhanVienRepository.findByTenNguoiDungIgnoreCase("customer@zestia.vn"))
+                .thenReturn(Optional.empty());
+        when(nhanVienRepository.findByEmailIgnoreCase("customer@zestia.vn"))
+                .thenReturn(Optional.empty());
+
+        ResponseEntity<?> response = controller.login(request, httpRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verify(khachHangRepository, never()).findByEmailIgnoreCase(anyString());
+        verify(khachHangRepository, never()).findBySoDienThoai(anyString());
+    }
+
+    @Test
+    void customerProfileLookupCannotBeConfusedWithEmployeeIdentifier() {
+        KhachHang customer = KhachHang.builder()
+                .id(12)
+                .hoVaTen("Customer")
+                .email("shared@zestia.vn")
+                .soDienThoai("0911111111")
+                .build();
+        var authentication = new UsernamePasswordAuthenticationToken(
+                "shared@zestia.vn",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_KhachHang"))
+        );
+        when(khachHangRepository.findByEmailIgnoreCase("shared@zestia.vn")).thenReturn(Optional.of(customer));
+
+        ResponseEntity<?> response = controller.me(authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(((Map<?, ?>) response.getBody()).get("hoVaTen")).isEqualTo("Customer");
+        verify(nhanVienRepository, never()).findByTenNguoiDungIgnoreCase(anyString());
+    }
+
+    @Test
+    void employeeCannotUpdateCustomerProfileThroughSharedIdentifier() {
+        var authentication = new UsernamePasswordAuthenticationToken(
+                "shared@zestia.vn",
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_NhanVien"))
+        );
+
+        ResponseEntity<?> response = controller.updateProfile(Map.of("hoVaTen", "Changed"), authentication);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        verify(khachHangRepository, never()).findByEmailIgnoreCase(anyString());
+    }
+
+    private LoginRequest loginRequest(String username, String accountType) {
         LoginRequest request = new LoginRequest();
         request.setUsername(username);
         request.setPassword("123456");
+        request.setAccountType(accountType);
         return request;
     }
 }

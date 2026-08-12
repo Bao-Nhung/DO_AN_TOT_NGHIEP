@@ -40,13 +40,13 @@ const iconClass = computed(() => {
   z-index: 99999;
   max-width: 360px;
   border-left: 5px solid var(--z-gray-border);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  transform: translateY(120px) scale(0.9);
+  transition: transform 0.24s ease, opacity 0.24s ease;
+  transform: translateY(24px);
   opacity: 0;
 }
 
 #lm-toast.show {
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
   opacity: 1;
 }
 

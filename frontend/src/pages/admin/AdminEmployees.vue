@@ -3,7 +3,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
       <div>
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Quản lý nhân viên</h1>
-        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ filteredEmployees.length }} nhân viên</p>
+        <p style="font-size:14px;color:var(--z-gray);margin:0">{{ totalItems }} nhân viên</p>
       </div>
       <button class="lm-btn-primary" @click="openAdd">
         <i class="bi bi-plus-lg" style="position:relative;z-index:1"></i>
@@ -85,10 +85,10 @@
           <tr v-if="loading">
             <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Đang tải nhân viên...</td>
           </tr>
-          <tr v-else-if="filteredEmployees.length === 0">
+          <tr v-else-if="employees.length === 0">
             <td colspan="7" class="text-center py-4" style="color:var(--z-gray)">Không có nhân viên phù hợp</td>
           </tr>
-          <tr v-for="nv in paginatedEmployees" v-else :key="nv.id">
+          <tr v-for="nv in employees" v-else :key="nv.id">
             <td>
               <div class="d-flex align-items-center gap-3">
                 <div class="z-avatar">{{ (nv.hoVaTen || 'N').charAt(0) }}</div>
@@ -127,16 +127,16 @@
       </table>
 
       <!-- Pagination Controls -->
-      <div v-if="filteredEmployees.length" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
+      <div v-if="totalItems" class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3 px-3 pb-3" style="border-top: 1px solid var(--z-gray-border); padding-top: 16px;">
         <span style="font-size: 13px; color: var(--z-gray)">
-          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, filteredEmployees.length) }} trong tổng số {{ filteredEmployees.length }} nhân viên
+          Hiển thị từ {{ (currentPage - 1) * itemsPerPage + 1 }} đến {{ Math.min(currentPage * itemsPerPage, totalItems) }} trong tổng số {{ totalItems }} nhân viên
         </span>
         <PageSizeSelect v-model="itemsPerPage" />
         <div v-if="totalPages > 1" class="d-flex gap-2">
           <button class="lm-btn-secondary" style="padding:6px 12px; font-size:12px; height:auto; border-radius:6px" :disabled="currentPage === 1" @click="currentPage--">
             Trước
           </button>
-          <button v-for="page in totalPages" :key="page" 
+          <button v-for="page in pageNumbers" :key="page"
                   class="lm-btn-secondary" 
                   :style="{
                     padding:'6px 12px', fontSize:'12px', height:'auto', borderRadius:'6px',
@@ -301,9 +301,19 @@
             <i class="bi bi-calendar2-week"></i>
           </div>
           <div class="z-performance-metric">
-            <span>Tổng giờ làm dự kiến</span>
-            <strong>{{ formatHours(perfStats.totalHours) }}</strong>
+            <span>Ca đã chấm công đủ</span>
+            <strong>{{ perfStats.completedShifts || 0 }} ca</strong>
+            <i class="bi bi-calendar2-check"></i>
+          </div>
+          <div class="z-performance-metric">
+            <span>Giờ làm thực tế</span>
+            <strong>{{ formatHours(perfStats.workedHours) }}</strong>
             <i class="bi bi-clock-history"></i>
+          </div>
+          <div class="z-performance-metric">
+            <span>Giờ làm dự kiến</span>
+            <strong>{{ formatHours(perfStats.scheduledHours ?? perfStats.totalHours) }}</strong>
+            <i class="bi bi-hourglass-split"></i>
           </div>
         </div>
         <div v-else class="z-performance-empty">Không thể tải dữ liệu hiệu suất của nhân viên này.</div>
@@ -318,7 +328,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
@@ -343,6 +353,12 @@ const filterRole = ref('')
 const filterStatus = ref('')
 const employees = ref([])
 const roles = ref([])
+const totalItems = ref(0)
+const totalPages = ref(0)
+const activeCount = ref(0)
+const inactiveCount = ref(0)
+const adminCount = ref(0)
+const thisMonthCount = ref(0)
 const form = ref(defaultForm())
 const formErrors = ref({})
 const adultMaximumDate = computed(() => {
@@ -355,55 +371,52 @@ onMounted(async () => {
   await Promise.all([loadEmployees(), loadRoles()])
 })
 
-const filteredEmployees = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  return employees.value.filter(nv => {
-    const matchSearch = !q ||
-      (nv.hoVaTen || '').toLowerCase().includes(q) ||
-      (nv.maNhanVien || '').toLowerCase().includes(q) ||
-      (nv.tenNguoiDung || '').toLowerCase().includes(q) ||
-      (nv.email || '').toLowerCase().includes(q) ||
-      (nv.soDienThoai || '').includes(q)
-    const matchRole = !filterRole.value || nv.tenVaiTro === filterRole.value
-    const matchStatus = filterStatus.value === '' || String(nv.tinhTrangLamViec ?? 1) === filterStatus.value
-    return matchSearch && matchRole && matchStatus
-  })
-})
-
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
-
-const totalPages = computed(() => Math.ceil(filteredEmployees.value.length / itemsPerPage.value))
-
-const paginatedEmployees = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return filteredEmployees.value.slice(start, start + itemsPerPage.value)
+const pageNumbers = computed(() => {
+  const start = Math.max(1, Math.min(currentPage.value - 2, totalPages.value - 4))
+  const end = Math.min(totalPages.value, start + 4)
+  return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index)
 })
 
-watch([search, filterRole, filterStatus, itemsPerPage], () => {
-  currentPage.value = 1
+let employeeSearchTimer
+let employeeRequestId = 0
+watch(search, () => {
+  clearTimeout(employeeSearchTimer)
+  employeeSearchTimer = setTimeout(resetAndLoadEmployees, 300)
 })
+watch([filterRole, filterStatus, itemsPerPage], resetAndLoadEmployees)
+watch(currentPage, loadEmployees)
+onBeforeUnmount(() => clearTimeout(employeeSearchTimer))
 
-const activeCount = computed(() => employees.value.filter(nv => Number(nv.tinhTrangLamViec) === 1).length)
-const inactiveCount = computed(() => employees.value.filter(nv => Number(nv.tinhTrangLamViec) !== 1).length)
-const adminCount = computed(() => employees.value.filter(nv => (nv.tenVaiTro || '').toLowerCase().includes('admin')).length)
-const thisMonthCount = computed(() => {
-  const now = new Date()
-  return employees.value.filter(nv => {
-    if (!nv.ngayTao) return false
-    const d = new Date(nv.ngayTao)
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-  }).length
-})
+function resetAndLoadEmployees() {
+  if (currentPage.value === 1) loadEmployees()
+  else currentPage.value = 1
+}
 
 async function loadEmployees() {
+  const requestId = ++employeeRequestId
   loading.value = true
   try {
-    employees.value = await api().getNhanVien()
+    const data = await api().getNhanVienPage({
+      page: currentPage.value - 1,
+      size: itemsPerPage.value,
+      q: search.value.trim() || null,
+      role: filterRole.value || null,
+      status: filterStatus.value === '' ? null : Number(filterStatus.value)
+    })
+    if (requestId !== employeeRequestId) return
+    employees.value = Array.isArray(data.content) ? data.content : []
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Number(data.totalPages || 0)
+    activeCount.value = Number(data.summary?.active || 0)
+    inactiveCount.value = Number(data.summary?.inactive || 0)
+    adminCount.value = Number(data.summary?.admins || 0)
+    thisMonthCount.value = Number(data.summary?.createdThisMonth || 0)
   } catch (e) {
-    showToast('Không thể tải danh sách nhân viên')
+    if (requestId === employeeRequestId) showToast(e.message || 'Không thể tải danh sách nhân viên')
   } finally {
-    loading.value = false
+    if (requestId === employeeRequestId) loading.value = false
   }
 }
 
@@ -520,7 +533,7 @@ async function toggleStatus(nv) {
     showToast(next === 1 ? 'Đã mở khoá nhân viên' : 'Đã tạm khoá nhân viên')
     await loadEmployees()
   } catch (e) {
-    showToast('Không thể cập nhật trạng thái')
+    showToast(e.message || 'Không thể cập nhật trạng thái')
   }
 }
 

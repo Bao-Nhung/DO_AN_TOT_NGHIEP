@@ -14,11 +14,11 @@
       <aside class="z-support-list">
         <div class="z-support-list-head">
           <strong>Cuộc trò chuyện</strong>
-          <span>{{ conversations.length }}</span>
+          <span>{{ totalItems }}</span>
         </div>
         <div v-if="loadingList && !conversations.length" class="z-support-empty">Đang tải yêu cầu...</div>
         <button
-          v-for="conversation in pagedConversations"
+          v-for="conversation in conversations"
           :key="conversation.id"
           class="z-conversation-item"
           :class="{ active: selected?.id === conversation.id }"
@@ -38,12 +38,12 @@
           <i class="bi bi-chat-square-check"></i>
           Chưa có yêu cầu đang chờ
         </div>
-        <div v-if="conversations.length" class="z-support-pagination">
+        <div v-if="totalItems" class="z-support-pagination">
           <PageSizeSelect v-model="pageSize" :options="[5, 10, 20, 50]" />
           <div v-if="totalPages > 1">
-            <button type="button" :disabled="currentPage === 1" aria-label="Trang trước" @click="currentPage--"><i class="bi bi-chevron-left"></i></button>
+            <button type="button" class="z-page-button" :disabled="currentPage === 1" aria-label="Trang trước" @click="goToPage(currentPage - 1)"><i class="bi bi-chevron-left"></i></button>
             <span>{{ currentPage }} / {{ totalPages }}</span>
-            <button type="button" :disabled="currentPage === totalPages" aria-label="Trang sau" @click="currentPage++"><i class="bi bi-chevron-right"></i></button>
+            <button type="button" class="z-page-button" :disabled="currentPage === totalPages" aria-label="Trang sau" @click="goToPage(currentPage + 1)"><i class="bi bi-chevron-right"></i></button>
           </div>
         </div>
       </aside>
@@ -99,7 +99,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 import { api } from '@/composables/useApi'
@@ -111,21 +111,17 @@ const { showToast } = useToast()
 const conversations = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
+const totalItems = ref(0)
+const totalPages = ref(1)
 const selected = ref(null)
 const loadingList = ref(false)
 const sending = ref(false)
 const draft = ref('')
 const messageBody = ref(null)
 let pollTimer = null
-const totalPages = computed(() => Math.max(1, Math.ceil(conversations.value.length / pageSize.value)))
-const pagedConversations = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  return conversations.value.slice(start, start + pageSize.value)
-})
-
-watch(pageSize, () => { currentPage.value = 1 })
-watch(totalPages, total => {
-  if (currentPage.value > total) currentPage.value = total
+watch(pageSize, () => {
+  currentPage.value = 1
+  refreshList()
 })
 
 onMounted(async () => {
@@ -140,7 +136,14 @@ onBeforeUnmount(() => {
 async function refreshList() {
   loadingList.value = true
   try {
-    conversations.value = await api().getStaffSupportChats()
+    const data = await api().getStaffSupportChats({ page: currentPage.value - 1, size: pageSize.value })
+    conversations.value = data.content || []
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Math.max(1, Number(data.totalPages || 0))
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value
+      await refreshList()
+    }
   } catch (error) {
     showToast(error.error || 'Không thể tải yêu cầu hỗ trợ')
   } finally {
@@ -197,19 +200,25 @@ async function closeConversation() {
 
 async function poll() {
   try {
-    const list = await api().getStaffSupportChats()
-    conversations.value = list
+    const data = await api().getStaffSupportChats({ page: currentPage.value - 1, size: pageSize.value })
+    conversations.value = data.content || []
+    totalItems.value = Number(data.totalElements || 0)
+    totalPages.value = Math.max(1, Number(data.totalPages || 0))
     if (selected.value) {
-      const stillOpen = list.some(item => item.id === selected.value.id)
-      if (!stillOpen) selected.value = null
-      else {
-        selected.value = await api().getStaffSupportChat(selected.value.id)
-        await scrollBottom()
-      }
+      const fresh = await api().getStaffSupportChat(selected.value.id)
+      selected.value = fresh.status === 'CLOSED' ? null : fresh
+      if (selected.value) await scrollBottom()
     }
   } catch (_) {
     // A temporary polling failure must not interrupt the reply being typed.
   }
+}
+
+function goToPage(page) {
+  const target = Math.max(1, Math.min(totalPages.value, page))
+  if (target === currentPage.value) return
+  currentPage.value = target
+  refreshList()
 }
 
 function messageClass(senderType) {
@@ -243,7 +252,7 @@ async function scrollBottom() {
 .z-support-list { min-width: 0; border-right: 1px solid var(--z-gray-border); overflow-y: auto; }
 .z-support-list-head { min-height: 58px; padding: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--z-gray-border); }
 .z-support-list-head strong { color: var(--z-dark); font-size: 14px; }
-.z-support-list-head span { min-width: 24px; padding: 3px 7px; border-radius: 12px; background: var(--z-bg-alt); color: var(--z-gray); font-size: 11px; text-align: center; }
+.z-support-list-head span { min-width: 24px; padding: 3px 7px; border-radius: 6px; background: var(--z-bg-alt); color: var(--z-gray); font-size: 11px; text-align: center; }
 .z-conversation-item { width: 100%; padding: 15px 16px; border: 0; border-bottom: 1px solid var(--z-gray-border); background: var(--z-white); color: var(--z-dark); text-align: left; }
 .z-conversation-item:hover, .z-conversation-item.active { background: var(--z-bg-alt); }
 .z-conversation-item.active { box-shadow: inset 3px 0 var(--z-accent); }

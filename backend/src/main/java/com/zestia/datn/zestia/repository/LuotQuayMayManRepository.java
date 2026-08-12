@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,10 +29,10 @@ public interface LuotQuayMayManRepository extends JpaRepository<LuotQuayMayMan, 
             SELECT spin FROM LuotQuayMayMan spin
             WHERE (:campaignId IS NULL OR spin.chienDich.id = :campaignId)
               AND (:status IS NULL OR spin.trangThaiNhan = :status)
-            ORDER BY spin.ngayQuay DESC, spin.id DESC
             """)
-    List<LuotQuayMayMan> findForAdmin(@Param("campaignId") Integer campaignId,
-                                      @Param("status") String status);
+    Page<LuotQuayMayMan> findForAdmin(@Param("campaignId") Integer campaignId,
+                                      @Param("status") String status,
+                                      Pageable pageable);
 
     long countByChienDichId(Integer campaignId);
     long countByChienDichIdAndTrungThuongTrue(Integer campaignId);

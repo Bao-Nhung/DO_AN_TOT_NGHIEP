@@ -7,8 +7,21 @@ const OWNER_KEY = 'zestia_cart_owner'
 function loadSaved() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.map(normalizeCartItem).filter(item => item.variantId > 0) : []
   } catch { return [] }
+}
+
+function normalizeCartItem(item) {
+  const variantId = Number(item?.variantId || 0)
+  const numericId = Number(item?.id)
+  return {
+    ...item,
+    id: variantId > 0 ? `variant-${variantId}` : String(item?.id || ''),
+    productId: Number(item?.productId || (Number.isFinite(numericId) ? numericId : 0)),
+    variantId,
+    qty: Math.max(1, Number(item?.qty || 1))
+  }
 }
 
 const state = reactive({
@@ -32,16 +45,27 @@ function openCart()  { state.isOpen = true;  document.body.style.overflow = 'hid
 function closeCart() { state.isOpen = false; document.body.style.overflow = '' }
 
 function addItem(product) {
-  const existing = state.items.find(i => i.id === product.id)
+  const normalized = { ...product }
+  const variantId = Number(normalized.variantId || 0)
+  if (variantId > 0) {
+    normalized.productId = Number(normalized.productId || normalized.id)
+    normalized.id = `variant-${variantId}`
+  }
+  const existing = state.items.find(i => itemKey(i) === itemKey(normalized))
   const maxQty = Number(product.maxQty || existing?.maxQty || 0)
   if (existing) {
     const currentQty = existing.qty
-    Object.assign(existing, product)
+    Object.assign(existing, normalized)
     existing.qty = currentQty
     if (maxQty > 0) existing.qty = Math.min(maxQty, existing.qty + 1)
     else existing.qty++
   }
-  else { state.items.push({ ...product, qty: 1 }) }
+  else { state.items.push({ ...normalized, qty: 1 }) }
+}
+
+function itemKey(item) {
+  const variantId = Number(item?.variantId || 0)
+  return variantId > 0 ? `variant-${variantId}` : String(item?.id || '')
 }
 
 function refreshItems(loadProduct) {
@@ -74,7 +98,7 @@ function refreshItems(loadProduct) {
 
         item.unavailable = false
         delete item.unavailableReason
-        item.name = product?.tenVay || item.name
+        item.name = product?.tenSanPham || item.name
         item.image = variant?.anhUrl || product?.anhUrl || item.image || null
         item.price = currentPrice
         delete item.originalPrice
@@ -97,7 +121,7 @@ function refreshItems(loadProduct) {
 }
 
 function changeQty(id, delta) {
-  const item = state.items.find(i => i.id === id)
+  const item = state.items.find(i => String(i.id) === String(id) || itemKey(i) === String(id))
   if (!item || item.unavailable) return
   const maxQty = Number(item.maxQty || 0)
   const next = Math.max(1, item.qty + delta)
@@ -105,7 +129,7 @@ function changeQty(id, delta) {
 }
 
 function removeItem(id) {
-  const idx = state.items.findIndex(i => i.id === id)
+  const idx = state.items.findIndex(i => String(i.id) === String(id) || itemKey(i) === String(id))
   if (idx !== -1) state.items.splice(idx, 1)
 }
 
@@ -126,7 +150,7 @@ async function hydrateCart(remoteItems = [], userId) {
   const merged = sameOwner ? incoming : mergeGuestAndServer(guestItems, incoming)
 
   applyingServerState = true
-  state.items.splice(0, state.items.length, ...merged)
+  state.items.splice(0, state.items.length, ...merged.map(normalizeCartItem))
   applyingServerState = false
   localStorage.setItem(OWNER_KEY, String(userId))
   syncReady = true

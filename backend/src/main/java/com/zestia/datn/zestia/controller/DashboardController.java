@@ -36,8 +36,7 @@ public class DashboardController {
         HoaDonRepository.DashboardSummary summary = hoaDonRepo.summarizeDashboard();
         long orderCount = summary != null && summary.getOrderCount() != null ? summary.getOrderCount() : 0;
         BigDecimal revenue = summary != null && summary.getRevenue() != null ? summary.getRevenue() : BigDecimal.ZERO;
-        revenue = revenue.add(paymentHistoryRepo.sumSuccessfulRefunds());
-
+        revenue = revenue.add(paymentHistoryRepo.sumSuccessfulRefundAdjustments()).max(BigDecimal.ZERO);
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("doanhThu", revenue);
         map.put("tongDonHang", orderCount);
@@ -45,7 +44,6 @@ public class DashboardController {
         map.put("tongSanPham", sanPhamRepo.count());
         map.put("tongBienThe", sanPhamCtRepo.count());
         map.put("tongLoaiSanPham", loaiSanPhamRepo.count());
-        map.put("tongLoaiVay", loaiSanPhamRepo.count());
         map.put("topSellingProducts", topSellingProducts());
         map.put("lowStockVariants", lowStockVariants());
         return map;
@@ -66,9 +64,7 @@ public class DashboardController {
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("productId", row[0]);
                     item.put("maSanPham", row[1]);
-                    item.put("maVay", row[1]);
                     item.put("tenSanPham", row[2]);
-                    item.put("tenVay", row[2]);
                     item.put("soLuongBan", row[3]);
                     item.put("doanhThu", row[4]);
                     item.put("anhUrl", row[5]);
@@ -84,9 +80,7 @@ public class DashboardController {
                     item.put("variantId", row[0]);
                     item.put("productId", row[1]);
                     item.put("tenSanPham", row[2]);
-                    item.put("tenVay", row[2]);
                     item.put("maSanPham", row[3]);
-                    item.put("maVay", row[3]);
                     item.put("mauSac", row[4]);
                     item.put("kichThuoc", row[5]);
                     item.put("soLuong", row[6]);

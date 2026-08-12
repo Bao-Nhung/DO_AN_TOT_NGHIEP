@@ -31,6 +31,7 @@ public class SecurityConfig {
     private static final String ROLE_ADMIN = "ROLE_Admin";
     private static final String ROLE_NHAN_VIEN = "ROLE_Nh\u00E2n vi\u00EAn";
     private static final String ROLE_NHANVIEN = "ROLE_NhanVien";
+    private static final String ROLE_KHACH_HANG = "ROLE_KhachHang";
     private static final String[] ADMIN_ROLES = { ROLE_ADMIN };
     private static final String[] STAFF_ROLES = { ROLE_ADMIN, ROLE_NHAN_VIEN, ROLE_NHANVIEN };
 
@@ -43,14 +44,20 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/login", "/api/auth/google", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/san-pham", "/api/san-pham/**", "/api/vay", "/api/vay/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/thuoc-tinh", "/api/thuoc-tinh/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/san-pham/stock-movements").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.GET, "/api/san-pham", "/api/san-pham/paged", "/api/san-pham/search", "/api/san-pham/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/thuoc-tinh/nha-cung-cap").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.GET, "/api/thuoc-tinh", "/api/thuoc-tinh/mau-sac",
+                        "/api/thuoc-tinh/kich-thuoc", "/api/thuoc-tinh/chat-lieu",
+                        "/api/thuoc-tinh/loai-san-pham").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/thong-bao/active").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/voucher").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/product/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/storefront/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/ai-chat").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/ai/visual-search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/ai/frequently-bought-together/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/support-chat/customer/request").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/support-chat/customer/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/support-chat/customer/**").permitAll()
@@ -64,15 +71,16 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/hoa-don/search").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/hoa-don/*/cancel-guest/request-otp").permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/hoa-don/*/cancel-guest").permitAll()
-                .requestMatchers("/api/auth/me", "/api/auth/profile/**", "/api/hoa-don/my-orders").authenticated()
-                .requestMatchers("/api/customer-data/**").authenticated()
-                .requestMatchers("/api/customer-notifications/**").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/payment/order/**", "/api/hoa-don/*/tracking").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/hoa-don/search-by-phone").hasAnyAuthority(STAFF_ROLES)
+                .requestMatchers("/api/auth/me").authenticated()
+                .requestMatchers("/api/auth/profile/**", "/api/hoa-don/my-orders/paged",
+                        "/api/customer-data/**", "/api/customer-notifications/**")
+                        .hasAuthority(ROLE_KHACH_HANG)
+                .requestMatchers(HttpMethod.GET, "/api/hoa-don/*/tracking").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/hoa-don/paged").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/hoa-don/*").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/hoa-don/*/cancel").authenticated()
-                .requestMatchers(HttpMethod.GET, "/api/returns/mine").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/returns/online").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/returns/mine").hasAuthority(ROLE_KHACH_HANG)
+                .requestMatchers(HttpMethod.POST, "/api/returns/online").hasAuthority(ROLE_KHACH_HANG)
                 .requestMatchers("/api/returns/**").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/khach-hang/search").hasAnyAuthority(STAFF_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/khach-hang/quick").hasAnyAuthority(STAFF_ROLES)
@@ -87,9 +95,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/lich-lam-viec/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/lich-lam-viec/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.DELETE, "/api/lich-lam-viec/**").hasAnyAuthority(ADMIN_ROLES)
-                .requestMatchers(HttpMethod.POST, "/api/san-pham/**", "/api/vay/**").hasAnyAuthority(ADMIN_ROLES)
-                .requestMatchers(HttpMethod.PUT, "/api/san-pham/**", "/api/vay/**").hasAnyAuthority(ADMIN_ROLES)
-                .requestMatchers(HttpMethod.DELETE, "/api/san-pham/**", "/api/vay/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.POST, "/api/san-pham/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.PUT, "/api/san-pham/**").hasAnyAuthority(ADMIN_ROLES)
+                .requestMatchers(HttpMethod.DELETE, "/api/san-pham/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.POST, "/api/thuoc-tinh/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.PUT, "/api/thuoc-tinh/**").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.DELETE, "/api/thuoc-tinh/**").hasAnyAuthority(ADMIN_ROLES)

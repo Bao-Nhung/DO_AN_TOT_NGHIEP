@@ -58,7 +58,7 @@ public class GoogleAuthService {
 
         KhachHang customer = customerRepo.findByGoogleSubject(subject).orElse(null);
         if (customer == null) {
-            customer = customerRepo.findByEmail(email).orElse(null);
+            customer = customerRepo.findByEmailIgnoreCase(email).orElse(null);
             if (customer != null && customer.getGoogleSubject() != null
                     && !subject.equals(customer.getGoogleSubject())) {
                 throw new IllegalStateException("Email này đã liên kết với một tài khoản Google khác");

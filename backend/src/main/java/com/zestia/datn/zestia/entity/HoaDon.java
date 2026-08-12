@@ -47,6 +47,14 @@ public class HoaDon {
     @Column(name = "ma_giao_dich_cong", length = 120)
     private String maGiaoDichCong;
 
+    @JsonIgnore
+    @Column(name = "url_thanh_toan", length = 2000)
+    private String urlThanhToan;
+
+    @JsonIgnore
+    @Column(name = "thanh_toan_het_han")
+    private LocalDateTime thanhToanHetHan;
+
     @Column(name = "tong_tien")
     private BigDecimal tongTien;
 
@@ -125,9 +133,7 @@ public class HoaDon {
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
 
-    // ==========================================
-    // ===== HÓA ĐƠN ĐIỆN TỬ / VAT (E-INVOICE) ==
-    // ==========================================
+    // Thông tin khách yêu cầu cửa hàng xuất hóa đơn VAT qua hệ thống hợp pháp bên ngoài.
     @Column(name = "yeu_cau_vat")
     private Boolean yeuCauVat;
 
@@ -142,18 +148,6 @@ public class HoaDon {
 
     @Column(name = "dia_chi_vat", length = 500)
     private String diaChiVat;
-
-    @Column(name = "so_hoa_don_vat", length = 50)
-    private String soHoaDonVat;
-
-    @Column(name = "ma_tra_cuu_vat", length = 50)
-    private String maTraCuuVat;
-
-    @Column(name = "trang_thai_vat", length = 50)
-    private String trangThaiVat;
-
-    @Column(name = "ngay_phat_hanh_vat")
-    private LocalDateTime ngayPhatHanhVat;
 
     @JsonIgnore
     @OneToMany(mappedBy = "hoaDon")

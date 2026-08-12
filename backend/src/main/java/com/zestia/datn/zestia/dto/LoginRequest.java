@@ -6,4 +6,5 @@ import lombok.Data;
 public class LoginRequest {
     private String username; // ten_nguoi_dung (NhanVien) or email (KhachHang)
     private String password;
+    private String accountType; // customer | staff
 }

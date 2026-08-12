@@ -36,8 +36,7 @@
           <div class="d-flex flex-column">
             <div class="d-flex justify-content-between align-items-start">
               <div style="font-family:var(--z-font-display);font-size:16px;font-weight:400;color:var(--z-dark)">{{ item.name }}</div>
-              <button type="button" :aria-label="`Xóa ${item.name} khỏi giỏ hàng`" @click="cart.removeItem(item.id)"
-                      style="border:none;background:none;cursor:pointer;color:var(--z-gray);font-size:14px;padding:0;line-height:1"
+              <button type="button" class="z-line-icon-btn z-line-icon-btn--danger" :aria-label="`Xóa ${item.name} khỏi giỏ hàng`" @click="cart.removeItem(item.id)"
                       title="Xoá">
                 <i class="bi bi-x-lg"></i>
               </button>
@@ -89,7 +88,7 @@ const cart = useCart()
 const hasUnavailableItems = computed(() => cart.state.items.some(item => item.unavailable))
 
 onMounted(() => {
-  cart.refreshItems(productId => api().getVayById(productId))
+  cart.refreshItems(productId => api().getSanPhamById(productId))
 })
 </script>
 

@@ -77,9 +77,11 @@ public class LuckyWheelController {
     }
 
     @GetMapping("/admin/spins")
-    public List<Map<String, Object>> spins(@RequestParam(required = false) Integer campaignId,
-                                           @RequestParam(required = false) String status) {
-        return luckyWheelService.listSpins(campaignId, status);
+    public Map<String, Object> spins(@RequestParam(required = false) Integer campaignId,
+                                     @RequestParam(required = false) String status,
+                                     @RequestParam(defaultValue = "0") int page,
+                                     @RequestParam(defaultValue = "10") int size) {
+        return luckyWheelService.listSpins(campaignId, status, page, size);
     }
 
     @PutMapping("/admin/spins/{id}/deliver")

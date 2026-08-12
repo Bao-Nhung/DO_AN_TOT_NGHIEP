@@ -40,9 +40,9 @@
         <OrderTrackingCard :order="currentOrder" />
 
         <!-- Banner Vòng quay may mắn -->
-        <div v-if="currentOrder.trangThai === 4 && ((currentOrder.tongTien || currentOrder.thanhTien || 0) >= 1000000)" class="p-3 rounded-3 border text-start" style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f6 100%); border-color: #fcc2d7 !important;">
+        <div v-if="currentOrder.trangThai === 4 && ((currentOrder.tongTien || currentOrder.thanhTien || 0) >= 1000000)" class="z-lucky-eligibility-banner text-start">
           <div class="d-flex align-items-center gap-3">
-            <div style="font-size: 32px;">🎉</div>
+            <div class="z-lucky-eligibility-icon"><i class="bi bi-gift" aria-hidden="true"></i></div>
             <div class="flex-grow-1">
               <div style="font-weight: 600; font-size: 14px; color: #c92a2a;">Đơn hàng này đủ điều kiện Tham Gia Vòng Quay!</div>
               <div style="font-size: 12px; color: #495057;">Đơn đã giao từ 1.000.000đ nhận ngay 1 lượt quay may mắn 100% trúng quà.</div>
@@ -137,7 +137,7 @@
                   </div>
                 </div>
                 <div>
-                  <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ item.tenVay || 'Sản phẩm' }}</div>
+                  <div style="font-size:13px;font-weight:600;color:var(--z-dark)">{{ item.tenSanPham || 'Sản phẩm' }}</div>
                   <div style="font-size:11px;color:var(--z-gray);margin-top:2px">
                     <span v-if="item.maSanPham">Mã SP: {{ item.maSanPham }} · </span>
                     <span v-if="item.mauSac" class="d-inline-flex align-items-center gap-1">
@@ -466,7 +466,7 @@ function formatDateTime(val) {
 .z-search-box {
   background: var(--z-white);
   border: 1px solid var(--z-gray-border);
-  border-radius: 12px;
+  border-radius: var(--z-radius);
   padding: 40px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.03);
 }
@@ -474,7 +474,7 @@ function formatDateTime(val) {
 .z-order-details {
   background: var(--z-white);
   border: 1px solid var(--z-gray-border);
-  border-radius: 12px;
+  border-radius: var(--z-radius);
   box-shadow: 0 4px 20px rgba(0,0,0,0.02);
 }
 

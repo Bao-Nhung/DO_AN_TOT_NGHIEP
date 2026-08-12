@@ -3,11 +3,9 @@ package com.zestia.datn.zestia.controller;
 import com.zestia.datn.zestia.config.JwtUtil;
 import com.zestia.datn.zestia.dto.LoginRequest;
 import com.zestia.datn.zestia.dto.LoginResponse;
-import com.zestia.datn.zestia.entity.DiaChi;
 import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.entity.NhanVien;
 import com.zestia.datn.zestia.entity.PasswordResetToken;
-import com.zestia.datn.zestia.repository.DiaChiRepository;
 import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.NhanVienRepository;
 import com.zestia.datn.zestia.repository.PasswordResetTokenRepository;
@@ -21,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
@@ -50,7 +49,6 @@ public class AuthController {
     private final KhachHangRepository khachHangRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final DiaChiRepository diaChiRepo;
     private final EmailService emailService;
     private final PasswordResetTokenRepository passwordResetTokenRepo;
     private final GoogleAuthService googleAuthService;
@@ -63,8 +61,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req, HttpServletRequest request) {
         String identifier = req != null ? clean(req.getUsername()) : null;
+        String accountType = req != null ? clean(req.getAccountType()) : null;
+        if (accountType != null
+                && !"customer".equalsIgnoreCase(accountType)
+                && !"staff".equalsIgnoreCase(accountType)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Loại tài khoản đăng nhập không hợp lệ"));
+        }
         String normalizedIdentifier = identifier != null ? identifier.toLowerCase(Locale.ROOT) : "empty";
-        String rateKey = clientIp(request) + "|" + normalizedIdentifier;
+        String rateKey = clientIp(request) + "|" + Objects.toString(accountType, "auto") + "|" + normalizedIdentifier;
         if (!rateLimiter.tryAcquire("login", rateKey, 8, 15 * 60)) {
             return ResponseEntity.status(429).body(Map.of(
                     "error", "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút"
@@ -73,19 +77,25 @@ public class AuthController {
         if (identifier == null || req.getPassword() == null || req.getPassword().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập tài khoản và mật khẩu"));
         }
-        Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDungIgnoreCase(identifier);
-        if (nvOpt.isEmpty()) {
-            nvOpt = nhanVienRepo.findByEmailIgnoreCase(identifier);
+        boolean allowStaff = accountType == null || "staff".equalsIgnoreCase(accountType);
+        boolean allowCustomer = accountType == null || "customer".equalsIgnoreCase(accountType);
+        Optional<NhanVien> nvOpt = Optional.empty();
+        if (allowStaff) {
+            nvOpt = nhanVienRepo.findByTenNguoiDungIgnoreCase(identifier);
+            if (nvOpt.isEmpty()) nvOpt = nhanVienRepo.findByEmailIgnoreCase(identifier);
         }
 
         if (nvOpt.isPresent()) {
             NhanVien nv = nvOpt.get();
-            if (nv.getTinhTrangLamViec() != null && nv.getTinhTrangLamViec() == 0) {
+            if (!Byte.valueOf((byte) 1).equals(nv.getTinhTrangLamViec())) {
                 return ResponseEntity.status(403).body(Map.of("error", "Tài khoản nhân viên đang bị tạm khoá"));
             }
             if (passwordMatches(req.getPassword(), nv.getMatKhau())) {
+                String role = nv.getVaiTro() != null ? nv.getVaiTro().getTenVaiTro() : null;
+                if (!isStaffRole(role)) {
+                    return ResponseEntity.status(403).body(Map.of("error", "Tài khoản nhân viên chưa được cấp vai trò hợp lệ"));
+                }
                 rateLimiter.reset("login", rateKey);
-                String role = nv.getVaiTro() != null ? nv.getVaiTro().getTenVaiTro() : "NhanVien";
                 String token = jwtUtil.generateToken(nv.getTenNguoiDung(), role, nv.getId());
                 return ResponseEntity.ok(LoginResponse.builder()
                         .token(token)
@@ -98,9 +108,13 @@ public class AuthController {
             }
         }
 
-        Optional<KhachHang> khOpt = khachHangRepo.findByEmailIgnoreCase(identifier);
-        if (khOpt.isEmpty()) {
-            khOpt = khachHangRepo.findBySoDienThoai(identifier);
+        Optional<KhachHang> khOpt = Optional.empty();
+        if (allowCustomer) {
+            khOpt = khachHangRepo.findByEmailIgnoreCase(identifier);
+            if (khOpt.isEmpty()) {
+                String normalizedPhone = customerIdentityService.normalizePhone(identifier);
+                if (normalizedPhone != null) khOpt = khachHangRepo.findBySoDienThoai(normalizedPhone);
+            }
         }
 
         if (khOpt.isPresent()) {
@@ -125,7 +139,16 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> req) {
+    @Transactional
+    public ResponseEntity<?> register(@RequestBody Map<String, String> req, HttpServletRequest request) {
+        if (req == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ thông tin"));
+        }
+        if (!rateLimiter.tryAcquire("register", clientIp(request), 5, 60 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã tạo quá nhiều tài khoản. Vui lòng thử lại sau"
+            ));
+        }
         String hoVaTen = clean(req.get("hoVaTen"));
         String email = customerIdentityService.normalizeEmail(req.get("email"));
         String soDienThoai = customerIdentityService.normalizePhone(req.get("soDienThoai"));
@@ -154,20 +177,21 @@ public class AuthController {
             return ResponseEntity.status(409).body(Map.of("error", "Email và số điện thoại đang thuộc hai hồ sơ khác nhau"));
         }
         KhachHang existing = byEmail.or(() -> byPhone).orElse(null);
-        if (existing != null && existing.getMatKhau() != null && !existing.getMatKhau().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email hoặc số điện thoại đã được sử dụng"));
-        }
-        if (existing != null && existing.getEmail() != null
-                && !existing.getEmail().equalsIgnoreCase(email)) {
-            return ResponseEntity.status(409).body(Map.of("error", "Số điện thoại đã gắn với một email khác"));
+        if (existing != null) {
+            if (existing.getMatKhau() != null && !existing.getMatKhau().isBlank()) {
+                return ResponseEntity.status(409).body(Map.of("error", "Email hoặc số điện thoại đã được sử dụng"));
+            }
+            if (existing.getEmail() != null && existing.getEmail().equalsIgnoreCase(email)) {
+                return ResponseEntity.status(409).body(Map.of(
+                        "error", "Thông tin này đã có trong lịch sử mua hàng. Hãy dùng Quên mật khẩu để xác minh email và tạo mật khẩu."
+                ));
+            }
+            return ResponseEntity.status(409).body(Map.of(
+                    "error", "Số điện thoại đã có trong hồ sơ mua tại cửa hàng. Vui lòng liên hệ cửa hàng để xác minh tài khoản."
+            ));
         }
 
-        KhachHang kh;
-        try {
-            kh = customerIdentityService.resolveForOrder(null, hoVaTen, soDienThoai, email);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
-        }
+        KhachHang kh = customerIdentityService.resolveForRegistration(hoVaTen, soDienThoai, email);
         kh.setHoVaTen(hoVaTen);
         kh.setEmail(email);
         kh.setSoDienThoai(soDienThoai);
@@ -187,6 +211,7 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
+    @Transactional
     public ResponseEntity<?> requestPasswordReset(@RequestBody Map<String, String> req,
                                                    HttpServletRequest request) {
         if (req == null) {
@@ -198,7 +223,7 @@ public class AuthController {
         }
         identifier = identifier.trim();
 
-        String normalizedIdentifier = identifier.toLowerCase();
+        String normalizedIdentifier = identifier.toLowerCase(Locale.ROOT);
         String clientAddress = clientIp(request);
         boolean ipAllowed = rateLimiter.tryAcquire("forgot-password-ip", clientAddress, 5, 15 * 60);
         boolean accountAllowed = rateLimiter.tryAcquire("forgot-password-account", normalizedIdentifier, 3, 30 * 60);
@@ -208,14 +233,14 @@ public class AuthController {
             ));
         }
 
-        Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDung(identifier);
-        if (nvOpt.isEmpty()) nvOpt = nhanVienRepo.findByEmail(identifier);
+        Optional<NhanVien> nvOpt = nhanVienRepo.findByTenNguoiDungIgnoreCase(identifier);
+        if (nvOpt.isEmpty()) nvOpt = nhanVienRepo.findByEmailIgnoreCase(identifier);
         if (nvOpt.isPresent()) {
             issuePasswordResetForEmployee(nvOpt.get());
             return passwordResetAccepted();
         }
 
-        Optional<KhachHang> khOpt = khachHangRepo.findByEmail(identifier);
+        Optional<KhachHang> khOpt = khachHangRepo.findByEmailIgnoreCase(identifier);
         if (khOpt.isEmpty()) khOpt = khachHangRepo.findBySoDienThoai(identifier);
         khOpt.ifPresent(this::issuePasswordResetForCustomer);
 
@@ -223,9 +248,14 @@ public class AuthController {
     }
 
     @PostMapping("/google")
-    public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> req) {
+    public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> req, HttpServletRequest request) {
+        if (!rateLimiter.tryAcquire("google-login", clientIp(request), 20, 5 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã thử đăng nhập Google quá nhiều lần. Vui lòng chờ ít phút"
+            ));
+        }
         try {
-            KhachHang kh = googleAuthService.authenticate(req.get("credential"));
+            KhachHang kh = googleAuthService.authenticate(req != null ? req.get("credential") : null);
             String token = jwtUtil.generateToken(kh.getEmail(), "KhachHang", kh.getId());
             return ResponseEntity.ok(LoginResponse.builder()
                     .token(token)
@@ -245,9 +275,17 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> req) {
-        String token = req.get("token");
-        String newPassword = firstNonBlank(req.get("newPassword"), req.get("password"), req.get("matKhau"));
+    @Transactional
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> req, HttpServletRequest request) {
+        if (!rateLimiter.tryAcquire("reset-password", clientIp(request), 10, 15 * 60)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "Bạn đã thử đặt lại mật khẩu quá nhiều lần. Vui lòng thử lại sau"
+            ));
+        }
+        String token = req != null ? req.get("token") : null;
+        String newPassword = req != null
+                ? firstNonBlank(req.get("newPassword"), req.get("password"), req.get("matKhau"))
+                : null;
         if (token == null || token.isBlank() || newPassword == null || newPassword.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ token và mật khẩu mới"));
         }
@@ -255,7 +293,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu mới cần 8-100 ký tự, gồm ít nhất một chữ và một số"));
         }
 
-        Optional<PasswordResetToken> resetTokenOpt = passwordResetTokenRepo.findByTokenAndUsedAtIsNull(token.trim());
+        Optional<PasswordResetToken> resetTokenOpt = passwordResetTokenRepo.findByTokenAndUsedAtIsNullForUpdate(token.trim());
         if (resetTokenOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã được sử dụng"));
         }
@@ -285,6 +323,7 @@ public class AuthController {
             KhachHang kh = khOpt.get();
             kh.setMatKhau(encodedPassword);
             khachHangRepo.save(kh);
+            customerIdentityService.linkUnassignedOrders(kh);
         } else {
             return ResponseEntity.badRequest().body(Map.of("error", "Loại tài khoản không hợp lệ"));
         }
@@ -295,6 +334,7 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
+    @Transactional
     public ResponseEntity<?> changePassword(@RequestBody Map<String, String> req, Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "Vui lòng đăng nhập lại"));
@@ -308,7 +348,7 @@ public class AuthController {
         boolean customerAccount = authentication.getAuthorities().stream()
                 .anyMatch(authority -> "ROLE_KhachHang".equals(authority.getAuthority()));
         if (customerAccount) {
-            KhachHang customer = khachHangRepo.findByEmail(authentication.getName())
+            KhachHang customer = khachHangRepo.findByEmailIgnoreCase(authentication.getName())
                     .or(() -> khachHangRepo.findBySoDienThoai(authentication.getName()))
                     .orElse(null);
             if (customer == null) {
@@ -324,8 +364,8 @@ public class AuthController {
             khachHangRepo.save(customer);
             invalidateResetTokens(ACCOUNT_KHACH_HANG, customer.getId());
         } else {
-            NhanVien employee = nhanVienRepo.findByTenNguoiDung(authentication.getName())
-                    .or(() -> nhanVienRepo.findByEmail(authentication.getName()))
+            NhanVien employee = nhanVienRepo.findByTenNguoiDungIgnoreCase(authentication.getName())
+                    .or(() -> nhanVienRepo.findByEmailIgnoreCase(authentication.getName()))
                     .orElse(null);
             if (employee == null) {
                 return ResponseEntity.status(403).body(Map.of("error", "Tài khoản không còn tồn tại"));
@@ -430,11 +470,15 @@ public class AuthController {
     }
 
     @PutMapping("/profile")
+    @Transactional
     public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> body, Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "Vui lòng đăng nhập lại"));
         }
-        KhachHang customer = khachHangRepo.findByEmail(authentication.getName())
+        if (!hasAuthority(authentication, "ROLE_KhachHang")) {
+            return ResponseEntity.status(403).body(Map.of("error", "Chức năng này chỉ dành cho khách hàng"));
+        }
+        KhachHang customer = khachHangRepo.findByEmailIgnoreCase(authentication.getName())
                 .or(() -> khachHangRepo.findBySoDienThoai(authentication.getName()))
                 .orElse(null);
         if (customer == null) {
@@ -483,9 +527,12 @@ public class AuthController {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
         }
-        Optional<NhanVien> employee = nhanVienRepo.findByTenNguoiDung(authentication.getName())
-                .or(() -> nhanVienRepo.findByEmail(authentication.getName()));
-        if (employee.isPresent()) {
+        if (hasAnyStaffAuthority(authentication)) {
+            Optional<NhanVien> employee = nhanVienRepo.findByTenNguoiDungIgnoreCase(authentication.getName())
+                    .or(() -> nhanVienRepo.findByEmailIgnoreCase(authentication.getName()));
+            if (employee.isEmpty()) {
+                return ResponseEntity.status(401).body(Map.of("error", "Tài khoản không còn tồn tại"));
+            }
             NhanVien value = employee.get();
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("username", value.getTenNguoiDung());
@@ -495,7 +542,10 @@ public class AuthController {
             result.put("userId", value.getId());
             return ResponseEntity.ok(result);
         }
-        return khachHangRepo.findByEmail(authentication.getName())
+        if (!hasAuthority(authentication, "ROLE_KhachHang")) {
+            return ResponseEntity.status(403).body(Map.of("error", "Vai trò tài khoản không hợp lệ"));
+        }
+        return khachHangRepo.findByEmailIgnoreCase(authentication.getName())
                 .or(() -> khachHangRepo.findBySoDienThoai(authentication.getName()))
                 .<ResponseEntity<?>>map(customer -> {
                     Map<String, Object> result = new LinkedHashMap<>();
@@ -511,85 +561,23 @@ public class AuthController {
                 .orElse(ResponseEntity.status(401).body(Map.of("error", "Tài khoản không còn tồn tại")));
     }
 
-    @GetMapping("/profile/address")
-    public ResponseEntity<?> getProfileAddress(@RequestHeader("Authorization") String header) {
-        if (header == null || !header.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
-        }
-        String token = header.substring(7);
-        if (!jwtUtil.isValid(token)) {
-            return ResponseEntity.status(401).body(Map.of("error", "Token hết hạn"));
-        }
-        var claims = jwtUtil.extractClaims(token);
-        String role = (String) claims.get("role");
-        Integer userId = ((Number) claims.get("userId")).intValue();
-
-        if ("KhachHang".equals(role)) {
-            Optional<DiaChi> dcOpt = diaChiRepo.findByKhachHangIdAndMacDinh(userId, (byte) 1);
-            if (dcOpt.isPresent()) {
-                DiaChi dc = dcOpt.get();
-                return ResponseEntity.ok(Map.of(
-                    "tinhThanhPho", dc.getTinhThanhPho() != null ? dc.getTinhThanhPho() : "",
-                    "quanHuyen", dc.getQuanHuyen() != null ? dc.getQuanHuyen() : "",
-                    "xaPhuong", dc.getXaPhuong() != null ? dc.getXaPhuong() : "",
-                    "duong", dc.getDuong() != null ? dc.getDuong() : ""
-                ));
-            } else {
-                return ResponseEntity.ok(Map.of(
-                    "tinhThanhPho", "",
-                    "quanHuyen", "",
-                    "xaPhuong", "",
-                    "duong", ""
-                ));
-            }
-        }
-        return ResponseEntity.badRequest().body(Map.of("error", "Chức năng này chỉ dành cho khách hàng"));
+    private boolean hasAnyStaffAuthority(Authentication authentication) {
+        return hasAuthority(authentication, "ROLE_Admin")
+                || hasAuthority(authentication, "ROLE_NhanVien")
+                || hasAuthority(authentication, "ROLE_Nhân viên");
     }
 
-    @PutMapping("/profile/address")
-    public ResponseEntity<?> updateProfileAddress(@RequestHeader("Authorization") String header,
-                                                   @RequestBody Map<String, String> body) {
-        if (header == null || !header.startsWith("Bearer ")) {
-            return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
-        }
-        String token = header.substring(7);
-        if (!jwtUtil.isValid(token)) {
-            return ResponseEntity.status(401).body(Map.of("error", "Token hết hạn"));
-        }
-        var claims = jwtUtil.extractClaims(token);
-        String role = (String) claims.get("role");
-        Integer userId = ((Number) claims.get("userId")).intValue();
-
-        if ("KhachHang".equals(role)) {
-            return khachHangRepo.findById(userId).map(kh -> {
-                String tinhThanhPho = body.get("tinhThanhPho");
-                String quanHuyen = body.get("quanHuyen");
-                String xaPhuong = body.get("xaPhuong");
-                String duong = body.get("duong");
-
-                // Validate
-                if (tinhThanhPho == null || tinhThanhPho.isBlank() ||
-                    quanHuyen == null || quanHuyen.isBlank() ||
-                    xaPhuong == null || xaPhuong.isBlank() ||
-                    duong == null || duong.isBlank()) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập đầy đủ thông tin địa chỉ"));
-                }
-
-                DiaChi dc = diaChiRepo.findByKhachHangIdAndMacDinh(userId, (byte) 1)
-                        .orElseGet(() -> DiaChi.builder()
-                                .khachHang(kh)
-                                .macDinh((byte) 1)
-                                .build());
-
-                dc.setTinhThanhPho(tinhThanhPho);
-                dc.setQuanHuyen(quanHuyen);
-                dc.setXaPhuong(xaPhuong);
-                dc.setDuong(duong);
-
-                diaChiRepo.save(dc);
-                return ResponseEntity.ok(Map.of("message", "Cập nhật địa chỉ thành công"));
-            }).orElse(ResponseEntity.notFound().build());
-        }
-        return ResponseEntity.badRequest().body(Map.of("error", "Chức năng này chỉ dành cho khách hàng"));
+    private boolean hasAuthority(Authentication authentication, String expected) {
+        return authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> expected.equalsIgnoreCase(authority.getAuthority()));
     }
+
+    private boolean isStaffRole(String role) {
+        return "Admin".equalsIgnoreCase(role)
+                || "NhanVien".equalsIgnoreCase(role)
+                || "Nhân viên".equalsIgnoreCase(role);
+    }
+
 }

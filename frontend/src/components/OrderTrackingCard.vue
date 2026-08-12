@@ -42,6 +42,9 @@
           <p class="mt-2 mb-0" style="font-size: 13px; color: #4b5563;" v-if="track.moTa">{{ track.moTa }}</p>
         </div>
       </div>
+      <div v-if="!displayHistory.length" class="text-muted" style="font-size:13px">
+        Chưa có bản ghi cập nhật trạng thái cho đơn hàng này.
+      </div>
     </div>
   </div>
 </template>
@@ -112,25 +115,8 @@ const statusText = computed(() => {
 })
 
 const displayHistory = computed(() => {
-  let history = props.order.trackingHistory || []
-  history = [...history].sort((a, b) => new Date(b.ngayCapNhat) - new Date(a.ngayCapNhat))
-
-  if (history.length === 0) {
-    const fakeHistory = [{
-      trangThai: 'pending',
-      moTa: 'Đơn hàng đã được tạo và chờ xác nhận.',
-      ngayCapNhat: props.order.ngayTao
-    }]
-    if (computedTrackingStatus.value !== 'pending') {
-      fakeHistory.unshift({
-        trangThai: computedTrackingStatus.value,
-        moTa: 'Hệ thống cập nhật trạng thái đơn hàng.',
-        ngayCapNhat: new Date()
-      })
-    }
-    return fakeHistory
-  }
-  return history
+  const history = Array.isArray(props.order.trackingHistory) ? props.order.trackingHistory : []
+  return [...history].sort((a, b) => new Date(b.ngayCapNhat) - new Date(a.ngayCapNhat))
 })
 
 function getTrackingStatusName(status) {
@@ -164,7 +150,7 @@ function formatDateTime(dateStr) {
 .z-tracking-card {
   background: var(--z-white);
   border: 1px solid var(--z-gray-border);
-  border-radius: 12px;
+  border-radius: var(--z-radius);
   padding: 24px;
 }
 

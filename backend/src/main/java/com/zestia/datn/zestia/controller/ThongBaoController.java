@@ -1,149 +1,235 @@
 package com.zestia.datn.zestia.controller;
 
 import com.zestia.datn.zestia.entity.ThongBao;
-import com.zestia.datn.zestia.entity.KhachHang;
 import com.zestia.datn.zestia.repository.ThongBaoRepository;
-import com.zestia.datn.zestia.repository.KhachHangRepository;
-import com.zestia.datn.zestia.service.EmailService;
+import com.zestia.datn.zestia.service.AnnouncementEmailDispatchService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/thong-bao")
 @RequiredArgsConstructor
-@Slf4j
 public class ThongBaoController {
+    private static final byte DRAFT = 0;
+    private static final byte ACTIVE = 1;
+    private static final byte SCHEDULED = 2;
 
-    private final ThongBaoRepository thongBaoRepo;
-    private final KhachHangRepository khachHangRepo;
-    private final EmailService emailService;
+    private final ThongBaoRepository notificationRepository;
+    private final AnnouncementEmailDispatchService emailDispatchService;
 
     @GetMapping
-    public List<ThongBao> getAll() {
-        return thongBaoRepo.findAllByOrderByNgayTaoDesc();
+    public Map<String, Object> getAll(@RequestParam(defaultValue = "0") int page,
+                                      @RequestParam(defaultValue = "10") int size,
+                                      @RequestParam(required = false) String q,
+                                      @RequestParam(required = false) String type,
+                                      @RequestParam(required = false) Byte status) {
+        if (status != null && status != DRAFT && status != ACTIVE && status != SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái thông báo không hợp lệ");
+        }
+        var result = notificationRepository.findAdminPage(
+                cleanFilter(q), cleanFilter(type), status, pageRequest(page, size));
+        return pageResponse(result);
     }
 
     @GetMapping("/active")
-    public List<ThongBao> getActive() {
-        return thongBaoRepo.findByTrangThaiOrderByNgayTaoDesc((byte) 1);
+    public Map<String, Object> getActive(@RequestParam(defaultValue = "0") int page,
+                                         @RequestParam(defaultValue = "8") int size,
+                                         @RequestParam(required = false) String q,
+                                         @RequestParam(required = false) String type) {
+        var result = notificationRepository.findPublicPage(
+                cleanFilter(q), cleanFilter(type), ACTIVE, pageRequest(page, size));
+        Map<String, Object> response = pageResponse(result);
+        response.put("counts", typeCounts(notificationRepository.countPublicByType(ACTIVE)));
+        return response;
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody ThongBao body) {
-        if (body.getTieuDe() == null || body.getTieuDe().trim().isEmpty() ||
-            body.getNoiDung() == null || body.getNoiDung().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng nhập đầy đủ tiêu đề và nội dung"));
+    public ThongBao create(@RequestBody Map<String, Object> body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dữ liệu thông báo không hợp lệ");
         }
-        body.setNgayTao(LocalDateTime.now());
-        if (body.getTrangThai() == null) body.setTrangThai((byte) 1);
-        if (body.getGuiEmail() == null) body.setGuiEmail((byte) 0);
-        if (body.getDaGui() == null) body.setDaGui((byte) 0);
+        ThongBao notification = new ThongBao();
+        notification.setTieuDe(requiredText(body, "tieuDe", "Tiêu đề", 255));
+        notification.setNoiDung(requiredText(body, "noiDung", "Nội dung", 10_000));
+        notification.setLoai(optionalText(body.get("loai"), 50));
+        notification.setGuiEmail(flag(body.get("guiEmail"), (byte) 0));
+        notification.setDaGui((byte) 0);
+        notification.setNgayTao(LocalDateTime.now());
+        applySchedule(notification, state(body.get("trangThai"), ACTIVE), dateTime(body.get("ngayGui")));
 
-        // Hẹn giờ thì trạng thái sẽ là 2 (Scheduled)
-        if (body.getTrangThai() == 2 || (body.getNgayGui() != null && body.getNgayGui().isAfter(LocalDateTime.now()))) {
-            if (body.getNgayGui() == null) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng chọn ngày giờ hẹn gửi"));
-            }
-            if (body.getNgayGui().isBefore(LocalDateTime.now())) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Ngày giờ hẹn gửi phải ở trong tương lai"));
-            }
-            body.setTrangThai((byte) 2);
-        } else {
-            body.setNgayGui(null);
-        }
-
-        ThongBao saved = thongBaoRepo.save(body);
-
-        // Nếu trạng thái là active (1), gui_email = 1 và chưa gửi
-        if (saved.getTrangThai() == 1 && saved.getGuiEmail() == 1 && (saved.getDaGui() == null || saved.getDaGui() == 0)) {
-            saved.setDaGui((byte) 1);
-            thongBaoRepo.save(saved);
-            sendBulkEmailsAsync(saved);
-        }
-
-        return ResponseEntity.ok(saved);
+        ThongBao saved = notificationRepository.save(notification);
+        dispatchWhenReady(saved);
+        return saved;
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody ThongBao body) {
-        return thongBaoRepo.findById(id).map(existing -> {
-            if (body.getTieuDe() != null) existing.setTieuDe(body.getTieuDe());
-            if (body.getNoiDung() != null) existing.setNoiDung(body.getNoiDung());
-            if (body.getLoai() != null) existing.setLoai(body.getLoai());
-            
-            if (body.getGuiEmail() != null) {
-                existing.setGuiEmail(body.getGuiEmail());
-            }
+    public ThongBao update(@PathVariable Integer id, @RequestBody Map<String, Object> body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dữ liệu thông báo không hợp lệ");
+        }
+        ThongBao notification = notificationRepository.findByIdAndKhachHangIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"));
+        if (Byte.valueOf((byte) 2).equals(notification.getDaGui())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Thông báo đang được gửi email, vui lòng thử lại sau");
+        }
 
-            Byte newTrangThai = body.getTrangThai() != null ? body.getTrangThai() : existing.getTrangThai();
-            LocalDateTime newNgayGui = body.getNgayGui(); // Có thể là null từ JSON
+        if (body.containsKey("tieuDe")) {
+            notification.setTieuDe(requiredText(body, "tieuDe", "Tiêu đề", 255));
+        }
+        if (body.containsKey("noiDung")) {
+            notification.setNoiDung(requiredText(body, "noiDung", "Nội dung", 10_000));
+        }
+        if (body.containsKey("loai")) {
+            notification.setLoai(optionalText(body.get("loai"), 50));
+        }
 
-            if (newTrangThai == 2) {
-                if (newNgayGui == null) {
-                    return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng chọn ngày giờ hẹn gửi"));
-                }
-                if (newNgayGui.isBefore(LocalDateTime.now())) {
-                    return ResponseEntity.badRequest().body(Map.of("message", "Ngày giờ hẹn gửi phải ở trong tương lai"));
-                }
-                existing.setNgayGui(newNgayGui);
-                existing.setTrangThai((byte) 2);
-            } else {
-                // Nếu trạng thái không phải 2 (Hẹn giờ), xóa ngày hẹn gửi
-                existing.setNgayGui(null);
-                existing.setTrangThai(newTrangThai);
-                
-                // Nếu chuyển về bản nháp (Draft), reset daGui về 0 để cho phép gửi lại sau này
-                if (newTrangThai == 0) {
-                    existing.setDaGui((byte) 0);
-                }
-            }
+        byte oldEmailFlag = notification.getGuiEmail() != null ? notification.getGuiEmail() : 0;
+        byte emailFlag = body.containsKey("guiEmail")
+                ? flag(body.get("guiEmail"), oldEmailFlag)
+                : oldEmailFlag;
+        notification.setGuiEmail(emailFlag);
+        if (oldEmailFlag == 0 && emailFlag == 1) notification.setDaGui((byte) 0);
 
-            if (body.getDaGui() != null) {
-                existing.setDaGui(body.getDaGui());
-            }
+        byte requestedState = body.containsKey("trangThai")
+                ? state(body.get("trangThai"), notification.getTrangThai())
+                : notification.getTrangThai();
+        LocalDateTime requestedTime = body.containsKey("ngayGui")
+                ? dateTime(body.get("ngayGui"))
+                : notification.getNgayGui();
+        applySchedule(notification, requestedState, requestedTime);
+        if (requestedState == DRAFT) notification.setDaGui((byte) 0);
 
-            ThongBao saved = thongBaoRepo.save(existing);
-
-            // Nếu trạng thái đổi sang active (1) và được tích chọn gửi email và chưa gửi
-            if (saved.getTrangThai() == 1 && saved.getGuiEmail() == 1 && (saved.getDaGui() == null || saved.getDaGui() == 0)) {
-                saved.setDaGui((byte) 1);
-                thongBaoRepo.save(saved);
-                sendBulkEmailsAsync(saved);
-            }
-
-            return ResponseEntity.ok(saved);
-        }).orElse(ResponseEntity.notFound().build());
+        ThongBao saved = notificationRepository.save(notification);
+        dispatchWhenReady(saved);
+        return saved;
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Integer id) {
-        thongBaoRepo.deleteById(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> delete(@PathVariable Integer id) {
+        ThongBao notification = notificationRepository.findByIdAndKhachHangIsNull(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông báo"));
+        if (Byte.valueOf((byte) 2).equals(notification.getDaGui())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Thông báo đang được gửi email, chưa thể xóa");
+        }
+        notificationRepository.delete(notification);
+        return ResponseEntity.noContent().build();
     }
 
-    private void sendBulkEmailsAsync(ThongBao thongBao) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                List<KhachHang> khachHangs = khachHangRepo.findAll();
-                log.info("Bắt đầu gửi email hàng loạt cho thông báo ID {} tới {} khách hàng", thongBao.getId(), khachHangs.size());
-                int count = 0;
-                for (KhachHang kh : khachHangs) {
-                    if (kh.getEmail() != null && !kh.getEmail().trim().isEmpty()) {
-                        emailService.sendAnnouncementEmail(kh.getEmail(), kh.getHoVaTen(), thongBao.getTieuDe(), thongBao.getNoiDung());
-                        count++;
-                    }
-                }
-                log.info("Đã gửi email hàng loạt thành công cho {} khách hàng", count);
-            } catch (Exception e) {
-                log.error("Lỗi khi gửi email hàng loạt cho thông báo ID " + thongBao.getId() + ": ", e);
+    private void applySchedule(ThongBao notification, byte requestedState, LocalDateTime requestedTime) {
+        if (requestedState == SCHEDULED) {
+            if (requestedTime == null || !requestedTime.isAfter(LocalDateTime.now())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày giờ hẹn gửi phải ở trong tương lai");
             }
-        });
+            notification.setTrangThai(SCHEDULED);
+            notification.setNgayGui(requestedTime);
+            return;
+        }
+        notification.setTrangThai(requestedState);
+        notification.setNgayGui(null);
+    }
+
+    private void dispatchWhenReady(ThongBao notification) {
+        if (Byte.valueOf(ACTIVE).equals(notification.getTrangThai())
+                && Byte.valueOf((byte) 1).equals(notification.getGuiEmail())
+                && (notification.getDaGui() == null || notification.getDaGui() == 0)) {
+            emailDispatchService.dispatch(notification.getId());
+        }
+    }
+
+    private String requiredText(Map<String, Object> body, String key, String label, int maxLength) {
+        String value = optionalText(body != null ? body.get(key) : null, maxLength);
+        if (value == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng nhập " + label.toLowerCase());
+        }
+        return value;
+    }
+
+    private String optionalText(Object raw, int maxLength) {
+        if (raw == null) return null;
+        String value = String.valueOf(raw).trim();
+        if (value.isEmpty()) return null;
+        if (value.length() > maxLength) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nội dung vượt quá " + maxLength + " ký tự");
+        }
+        return value;
+    }
+
+    private byte state(Object raw, Byte fallback) {
+        int value = integer(raw, fallback != null ? fallback : ACTIVE);
+        if (value < DRAFT || value > SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái thông báo không hợp lệ");
+        }
+        return (byte) value;
+    }
+
+    private byte flag(Object raw, byte fallback) {
+        int value = integer(raw, fallback);
+        if (value != 0 && value != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giá trị tùy chọn gửi email không hợp lệ");
+        }
+        return (byte) value;
+    }
+
+    private int integer(Object raw, int fallback) {
+        if (raw == null) return fallback;
+        if (raw instanceof Number number) return number.intValue();
+        try {
+            return Integer.parseInt(String.valueOf(raw));
+        } catch (NumberFormatException error) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dữ liệu số không hợp lệ");
+        }
+    }
+
+    private LocalDateTime dateTime(Object raw) {
+        if (raw == null || String.valueOf(raw).isBlank()) return null;
+        try {
+            return LocalDateTime.parse(String.valueOf(raw));
+        } catch (Exception error) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ngày giờ hẹn gửi không hợp lệ");
+        }
+    }
+
+    private PageRequest pageRequest(int page, int size) {
+        return PageRequest.of(
+                Math.max(0, page),
+                Math.min(100, Math.max(1, size)),
+                Sort.by(Sort.Direction.DESC, "ngayTao", "id")
+        );
+    }
+
+    private String cleanFilter(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.trim();
+    }
+
+    private Map<String, Object> pageResponse(org.springframework.data.domain.Page<ThongBao> page) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("content", page.getContent());
+        response.put("page", page.getNumber());
+        response.put("size", page.getSize());
+        response.put("totalElements", page.getTotalElements());
+        response.put("totalPages", page.getTotalPages());
+        return response;
+    }
+
+    private Map<String, Long> typeCounts(java.util.List<Object[]> rows) {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        counts.put("all", 0L);
+        for (Object[] row : rows) {
+            String type = row[0] != null ? String.valueOf(row[0]) : "Khac";
+            long count = ((Number) row[1]).longValue();
+            counts.put(type, count);
+            counts.put("all", counts.get("all") + count);
+        }
+        return counts;
     }
 }

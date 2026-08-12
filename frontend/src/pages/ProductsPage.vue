@@ -24,8 +24,8 @@
             </button>
           </div>
           <div class="ms-auto d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-2 px-3 py-2 fw-bold shadow-sm" style="border-radius:20px;" @click="showVisualModal = true">
-              <i class="bi bi-camera-fill"></i> Tìm bằng ảnh AI
+            <button type="button" class="lm-btn-secondary z-visual-search-btn" @click="showVisualModal = true">
+              <i class="bi bi-camera-fill"></i> Tìm theo màu từ ảnh
             </button>
 
             <div class="d-flex align-items-center gap-2">
@@ -50,12 +50,12 @@
           </div>
         </div>
 
-        <!-- AI Vision Search Active Banner -->
-        <div v-if="aiVisualResults" class="p-3 mt-3 rounded-3 border border-danger bg-light text-start">
+        <!-- Image color search results -->
+        <div v-if="aiVisualResults" class="z-visual-result p-3 mt-3 text-start">
           <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2 text-danger fw-bold" style="font-size:14px;">
-              <i class="bi bi-magic fs-5"></i>
-              <span>Kết quả Phân Tích AI Vision (Tìm thấy {{ aiVisualResults.results?.length || 0 }} sản phẩm phù hợp)</span>
+              <i class="bi bi-eyedropper fs-5"></i>
+              <span>Kết quả tìm theo màu ảnh ({{ aiVisualResults.results?.length || 0 }} sản phẩm phù hợp)</span>
             </div>
             <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-3" style="font-size:12px;" @click="clearAiVisualSearch">
               <i class="bi bi-x-circle me-1"></i> Xóa kết quả ảnh
@@ -81,8 +81,7 @@
             {{ priceLabels[priceRange] }}
             <i class="bi bi-x" style="cursor:pointer" @click="priceRange = 'all'"></i>
           </span>
-          <button @click="activeFilter = 'Tất cả'; priceRange = 'all'"
-                  style="font-size:12px;color:var(--z-gray);border:none;background:none;cursor:pointer;text-decoration:underline">
+          <button type="button" class="z-text-action" @click="activeFilter = 'Tất cả'; priceRange = 'all'">
             Xoá tất cả
           </button>
         </div>
@@ -119,11 +118,11 @@
         </button>
       </div>
       <nav v-else-if="totalPages > 1" class="z-public-pagination" aria-label="Phân trang sản phẩm">
-        <button type="button" :disabled="currentPage === 1" @click="currentPage--">
+        <button type="button" class="z-page-button" :disabled="currentPage === 1" @click="currentPage--">
           <i class="bi bi-arrow-left"></i><span>Trước</span>
         </button>
         <span>Trang {{ currentPage }} / {{ totalPages }}</span>
-        <button type="button" :disabled="currentPage === totalPages" @click="currentPage++">
+        <button type="button" class="z-page-button" :disabled="currentPage === totalPages" @click="currentPage++">
           <span>Sau</span><i class="bi bi-arrow-right"></i>
         </button>
       </nav>
@@ -145,18 +144,18 @@
       </div>
     </Transition>
 
-    <!-- AI Image Search Modal -->
+    <!-- Image color search modal -->
     <div v-if="showVisualModal" class="z-modal-overlay" @click.self="showVisualModal = false" style="z-index:2000; backdrop-filter:blur(2px);">
       <div class="z-modal" style="max-width:550px">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h3 style="font-size:18px;font-weight:600;margin:0" class="text-danger">
-            <i class="bi bi-camera-fill me-2"></i>Tìm kiếm sản phẩm bằng ảnh AI
+            <i class="bi bi-camera-fill me-2"></i>Tìm sản phẩm theo màu từ ảnh
           </h3>
           <button type="button" class="z-icon-btn" @click="showVisualModal = false"><i class="bi bi-x-lg"></i></button>
         </div>
 
         <p style="font-size:13px; color:var(--z-gray);" class="mb-3">
-          Tải lên hình ảnh trang phục mẫu bạn yêu thích. AI sẽ phân tích kiểu dáng, màu sắc và tìm các mẫu tương tự trong kho Zestia.
+          Tải lên ảnh trang phục bạn yêu thích. Hệ thống sẽ đọc màu nổi bật và tìm biến thể còn hàng có màu gần nhất.
         </p>
 
         <div class="p-4 border-2 rounded-3 text-center mb-3" style="border: 2px dashed #fcc2d7; background: #fff5f5; cursor: pointer;" @click="$refs.visualFileInput.click()">
@@ -168,7 +167,7 @@
 
         <div v-if="analyzingVisual" class="text-center py-3">
           <div class="spinner-border text-danger mb-2"></div>
-          <div style="font-size: 13px; font-weight: 500;" class="text-danger">AI Vision đang phân tích kiểu dáng và màu sắc...</div>
+          <div style="font-size: 13px; font-weight: 500;" class="text-danger">Đang phân tích màu sắc trong ảnh...</div>
         </div>
       </div>
     </div>
@@ -186,18 +185,24 @@ import { products, loadProducts } from '@/composables/useProducts'
 import { api } from '@/composables/useApi'
 import { useCompare } from '@/composables/useCompare'
 import { useI18n } from '@/composables/useI18n'
+import { useToast } from '@/composables/useToast'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 
 const route = useRoute()
 const bestsellerRank = ref(new Map())
 const { count: compareCount, clear: clearComparison } = useCompare()
 const { isEn } = useI18n()
+const { showToast } = useToast()
 const compareStatusLabel = computed(() => isEn.value
   ? `Selected ${compareCount.value}/4 products`
   : `Đã chọn ${compareCount.value}/4 sản phẩm`)
 
 onMounted(async () => {
-  await loadProducts()
+  try {
+    await loadProducts()
+  } catch (error) {
+    console.warn('Không tải được danh sách sản phẩm', error)
+  }
   try {
     const summary = await api().getStorefrontSummary()
     bestsellerRank.value = new Map((summary?.bestsellers || []).map((item, index) => [Number(item.productId), index]))
@@ -267,8 +272,8 @@ const filteredProducts = computed(() => {
       result = result.filter(p => p.promotionActive)
     } else {
       result = result.filter(p => {
-        const cat = (p.category || p.loaiVay || '').toLowerCase()
-        const code = (p.code || p.maVay || '').toUpperCase()
+        const cat = (p.category || '').toLowerCase()
+        const code = (p.code || '').toUpperCase()
         const filter = activeFilter.value.toLowerCase()
 
         if (filter.includes('khoác') || filter.includes('blazer')) {
@@ -317,13 +322,22 @@ const aiVisualResults = ref(null)
 async function handleVisualFileSelected(event) {
   const file = event.target.files?.[0]
   if (!file) return
+  event.target.value = ''
+  if (!file.type.startsWith('image/')) {
+    showToast('Vui lòng chọn một tệp hình ảnh hợp lệ.')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Ảnh không được vượt quá 5 MB.')
+    return
+  }
   analyzingVisual.value = true
   try {
     const res = await api().visualSearch(file)
     aiVisualResults.value = res
     showVisualModal.value = false
   } catch (error) {
-    alert(error.error || 'Không thể phân tích hình ảnh AI')
+    showToast(error.error || 'Không thể phân tích màu từ hình ảnh')
   } finally {
     analyzingVisual.value = false
   }
@@ -339,12 +353,12 @@ const sortedProducts = computed(() => {
       const original = products.value.find(p => p.id === item.id)
       return {
         id: item.id,
-        name: item.tenVay || item.name,
-        code: item.maVay || item.code,
+        name: item.tenSanPham || item.name,
+        code: item.maSanPham || item.code,
         price: Number(item.giaCuoi || item.price || item.giaGoc || 0),
         category: item.danhMuc || original?.category || 'Thời trang',
         image: item.anhChinh || original?.image || '/images/products/dress1.jpg',
-        badge: `${item.matchScore}% Khớp AI`
+        badge: `${item.matchScore}% gần màu`
       }
     })
   }
@@ -383,6 +397,17 @@ watch(totalPages, pages => {
 .z-fade-item {
   animation: z-item-in 0.5s ease both;
 }
+.z-visual-search-btn {
+  min-height: 38px;
+  border-color: var(--z-accent-light);
+  background: var(--z-white);
+  color: var(--z-accent-dark);
+}
+.z-visual-result {
+  border: 1px solid var(--z-accent-light);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+}
 @keyframes z-item-in {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -396,8 +421,17 @@ watch(totalPages, pages => {
 }
 .z-compare-dock > div { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; font-weight: 600; }
 .z-compare-dock > div i { color: var(--z-accent); }
-.z-compare-clear { border: 0; background: transparent; color: var(--z-gray); font-size: 12px; }
-.z-compare-clear:hover { color: var(--z-accent); }
+.z-compare-clear {
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--z-gray);
+  font-size: 11px;
+  font-weight: 600;
+}
+.z-compare-clear:hover { border-color: var(--z-accent-light); background: var(--z-accent-soft); color: var(--z-accent-dark); }
 .z-compare-dock .lm-btn-primary { min-height: 38px; padding: 8px 14px; }
 .z-compare-dock-enter-active,
 .z-compare-dock-leave-active { transition: opacity .2s ease, transform .2s ease; }

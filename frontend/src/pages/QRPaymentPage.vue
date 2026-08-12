@@ -203,7 +203,7 @@ onUnmounted(() => {
   margin: 0 auto;
   background: white;
   border: 1px solid var(--z-gray-border);
-  border-radius: 16px;
+  border-radius: var(--z-radius);
   overflow: hidden;
 }
 .z-qr-header {
@@ -237,7 +237,7 @@ onUnmounted(() => {
   width: 240px;
   height: 240px;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: var(--z-radius);
   border: 1px solid var(--z-gray-border);
 }
 .z-qr-fallback {
@@ -248,7 +248,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   background: var(--z-bg);
-  border-radius: 12px;
+  border-radius: var(--z-radius);
 }
 .z-qr-instruction {
   text-align: center;
@@ -259,7 +259,7 @@ onUnmounted(() => {
 }
 .z-qr-info {
   background: var(--z-bg);
-  border-radius: 10px;
+  border-radius: var(--z-radius);
   padding: 16px 20px;
   margin-bottom: 16px;
 }

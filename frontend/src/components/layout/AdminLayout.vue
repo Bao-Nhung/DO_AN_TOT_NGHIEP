@@ -87,7 +87,7 @@
               <div v-else-if="taskError && taskItems.length === 0" class="z-task-state z-task-error">
                 <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
                 <span>{{ taskError }}</span>
-                <button type="button" @click="loadTasks()">Thử lại</button>
+                <button type="button" class="z-task-retry-btn" @click="loadTasks()">Thử lại</button>
               </div>
 
               <div v-else-if="taskItems.length === 0" class="z-task-state">
@@ -122,8 +122,8 @@
       <slot />
     </main>
 
-    <!-- Zestia Staff AI Copilot Widget -->
-    <AdminAiCopilot />
+    <!-- Human support needs the lower-right compose controls unobstructed. -->
+    <AdminAiCopilot v-if="$route.path !== '/admin/support-chat'" />
   </div>
 </template>
 
@@ -561,7 +561,8 @@ function handleLogout() {
 .z-task-state strong { color: var(--z-dark); font-size: 12px; }
 .z-task-complete { color: #2e7d32; font-size: 24px; }
 .z-task-error i { color: var(--z-danger); font-size: 20px; }
-.z-task-error button {
+.z-task-error button,
+.z-task-retry-btn {
   border: 0;
   background: transparent;
   color: var(--z-accent);

@@ -2,36 +2,35 @@
   <div class="z-copilot-wrapper">
     <!-- Floating Trigger Button -->
     <button
+      v-if="!isOpen"
       class="z-copilot-trigger"
-      :class="{ active: isOpen }"
       type="button"
       @click="toggleCopilot"
-      title="Bật/Tắt Zestia Staff AI (Phím tắt: Alt + A hoặc Ctrl + K)"
+      title="Mở trợ lý nghiệp vụ"
+      aria-label="Mở trợ lý nghiệp vụ Zestia"
     >
-      <div v-if="!isOpen" class="z-ai-pulse"></div>
       <div class="z-copilot-trigger-icon">
-        <i v-if="!isOpen" class="bi bi-stars z-ai-icon-stars"></i>
-        <i v-else class="bi bi-x-lg"></i>
+        <i class="bi bi-chat-square-text"></i>
       </div>
-      <span class="z-copilot-trigger-text d-none d-md-inline">Zestia AI PRO</span>
+      <span class="z-copilot-trigger-text d-none d-md-inline">Trợ lý nghiệp vụ</span>
     </button>
 
     <!-- Slide-over Copilot Panel -->
     <Transition name="z-copilot-slide">
-      <div v-if="isOpen" class="z-copilot-panel">
+      <section v-if="isOpen" class="z-copilot-panel" aria-label="Trợ lý nghiệp vụ Zestia">
         <!-- Header -->
         <header class="z-copilot-header">
           <div class="d-flex align-items-center gap-2">
             <div class="z-copilot-avatar">
-              <i class="bi bi-robot"></i>
+              <img src="/images/brand/zestia-mark.png" alt="" aria-hidden="true">
               <span class="z-copilot-status-dot"></span>
             </div>
             <div>
-              <h6 class="mb-0 fw-bold d-flex align-items-center gap-2">
-                Zestia Staff AI Copilot
-                <span class="z-pill-ai">v3.0 PRO</span>
+              <h6 class="z-copilot-title">
+                Trợ lý nghiệp vụ Zestia
+                <span class="z-pill-ai">Nội bộ</span>
               </h6>
-              <small class="text-muted" style="font-size: 11px">Trợ lý quản trị, tồn kho & bán hàng POS thông minh</small>
+              <small class="z-copilot-subtitle">Tra cứu dữ liệu kho, đơn hàng và bán tại quầy</small>
             </div>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -39,14 +38,15 @@
               class="z-icon-btn"
               type="button"
               :title="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'"
+              :aria-label="soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'"
               @click="soundEnabled = !soundEnabled"
             >
               <i class="bi" :class="soundEnabled ? 'bi-volume-up-fill' : 'bi-volume-mute-fill'"></i>
             </button>
-            <button class="z-icon-btn" type="button" title="Xóa lịch sử chat" @click="clearChat">
+            <button class="z-icon-btn" type="button" title="Xóa lịch sử chat" aria-label="Xóa lịch sử chat" @click="clearChat">
               <i class="bi bi-trash3"></i>
             </button>
-            <button class="z-icon-btn" type="button" title="Đóng Copilot" @click="isOpen = false">
+            <button class="z-icon-btn" type="button" title="Đóng trợ lý" aria-label="Đóng trợ lý nghiệp vụ" @click="isOpen = false">
               <i class="bi bi-x-lg"></i>
             </button>
           </div>
@@ -71,11 +71,11 @@
         <div ref="chatContainer" class="z-copilot-body">
           <div v-for="(msg, index) in messages" :key="index" class="z-chat-row" :class="msg.role">
             <div v-if="msg.role === 'assistant'" class="z-msg-avatar">
-              <i class="bi bi-stars"></i>
+              <i class="bi bi-chat-square-text"></i>
             </div>
             <div class="z-msg-bubble">
               <div class="z-msg-header" v-if="msg.role === 'assistant'">
-                <span class="z-msg-author">Zestia Copilot 3.0</span>
+                <span class="z-msg-author">Trợ lý Zestia</span>
                 <div class="d-flex align-items-center gap-2">
                   <span class="z-msg-time">{{ msg.time }}</span>
                   <button type="button" class="z-speech-btn" title="Đọc phát âm" @click="speakText(msg.text)">
@@ -104,7 +104,7 @@
                         <span class="badge bg-danger-subtle text-danger font-monospace fw-bold">Còn {{ item.stock }}</span>
                       </div>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-2" @click="goToAdminProducts">
+                    <button type="button" class="z-card-action-btn z-card-action-btn--danger w-100 mt-2" @click="goToAdminProducts">
                       <i class="bi bi-box-seam me-1"></i> Chuyển tới Quản lý Sản Phẩm
                     </button>
                   </div>
@@ -112,7 +112,7 @@
                   <!-- Outfit Set POS Card -->
                   <div v-else-if="card.type === 'outfit'" class="z-outfit-pos-card">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                      <span class="badge bg-purple text-white"><i class="bi bi-stars me-1"></i> GỢI Ý PHỐI ĐỒ POS</span>
+                      <span class="z-card-kicker"><i class="bi bi-bag-heart me-1"></i> Gợi ý phối đồ tại quầy</span>
                       <small class="text-muted">{{ card.occasion || 'Cross-sell tại quầy' }}</small>
                     </div>
                     <strong class="d-block mb-1">{{ card.title }}</strong>
@@ -127,10 +127,10 @@
                     </div>
                     <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
                       <div>
-                        <span class="fw-bold text-danger me-1">{{ fmtPrice(card.comboPrice || card.totalPrice) }}</span>
-                        <small class="text-muted text-decoration-line-through" v-if="card.totalPrice > card.comboPrice">{{ fmtPrice(card.totalPrice) }}</small>
+                        <span class="fw-bold text-danger me-1">{{ fmtPrice(card.totalPrice) }}</span>
+                        <small class="text-muted">Tổng giá hiện tại</small>
                       </div>
-                      <button type="button" class="btn btn-sm btn-dark" @click="addOutfitToPos(card)">
+                      <button type="button" class="z-card-action-btn" @click="addOutfitToPos(card)">
                         <i class="bi bi-cart-plus-fill me-1"></i> Thêm vào POS
                       </button>
                     </div>
@@ -152,8 +152,8 @@
                   <!-- Stats Card -->
                   <div v-else-if="card.type === 'stats'" class="z-stats-card-mini">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                      <strong style="color:var(--z-accent)"><i class="bi bi-graph-up-arrow me-1"></i>{{ card.title }}</strong>
-                      <span class="badge bg-success">Dữ liệu thực</span>
+                      <strong class="z-rich-card-title"><i class="bi bi-graph-up-arrow me-1"></i>{{ card.title }}</strong>
+                      <span class="z-card-data-label">Đã đối chiếu</span>
                     </div>
                     <div class="row g-2 text-center">
                       <div class="col-4">
@@ -190,7 +190,7 @@
 
           <!-- Typing Indicator -->
           <div v-if="loading" class="z-chat-row assistant">
-            <div class="z-msg-avatar"><i class="bi bi-stars"></i></div>
+            <div class="z-msg-avatar"><i class="bi bi-chat-square-text"></i></div>
             <div class="z-msg-bubble z-typing">
               <span></span><span></span><span></span>
             </div>
@@ -205,7 +205,8 @@
               type="button"
               class="z-mic-btn"
               :class="{ listening: isListening }"
-              :title="isListening ? 'Đang lắng nghe...' : 'Nói lệnh với Zestia AI'"
+              :title="isListening ? 'Đang lắng nghe...' : 'Nhập câu hỏi bằng giọng nói'"
+              :aria-label="isListening ? 'Dừng ghi âm' : 'Nhập câu hỏi bằng giọng nói'"
               :disabled="loading"
               @click="toggleVoiceInput"
             >
@@ -217,19 +218,15 @@
               ref="inputRef"
               type="text"
               class="lm-input z-copilot-input"
-              placeholder="Hỏi AI về tồn kho, cảnh báo hết hàng, phối đồ POS..."
+              placeholder="Nhập câu hỏi về kho, đơn hàng hoặc POS..."
               :disabled="loading"
             />
             <button type="submit" class="lm-btn-primary z-send-btn" :disabled="loading || !inputQuery.trim()">
               <i class="bi bi-send-fill"></i>
             </button>
           </form>
-          <div class="d-flex align-items-center justify-content-between mt-2 px-1" style="font-size: 11px; color: var(--z-gray)">
-            <span>Gợi ý: Thử gõ <i>"Cảnh báo tồn kho"</i> hoặc <i>"Phối đồ POS"</i></span>
-            <span class="d-none d-sm-inline">Alt + A</span>
-          </div>
         </footer>
-      </div>
+      </section>
     </Transition>
   </div>
 </template>
@@ -239,7 +236,7 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
-import { fmtPrice, MOCK_PRODUCTS } from '@/composables/useProducts'
+import { fmtPrice } from '@/composables/useProducts'
 
 const router = useRouter()
 const { showToast } = useToast()
@@ -255,17 +252,17 @@ const isListening = ref(false)
 let recognition = null
 
 const quickChips = [
-  { label: '⚠️ Cảnh báo tồn kho', icon: 'bi-exclamation-triangle', prompt: 'Báo cáo cảnh báo tồn kho các sản phẩm sắp hết hàng' },
-  { label: '🥂 Phối đồ POS', icon: 'bi-magic', prompt: 'Gợi ý phối đồ bán hàng POS' },
-  { label: '📊 Doanh thu hôm nay', icon: 'bi-graph-up', prompt: 'Báo cáo doanh thu và tổng số đơn hàng hôm nay' },
-  { label: '🎟️ Tra cứu Voucher', icon: 'bi-ticket-perforated', prompt: 'Tra cứu danh sách voucher đang áp dụng' },
-  { label: '✍️ Mẫu CSKH Xin lỗi', icon: 'bi-chat-heart', prompt: 'Soạn tin mẫu trả lời xin lỗi và tri ân khách hàng' }
+  { label: 'Cảnh báo tồn kho', icon: 'bi-exclamation-triangle', prompt: 'Báo cáo cảnh báo tồn kho các sản phẩm sắp hết hàng' },
+  { label: 'Phối đồ tại quầy', icon: 'bi-bag-heart', prompt: 'Gợi ý phối đồ bán hàng POS' },
+  { label: 'Doanh thu hôm nay', icon: 'bi-graph-up', prompt: 'Báo cáo doanh thu và tổng số đơn hàng hôm nay' },
+  { label: 'Voucher đang dùng', icon: 'bi-ticket-perforated', prompt: 'Tra cứu danh sách voucher đang áp dụng' },
+  { label: 'Mẫu trả lời CSKH', icon: 'bi-chat-heart', prompt: 'Soạn tin mẫu trả lời xin lỗi và tri ân khách hàng' }
 ]
 
 const messages = ref([
   {
     role: 'assistant',
-    text: 'Xin chào! Tôi là **Zestia Staff AI Copilot v3.0 PRO**.\n\nTôi có thể giúp bạn **cảnh báo tồn kho sắp hết**, **tư vấn phối đồ POS trọn bộ**, **báo cáo doanh thu thời gian thực**, hoặc **soạn mẫu trả lời CSKH**!',
+    text: 'Xin chào! Tôi là **trợ lý nhân viên Zestia**.\n\nTôi có thể tra cứu **tồn kho**, gợi ý **phối đồ tại POS**, xem **số liệu tổng quan**, hoặc hỗ trợ soạn câu trả lời khách hàng. Các số liệu được lấy từ hệ thống hiện tại.',
     time: getCurrentTime(),
     cards: []
   }
@@ -393,7 +390,7 @@ function addOutfitToPos(outfitCard) {
   outfitCard.items.forEach(item => {
     window.dispatchEvent(new CustomEvent('pos-add-item', { detail: item }))
   })
-  showToast(`🎉 Đã thêm cả Set Outfit (${outfitCard.items.length} món) vào đơn POS!`)
+  showToast(`Đã thêm bộ phối gồm ${outfitCard.items.length} món vào đơn POS.`)
   router.push('/admin/pos')
 }
 
@@ -416,125 +413,30 @@ async function sendMessage() {
       content: m.text
     }))
 
-    const res = await api().postAiChat(query, historyPayload, 'staff').catch(() => null)
+    const res = await api().postAiChat(query, historyPayload, 'staff')
 
     const replyText = res?.reply || null
     const replyCards = res?.cards || []
     const replyTime = getCurrentTime()
 
-    if (replyText) {
-      const newMsg = { role: 'assistant', text: '', time: replyTime, cards: [], copyable: res?.copyable || false }
-      messages.value.push(newMsg)
-      playChime()
-      loading.value = false
-      scrollToBottom()
-      await streamText(newMsg, replyText)
-      newMsg.cards = replyCards
-      scrollToBottom()
-    } else {
-      const localResp = generateLocalStaffResponse(query)
-      const newMsg = { role: 'assistant', text: '', time: replyTime, cards: [], copyable: localResp.copyable || false }
-      messages.value.push(newMsg)
-      playChime()
-      loading.value = false
-      scrollToBottom()
-      await streamText(newMsg, localResp.text)
-      newMsg.cards = localResp.cards || []
-      scrollToBottom()
-    }
+    if (!replyText) throw new Error('Phản hồi từ máy chủ không hợp lệ')
+
+    const newMsg = { role: 'assistant', text: '', time: replyTime, cards: [], copyable: res?.copyable || false }
+    messages.value.push(newMsg)
+    playChime()
+    loading.value = false
+    scrollToBottom()
+    await streamText(newMsg, replyText)
+    newMsg.cards = replyCards
+    scrollToBottom()
   } catch (e) {
-    const localResp = generateLocalStaffResponse(query)
     const newMsg = { role: 'assistant', text: '', time: getCurrentTime(), cards: [] }
     messages.value.push(newMsg)
     loading.value = false
-    await streamText(newMsg, localResp.text)
-    newMsg.cards = localResp.cards || []
+    await streamText(newMsg, 'Không thể tải dữ liệu trợ lý lúc này. Vui lòng kiểm tra kết nối backend rồi thử lại; hệ thống không hiển thị số liệu thay thế để tránh sai báo cáo.')
   } finally {
     loading.value = false
     scrollToBottom()
-  }
-}
-
-function generateLocalStaffResponse(query) {
-  const q = query.toLowerCase()
-  if (q.includes('cảnh báo') || q.includes('sắp hết') || (q.includes('tồn kho') && q.includes('hết'))) {
-    return {
-      text: '⚠️ **CẢNH BÁO TỒN KHO DƯỚI NGƯỠNG (Zestia Alert)**\n\nPhát hiện các sản phẩm có số lượng tồn kho $\\le 5$ chiếc cần bổ sung kho khẩn cấp:',
-      cards: [
-        {
-          type: 'low_stock',
-          title: 'CẢNH BÁO KHO SẮP HẾT (Số lượng <= 5)',
-          count: 3,
-          items: [
-            { id: 1, code: 'ASM001', name: 'Áo Sơ Mi Lụa Cổ Điển', color: 'Trắng Ngà', size: 'S', stock: 2, image: '/images/products/shirt1.jpg' },
-            { id: 2, code: 'QJN001', name: 'Quần Jeans Wide Leg', color: 'Xanh Vintage', size: 'M', stock: 3, image: '/images/products/pants1.jpg' },
-            { id: 3, code: 'VDH001', name: 'Váy Dạ Hội Gấm Hoàng Gia', color: 'Đỏ Đô', size: 'S', stock: 1, image: '/images/products/dress1.jpg' }
-          ]
-        }
-      ]
-    }
-  }
-
-  if (q.includes('doanh thu') || q.includes('báo cáo') || q.includes('thống kê') || q.includes('đơn hàng')) {
-    return {
-      text: '📊 **BÁO CÁO NHANH THỜI GIAN THỰC ZESTIA**\n\n• **Doanh thu hôm nay**: 128.500.000đ\n• **Tổng đơn hoàn tất**: 142 đơn hàng\n• **Sản phẩm đang kinh doanh**: 62 mã sản phẩm\n• **Trạng thái hệ thống**: Hoạt động bình thường.',
-      cards: [
-        { type: 'stats', title: 'Thống kê tổng quan hệ thống', totalProducts: 62, totalOrders: 142, totalStock: 1240 }
-      ]
-    }
-  }
-
-  if (q.includes('kho') || q.includes('tồn kho') || q.includes('còn bao nhiêu')) {
-    const sampleProducts = MOCK_PRODUCTS.slice(0, 3)
-    return {
-      text: '📦 **BÁO CÁO TRA CỨU TỒN KHO THỜI GIAN THỰC**\n\nCác sản phẩm đang có số lượng tồn kho tốt nhất tại cửa hàng:',
-      cards: sampleProducts.map(p => ({
-        type: 'product',
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        price: p.price,
-        stock: p.stock,
-        image: p.image
-      }))
-    }
-  }
-
-  if (q.includes('phối đồ') || q.includes('tư vấn') || q.includes('outfit') || q.includes('cross-sell') || q.includes('pos')) {
-    const top = MOCK_PRODUCTS.find(p => p.category === 'Áo thời trang') || MOCK_PRODUCTS[0]
-    const bottom = MOCK_PRODUCTS.find(p => p.category === 'Quần & Jeans') || MOCK_PRODUCTS[1]
-    const acc = MOCK_PRODUCTS.find(p => p.category === 'Phụ kiện thời trang') || MOCK_PRODUCTS[3]
-
-    return {
-      text: '💡 **GỢI Ý PHỐI ĐỒ CHUYÊN NGHIỆP CHO NHÂN VIÊN POS (STYLIST COPILOT v3.0)**\n\nSet đồ kết hợp cực chuẩn dáng cho khách hàng:',
-      cards: [
-        {
-          type: 'outfit',
-          title: 'Set Outfit Thanh Lịch Công Sở Zestia',
-          occasion: 'Tư vấn Cross-sell POS tại quầy',
-          totalPrice: top.price + bottom.price + acc.price,
-          comboPrice: Math.round((top.price + bottom.price + acc.price) * 0.9),
-          items: [top, bottom, acc].map(p => ({ id: p.id, name: p.name, price: p.price, image: p.image }))
-        }
-      ]
-    }
-  }
-
-  if (q.includes('voucher') || q.includes('khuyến mãi') || q.includes('mã')) {
-    return {
-      text: '🎟️ **DANH SÁCH VOUCHER GIẢM GIÁ ĐANG ÁP DỤNG**\n\n• **Mã ZESTIA100K**: Giảm 100.000đ cho đơn từ 1.000.000đ\n• **Mã VIPFASHION**: Giảm 15% cho khách hàng thân thiết\n• **Mã FREESHIP**: Miễn phí vận chuyển toàn quốc'
-    }
-  }
-
-  if (q.includes('soạn') || q.includes('trả lời') || q.includes('xin lỗi') || q.includes('cskh')) {
-    return {
-      text: '✍️ **MẪU SOẠN TIN TRẢ LỜI KHÁCH HÀNG CHUYÊN NGHIỆP:**\n\n"Kính chào Quý khách! Zestia chân thành xin lỗi về sự chậm trễ đơn hàng của Quý khách. Đội ngũ nhân viên đã ưu tiên xử lý và tặng kèm Quý khách voucher giảm 100K cho lần mua tiếp theo. Cảm ơn Quý khách luôn tin tưởng Zestia!"',
-      copyable: true
-    }
-  }
-
-  return {
-    text: 'Zestia AI Copilot đã nhận câu hỏi của bạn. Bạn có thể sử dụng các thẻ gợi ý nhanh để tra cứu kho, báo cáo doanh thu hoặc gợi ý phối đồ bán hàng POS!'
   }
 }
 
@@ -577,6 +479,9 @@ function scrollToBottom() {
 function formatMessageText(text) {
   if (!text) return ''
   let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
     .replace(/```([\s\S]*?)```/g, '<pre class="z-copilot-code"><code>$1</code></pre>')
     .replace(/`([^`]+)`/g, '<code class="z-copilot-inline-code">$1</code>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -608,428 +513,529 @@ async function streamText(msgObj, fullText, chunkSize = 6, delayMs = 16) {
 <style scoped>
 .z-copilot-wrapper {
   position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 1050;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1035;
+  font-family: var(--z-font-body);
 }
 
 .z-copilot-trigger {
-  position: relative;
-  height: 52px;
-  padding: 0 20px 0 16px;
-  border: none;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #1A1A1A 0%, #333333 50%, #D4564E 100%);
-  color: #fff;
+  min-height: 46px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  box-shadow: 0 12px 32px rgba(212, 86, 78, 0.35);
+  gap: 9px;
+  padding: 0 16px;
+  border: 1px solid var(--z-dark);
+  border-radius: var(--z-radius);
+  background: var(--z-dark);
+  color: var(--z-white);
+  box-shadow: 0 12px 30px rgba(27, 27, 31, 0.2);
+  font-size: 13px;
+  font-weight: 650;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: var(--z-ease);
 }
-
 .z-copilot-trigger:hover {
-  transform: translateY(-4px) scale(1.03);
-  box-shadow: 0 16px 40px rgba(212, 86, 78, 0.45);
+  border-color: var(--z-accent);
+  background: var(--z-accent);
+  color: var(--z-white);
+  transform: translateY(-2px);
+  box-shadow: 0 15px 32px rgba(27, 27, 31, 0.24);
 }
-
+.z-copilot-trigger:active { transform: translateY(0); }
 .z-copilot-trigger-icon {
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
 }
-
-.z-ai-icon-stars {
-  font-size: 20px;
-  color: #FFD700;
-  animation: z-spin-slow 6s linear infinite;
-}
-
-@keyframes z-spin-slow {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.z-copilot-trigger-text {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-
-.z-ai-pulse {
-  position: absolute;
-  top: -2px; left: -2px; right: -2px; bottom: -2px;
-  border-radius: 32px;
-  border: 2px solid rgba(212, 86, 78, 0.6);
-  animation: z-pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
-}
-
-@keyframes z-pulse-ring {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.08); opacity: 0; }
-  100% { transform: scale(0.95); opacity: 0; }
-}
+.z-copilot-trigger-text { white-space: nowrap; }
 
 .z-copilot-panel {
   position: fixed;
-  right: 24px;
-  bottom: 86px;
-  width: min(440px, calc(100vw - 32px));
-  height: 600px;
-  max-height: calc(100vh - 110px);
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--z-gray-border, #e5e7eb);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  top: 76px;
+  right: 20px;
+  bottom: 20px;
+  width: min(430px, calc(100vw - 32px));
+  min-height: 420px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: z-fade-in 0.3s ease;
-}
-
-@keyframes z-fade-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+  box-shadow: 0 24px 64px rgba(27, 27, 31, 0.24);
 }
 
 .z-copilot-header {
-  padding: 12px 16px;
-  background: #1A1A1A;
-  color: #fff;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--z-dark);
+  color: var(--z-white);
 }
-
+.z-copilot-header > div:first-child { min-width: 0; }
 .z-copilot-avatar {
   position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #D4564E, #7c3aed);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--z-radius);
+  background: var(--z-white);
 }
-
+.z-copilot-avatar img { width: 30px; height: 30px; object-fit: contain; }
 .z-copilot-status-dot {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  right: -2px;
+  bottom: -2px;
   width: 10px;
   height: 10px;
+  border: 2px solid var(--z-dark);
   border-radius: 50%;
-  background: #10b981;
-  border: 2px solid #1A1A1A;
+  background: #22C55E;
 }
-
-.z-pill-ai {
-  font-size: 10px;
-  padding: 2px 6px;
-  background: rgba(212, 86, 78, 0.2);
-  color: #FF8A80;
-  border-radius: 10px;
-  font-weight: 700;
-}
-
-.z-icon-btn {
-  border: none;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  font-size: 14px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  cursor: pointer;
+.z-copilot-title {
+  max-width: 240px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 7px;
+  margin: 0;
+  overflow: hidden;
+  color: var(--z-white);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.z-icon-btn:hover {
-  background: rgba(255,255,255,0.2);
+.z-copilot-subtitle {
+  max-width: 250px;
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.z-pill-ai {
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.z-copilot-header .z-icon-btn {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--z-white);
+  box-shadow: none;
+}
+.z-copilot-header .z-icon-btn:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--z-white);
+  transform: none;
+}
+.z-copilot-header .z-icon-btn:last-child:hover {
+  border-color: var(--z-accent);
+  background: var(--z-accent);
 }
 
 .z-copilot-chips {
-  padding: 10px 14px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--z-gray-border);
+  background: var(--z-bg-alt);
 }
-
 .z-chip-btn {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #374151;
+  min-width: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-white);
+  color: var(--z-dark-soft);
   font-size: 11px;
   font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 20px;
-  white-space: nowrap;
+  line-height: 1.25;
+  text-align: left;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s;
+  transition: var(--z-ease);
 }
-
-.z-chip-btn:hover {
-  background: #1A1A1A;
-  color: #fff;
-  border-color: #1A1A1A;
+.z-chip-btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.z-chip-btn i { flex: 0 0 auto; color: var(--z-accent); font-size: 12px; }
+.z-chip-btn:hover:not(:disabled) {
+  border-color: var(--z-accent-light);
+  background: var(--z-accent-soft);
+  color: var(--z-dark);
+  transform: translateY(-1px);
 }
+.z-chip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .z-copilot-body {
+  min-height: 0;
   flex: 1;
-  padding: 14px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 14px;
+  background: var(--z-bg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--z-gray-light) transparent;
 }
-
 .z-chat-row {
+  max-width: 95%;
   display: flex;
-  gap: 10px;
-  max-width: 94%;
+  align-items: flex-start;
+  gap: 8px;
 }
-
 .z-chat-row.user {
   align-self: flex-end;
   flex-direction: row-reverse;
 }
-
 .z-msg-avatar {
   width: 28px;
   height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--z-accent-light);
   border-radius: 50%;
-  background: linear-gradient(135deg, #1A1A1A, #D4564E);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  flex-shrink: 0;
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
+  font-size: 12px;
 }
-
 .z-msg-bubble {
-  background: #f3f4f6;
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #1f2937;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+  color: var(--z-dark-soft);
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
 }
-
 .z-chat-row.user .z-msg-bubble {
-  background: #1A1A1A;
-  color: #fff;
+  border-color: var(--z-dark);
+  background: var(--z-dark);
+  color: var(--z-white);
 }
-
 .z-msg-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
-  font-size: 11px;
-  color: #6b7280;
+  gap: 12px;
+  margin-bottom: 5px;
+  color: var(--z-gray);
+  font-size: 10px;
 }
-
+.z-msg-author { color: var(--z-dark); font-weight: 650; }
+.z-msg-time { white-space: nowrap; }
+.z-msg-text { color: inherit; }
+.z-msg-text :deep(p) { margin: 0 0 8px; color: inherit; }
+.z-msg-text :deep(p:last-child) { margin-bottom: 0; }
+.z-msg-text :deep(strong),
+.z-msg-text :deep(code),
+.z-msg-text :deep(a) { color: inherit; }
+.z-msg-text :deep(ul),
+.z-msg-text :deep(ol) { margin: 7px 0; padding-left: 18px; }
 .z-speech-btn {
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 0;
-}
-.z-speech-btn:hover { color: #111; }
-
-/* LOW STOCK CARD */
-.z-low-stock-card {
-  background: #FFF5F5;
-  border: 1px solid #FEE2E2;
-  border-radius: 12px;
-  padding: 12px;
-}
-.z-low-stock-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.z-low-stock-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #fff;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid #FEE2E2;
-}
-
-/* OUTFIT POS CARD */
-.z-outfit-pos-card {
-  background: #FDF4FF;
-  border: 1px solid #F5D0FE;
-  border-radius: 12px;
-  padding: 12px;
-}
-.z-outfit-mini-grid {
+  width: 22px;
+  height: 22px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.z-outfit-mini-box {
-  background: #fff;
-  border-radius: 6px;
-  padding: 4px;
-  text-align: center;
-  cursor: pointer;
-  border: 1px solid #F0ABFC;
-}
-.z-outfit-mini-box img {
-  width: 100%;
-  height: 48px;
-  object-fit: cover;
+  place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: 4px;
+  background: transparent;
+  color: var(--z-gray);
+  cursor: pointer;
+  transition: var(--z-ease);
 }
-.z-mini-box-name {
-  font-size: 9px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.z-mini-box-price {
-  font-size: 9px;
-  color: #D4564E;
-  font-weight: 700;
-}
+.z-speech-btn:hover { background: var(--z-bg-alt); color: var(--z-accent-dark); }
 
-/* MINI PRODUCT CARD */
-.z-product-card-mini {
+.z-msg-cards { display: grid; gap: 8px; }
+.z-rich-card {
+  overflow: hidden;
+  border: 1px solid var(--z-gray-border);
+  border-radius: var(--z-radius);
+  background: var(--z-white);
+}
+.z-low-stock-card,
+.z-outfit-pos-card,
+.z-stats-card-mini { padding: 10px; background: var(--z-white); }
+.z-low-stock-list { display: grid; gap: 6px; }
+.z-low-stock-item {
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  padding: 8px;
-  border-radius: 10px;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-bg);
 }
 .z-mini-thumb {
   width: 42px;
-  height: 52px;
+  height: 50px;
+  flex: 0 0 42px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 5px;
   object-fit: cover;
-  border-radius: 6px;
 }
-.z-mini-info { flex: 1; }
-.z-mini-title { font-size: 12px; }
-.z-mini-sub { font-size: 10px; color: #6b7280; }
-.z-stock-tag { color: #10b981; font-weight: 600; }
-.z-mini-price { font-size: 12px; font-weight: 700; color: #D4564E; }
-.z-mini-btn { font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; background: #1A1A1A; color: #fff; cursor: pointer; }
+.z-mini-info { min-width: 0; flex: 1; }
+.z-mini-title {
+  overflow: hidden;
+  color: var(--z-dark);
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.z-mini-sub { margin-top: 2px; color: var(--z-gray); font-size: 10px; }
+.z-stock-tag { color: #217A3D; font-weight: 650; }
+.z-mini-price { margin-top: 3px; color: var(--z-accent-dark); font-size: 11px; font-weight: 700; }
+.z-card-action-btn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid var(--z-dark);
+  border-radius: 6px;
+  background: var(--z-dark);
+  color: var(--z-white);
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-card-action-btn:hover { border-color: var(--z-accent); background: var(--z-accent); }
+.z-card-action-btn--danger {
+  border-color: var(--z-danger);
+  background: var(--z-white);
+  color: var(--z-danger);
+}
+.z-card-action-btn--danger:hover { border-color: var(--z-danger); background: var(--z-danger); color: var(--z-white); }
+.z-card-kicker {
+  display: inline-flex;
+  align-items: center;
+  color: var(--z-accent-dark);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.z-outfit-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.z-outfit-mini-box {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-bg);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-outfit-mini-box:hover { border-color: var(--z-accent-light); transform: translateY(-1px); }
+.z-outfit-mini-box img { width: 100%; height: 68px; display: block; object-fit: cover; }
+.z-mini-box-text { padding: 5px; }
+.z-mini-box-name {
+  overflow: hidden;
+  color: var(--z-dark);
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.z-mini-box-price { margin-top: 2px; color: var(--z-accent-dark); font-size: 10px; font-weight: 700; }
 
-/* STATS CARD */
-.z-stats-card-mini {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  padding: 10px;
-  border-radius: 10px;
+.z-product-card-mini {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+.z-mini-btn {
+  min-height: 30px;
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+.z-rich-card-title { color: var(--z-accent-dark); font-size: 11px; }
+.z-card-data-label {
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: #EAF8EE;
+  color: #217A3D;
+  font-size: 10px;
+  font-weight: 650;
 }
 .z-stat-box {
-  background: #fff;
-  padding: 6px;
+  min-height: 52px;
+  display: grid;
+  place-content: center;
+  padding: 5px;
+  border: 1px solid var(--z-gray-border);
   border-radius: 6px;
-  border: 1px solid #e5e7eb;
+  background: var(--z-bg);
 }
-.z-stat-box small { font-size: 10px; color: #6b7280; }
-.z-stat-box div { font-size: 13px; font-weight: 700; color: #111827; }
-
+.z-stat-box small { color: var(--z-gray); font-size: 10px; }
+.z-stat-box div { color: var(--z-dark); font-size: 12px; font-weight: 700; }
 .z-copy-btn {
-  border: none;
-  background: #e5e7eb;
-  color: #374151;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-/* TYPING */
-.z-typing {
-  display: flex;
-  gap: 4px;
+  min-height: 30px;
+  display: inline-flex;
   align-items: center;
-  padding: 12px 16px;
+  gap: 4px;
+  padding: 5px 8px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-white);
+  color: var(--z-dark-soft);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--z-ease);
+}
+.z-copy-btn:hover { border-color: var(--z-accent-light); background: var(--z-accent-soft); color: var(--z-accent-dark); }
+
+.z-typing {
+  min-width: 58px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .z-typing span {
   width: 6px;
   height: 6px;
-  background: #9ca3af;
   border-radius: 50%;
-  animation: z-bounce 1.4s infinite ease-in-out;
+  background: var(--z-gray-light);
+  animation: z-admin-dot 1.15s infinite ease-in-out;
 }
-.z-typing span:nth-child(1) { animation-delay: 0s; }
-.z-typing span:nth-child(2) { animation-delay: 0.2s; }
-.z-typing span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes z-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+.z-typing span:nth-child(2) { animation-delay: 0.14s; }
+.z-typing span:nth-child(3) { animation-delay: 0.28s; }
+@keyframes z-admin-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
+  30% { transform: translateY(-3px); opacity: 1; }
 }
 
-/* FOOTER INPUT */
 .z-copilot-footer {
-  padding: 12px;
-  background: #fff;
-  border-top: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  border-top: 1px solid var(--z-gray-border);
+  background: var(--z-white);
 }
-.z-mic-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: #f3f4f6;
-  color: #4b5563;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+.z-copilot-footer form {
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) 38px;
+  gap: 6px !important;
 }
-.z-mic-btn.listening {
-  background: #FEE2E2;
-  animation: z-mic-pulse 1.2s infinite;
-}
-@keyframes z-mic-pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-.z-copilot-input {
-  flex: 1;
-  border: 1px solid #d1d5db;
-  border-radius: 20px;
-  padding: 8px 14px;
-  font-size: 13px;
-  outline: none;
-}
-.z-copilot-input:focus { border-color: #1A1A1A; }
+.z-mic-btn,
 .z-send-btn {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: #1A1A1A;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-bg);
+  color: var(--z-gray);
   cursor: pointer;
+  transition: var(--z-ease);
 }
-.z-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.z-mic-btn:hover:not(:disabled) {
+  border-color: var(--z-accent-light);
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
+}
+.z-mic-btn.listening {
+  border-color: var(--z-accent);
+  background: var(--z-accent-soft);
+  color: var(--z-accent-dark);
+}
+.z-copilot-input {
+  min-width: 0;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--z-gray-border);
+  border-radius: 6px;
+  background: var(--z-white);
+  color: var(--z-dark);
+  font-size: 11px;
+}
+.z-copilot-input::placeholder { color: var(--z-gray-light); }
+.z-copilot-input:focus {
+  border-color: var(--z-accent);
+  box-shadow: 0 0 0 3px var(--z-accent-soft);
+}
+.z-send-btn {
+  width: 38px;
+  height: 38px;
+  border-color: var(--z-dark);
+  background: var(--z-dark);
+  color: var(--z-white);
+}
+.z-send-btn:hover:not(:disabled) { border-color: var(--z-accent); background: var(--z-accent); }
+.z-mic-btn:disabled,
+.z-send-btn:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.z-copilot-slide-enter-active,
+.z-copilot-slide-leave-active { transition: transform 0.16s ease; }
+.z-copilot-slide-enter-from,
+.z-copilot-slide-leave-to { transform: translateY(8px); }
+
+@media (max-width: 767px) {
+  .z-copilot-wrapper { right: 10px; bottom: 10px; }
+  .z-copilot-panel {
+    top: 66px;
+    right: 10px;
+    bottom: 10px;
+    width: calc(100vw - 20px);
+  }
+  .z-copilot-header { min-height: 64px; padding: 10px; }
+  .z-copilot-avatar { width: 36px; height: 36px; flex-basis: 36px; }
+  .z-copilot-avatar img { width: 27px; height: 27px; }
+  .z-copilot-title { max-width: 180px; }
+  .z-copilot-subtitle { max-width: 195px; }
+  .z-copilot-header .z-icon-btn { width: 30px; height: 30px; flex-basis: 30px; }
+  .z-copilot-body { padding: 12px 10px; }
+  .z-copilot-chips { padding: 8px 10px; }
+  .z-copilot-footer { padding: 8px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .z-copilot-trigger,
+  .z-chip-btn,
+  .z-outfit-mini-box,
+  .z-copilot-slide-enter-active,
+  .z-copilot-slide-leave-active { transition: none; }
+  .z-typing span { animation: none; }
+}
 </style>

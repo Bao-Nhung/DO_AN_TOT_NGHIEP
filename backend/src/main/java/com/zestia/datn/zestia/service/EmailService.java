@@ -366,7 +366,7 @@ public class EmailService {
      * Gửi email HTML
      */
     private void sendHtmlEmail(String to, String subject, String htmlContent) throws MessagingException {
-        if (!isMailConfigured()) {
+        if (!isConfigured()) {
             log.warn("Bỏ qua gửi email đến {} vì MAIL_USERNAME/MAIL_PASSWORD chưa được cấu hình", to);
             return;
         }
@@ -385,7 +385,7 @@ public class EmailService {
      * Gửi email văn bản
      */
     private void sendSimpleEmail(String to, String subject, String text) {
-        if (!isMailConfigured()) {
+        if (!isConfigured()) {
             log.warn("Bỏ qua gửi email đến {} vì MAIL_USERNAME/MAIL_PASSWORD chưa được cấu hình", to);
             return;
         }
@@ -403,12 +403,19 @@ public class EmailService {
      */
     @Async
     public void sendAnnouncementEmail(String to, String hoVaTen, String tieuDe, String noiDung) {
+        sendAnnouncementEmailNow(to, hoVaTen, tieuDe, noiDung);
+    }
+
+    public boolean sendAnnouncementEmailNow(String to, String hoVaTen, String tieuDe, String noiDung) {
         try {
+            if (!isConfigured()) return false;
             String htmlContent = buildAnnouncementEmailHtml(hoVaTen, tieuDe, noiDung);
             sendHtmlEmail(to, "Zestia - Thông báo / Announcement - " + tieuDe, htmlContent);
             log.info("Email thông báo đã gửi cho: {}", to);
+            return true;
         } catch (Exception e) {
             log.error("Lỗi khi gửi email thông báo đến " + to + ": ", e);
+            return false;
         }
     }
 
@@ -574,16 +581,25 @@ public class EmailService {
     }
 
     private String productName(HoaDonChiTiet ct) {
+        if (ct != null && ct.getTenSanPhamSnapshot() != null && !ct.getTenSanPhamSnapshot().isBlank()) {
+            return ct.getTenSanPhamSnapshot();
+        }
         if (ct == null || ct.getSanPhamChiTiet() == null || ct.getSanPhamChiTiet().getSanPham() == null) return "Sản phẩm";
         return ct.getSanPhamChiTiet().getSanPham().getTenSanPham();
     }
 
     private String sizeName(HoaDonChiTiet ct) {
+        if (ct != null && ct.getKichThuocSnapshot() != null && !ct.getKichThuocSnapshot().isBlank()) {
+            return ct.getKichThuocSnapshot();
+        }
         if (ct == null || ct.getSanPhamChiTiet() == null || ct.getSanPhamChiTiet().getKichThuoc() == null) return "N/A";
         return ct.getSanPhamChiTiet().getKichThuoc().getTenKichThuoc();
     }
 
     private String colorName(HoaDonChiTiet ct) {
+        if (ct != null && ct.getMauSacSnapshot() != null && !ct.getMauSacSnapshot().isBlank()) {
+            return ct.getMauSacSnapshot();
+        }
         if (ct == null || ct.getSanPhamChiTiet() == null || ct.getSanPhamChiTiet().getMauSac() == null) return "N/A";
         return ct.getSanPhamChiTiet().getMauSac().getTenMauSac();
     }
@@ -594,7 +610,7 @@ public class EmailService {
         return value.equalsIgnoreCase(english) ? value : value + " / " + english;
     }
 
-    private boolean isMailConfigured() {
+    public boolean isConfigured() {
         return fromEmail != null
                 && !fromEmail.isBlank()
                 && !"your_email@gmail.com".equalsIgnoreCase(fromEmail.trim())

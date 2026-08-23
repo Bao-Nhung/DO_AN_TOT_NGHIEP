@@ -8,12 +8,14 @@ import com.zestia.datn.zestia.service.InventoryMovementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -64,11 +66,13 @@ public class SanPhamController {
                                        @RequestParam(required = false) String q,
                                        @RequestParam(required = false) Byte status,
                                        @RequestParam(required = false) String category,
+                                       @RequestParam(required = false) String stock,
                                        Authentication authentication) {
         int safePage = Math.max(0, page);
         int safeSize = Math.min(100, Math.max(1, size));
         String keyword = normalizeFilter(q);
         String categoryFilter = normalizeFilter(category);
+        String stockFilter = normalizeStockFilter(stock);
         Byte effectiveStatus = status;
         if (!hasStaffAccess(authentication)) effectiveStatus = Byte.valueOf((byte) 1);
         var pageable = org.springframework.data.domain.PageRequest.of(
@@ -76,7 +80,7 @@ public class SanPhamController {
                 safeSize,
                 org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "ngayTao", "id")
         );
-        var result = sanPhamRepo.findAdminPage(keyword, effectiveStatus, categoryFilter, pageable);
+        var result = sanPhamRepo.findAdminPage(keyword, effectiveStatus, categoryFilter, stockFilter, pageable);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("content", toMaps(result.getContent()));
         response.put("page", result.getNumber());
@@ -784,6 +788,16 @@ public class SanPhamController {
         if (value == null) return null;
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private static String normalizeStockFilter(String value) {
+        String normalized = normalizeFilter(value);
+        if (normalized == null) return null;
+        normalized = normalized.toUpperCase(Locale.ROOT);
+        if (!Set.of("HEALTHY", "LOW", "OUT").contains(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bộ lọc tồn kho không hợp lệ");
+        }
+        return normalized;
     }
 
     private Map<String, Object> toMap(SanPham v) {

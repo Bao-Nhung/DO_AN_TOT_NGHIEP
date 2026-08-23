@@ -429,9 +429,9 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Giam_gia])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Giam_gia] ON;
 INSERT INTO [dbo].[Giam_gia] ([id], [ma_giam_gia], [ten_giam_gia], [gia_tri_don_toi_thieu], [gio_tri_giam], [phan_tram_giam], [giam_toi_da], [so_luong], [ngay_bat_dau], [ngay_ket_thuc], [trang_thai], [ngay_tao]) VALUES
-(1, N'ZESTIA10', N'Giảm 10% đơn đầu tiên', 500000.00, NULL, 10.00, 200000.00, 100, '2025-01-01', '2026-08-06T23:59:59', 1, '2026-06-10T23:44:29.303'),
-(2, N'FREESHIP', N'Miễn phí vận chuyển', 300000.00, NULL, NULL, NULL, 200, '2025-01-01', '2026-08-06T23:59:59', 1, '2026-06-10T23:44:29.303'),
-(3, N'SUMMER20', N'Giảm 20% hè rực rỡ', 1000000.00, NULL, 20.00, 500000.00, 50, '2025-01-01', '2026-08-06T23:59:59', 1, '2026-06-10T23:44:29.303');
+(1, N'ZESTIA10', N'Giảm 10% đơn đầu tiên', 500000.00, NULL, 10.00, 200000.00, 100, '2025-01-01', '2026-08-31T23:59:59', 1, '2026-06-10T23:44:29.303'),
+(2, N'FREESHIP', N'Miễn phí vận chuyển', 300000.00, NULL, NULL, NULL, 200, '2025-01-01', '2026-08-31T23:59:59', 1, '2026-06-10T23:44:29.303'),
+(3, N'SUMMER20', N'Giảm 20% hè rực rỡ', 1000000.00, NULL, 20.00, 500000.00, 50, '2025-01-01', '2026-08-31T23:59:59', 1, '2026-06-10T23:44:29.303');
 SET IDENTITY_INSERT [dbo].[Giam_gia] OFF;
 END
 GO
@@ -2061,11 +2061,11 @@ WHEN MATCHED THEN
         giam_toi_da = src.giam_toi_da,
         so_luong = src.so_luong,
         ngay_bat_dau = CAST('2026-07-30T00:00:00' AS datetime2),
-        ngay_ket_thuc = CAST('2026-08-06T23:59:59' AS datetime2),
+        ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2),
         trang_thai = 1
 WHEN NOT MATCHED THEN
     INSERT (ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao)
-    VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, CAST('2026-07-30T00:00:00' AS datetime2), CAST('2026-08-06T23:59:59' AS datetime2), 1, '2026-07-30T09:00:00');
+    VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, CAST('2026-07-30T00:00:00' AS datetime2), CAST('2026-08-31T23:59:59' AS datetime2), 1, '2026-07-30T09:00:00');
 
 -- July 2026 Vouchers
 MERGE dbo.Giam_gia AS target
@@ -2099,12 +2099,12 @@ WHEN NOT MATCHED THEN
 -- August 2026 vouchers cover both website checkout and POS demonstrations.
 MERGE dbo.Giam_gia AS target
 USING (VALUES
-    (N'AUGUST10', N'Tháng 8 giảm 10% cho đơn từ 500K', 500000.00, NULL, 10.00, 150000.00, 240, '2026-08-01', '2026-08-06T23:59:59'),
-    (N'AUGUST50', N'Tháng 8 giảm 50K cho đơn từ 900K', 900000.00, 50000.00, NULL, NULL, 180, '2026-08-01', '2026-08-06T23:59:59'),
-    (N'AUGUSTVIP', N'Khách hàng thân thiết giảm 15%', 1800000.00, NULL, 15.00, 450000.00, 80, '2026-08-01', '2026-08-06T23:59:59'),
-    (N'BACK2WORK', N'Ưu đãi váy công sở tháng 8', 700000.00, 80000.00, NULL, NULL, 150, '2026-08-01', '2026-08-06T23:59:59'),
-    (N'AUGPOS', N'Ưu đãi 30K khi mua tại quầy', 500000.00, 30000.00, NULL, NULL, 300, '2026-08-01', '2026-08-06T23:59:59'),
-    (N'AUGFREESHIP', N'Hỗ trợ 30K phí giao hàng tháng 8', 300000.00, 30000.00, NULL, NULL, 260, '2026-08-01', '2026-08-06T23:59:59')
+    (N'AUGUST10', N'Tháng 8 giảm 10% cho đơn từ 500K', 500000.00, NULL, 10.00, 150000.00, 240, '2026-08-01', '2026-08-31T23:59:59'),
+    (N'AUGUST50', N'Tháng 8 giảm 50K cho đơn từ 900K', 900000.00, 50000.00, NULL, NULL, 180, '2026-08-01', '2026-08-31T23:59:59'),
+    (N'AUGUSTVIP', N'Khách hàng thân thiết giảm 15%', 1800000.00, NULL, 15.00, 450000.00, 80, '2026-08-01', '2026-08-31T23:59:59'),
+    (N'BACK2WORK', N'Ưu đãi váy công sở tháng 8', 700000.00, 80000.00, NULL, NULL, 150, '2026-08-01', '2026-08-31T23:59:59'),
+    (N'AUGPOS', N'Ưu đãi 30K khi mua tại quầy', 500000.00, 30000.00, NULL, NULL, 300, '2026-08-01', '2026-08-31T23:59:59'),
+    (N'AUGFREESHIP', N'Hỗ trợ 30K phí giao hàng tháng 8', 300000.00, 30000.00, NULL, NULL, 260, '2026-08-01', '2026-08-31T23:59:59')
 ) AS src(ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc)
 ON target.ma_giam_gia = src.ma_giam_gia
 WHEN MATCHED THEN
@@ -2123,12 +2123,12 @@ WHEN NOT MATCHED THEN
     VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, src.ngay_bat_dau, src.ngay_ket_thuc, 1, '2026-07-25T09:00:00');
 
 UPDATE dbo.Giam_gia
-SET ngay_ket_thuc = CAST('2026-08-06T23:59:59' AS datetime2)
+SET ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2)
 WHERE ma_giam_gia IN (
     N'ZESTIA10', N'ZESTIA50', N'FREESHIP', N'SUMMER20',
     N'AUGUST10', N'AUGUST50', N'AUGUSTVIP', N'BACK2WORK', N'AUGPOS', N'AUGFREESHIP'
 )
-  AND ngay_ket_thuc > CAST('2026-08-06T23:59:59' AS datetime2);
+  AND ngay_ket_thuc > CAST('2026-08-31T23:59:59' AS datetime2);
 
 -- The application exposes one selling price. The legacy column remains only for
 -- compatibility with older databases and always mirrors gia_ban.
@@ -3670,8 +3670,9 @@ GO
 MERGE dbo.Dot_khuyen_mai AS target
 USING (VALUES
     (N'WELCOME0726', N'Ưu đãi tháng 7', N'PERCENT', CAST(10 AS decimal(15,2)), CAST('2026-07-01T00:00:00' AS datetime2), CAST('2026-07-31T23:59:59' AS datetime2), 1, 10),
-    (N'AUGUST26', N'Chào tháng 8', N'PERCENT', CAST(8 AS decimal(15,2)), CAST('2026-08-01T00:00:00' AS datetime2), CAST('2026-08-06T23:59:59' AS datetime2), 1, 20),
-    (N'AUGOFFICE15', N'Tháng 8 thanh lịch nơi công sở', N'PERCENT', CAST(15 AS decimal(15,2)), CAST('2026-08-03T00:00:00' AS datetime2), CAST('2026-08-06T23:59:59' AS datetime2), 1, 30)
+    (N'AUGUST26', N'Chào tháng 8', N'PERCENT', CAST(8 AS decimal(15,2)), CAST('2026-08-01T00:00:00' AS datetime2), CAST('2026-08-31T23:59:59' AS datetime2), 1, 20),
+    (N'AUGOFFICE15', N'Tháng 8 thanh lịch nơi công sở', N'PERCENT', CAST(15 AS decimal(15,2)), CAST('2026-08-03T00:00:00' AS datetime2), CAST('2026-08-20T23:59:59' AS datetime2), 1, 30),
+    (N'AUGPARTY120', N'Dự tiệc cuối tháng 8', N'FIXED', CAST(120000 AS decimal(15,2)), CAST('2026-08-15T00:00:00' AS datetime2), CAST('2026-08-31T23:59:59' AS datetime2), 1, 40)
 ) AS source(ma_dot, ten_dot, loai_giam, gia_tri_giam, ngay_bat_dau, ngay_ket_thuc, trang_thai, do_uu_tien)
 ON target.ma_dot = source.ma_dot
 WHEN MATCHED THEN UPDATE SET ten_dot = source.ten_dot, loai_giam = source.loai_giam,
@@ -3681,15 +3682,6 @@ WHEN NOT MATCHED THEN INSERT (ma_dot, ten_dot, loai_giam, gia_tri_giam, ngay_bat
     VALUES (source.ma_dot, source.ten_dot, source.loai_giam, source.gia_tri_giam, source.ngay_bat_dau, source.ngay_ket_thuc, source.trang_thai, source.do_uu_tien, CAST('2026-07-25T09:00:00' AS datetime2));
 GO
 
--- The AUGPARTY120 campaign starts after the 06/08/2026 demo cutoff, so it is
--- intentionally omitted. Remove it as well when upgrading a database that ran
--- an older version of this seed file.
-DELETE scope_row
-FROM dbo.Pham_vi_khuyen_mai scope_row
-JOIN dbo.Dot_khuyen_mai campaign ON campaign.id = scope_row.id_dot_khuyen_mai
-WHERE campaign.ma_dot = N'AUGPARTY120';
-DELETE FROM dbo.Dot_khuyen_mai WHERE ma_dot = N'AUGPARTY120';
-GO
 IF NOT EXISTS (
     SELECT 1 FROM dbo.Pham_vi_khuyen_mai p
     JOIN dbo.Dot_khuyen_mai d ON d.id = p.id_dot_khuyen_mai
@@ -3716,6 +3708,17 @@ IF NOT EXISTS (
     FROM dbo.Dot_khuyen_mai d
     CROSS JOIN dbo.loai_san_pham lv
     WHERE d.ma_dot = N'AUGOFFICE15' AND lv.ten_loai_san_pham = N'Trang phục công sở';
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.Pham_vi_khuyen_mai p
+    JOIN dbo.Dot_khuyen_mai d ON d.id = p.id_dot_khuyen_mai
+    WHERE d.ma_dot = N'AUGPARTY120'
+)
+    INSERT INTO dbo.Pham_vi_khuyen_mai(id_dot_khuyen_mai, id_loai_san_pham)
+    SELECT d.id, lv.id
+    FROM dbo.Dot_khuyen_mai d
+    CROSS JOIN dbo.loai_san_pham lv
+    WHERE d.ma_dot = N'AUGPARTY120' AND lv.ten_loai_san_pham = N'Trang phục dự tiệc';
 GO
 -- Return/exchange requests are line-item based, preventing one request from
 -- accidentally changing the status or inventory of an entire mixed order.
@@ -3919,8 +3922,8 @@ ORDER BY kh.id;
 GO
 
 -- ============================================================
--- COMPLETE AUGUST 2026 DEMO DATA THROUGH 06/08/2026
--- 124 orders distributed across the first six days of August, with matching
+-- COMPLETE AUGUST 2026 DEMO DATA THROUGH 31/08/2026
+-- 124 orders distributed as four orders on every day of August, with matching
 -- payment/tracking/audit rows, verified reviews,
 -- customer activity, support conversations and return requests.
 -- All demo keys are deterministic so this block is repeat-safe.
@@ -4074,8 +4077,8 @@ base AS (
         seq % 20 AS profile,
         DATEADD(
             MINUTE,
-            ((seq - 1) / 6) * 30,
-            DATEADD(HOUR, 8, CAST(DATEADD(DAY, (seq - 1) % 6, CAST('2026-08-01' AS date)) AS datetime2))
+            ((seq - 1) / 31) * 30,
+            DATEADD(HOUR, 8, CAST(DATEADD(DAY, (seq - 1) % 31, CAST('2026-08-01' AS date)) AS datetime2))
         ) AS created_at
     FROM numbers
 ),
@@ -4084,6 +4087,7 @@ classified AS (
         base.*,
         CAST(CASE
             WHEN is_offline = 1 THEN 4
+            WHEN seq > 93 THEN 4
             WHEN profile = 0 THEN 0
             WHEN profile = 1 THEN 1
             WHEN profile = 2 THEN 2
@@ -4353,7 +4357,7 @@ INSERT INTO dbo.Bien_dong_ton_kho (
 SELECT
     variant.id, variant.so_luong, -seed.quantity, variant.so_luong - seed.quantity,
     N'BAN_HANG_DEMO_T8', N'AUGUST-2026-SEED', N'Hệ thống dữ liệu mẫu',
-    N'Tổng hợp lượng bán của dữ liệu tháng 8/2026', '2026-08-06T22:30:00'
+    N'Tổng hợp lượng bán của dữ liệu tháng 8/2026', '2026-08-31T22:30:00'
 FROM @aug_stock seed
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = seed.id_san_pham_chi_tiet;
 
@@ -4492,62 +4496,75 @@ WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
   )
 ORDER BY order_row.ngay_tao;
 
-INSERT INTO dbo.Newsletter_subscriber(email, trang_thai, ngay_dang_ky, ngay_cap_nhat)
-SELECT TOP (20)
-    LOWER(customer.email), 1,
-    DATEADD(DAY, (ROW_NUMBER() OVER (ORDER BY customer.id) - 1) % 6, CAST('2026-08-01' AS datetime2)),
-    DATEADD(DAY, (ROW_NUMBER() OVER (ORDER BY customer.id) - 1) % 6, CAST('2026-08-01' AS datetime2))
-FROM dbo.Khach_hang customer
-WHERE customer.email IS NOT NULL
-  AND NOT EXISTS (
-      SELECT 1 FROM dbo.Newsletter_subscriber subscriber
-      WHERE subscriber.email = LOWER(customer.email)
-  )
-ORDER BY customer.id;
+;WITH newsletter_seed AS (
+    SELECT order_seed.seq AS rn,
+           COALESCE(
+               LOWER(customer.email),
+               N'august-newsletter-' + RIGHT(N'00' + CONVERT(nvarchar(2), order_seed.seq), 2) + N'@zestia.demo'
+           ) AS email
+    FROM @aug_orders order_seed
+    LEFT JOIN @aug_customers customer ON customer.rn = order_seed.seq
+    WHERE order_seed.seq <= 31
+)
+MERGE dbo.Newsletter_subscriber AS target
+USING (
+    SELECT rn, email FROM newsletter_seed WHERE rn <= 31
+) AS source
+ON target.email = source.email
+WHEN MATCHED THEN UPDATE SET
+    trang_thai = 1,
+    ngay_dang_ky = DATEADD(DAY, source.rn - 1, CAST('2026-08-01T08:00:00' AS datetime2)),
+    ngay_cap_nhat = DATEADD(DAY, source.rn - 1, CAST('2026-08-01T08:05:00' AS datetime2))
+WHEN NOT MATCHED THEN INSERT (email, trang_thai, ngay_dang_ky, ngay_cap_nhat)
+    VALUES (
+        source.email, 1,
+        DATEADD(DAY, source.rn - 1, CAST('2026-08-01T08:00:00' AS datetime2)),
+        DATEADD(DAY, source.rn - 1, CAST('2026-08-01T08:05:00' AS datetime2))
+    );
 
-INSERT INTO dbo.San_pham_yeu_thich(id_khach_hang, id_san_pham, ngay_tao)
-SELECT TOP (40)
-    customer.id, product.id,
-    DATEADD(DAY, (customer.id + product.id) % 6, CAST('2026-08-01' AS datetime2))
-FROM dbo.Khach_hang customer
-CROSS JOIN dbo.san_pham product
-WHERE product.trang_thai = 1
-  AND (customer.id + product.id) % 7 = 0
-  AND NOT EXISTS (
-      SELECT 1 FROM dbo.San_pham_yeu_thich favorite
-      WHERE favorite.id_khach_hang = customer.id AND favorite.id_san_pham = product.id
-  )
-ORDER BY customer.id, product.id;
+;WITH favorite_seed AS (
+    SELECT TOP (40)
+        customer.id AS id_khach_hang,
+        product.id AS id_san_pham,
+        ROW_NUMBER() OVER (ORDER BY customer.id, product.id) AS rn
+    FROM @aug_customers customer
+    CROSS JOIN dbo.san_pham product
+    WHERE product.trang_thai = 1
+      AND (customer.id + product.id) % 7 = 0
+    ORDER BY customer.id, product.id
+)
+MERGE dbo.San_pham_yeu_thich AS target
+USING favorite_seed AS source
+ON target.id_khach_hang = source.id_khach_hang AND target.id_san_pham = source.id_san_pham
+WHEN MATCHED THEN UPDATE SET
+    ngay_tao = DATEADD(DAY, (source.rn - 1) % 31, CAST('2026-08-01T10:00:00' AS datetime2))
+WHEN NOT MATCHED THEN INSERT (id_khach_hang, id_san_pham, ngay_tao)
+    VALUES (
+        source.id_khach_hang, source.id_san_pham,
+        DATEADD(DAY, (source.rn - 1) % 31, CAST('2026-08-01T10:00:00' AS datetime2))
+    );
 
-INSERT INTO dbo.Lich_su_xem(id_khach_hang, id_san_pham, ngay_xem)
-SELECT TOP (80)
-    customer.id, product.id,
-    DATEADD(HOUR, product.id % 12, DATEADD(DAY, (customer.id + product.id) % 6, CAST('2026-08-01' AS datetime2)))
-FROM dbo.Khach_hang customer
-CROSS JOIN dbo.san_pham product
-WHERE product.trang_thai = 1
-  AND (customer.id + product.id) % 5 = 0
-  AND NOT EXISTS (
-      SELECT 1 FROM dbo.Lich_su_xem history
-      WHERE history.id_khach_hang = customer.id AND history.id_san_pham = product.id
-  )
-ORDER BY customer.id, product.id;
-
--- Repair rows created by an older August seed without touching real data from
--- other months. Every generated customer activity remains at or before 06/08.
-UPDATE dbo.Newsletter_subscriber
-SET ngay_dang_ky = CASE WHEN ngay_dang_ky >= '2026-08-07' AND ngay_dang_ky < '2026-09-01'
-        THEN DATEADD(MINUTE, id % 600, CAST('2026-08-06T08:00:00' AS datetime2)) ELSE ngay_dang_ky END,
-    ngay_cap_nhat = CASE WHEN ngay_cap_nhat >= '2026-08-07' AND ngay_cap_nhat < '2026-09-01'
-        THEN DATEADD(MINUTE, id % 600, CAST('2026-08-06T08:00:00' AS datetime2)) ELSE ngay_cap_nhat END;
-
-UPDATE dbo.San_pham_yeu_thich
-SET ngay_tao = DATEADD(MINUTE, id % 600, CAST('2026-08-06T08:00:00' AS datetime2))
-WHERE ngay_tao >= '2026-08-07' AND ngay_tao < '2026-09-01';
-
-UPDATE dbo.Lich_su_xem
-SET ngay_xem = DATEADD(MINUTE, id % 600, CAST('2026-08-06T08:00:00' AS datetime2))
-WHERE ngay_xem >= '2026-08-07' AND ngay_xem < '2026-09-01';
+;WITH history_seed AS (
+    SELECT TOP (80)
+        customer.id AS id_khach_hang,
+        product.id AS id_san_pham,
+        ROW_NUMBER() OVER (ORDER BY customer.id, product.id) AS rn
+    FROM @aug_customers customer
+    CROSS JOIN dbo.san_pham product
+    WHERE product.trang_thai = 1
+      AND (customer.id + product.id) % 5 = 0
+    ORDER BY customer.id, product.id
+)
+MERGE dbo.Lich_su_xem AS target
+USING history_seed AS source
+ON target.id_khach_hang = source.id_khach_hang AND target.id_san_pham = source.id_san_pham
+WHEN MATCHED THEN UPDATE SET
+    ngay_xem = DATEADD(HOUR, source.rn % 12, DATEADD(DAY, (source.rn - 1) % 31, CAST('2026-08-01T07:00:00' AS datetime2)))
+WHEN NOT MATCHED THEN INSERT (id_khach_hang, id_san_pham, ngay_xem)
+    VALUES (
+        source.id_khach_hang, source.id_san_pham,
+        DATEADD(HOUR, source.rn % 12, DATEADD(DAY, (source.rn - 1) % 31, CAST('2026-08-01T07:00:00' AS datetime2)))
+    );
 
 INSERT INTO dbo.Thong_bao (
     tieu_de, noi_dung, loai, trang_thai,
@@ -4556,20 +4573,20 @@ INSERT INTO dbo.Thong_bao (
 SELECT source.tieu_de, source.noi_dung, source.loai, 1, 0, 0, 0, source.ngay_tao, source.ngay_tao
 FROM (VALUES
     (N'Chào tháng 8 cùng Zestia', N'Khám phá bộ sưu tập tháng 8 và các voucher đang hiển thị ngay tại giỏ hàng.', N'Voucher', CAST('2026-08-01T08:00:00' AS datetime2)),
-    (N'Lookbook đi làm tháng 8', N'Các thiết kế công sở mới đã được sắp xếp theo phom, chất liệu và size để bạn dễ lựa chọn.', N'SanPham', CAST('2026-08-05T09:00:00' AS datetime2))
+    (N'Lookbook đi làm tháng 8', N'Các thiết kế công sở mới đã được sắp xếp theo phom, chất liệu và size để bạn dễ lựa chọn.', N'SanPham', CAST('2026-08-05T09:00:00' AS datetime2)),
+    (N'Chọn size dễ hơn cùng Zestia', N'Đối chiếu số đo cơ thể, phom sản phẩm và size người mẫu trước khi thêm váy vào giỏ.', N'SanPham', CAST('2026-08-12T09:30:00' AS datetime2)),
+    (N'Ưu đãi dự tiệc cuối tháng', N'Đợt giảm giá cho trang phục dự tiệc đã bắt đầu và kéo dài đến hết ngày 31/08.', N'Voucher', CAST('2026-08-19T10:00:00' AS datetime2)),
+    (N'Giữ váy đẹp lâu hơn', N'Xem hướng dẫn bảo quản theo chất liệu để sản phẩm giữ phom và màu sắc ổn định.', N'HeThong', CAST('2026-08-26T08:30:00' AS datetime2)),
+    (N'Khép lại tháng 8 cùng Zestia', N'Các đơn đủ điều kiện vẫn có thể tham gia vòng quay may mắn đến hết hôm nay.', N'HeThong', CAST('2026-08-31T08:00:00' AS datetime2))
 ) source(tieu_de, noi_dung, loai, ngay_tao)
 WHERE NOT EXISTS (
     SELECT 1 FROM dbo.Thong_bao notification
     WHERE notification.tieu_de = source.tieu_de
 );
 
-DELETE FROM dbo.Thong_bao
-WHERE tieu_de = N'Lịch hoạt động showroom tháng 8'
-  AND ngay_tao >= '2026-08-07';
-
 ;WITH chat_numbers AS (
     SELECT 1 AS seq
-    UNION ALL SELECT seq + 1 FROM chat_numbers WHERE seq < 8
+    UNION ALL SELECT seq + 1 FROM chat_numbers WHERE seq < 31
 )
 INSERT INTO dbo.Ho_tro_chat (
     ma_phien, id_khach_hang, id_nhan_vien, tieu_de, trang_thai,
@@ -4585,10 +4602,10 @@ SELECT
         ELSE N'Tư vấn voucher phù hợp'
     END,
     CASE numbers.seq % 3 WHEN 0 THEN N'CLOSED' WHEN 1 THEN N'WAITING' ELSE N'ACTIVE' END,
-    DATEADD(MINUTE, ((numbers.seq - 1) / 6) * 30, DATEADD(DAY, (numbers.seq - 1) % 6, CAST('2026-08-01T09:00:00' AS datetime2))),
-    CASE WHEN numbers.seq % 3 = 1 THEN NULL ELSE DATEADD(MINUTE, 3, DATEADD(MINUTE, ((numbers.seq - 1) / 6) * 30, DATEADD(DAY, (numbers.seq - 1) % 6, CAST('2026-08-01T09:00:00' AS datetime2)))) END,
-    CASE WHEN numbers.seq % 3 = 0 THEN DATEADD(MINUTE, 18, DATEADD(MINUTE, ((numbers.seq - 1) / 6) * 30, DATEADD(DAY, (numbers.seq - 1) % 6, CAST('2026-08-01T09:00:00' AS datetime2)))) ELSE NULL END,
-    DATEADD(MINUTE, 12, DATEADD(MINUTE, ((numbers.seq - 1) / 6) * 30, DATEADD(DAY, (numbers.seq - 1) % 6, CAST('2026-08-01T09:00:00' AS datetime2))))
+    DATEADD(MINUTE, ((numbers.seq - 1) / 31) * 30, DATEADD(DAY, (numbers.seq - 1) % 31, CAST('2026-08-01T09:00:00' AS datetime2))),
+    CASE WHEN numbers.seq % 3 = 1 THEN NULL ELSE DATEADD(MINUTE, 3, DATEADD(MINUTE, ((numbers.seq - 1) / 31) * 30, DATEADD(DAY, (numbers.seq - 1) % 31, CAST('2026-08-01T09:00:00' AS datetime2)))) END,
+    CASE WHEN numbers.seq % 3 = 0 THEN DATEADD(MINUTE, 18, DATEADD(MINUTE, ((numbers.seq - 1) / 31) * 30, DATEADD(DAY, (numbers.seq - 1) % 31, CAST('2026-08-01T09:00:00' AS datetime2)))) ELSE NULL END,
+    DATEADD(MINUTE, 12, DATEADD(MINUTE, ((numbers.seq - 1) / 31) * 30, DATEADD(DAY, (numbers.seq - 1) % 31, CAST('2026-08-01T09:00:00' AS datetime2))))
 FROM chat_numbers numbers
 JOIN @aug_customers customer ON customer.rn = ((numbers.seq - 1) % @aug_customer_count) + 1
 JOIN @aug_employees employee ON employee.rn = ((numbers.seq - 1) % @aug_employee_count) + 1
@@ -4596,7 +4613,7 @@ WHERE NOT EXISTS (
     SELECT 1 FROM dbo.Ho_tro_chat chat
     WHERE chat.ma_phien = N'AUG-CHAT-' + RIGHT(N'00' + CONVERT(nvarchar(2), numbers.seq), 2)
 )
-OPTION (MAXRECURSION 8);
+OPTION (MAXRECURSION 31);
 
 -- Re-date chat fixtures that may already exist from an older seed run.
 UPDATE chat
@@ -4607,8 +4624,8 @@ SET ngay_tao = fixture.created_at,
 FROM dbo.Ho_tro_chat chat
 CROSS APPLY (SELECT TRY_CONVERT(int, RIGHT(chat.ma_phien, 2)) AS seq) parsed
 CROSS APPLY (
-    SELECT DATEADD(MINUTE, ((parsed.seq - 1) / 6) * 30,
-        DATEADD(DAY, (parsed.seq - 1) % 6, CAST('2026-08-01T09:00:00' AS datetime2))) AS created_at
+    SELECT DATEADD(MINUTE, ((parsed.seq - 1) / 31) * 30,
+        DATEADD(DAY, (parsed.seq - 1) % 31, CAST('2026-08-01T09:00:00' AS datetime2))) AS created_at
 ) fixture
 WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
   AND parsed.seq IS NOT NULL;
@@ -4768,7 +4785,7 @@ SELECT
     N'AUGUST-2026-RETURNS',
     N'Hệ thống dữ liệu mẫu',
     N'Đối soát tồn kho đổi/trả hoàn tất trong tháng 8/2026',
-    CAST('2026-08-06T22:45:00' AS datetime2)
+    CAST('2026-08-31T22:45:00' AS datetime2)
 FROM @aug_return_stock adjustment
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = adjustment.id_san_pham_chi_tiet;
 
@@ -4843,13 +4860,19 @@ WHERE order_row.ma_hoa_don LIKE N'HDS%';
 UPDATE notification
 SET notification.tieu_de = source.tieu_de,
     notification.noi_dung = source.noi_dung,
-    notification.loai = source.loai
+    notification.loai = source.loai,
+    notification.ngay_tao = source.ngay_tao,
+    notification.ngay_gui = source.ngay_tao
 FROM dbo.Thong_bao notification
 JOIN (VALUES
     (CAST('2026-08-01T08:00:00' AS datetime2), N'Chào tháng 8 cùng Zestia', N'Khám phá bộ sưu tập tháng 8 và các voucher đang hiển thị ngay tại giỏ hàng.', N'Voucher'),
-    (CAST('2026-08-05T09:00:00' AS datetime2), N'Lookbook đi làm tháng 8', N'Các thiết kế công sở mới đã được sắp xếp theo phom, chất liệu và size để bạn dễ lựa chọn.', N'SanPham')
+    (CAST('2026-08-05T09:00:00' AS datetime2), N'Lookbook đi làm tháng 8', N'Các thiết kế công sở mới đã được sắp xếp theo phom, chất liệu và size để bạn dễ lựa chọn.', N'SanPham'),
+    (CAST('2026-08-12T09:30:00' AS datetime2), N'Chọn size dễ hơn cùng Zestia', N'Đối chiếu số đo cơ thể, phom sản phẩm và size người mẫu trước khi thêm váy vào giỏ.', N'SanPham'),
+    (CAST('2026-08-19T10:00:00' AS datetime2), N'Ưu đãi dự tiệc cuối tháng', N'Đợt giảm giá cho trang phục dự tiệc đã bắt đầu và kéo dài đến hết ngày 31/08.', N'Voucher'),
+    (CAST('2026-08-26T08:30:00' AS datetime2), N'Giữ váy đẹp lâu hơn', N'Xem hướng dẫn bảo quản theo chất liệu để sản phẩm giữ phom và màu sắc ổn định.', N'HeThong'),
+    (CAST('2026-08-31T08:00:00' AS datetime2), N'Khép lại tháng 8 cùng Zestia', N'Các đơn đủ điều kiện vẫn có thể tham gia vòng quay may mắn đến hết hôm nay.', N'HeThong')
 ) source(ngay_tao, tieu_de, noi_dung, loai)
-    ON notification.ngay_tao = source.ngay_tao;
+    ON notification.tieu_de = source.tieu_de;
 
 UPDATE notification
 SET notification.tieu_de = N'Bộ sưu tập mới đã lên kệ',
@@ -4881,6 +4904,10 @@ DECLARE @duplicate_seed_notification_ids TABLE (id int PRIMARY KEY);
     WHERE tieu_de IN (
         N'Chào tháng 8 cùng Zestia',
         N'Lookbook đi làm tháng 8',
+        N'Chọn size dễ hơn cùng Zestia',
+        N'Ưu đãi dự tiệc cuối tháng',
+        N'Giữ váy đẹp lâu hơn',
+        N'Khép lại tháng 8 cùng Zestia',
         N'Bộ sưu tập mới đã lên kệ',
         N'Voucher ZESTIA10 đang hoạt động'
       )
@@ -4950,7 +4977,7 @@ WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
 UPDATE movement
 SET movement.nguoi_thuc_hien = N'Hệ thống dữ liệu mẫu',
     movement.ghi_chu = N'Tổng hợp lượng bán của dữ liệu tháng 8/2026',
-    movement.ngay_tao = CAST('2026-08-06T22:30:00' AS datetime2)
+    movement.ngay_tao = CAST('2026-08-31T22:30:00' AS datetime2)
 FROM dbo.Bien_dong_ton_kho movement
 WHERE movement.loai_bien_dong = N'BAN_HANG_DEMO_T8'
   AND movement.ma_tham_chieu = N'AUGUST-2026-SEED';
@@ -5190,7 +5217,7 @@ USING (VALUES (
     N'Mỗi đơn đã giao thành công từ 1.000.000đ nhận một lượt quay. Quà tặng là hiện vật và nhận tại showroom Zestia.',
     CAST(1000000 AS decimal(15,2)),
     CAST('2026-08-01T00:00:00' AS datetime2),
-    CAST('2026-08-06T23:59:59' AS datetime2),
+    CAST('2026-08-31T23:59:59' AS datetime2),
     CAST(1 AS tinyint)
 )) AS source(ma_chien_dich, ten_chien_dich, mo_ta, gia_tri_don_toi_thieu, ngay_bat_dau, ngay_ket_thuc, trang_thai)
 ON target.ma_chien_dich = source.ma_chien_dich
@@ -5562,10 +5589,10 @@ IF (
     SELECT COUNT(DISTINCT CAST(ngay_tao AS date))
     FROM dbo.Hoa_don
     WHERE ma_hoa_don LIKE N'HDAUG26%'
-) <> 6
-    THROW 51024, N'Dữ liệu đơn hàng tháng 8 phải phủ đủ từ 01/08 đến 06/08/2026.', 1;
+) <> 31
+    THROW 51024, N'Dữ liệu đơn hàng tháng 8 phải phủ đủ 31 ngày.', 1;
 
-DECLARE @demo_data_cutoff datetime2(7) = CAST('2026-08-07T00:00:00' AS datetime2);
+DECLARE @demo_data_cutoff datetime2(7) = CAST('2026-09-01T00:00:00' AS datetime2);
 IF EXISTS (
     SELECT order_row.id FROM dbo.Hoa_don order_row
     WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND order_row.ngay_tao >= @demo_data_cutoff
@@ -5612,16 +5639,20 @@ IF EXISTS (
     UNION ALL
     SELECT subscriber.id FROM dbo.Newsletter_subscriber subscriber
     WHERE (subscriber.ngay_dang_ky >= @demo_data_cutoff OR subscriber.ngay_cap_nhat >= @demo_data_cutoff)
-      AND (subscriber.ngay_dang_ky < '2026-09-01' OR subscriber.ngay_cap_nhat < '2026-09-01')
+      AND (subscriber.ngay_dang_ky < '2026-10-01' OR subscriber.ngay_cap_nhat < '2026-10-01')
     UNION ALL
     SELECT favorite.id FROM dbo.San_pham_yeu_thich favorite
-    WHERE favorite.ngay_tao >= @demo_data_cutoff AND favorite.ngay_tao < '2026-09-01'
+    WHERE favorite.ngay_tao >= @demo_data_cutoff AND favorite.ngay_tao < '2026-10-01'
     UNION ALL
     SELECT history.id FROM dbo.Lich_su_xem history
-    WHERE history.ngay_xem >= @demo_data_cutoff AND history.ngay_xem < '2026-09-01'
+    WHERE history.ngay_xem >= @demo_data_cutoff AND history.ngay_xem < '2026-10-01'
     UNION ALL
     SELECT notification.id FROM dbo.Thong_bao notification
-    WHERE notification.tieu_de = N'Lịch hoạt động showroom tháng 8' AND notification.ngay_tao >= @demo_data_cutoff
+    WHERE notification.tieu_de IN (
+        N'Chào tháng 8 cùng Zestia', N'Lookbook đi làm tháng 8',
+        N'Chọn size dễ hơn cùng Zestia', N'Ưu đãi dự tiệc cuối tháng',
+        N'Giữ váy đẹp lâu hơn', N'Khép lại tháng 8 cùng Zestia'
+    ) AND notification.ngay_tao >= @demo_data_cutoff
     UNION ALL
     SELECT voucher.id FROM dbo.Giam_gia voucher
     WHERE voucher.ma_giam_gia IN (N'ZESTIA10', N'ZESTIA50', N'FREESHIP', N'SUMMER20', N'AUGUST10', N'AUGUST50', N'AUGUSTVIP', N'BACK2WORK', N'AUGPOS', N'AUGFREESHIP')
@@ -5635,7 +5666,77 @@ IF EXISTS (
     WHERE wheel.ma_chien_dich = N'VQ-THANG8-2026'
       AND (wheel.ngay_bat_dau >= @demo_data_cutoff OR wheel.ngay_ket_thuc >= @demo_data_cutoff)
 )
-    THROW 51038, N'Dữ liệu demo nghiệp vụ không được có thời điểm sau 06/08/2026; lịch làm việc là ngoại lệ.', 1;
+    THROW 51038, N'Dữ liệu demo tháng 8 không được có thời điểm từ 01/09/2026 trở đi.', 1;
+IF (SELECT MIN(CAST(ngay_tao AS date)) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HDAUG26%') <> CAST('2026-08-01' AS date)
+   OR (SELECT MAX(CAST(ngay_tao AS date)) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HDAUG26%') <> CAST('2026-08-31' AS date)
+   OR (
+       SELECT COUNT(DISTINCT CAST(payment.ngay_tao AS date))
+       FROM dbo.Lich_su_thanh_toan payment
+       JOIN dbo.Hoa_don order_row ON order_row.id = payment.id_hoa_don
+       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+   ) <> 31
+   OR (
+       SELECT COUNT(DISTINCT CAST(tracking.ngay_cap_nhat AS date))
+       FROM dbo.Lich_su_tracking tracking
+       JOIN dbo.Hoa_don order_row ON order_row.id = tracking.id_hoa_don
+       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+   ) <> 31
+   OR (
+       SELECT COUNT(DISTINCT CAST(audit.ngay_tao AS date))
+       FROM dbo.Hoa_don_audit_log audit
+       JOIN dbo.Hoa_don order_row ON order_row.id = audit.id_hoa_don
+       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+   ) <> 31
+   OR (
+       SELECT COUNT(DISTINCT CAST(review.ngay_tao AS date))
+       FROM dbo.Danh_gia review
+       JOIN dbo.Hoa_don order_row ON order_row.id = review.id_hoa_don
+       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+   ) <> 31
+    THROW 51048, N'Đơn hàng, thanh toán, tracking, audit và đánh giá phải có dữ liệu trong đủ 31 ngày tháng 8.', 1;
+IF (
+       SELECT COUNT(DISTINCT CAST(chat.ngay_tao AS date))
+       FROM dbo.Ho_tro_chat chat
+       WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
+   ) <> 31
+   OR (
+       SELECT COUNT(DISTINCT CAST(subscriber.ngay_dang_ky AS date))
+       FROM dbo.Newsletter_subscriber subscriber
+       WHERE subscriber.ngay_dang_ky >= '2026-08-01' AND subscriber.ngay_dang_ky < '2026-09-01'
+   ) <> 31
+   OR (
+       SELECT COUNT(DISTINCT CAST(favorite.ngay_tao AS date))
+       FROM dbo.San_pham_yeu_thich favorite
+       WHERE favorite.ngay_tao >= '2026-08-01' AND favorite.ngay_tao < '2026-09-01'
+   ) <> 31
+   OR (
+       SELECT COUNT(DISTINCT CAST(history.ngay_xem AS date))
+       FROM dbo.Lich_su_xem history
+       WHERE history.ngay_xem >= '2026-08-01' AND history.ngay_xem < '2026-09-01'
+   ) <> 31
+    THROW 51049, N'Chat hỗ trợ, newsletter, yêu thích và lịch sử xem phải phủ đủ 31 ngày tháng 8.', 1;
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.Thong_bao
+    WHERE tieu_de = N'Chào tháng 8 cùng Zestia' AND CAST(ngay_tao AS date) = '2026-08-01'
+)
+   OR NOT EXISTS (
+    SELECT 1 FROM dbo.Thong_bao
+    WHERE tieu_de = N'Khép lại tháng 8 cùng Zestia' AND CAST(ngay_tao AS date) = '2026-08-31'
+)
+   OR EXISTS (
+    SELECT 1 FROM dbo.Giam_gia
+    WHERE ma_giam_gia IN (N'AUGUST10', N'AUGUST50', N'AUGUSTVIP', N'BACK2WORK', N'AUGPOS', N'AUGFREESHIP')
+      AND CAST(ngay_ket_thuc AS date) <> CAST('2026-08-31' AS date)
+)
+   OR NOT EXISTS (
+    SELECT 1 FROM dbo.Dot_khuyen_mai
+    WHERE ma_dot = N'AUGPARTY120' AND ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2)
+)
+   OR NOT EXISTS (
+    SELECT 1 FROM dbo.Vong_quay_may_man
+    WHERE ma_chien_dich = N'VQ-THANG8-2026' AND ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2)
+)
+    THROW 51050, N'Thông báo, voucher, đợt giảm giá hoặc vòng quay chưa phủ đến hết 31/08/2026.', 1;
 IF (SELECT COUNT(*) FROM dbo.Lich_lam_viec WHERE ngay_lam BETWEEN '2026-08-01' AND '2026-08-31') < 31
    OR (SELECT COUNT(DISTINCT ngay_lam) FROM dbo.Lich_lam_viec WHERE ngay_lam BETWEEN '2026-08-01' AND '2026-08-31') <> 31
     THROW 51027, N'Dữ liệu ca làm tháng 8 phải phủ đủ 31 ngày.', 1;

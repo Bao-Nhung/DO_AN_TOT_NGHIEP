@@ -31,18 +31,34 @@
       <!-- Filters -->
       <div class="z-admin-card mb-3" style="padding:14px 20px">
         <div class="d-flex flex-column gap-3">
-          <!-- Row 1: Search & Status -->
+          <!-- Row 1: Search, inventory and status -->
           <div class="d-flex align-items-center gap-3 flex-wrap">
             <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width:320px; border-bottom: 1px solid var(--z-gray-border); padding-bottom: 4px;">
               <i class="bi bi-search" style="color:var(--z-gray-light)"></i>
               <input v-model="search" class="lm-input" placeholder="Tìm kiếm sản phẩm..." style="border:none;padding:8px 0;box-shadow:none">
             </div>
-            <div class="ms-auto">
-              <select v-model="filterStatus" class="lm-input" style="width:auto;padding:8px 16px;font-size:13px">
-                <option value="">Tất cả trạng thái</option>
-                <option value="1">Đang bán</option>
-                <option value="0">Ngừng bán</option>
-              </select>
+            <div class="product-filter-group ms-auto">
+              <label class="product-filter-control">
+                <span><i class="bi bi-box-seam"></i> Tồn kho</span>
+                <select v-model="filterStock" class="lm-input">
+                  <option value="">Tất cả</option>
+                  <option value="HEALTHY">Còn hàng (trên 5)</option>
+                  <option value="LOW">Sắp hết (1-5)</option>
+                  <option value="OUT">Hết hàng</option>
+                </select>
+              </label>
+              <label class="product-filter-control">
+                <span><i class="bi bi-toggle-on"></i> Trạng thái</span>
+                <select v-model="filterStatus" class="lm-input">
+                  <option value="">Tất cả</option>
+                  <option value="1">Đang bán</option>
+                  <option value="0">Ngừng bán</option>
+                </select>
+              </label>
+              <button v-if="hasProductFilters" type="button" class="product-filter-reset" title="Xóa toàn bộ bộ lọc" @click="clearProductFilters">
+                <i class="bi bi-arrow-counterclockwise"></i>
+                <span>Xóa lọc</span>
+              </button>
             </div>
           </div>
 
@@ -95,7 +111,7 @@
               <td>{{ p.category }}</td>
               <td style="font-weight:500">{{ p.priceDisplay }}</td>
               <td>
-                <span :style="{ color: p.stock < 10 ? 'var(--z-accent)' : 'var(--z-dark)', fontWeight: p.stock < 10 ? 600 : 400 }">
+                <span :style="{ color: p.stock <= 5 ? 'var(--z-accent)' : 'var(--z-dark)', fontWeight: p.stock <= 5 ? 600 : 400 }">
                   {{ p.stock }}
                 </span>
               </td>
@@ -634,6 +650,7 @@ function formatDate(dateStr) {
 const search = ref('')
 const activeFilter = ref('Tất cả')
 const filterStatus = ref('')
+const filterStock = ref('')
 const showModal = ref(false)
 const saving = ref(false)
 const editingId = ref(null)
@@ -776,7 +793,8 @@ async function loadProducts() {
       size: itemsPerPage.value,
       q: search.value.trim() || null,
       status: filterStatus.value || null,
-      category
+      category,
+      stock: filterStock.value || null
     })
     if (!data || !Array.isArray(data.content)) throw new Error('Dữ liệu phân trang không hợp lệ')
     allProducts.value = data.content.map((product, index) => {
@@ -806,6 +824,12 @@ const productRangeLabel = computed(() => {
 })
 const filteredProducts = computed(() => allProducts.value)
 const paginatedProducts = computed(() => allProducts.value)
+const hasProductFilters = computed(() => Boolean(
+  search.value.trim()
+  || filterStatus.value
+  || filterStock.value
+  || activeFilter.value !== 'Tất cả'
+))
 const pageNumbers = computed(() => {
   const start = Math.max(1, Math.min(currentPage.value - 2, totalPages.value - 4))
   const end = Math.min(totalPages.value, start + 4)
@@ -817,13 +841,21 @@ watch(search, () => {
   clearTimeout(productSearchTimer)
   productSearchTimer = setTimeout(() => resetProductPage(), 300)
 })
-watch([activeFilter, filterStatus], resetProductPage)
+watch([activeFilter, filterStatus, filterStock], resetProductPage)
 watch(currentPage, loadProducts)
 watch(itemsPerPage, resetProductPage)
 
 function resetProductPage() {
   if (currentPage.value === 1) loadProducts()
   else currentPage.value = 1
+}
+
+function clearProductFilters() {
+  search.value = ''
+  activeFilter.value = 'Tất cả'
+  filterStatus.value = ''
+  filterStock.value = ''
+  resetProductPage()
 }
 
 function addVariant() {
@@ -1099,6 +1131,19 @@ async function toggleLock(p) {
 </script>
 
 <style scoped>
+.product-filter-group { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.product-filter-control { display: grid; gap: 5px; margin: 0; }
+.product-filter-control > span {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--z-gray); font-size: 11px; font-weight: 600;
+}
+.product-filter-control .lm-input { width: auto; min-width: 148px; padding: 8px 32px 8px 12px; font-size: 13px; }
+.product-filter-reset {
+  min-height: 38px; padding: 0 10px; border: 1px solid transparent; background: transparent;
+  color: var(--z-gray); display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: color .2s ease, background .2s ease, border-color .2s ease;
+}
+.product-filter-reset:hover { color: var(--z-accent); background: var(--z-accent-soft); border-color: var(--z-accent); }
 .z-clickable-row { cursor: pointer; }
 .z-clickable-row:hover td { background: var(--z-accent-soft) !important; }
 .z-icon-btn {
@@ -1185,5 +1230,10 @@ async function toggleLock(p) {
   cursor: pointer; color: var(--z-gray); font-size: 14px;
 }
 .z-icon-btn-sm:hover { background: #fee2e2; color: #dc2626; }
-@media (max-width: 640px) { .z-color-image-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .z-color-image-grid { grid-template-columns: 1fr; }
+  .product-filter-group { width: 100%; margin-left: 0 !important; align-items: stretch; }
+  .product-filter-control { flex: 1 1 140px; }
+  .product-filter-control .lm-input { width: 100%; min-width: 0; }
+}
 </style>

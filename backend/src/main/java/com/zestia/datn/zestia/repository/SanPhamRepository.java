@@ -45,6 +45,24 @@ public interface SanPhamRepository extends JpaRepository<SanPham, Integer> {
               AND (:status IS NULL OR v.trangThai = :status)
               AND (:category IS NULL
                    OR LOWER(lv.tenLoaiSanPham) LIKE LOWER(CONCAT('%', :category, '%')))
+              AND (
+                   :stock IS NULL
+                   OR (:stock = 'HEALTHY' AND (
+                       SELECT COALESCE(SUM(COALESCE(variant.soLuong, 0)), 0)
+                       FROM SanPhamChiTiet variant
+                       WHERE variant.sanPham = v AND variant.trangThai = 1
+                   ) > 5)
+                   OR (:stock = 'LOW' AND (
+                       SELECT COALESCE(SUM(COALESCE(variant.soLuong, 0)), 0)
+                       FROM SanPhamChiTiet variant
+                       WHERE variant.sanPham = v AND variant.trangThai = 1
+                   ) BETWEEN 1 AND 5)
+                   OR (:stock = 'OUT' AND (
+                       SELECT COALESCE(SUM(COALESCE(variant.soLuong, 0)), 0)
+                       FROM SanPhamChiTiet variant
+                       WHERE variant.sanPham = v AND variant.trangThai = 1
+                   ) <= 0)
+              )
             """,
             countQuery = """
             SELECT COUNT(v) FROM SanPham v
@@ -55,9 +73,28 @@ public interface SanPhamRepository extends JpaRepository<SanPham, Integer> {
               AND (:status IS NULL OR v.trangThai = :status)
               AND (:category IS NULL
                    OR LOWER(lv.tenLoaiSanPham) LIKE LOWER(CONCAT('%', :category, '%')))
+              AND (
+                   :stock IS NULL
+                   OR (:stock = 'HEALTHY' AND (
+                       SELECT COALESCE(SUM(COALESCE(variant.soLuong, 0)), 0)
+                       FROM SanPhamChiTiet variant
+                       WHERE variant.sanPham = v AND variant.trangThai = 1
+                   ) > 5)
+                   OR (:stock = 'LOW' AND (
+                       SELECT COALESCE(SUM(COALESCE(variant.soLuong, 0)), 0)
+                       FROM SanPhamChiTiet variant
+                       WHERE variant.sanPham = v AND variant.trangThai = 1
+                   ) BETWEEN 1 AND 5)
+                   OR (:stock = 'OUT' AND (
+                       SELECT COALESCE(SUM(COALESCE(variant.soLuong, 0)), 0)
+                       FROM SanPhamChiTiet variant
+                       WHERE variant.sanPham = v AND variant.trangThai = 1
+                   ) <= 0)
+              )
             """)
     Page<SanPham> findAdminPage(@Param("keyword") String keyword,
                                 @Param("status") Byte status,
                                 @Param("category") String category,
+                                @Param("stock") String stock,
                                 Pageable pageable);
 }

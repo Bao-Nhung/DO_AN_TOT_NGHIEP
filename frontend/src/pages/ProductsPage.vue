@@ -16,7 +16,7 @@
           <div class="d-flex gap-2 flex-wrap">
             <button v-for="f in filters" :key="f"
                     class="lm-filter-tag d-inline-flex align-items-center gap-2" :class="{ active: activeFilter === f }"
-                    @click="activeFilter = f">
+                    @click="selectFilter(f)">
               <img v-if="getFilterImage(f)" :src="getFilterImage(f)" :alt="f"
                    style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid rgba(0,0,0,0.12);flex-shrink:0" />
               <i v-else-if="f === 'Tất cả'" class="bi bi-grid-fill" style="font-size:12px"></i>
@@ -74,14 +74,14 @@
           <span v-if="activeFilter !== 'Tất cả'"
                 style="font-size:12px;padding:4px 12px;background:var(--z-accent-soft);color:var(--z-accent);border-radius:20px;display:inline-flex;align-items:center;gap:4px">
             {{ activeFilter }}
-            <i class="bi bi-x" style="cursor:pointer" @click="activeFilter = 'Tất cả'"></i>
+            <i class="bi bi-x" style="cursor:pointer" @click="selectFilter('Tất cả')"></i>
           </span>
           <span v-if="priceRange !== 'all'"
                 style="font-size:12px;padding:4px 12px;background:var(--z-accent-soft);color:var(--z-accent);border-radius:20px;display:inline-flex;align-items:center;gap:4px">
             {{ priceLabels[priceRange] }}
             <i class="bi bi-x" style="cursor:pointer" @click="priceRange = 'all'"></i>
           </span>
-          <button type="button" class="z-text-action" @click="activeFilter = 'Tất cả'; priceRange = 'all'">
+          <button type="button" class="z-text-action" @click="selectFilter('Tất cả'); priceRange = 'all'">
             Xoá tất cả
           </button>
         </div>
@@ -113,7 +113,7 @@
         <i class="bi bi-search mb-3" style="font-size:48px;color:var(--z-gray-border)"></i>
         <h3 class="z-display" style="font-weight:400;color:var(--z-gray)">Không tìm thấy sản phẩm</h3>
         <p style="color:var(--z-gray);font-size:14px">Thử thay đổi bộ lọc để tìm sản phẩm phù hợp.</p>
-        <button class="lm-btn-primary mt-3" @click="activeFilter = 'Tất cả'; priceRange = 'all'">
+        <button class="lm-btn-primary mt-3" @click="selectFilter('Tất cả'); priceRange = 'all'">
           <span>Xoá bộ lọc</span>
         </button>
       </div>
@@ -178,7 +178,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ProductCard from '@/components/ui/ProductCard.vue'
 import AppFooter   from '@/components/layout/AppFooter.vue'
 import { products, loadProducts } from '@/composables/useProducts'
@@ -187,8 +187,17 @@ import { useCompare } from '@/composables/useCompare'
 import { useI18n } from '@/composables/useI18n'
 import { useToast } from '@/composables/useToast'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
+import {
+  categoryNamesEqual,
+  findCategoryImage,
+  getCategoryDefinition,
+  normalizeCategoryName,
+  productBelongsToCategory,
+  productCategoryDefinitions,
+} from '@/config/productCategories'
 
 const route = useRoute()
+const router = useRouter()
 const bestsellerRank = ref(new Map())
 const { count: compareCount, clear: clearComparison } = useCompare()
 const { isEn } = useI18n()
@@ -213,22 +222,34 @@ onMounted(async () => {
 })
 watch(() => route.query, applyRouteQuery, { deep: true })
 
-const filters = computed(() => [
-  'Tất cả',
-  ...new Set(products.value.map(p => p.category).filter(Boolean)),
-  'Ưu đãi'
-])
+const filters = computed(() => {
+  const categories = [
+    ...productCategoryDefinitions.map(definition => definition.category),
+    ...products.value
+      .filter(product => !productCategoryDefinitions.some(definition =>
+        productBelongsToCategory(product, definition.category)
+      ))
+      .map(product => product.category)
+      .filter(Boolean),
+  ]
+  const seen = new Set()
+  const uniqueCategories = categories.filter(category => {
+    const normalized = normalizeCategoryName(category)
+    if (!normalized || seen.has(normalized)) return false
+    seen.add(normalized)
+    return true
+  })
+
+  return ['Tất cả', ...uniqueCategories, 'Ưu đãi']
+})
 
 function getFilterImage(f) {
-  const name = String(f || '').toLowerCase()
-  if (name.includes('quần') || name.includes('jeans') || name.includes('short')) return '/images/products/pants1.jpg'
-  if (name.includes('áo khoác') || name.includes('blazer')) return '/images/products/shirt5.jpg'
-  if (name.includes('áo') || name.includes('sơ mi') || name.includes('thun') || name.includes('polo')) return '/images/products/shirt1.jpg'
-  if (name.includes('váy') || name.includes('đầm') || name.includes('tiệc')) return '/images/products/dress1.jpg'
-  if (name.includes('phụ kiện') || name.includes('túi') || name.includes('ví') || name.includes('mũ') || name.includes('khăn') || name.includes('thắt lưng')) return '/images/products/accessories1.jpg'
-  if (name.includes('công sở')) return '/images/products/shirt14.jpg'
-  if (name.includes('ưu đãi')) return '/images/products/shirt5.jpg'
-  return null
+  if (f === 'Tất cả') return null
+  if (f === 'Ưu đãi') {
+    return products.value.find(product => product.promotionActive && product.image)?.image
+      || '/images/products/catalog-v2/sp003_main.webp'
+  }
+  return findCategoryImage(products.value, f)
 }
 const activeFilter = ref('Tất cả')
 const priceRange = ref('all')
@@ -241,21 +262,37 @@ function applyRouteQuery() {
   if (['newest', 'bestseller', 'price-asc', 'price-desc', 'name'].includes(requestedSort)) {
     sortBy.value = requestedSort
   }
-  const category = String(route.query.category || '').trim().toLowerCase()
+  const requestedCategory = String(route.query.category || '').trim()
   const occasion = String(route.query.occasion || '').trim().toLowerCase()
-  const keywords = {
-    work: ['công sở'],
-    party: ['dạ hội', 'dự tiệc'],
-    wedding: ['cưới'],
-    date: ['cách tân', 'lụa']
-  }[occasion] || (category ? [category] : [])
-  if (keywords.length) {
-    const match = filters.value.find(filter => keywords.some(keyword => filter.toLowerCase().includes(keyword)))
-    activeFilter.value = match || 'Tất cả'
-  }
+  const promotionOnly = route.query.promotion === 'true'
+  const occasionCategory = {
+    work: 'Trang phục công sở',
+    party: 'Trang phục dự tiệc',
+    wedding: 'Váy & Đầm',
+    date: 'Áo thời trang',
+  }[occasion]
+  const categoryToSelect = promotionOnly ? 'Ưu đãi' : requestedCategory || occasionCategory || ''
+  const normalizedCategory = getCategoryDefinition(categoryToSelect)?.category || categoryToSelect
+  activeFilter.value = normalizedCategory
+    ? filters.value.find(filter => categoryNamesEqual(filter, normalizedCategory)) || 'Tất cả'
+    : 'Tất cả'
   if (route.query.aiSearch === 'true') {
     showVisualModal.value = true
   }
+}
+
+function selectFilter(filter) {
+  activeFilter.value = filter
+
+  const query = { ...route.query }
+  delete query.category
+  delete query.occasion
+  delete query.promotion
+
+  if (filter === 'Ưu đãi') query.promotion = 'true'
+  else if (filter !== 'Tất cả') query.category = filter
+
+  void router.replace({ query })
 }
 
 const priceLabels = {
@@ -271,34 +308,7 @@ const filteredProducts = computed(() => {
     if (activeFilter.value === 'Ưu đãi') {
       result = result.filter(p => p.promotionActive)
     } else {
-      result = result.filter(p => {
-        const cat = (p.category || '').toLowerCase()
-        const code = (p.code || '').toUpperCase()
-        const filter = activeFilter.value.toLowerCase()
-
-        if (filter.includes('khoác') || filter.includes('blazer')) {
-          return cat.includes('khoác') || cat.includes('blazer') || code.startsWith('AKH')
-        }
-        if (filter.includes('quần') || filter.includes('jeans')) {
-          return cat.includes('quần') || cat.includes('jeans') || code.startsWith('QTY') || code.startsWith('QJN')
-        }
-        if (filter.includes('phụ kiện')) {
-          return cat.includes('phụ kiện') || code.startsWith('PKT')
-        }
-        if (filter.includes('công sở')) {
-          return cat.includes('công sở') || code.startsWith('TCS')
-        }
-        if (filter.includes('dự tiệc')) {
-          return cat.includes('dự tiệc') || code.startsWith('DTP')
-        }
-        if (filter.includes('váy') || filter.includes('đầm')) {
-          return cat.includes('váy') || cat.includes('đầm') || code.startsWith('VDH') || code.startsWith('DTP')
-        }
-        if (filter.includes('áo')) {
-          return (cat.includes('áo') && !cat.includes('khoác')) || code.startsWith('ASM')
-        }
-        return cat.includes(filter)
-      })
+      result = result.filter(product => productBelongsToCategory(product, activeFilter.value))
     }
   }
 
@@ -357,7 +367,7 @@ const sortedProducts = computed(() => {
         code: item.maSanPham || item.code,
         price: Number(item.giaCuoi || item.price || item.giaGoc || 0),
         category: item.danhMuc || original?.category || 'Thời trang',
-        image: item.anhChinh || original?.image || '/images/products/dress1.jpg',
+        image: item.anhChinh || original?.image || '/images/products/catalog-v2/sp003_main.webp',
         badge: `${item.matchScore}% gần màu`
       }
     })

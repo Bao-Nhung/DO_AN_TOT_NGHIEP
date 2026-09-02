@@ -187,16 +187,6 @@
                     <span>Đổi / trả hàng</span>
                   </button>
 
-                  <span
-                    v-if="order.yeuCauVat"
-                    class="z-status pending d-flex align-items-center gap-2 px-3"
-                    style="font-size:12px"
-                    title="Cửa hàng đã ghi nhận thông tin yêu cầu xuất hóa đơn VAT"
-                  >
-                    <i class="bi bi-file-earmark-text"></i>
-                    <span>Đã yêu cầu VAT</span>
-                  </span>
-
                   <!-- View details -->
                   <button 
                     class="lm-btn-primary py-2 px-3 d-flex align-items-center gap-2"
@@ -260,7 +250,7 @@
         <div v-else-if="detailOrder">
           <!-- Tracking Card component -->
           <div class="mb-4">
-            <OrderTrackingCard :order="detailOrder" />
+            <OrderTrackingCard :order="detailOrder" :show-progress="false" />
           </div>
 
           <!-- Progress timeline -->
@@ -564,16 +554,28 @@ function copyOrderCode(code) {
   toast.showToast(`Đã sao chép mã đơn hàng "${code}"!`, 'success')
 }
 
-onMounted(() => loadOrders(true))
+const ORDER_REFRESH_INTERVAL_MS = 2000
+let orderRefreshTimer
+let refreshInFlight = false
+let pageUnmounted = false
+
+onMounted(async () => {
+  await loadOrders(true)
+  if (!pageUnmounted) {
+    orderRefreshTimer = window.setInterval(refreshOrdersQuietly, ORDER_REFRESH_INTERVAL_MS)
+  }
+})
 onBeforeUnmount(() => {
+  pageUnmounted = true
   clearTimeout(searchTimer)
+  clearInterval(orderRefreshTimer)
   clearReturnImagePreviews()
 })
 
 let loadSequence = 0
-async function loadOrders(refreshReturns = false) {
+async function loadOrders(refreshReturns = false, silent = false) {
   const sequence = ++loadSequence
-  loading.value = true
+  if (!silent) loading.value = true
   try {
     const ordersPromise = api().getMyOrdersPage({
       page: Math.max(0, currentPage.value - 1),
@@ -610,9 +612,22 @@ async function loadOrders(refreshReturns = false) {
     }
   } catch (e) {
     if (sequence !== loadSequence) return
-    toast.showToast('Không thể tải danh sách đơn hàng', 'error')
+    if (!silent) toast.showToast('Không thể tải danh sách đơn hàng', 'error')
   } finally {
-    if (sequence === loadSequence) loading.value = false
+    if (!silent) loading.value = false
+  }
+}
+
+async function refreshOrdersQuietly() {
+  if (refreshInFlight || loading.value || loadingDetail.value || document.visibilityState === 'hidden') return
+  refreshInFlight = true
+  try {
+    await loadOrders(false, true)
+    if (showDetail.value && detailOrder.value?.id) {
+      await loadDetailOrder(detailOrder.value, true)
+    }
+  } finally {
+    refreshInFlight = false
   }
 }
 
@@ -680,7 +695,11 @@ const selectedReturnLine = computed(() => eligibleReturnLines.value.find(line =>
 // Actions
 async function openDetail(order) {
   showDetail.value = true
-  loadingDetail.value = true
+  await loadDetailOrder(order)
+}
+
+async function loadDetailOrder(order, silent = false) {
+  if (!silent) loadingDetail.value = true
   try {
     const [orderRes, trackingRes] = await Promise.all([
       api().getHoaDonById(order.id).catch(() => null),
@@ -688,15 +707,20 @@ async function openDetail(order) {
     ])
     const orderData = orderRes?.data || orderRes || order
     const trackingData = trackingRes?.data || trackingRes
+    const previousTrackingHistory = Array.isArray(detailOrder.value?.trackingHistory)
+      ? detailOrder.value.trackingHistory
+      : []
     
     detailOrder.value = { 
       ...orderData, 
-      trackingHistory: trackingData?.trackingHistory || [] 
+      trackingHistory: Array.isArray(trackingData?.trackingHistory)
+        ? trackingData.trackingHistory
+        : (silent ? previousTrackingHistory : [])
     }
   } catch (e) {
-    detailOrder.value = order
+    if (!silent) detailOrder.value = order
   } finally {
-    loadingDetail.value = false
+    if (!silent) loadingDetail.value = false
   }
 }
 
@@ -837,11 +861,12 @@ function returnStatusInfo(status) {
     CHO_DUYET: { label: 'Chờ nhân viên duyệt', cls: 'pending', hint: 'Zestia đang kiểm tra nội dung và ảnh tình trạng hàng.' },
     CHO_NHAN_HANG: { label: 'Đã duyệt · Chờ gửi hàng', cls: 'waiting', hint: 'Vui lòng gửi sản phẩm về cửa hàng theo hướng dẫn của nhân viên.' },
     CHO_HOAN_TAT: { label: 'Đã nhận hàng', cls: 'processing', hint: 'Sản phẩm đã được nhận và đang chờ hoàn tất xử lý.' },
+    CHO_XAC_NHAN_HOAN_TIEN: { label: 'Chờ xác nhận hoàn tiền', cls: 'waiting', hint: 'Yêu cầu hoàn tiền đã được gửi và đang chờ nhân viên đối soát giao dịch.' },
     TU_CHOI: { label: 'Không đủ điều kiện', cls: 'rejected', hint: 'Yêu cầu đã bị từ chối.' },
     TRA_LAI_KHACH: { label: 'Trả lại hàng', cls: 'rejected', hint: 'Hàng gửi về không đạt điều kiện và sẽ được gửi lại.' },
     DA_DOI: { label: 'Đã đổi hàng', cls: 'done', hint: 'Yêu cầu đổi hàng đã hoàn tất.' },
     DA_HOAN_TIEN: { label: 'Đã hoàn tiền', cls: 'done', hint: 'Yêu cầu trả hàng và hoàn tiền đã hoàn tất.' }
-  }[status] || { label: status, cls: 'pending', hint: '' }
+  }[status] || { label: 'Chưa xác định', cls: 'pending', hint: 'Vui lòng liên hệ Zestia để kiểm tra trạng thái yêu cầu.' }
 }
 
 // Repay Online

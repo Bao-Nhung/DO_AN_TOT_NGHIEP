@@ -174,40 +174,6 @@
             </p>
           </div>
 
-          <div class="z-checkout-section mt-4">
-            <h3 class="z-checkout-title">
-              <i class="bi bi-file-earmark-text text-danger"></i>
-              <span>Yêu cầu hóa đơn VAT doanh nghiệp</span>
-            </h3>
-            
-            <div class="form-check form-switch mb-3">
-              <input v-model="form.isVatRequested" class="form-check-input" type="checkbox" id="vatCheckbox" style="cursor: pointer;" />
-              <label class="form-check-label fw-bold text-dark" for="vatCheckbox" style="cursor: pointer;">
-                Gửi thông tin xuất hóa đơn VAT cho đơn hàng này
-              </label>
-            </div>
-
-            <div v-if="form.isVatRequested" class="p-3 border rounded-3 bg-light">
-              <div class="row g-3">
-                <div class="col-12">
-                  <label class="z-form-label">Tên công ty / Đơn vị mua hàng <span class="text-danger">*</span></label>
-                  <input v-model="form.tenCongTyVat" class="lm-input" placeholder="Ví dụ: CÔNG TY TNHH ĐẦU TƯ ABC" />
-                </div>
-                <div class="col-md-6">
-                  <label class="z-form-label">Mã số thuế (MST) <span class="text-danger">*</span></label>
-                  <input v-model="form.maSoThueVat" class="lm-input" placeholder="Ví dụ: 0101234567" />
-                </div>
-                <div class="col-md-6">
-                  <label class="z-form-label">Email nhận hóa đơn <span class="text-danger">*</span></label>
-                  <input v-model="form.emailVat" type="email" class="lm-input" placeholder="ketoan@company.com" />
-                </div>
-                <div class="col-12">
-                  <label class="z-form-label">Địa chỉ công ty (ghi trên MST) <span class="text-danger">*</span></label>
-                  <input v-model="form.diaChiVat" class="lm-input" placeholder="Ví dụ: Số 102 Đường Lê Văn Lương, Hà Nội" />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div class="col-lg-5">
@@ -382,12 +348,7 @@ const form = ref({
   soDienThoai: '',
   email: '',
   ghiChu: '',
-  hinhThuc: 'COD',
-  isVatRequested: false,
-  tenCongTyVat: '',
-  maSoThueVat: '',
-  emailVat: '',
-  diaChiVat: ''
+  hinhThuc: 'COD'
 })
 
 function paymentMethodAvailable(method) {
@@ -759,14 +720,6 @@ function handlePlaceOrder() {
   phoneTouched.value = true
   if (phoneError.value) return showToast(phoneError.value)
   if (!isValidEmail(form.value.email)) return showToast('Vui lòng nhập email hợp lệ để nhận hóa đơn')
-  if (form.value.isVatRequested) {
-    if (form.value.tenCongTyVat.trim().length < 2) return showToast('Vui lòng nhập tên công ty xuất hóa đơn')
-    if (!/^\d{10}(?:-\d{3})?$/.test(form.value.maSoThueVat.trim())) {
-      return showToast('Mã số thuế phải gồm 10 số hoặc dạng 10 số-3 số')
-    }
-    if (!isValidEmail(form.value.emailVat)) return showToast('Email nhận hóa đơn không hợp lệ')
-    if (form.value.diaChiVat.trim().length < 5) return showToast('Vui lòng nhập địa chỉ xuất hóa đơn')
-  }
   
   if (!selectedCity.value || !selectedDistrict.value || !selectedWard.value || !specificAddress.value.trim()) {
     return showToast('Vui lòng chọn và nhập đầy đủ địa chỉ giao hàng')
@@ -850,10 +803,7 @@ async function placeOrder() {
       method: form.value.hinhThuc,
       phone: form.value.soDienThoai.trim(),
       address: fullAddress,
-      voucher: appliedVoucher.value || '',
-      vat: form.value.isVatRequested
-        ? [form.value.tenCongTyVat.trim(), form.value.maSoThueVat.trim(), form.value.emailVat.trim().toLowerCase(), form.value.diaChiVat.trim()]
-        : null
+      voucher: appliedVoucher.value || ''
     })
     const savedRequest = JSON.parse(sessionStorage.getItem('zestia_checkout_request') || 'null')
     if (!savedRequest || savedRequest.fingerprint !== fingerprint) {
@@ -882,11 +832,6 @@ async function placeOrder() {
       quanHuyen: districtName,
       xaPhuong: wardName,
       duong: specificAddress.value.trim(),
-      yeuCauVat: form.value.isVatRequested,
-      tenCongTyVat: form.value.isVatRequested ? form.value.tenCongTyVat.trim() : null,
-      maSoThueVat: form.value.isVatRequested ? form.value.maSoThueVat.trim() : null,
-      emailVat: form.value.isVatRequested ? form.value.emailVat.trim().toLowerCase() : null,
-      diaChiVat: form.value.isVatRequested ? form.value.diaChiVat.trim() : null,
       items: state.items.map(i => ({ 
         productId: Number(i.productId),
         variantId: i.variantId || null,

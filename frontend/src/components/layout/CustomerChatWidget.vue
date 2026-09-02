@@ -94,7 +94,7 @@
             
             <div class="z-ai-msg-content">
               <div class="z-ai-msg-bubble">
-                <small v-if="humanMode && msg.senderName" class="d-block text-muted mb-1">{{ msg.senderName }}</small>
+                <small v-if="humanMode && msg.senderName" class="z-ai-sender-name">{{ msg.senderName }}</small>
                 <div class="z-ai-text" v-html="formatMarkdown(msg.content)"></div>
 
                 <!-- Các nút hỗ trợ phụ (Copy & Text-to-Speech) -->
@@ -127,7 +127,7 @@
                         </div>
                         <div class="z-outfit-items-grid">
                           <div v-for="(item, iIdx) in card.items" :key="iIdx" class="z-outfit-mini-item" @click="goToProduct(item.id)">
-                            <img :src="item.image || '/images/products/shirt1.jpg'" :alt="item.name" @error="onCardImgError" />
+                            <img :src="item.image || '/images/products/catalog-v2/sp001_main.webp'" :alt="item.name" @error="onCardImgError" />
                             <div class="z-outfit-mini-info">
                               <span class="z-outfit-mini-name">{{ item.name }}</span>
                               <span class="z-outfit-mini-price">{{ formatPrice(item.price) }}</span>
@@ -151,7 +151,7 @@
                     <!-- THẺ SẢN PHẨM -->
                     <template v-else-if="card.type === 'product'">
                       <div class="z-card-img-wrapper" @click="goToProduct(card.id)">
-                        <img :src="card.image || '/images/products/shirt1.jpg'" :alt="card.name" @error="onCardImgError" />
+                        <img :src="card.image || '/images/products/catalog-v2/sp001_main.webp'" :alt="card.name" @error="onCardImgError" />
                         <span v-if="card.category" class="z-card-cat-badge">{{ card.category }}</span>
                       </div>
                       <div class="z-card-info">
@@ -556,7 +556,7 @@ function scrollToBottom() {
 }
 
 function onCardImgError(e) {
-  e.target.src = '/images/products/shirt1.jpg'
+  e.target.src = '/images/products/catalog-v2/sp001_main.webp'
 }
 
 function goToProduct(id) {
@@ -1059,6 +1059,14 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 .z-ai-msg-content { min-width: 0; flex: 1; }
+.z-ai-sender-name {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--z-gray);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+}
 .z-ai-msg-bubble {
   padding: 10px 12px;
   border: 1px solid var(--z-gray-border);
@@ -1074,6 +1082,7 @@ onBeforeUnmount(() => {
   background: var(--z-dark);
   color: var(--z-white);
 }
+.z-ai-msg-group.user .z-ai-sender-name { color: rgba(255, 255, 255, 0.82); }
 .z-ai-text { color: inherit; }
 .z-ai-text :deep(p) { margin: 0 0 8px; color: inherit; }
 .z-ai-text :deep(p:last-child) { margin-bottom: 0; }

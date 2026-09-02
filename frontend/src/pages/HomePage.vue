@@ -51,16 +51,17 @@
 
         <div class="row g-3">
           <div class="col-lg-5 lm-reveal">
-            <CollectionCard label="Thời trang nữ" name="Áo Thời Trang" letter="Z"
-                            image="/images/products/shirt1.jpg"
-                            bg="linear-gradient(160deg,#F3E8E6,#D4A99E 40%,#C08B7E)" to="/collections" tall />
+            <CollectionCard :label="primaryCategory.label" :name="primaryCategory.name" :letter="primaryCategory.letter"
+                            :image="categoryCardImage(primaryCategory)" :bg="primaryCategory.bg"
+                            :to="categoryCardRoute(primaryCategory)" tall />
           </div>
           <div class="col-lg-7">
             <div class="row g-3">
-              <div class="col-6 lm-reveal"><CollectionCard label="Cá tính" name="Quần & Jeans" letter="e" image="/images/products/pants1.jpg" bg="linear-gradient(160deg,#E8DDD6,#C4A98E)" to="/collections" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Quyến rũ" name="Váy & Đầm" letter="s" image="/images/products/dress1.jpg" bg="linear-gradient(160deg,#E6E0DA,#A8A49E)" to="/collections" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Điểm nhấn" name="Phụ Kiện" letter="t" image="/images/products/accessories1.jpg" bg="linear-gradient(160deg,#F0E8E0,#D4C0A8)" to="/collections" /></div>
-              <div class="col-6 lm-reveal"><CollectionCard label="Thanh lịch" name="Đồ Công Sở" letter="ia" image="/images/products/shirt6.jpg" bg="linear-gradient(160deg,#E4DDD2,#C0B49E)" to="/collections" /></div>
+              <div v-for="category in secondaryCategories" :key="category.category" class="col-6 lm-reveal">
+                <CollectionCard :label="category.label" :name="category.name" :letter="category.letter"
+                                :image="categoryCardImage(category)" :bg="category.bg"
+                                :to="categoryCardRoute(category)" />
+              </div>
             </div>
           </div>
         </div>
@@ -219,6 +220,7 @@ import { useToast } from '@/composables/useToast'
 import { useReveal } from '@/composables/useReveal'
 import { products, loadProducts } from '@/composables/useProducts'
 import { api, useAuth } from '@/composables/useApi'
+import { findCategoryImage, homeCategoryCards } from '@/config/productCategories'
 
 useReveal()
 const { showToast } = useToast()
@@ -227,6 +229,8 @@ const newsletterLoading = ref(false)
 const recentProductIds = ref([])
 const luckyCampaign = ref(null)
 const { isLoggedIn, getUser } = useAuth()
+const primaryCategory = homeCategoryCards[0]
+const secondaryCategories = homeCategoryCards.slice(1)
 const storefront = reactive({
   activeProductCount: 0,
   categoryCount: 0,
@@ -273,6 +277,12 @@ const stats = computed(() => [
 ])
 
 function formatMoney(value) { return Number(value || 0).toLocaleString('vi-VN') + 'đ' }
+function categoryCardImage(category) {
+  return findCategoryImage(products.value, category.category, category.fallbackImage)
+}
+function categoryCardRoute(category) {
+  return { path: '/collections', query: { category: category.category } }
+}
 
 onMounted(async () => {
   await Promise.all([

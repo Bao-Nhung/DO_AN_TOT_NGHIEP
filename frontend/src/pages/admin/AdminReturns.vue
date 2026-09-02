@@ -31,8 +31,8 @@
         <table class="z-table" style="min-width:1040px">
           <thead><tr><th>Yêu cầu / Đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Nguồn</th><th>Trạng thái</th><th>Ngày tạo</th><th style="width:132px"></th></tr></thead>
           <tbody>
-            <tr v-for="item in requests" :key="item.id">
-              <td><strong>#{{ item.id }}</strong><div class="z-subtext">{{ item.orderCode }}</div></td>
+            <tr v-for="(item, index) in requests" :key="item.id">
+              <td><strong>#{{ requestSequence(index) }}</strong><div class="z-subtext">{{ item.orderCode }}</div></td>
               <td><strong>{{ item.customerName }}</strong><div class="z-subtext">{{ item.customerPhone }}</div></td>
               <td>
                 <div class="z-product-cell">
@@ -44,7 +44,7 @@
               <td><span class="z-source" :class="item.source.toLowerCase()">{{ item.source === 'ONLINE' ? 'Online' : 'Tại quầy' }}</span></td>
               <td><span class="z-status" :class="statusInfo(item.status).cls">{{ statusInfo(item.status).label }}</span></td>
               <td>{{ formatDate(item.createdAt) }}</td>
-              <td><button class="lm-btn-secondary z-small-btn" @click="openDetail(item)"><i class="bi bi-eye"></i><span>Xem xử lý</span></button></td>
+              <td><button class="lm-btn-secondary z-small-btn" @click="openDetail(item, index)"><i class="bi bi-eye"></i><span>Xem xử lý</span></button></td>
             </tr>
           </tbody>
         </table>
@@ -66,7 +66,7 @@
     <div v-if="detail" class="z-modal-overlay" @click.self="detail = null">
       <div class="z-modal z-return-detail-modal">
         <div class="z-modal-head">
-          <div><h3>Yêu cầu {{ detail.type === 'DOI' ? 'đổi' : 'trả' }} #{{ detail.id }}</h3><span>{{ detail.orderCode }} · {{ detail.source === 'ONLINE' ? 'Đơn online' : 'Đơn tại quầy' }}</span></div>
+          <div><h3>Yêu cầu {{ detail.type === 'DOI' ? 'đổi' : 'trả' }} #{{ detail.displayNumber }}</h3><span>{{ detail.orderCode }} · {{ detail.source === 'ONLINE' ? 'Đơn online' : 'Đơn tại quầy' }}</span></div>
           <button type="button" class="z-icon-btn" aria-label="Đóng chi tiết đổi trả" @click="detail = null"><i class="bi bi-x-lg"></i></button>
         </div>
 
@@ -164,7 +164,7 @@ watch(pageSize, () => {
 
 const statusOptions = [
   { value: 'CHO_DUYET', label: 'Chờ duyệt' }, { value: 'CHO_NHAN_HANG', label: 'Chờ khách gửi hàng' },
-  { value: 'CHO_HOAN_TAT', label: 'Chờ hoàn tất' }, { value: 'CHO_XAC_NHAN_HOAN_TIEN', label: 'Đang hoàn tiền' }, { value: 'TU_CHOI', label: 'Đã từ chối' },
+  { value: 'CHO_HOAN_TAT', label: 'Chờ hoàn tất' }, { value: 'CHO_XAC_NHAN_HOAN_TIEN', label: 'Chờ xác nhận hoàn tiền' }, { value: 'TU_CHOI', label: 'Đã từ chối' },
   { value: 'TRA_LAI_KHACH', label: 'Trả lại khách' }, { value: 'DA_DOI', label: 'Đã đổi hàng' },
   { value: 'DA_HOAN_TIEN', label: 'Đã hoàn tiền' }
 ]
@@ -211,7 +211,10 @@ function goToPage(page) {
   currentPage.value = target
   loadRequests()
 }
-function openDetail(item) { detail.value = item }
+function requestSequence(index) {
+  return Math.max(1, totalItems.value - ((currentPage.value - 1) * pageSize.value) - index)
+}
+function openDetail(item, index) { detail.value = { ...item, displayNumber: requestSequence(index) } }
 function openAction(type) { actionModal.value = type; actionReason.value = '' }
 
 async function submitAction() {
@@ -287,10 +290,10 @@ async function submitOffline() {
 function statusInfo(status) {
   return {
     CHO_DUYET: { label: 'Chờ duyệt', cls: 'pending' }, CHO_NHAN_HANG: { label: 'Chờ nhận hàng', cls: 'waiting' },
-    CHO_HOAN_TAT: { label: 'Chờ hoàn tất', cls: 'processing' }, CHO_XAC_NHAN_HOAN_TIEN: { label: 'Đang hoàn tiền', cls: 'waiting' }, TU_CHOI: { label: 'Đã từ chối', cls: 'rejected' },
+    CHO_HOAN_TAT: { label: 'Chờ hoàn tất', cls: 'processing' }, CHO_XAC_NHAN_HOAN_TIEN: { label: 'Chờ xác nhận hoàn tiền', cls: 'waiting' }, TU_CHOI: { label: 'Đã từ chối', cls: 'rejected' },
     TRA_LAI_KHACH: { label: 'Trả lại khách', cls: 'rejected' }, DA_DOI: { label: 'Đã đổi hàng', cls: 'done' },
     DA_HOAN_TIEN: { label: 'Đã hoàn tiền', cls: 'done' }
-  }[status] || { label: status, cls: 'pending' }
+  }[status] || { label: 'Chưa xác định', cls: 'pending' }
 }
 
 function processHint(status) {
@@ -302,6 +305,6 @@ function formatCurrency(value) { return Number(value || 0).toLocaleString('vi-VN
 </script>
 
 <style scoped>
-.z-page-subtitle,.z-subtext{font-size:12px;color:var(--z-gray);margin:0}.z-return-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}.z-segmented{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--z-gray-border);background:var(--z-white);padding:3px;border-radius:var(--z-radius)}.z-segmented button{border:0;background:transparent;min-width:112px;height:34px;padding:0 14px;color:var(--z-gray);font-size:13px}.z-segmented button.active{background:var(--z-dark);color:var(--z-white)}.z-status-filter{width:210px;height:42px}.z-result-count{margin-left:auto;font-size:12px;color:var(--z-gray)}.z-empty-return{min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--z-gray)}.z-empty-return i{font-size:34px;color:var(--z-gray-light)}.z-empty-return strong{color:var(--z-dark)}.z-product-cell{display:flex;align-items:center;gap:10px;min-width:280px}.z-product-cell img,.z-product-placeholder{width:42px;height:50px;object-fit:cover;background:var(--z-bg-alt);display:grid;place-items:center;border-radius:var(--z-radius);flex:none}.z-source{font-size:11px;padding:4px 8px;border:1px solid var(--z-gray-border);border-radius:20px}.z-source.online{color:#1769aa;background:#eef7ff}.z-source.offline{color:#6b4d00;background:#fff8df}.z-status{display:inline-flex;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:600}.z-status.pending{background:#fff4d6;color:#8a5b00}.z-status.waiting{background:#eaf5ff;color:#1769aa}.z-status.processing{background:#f2edff;color:#6440a4}.z-status.rejected{background:#ffeded;color:#b42318}.z-status.done{background:#eaf8ee;color:#217a3d}.z-small-btn{height:34px;padding:6px 10px;font-size:12px}.z-list-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:var(--z-gray);font-size:12px}.z-page-button{min-width:68px;height:34px;padding:6px 12px}.z-page-label{display:inline-flex;align-items:center;padding:0 6px;color:var(--z-dark)}.z-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.z-modal-head h3{font-size:18px;font-weight:600;margin:0}.z-modal-head span{font-size:12px;color:var(--z-gray)}.z-return-detail-modal{max-width:860px}.z-return-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}.z-return-detail-grid section{min-width:0}.z-return-detail-grid h4,.z-evidence-section h4{font-size:13px;font-weight:700;margin:0 0 10px}.z-return-detail-grid dl{display:grid;grid-template-columns:125px 1fr;gap:7px 12px;font-size:13px}.z-return-detail-grid dt{font-weight:500;color:var(--z-gray)}.z-return-detail-grid dd{margin:0;overflow-wrap:anywhere}.z-evidence-section{border-top:1px solid var(--z-gray-border);padding-top:16px;margin-top:16px}.z-evidence-list{display:flex;gap:8px;overflow-x:auto}.z-evidence-list img{width:88px;height:104px;object-fit:cover;border:1px solid var(--z-gray-border);border-radius:var(--z-radius)}.z-process-state{display:flex;align-items:center;gap:10px;background:var(--z-bg-alt);padding:12px;margin-top:18px;font-size:12px;color:var(--z-gray)}.z-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px;padding-top:16px;border-top:1px solid var(--z-gray-border)}.z-danger-text{color:var(--z-danger)}.z-label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}.z-form-segment{display:grid;width:100%;height:42px}.z-form-segment button{height:34px;min-width:0}.z-form-segment button:not(.active){color:var(--z-gray)}
+.z-page-subtitle,.z-subtext{font-size:12px;color:var(--z-gray);margin:0}.z-return-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px}.z-segmented{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--z-gray-border);background:var(--z-white);padding:3px;border-radius:var(--z-radius)}.z-segmented button{border:0;background:transparent;min-width:112px;height:34px;padding:0 14px;color:var(--z-gray);font-size:13px}.z-segmented button.active{background:var(--z-dark);color:var(--z-white)}.z-status-filter{width:210px;height:42px}.z-result-count{margin-left:auto;font-size:12px;color:var(--z-gray)}.z-empty-return{min-height:280px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--z-gray)}.z-empty-return i{font-size:34px;color:var(--z-gray-light)}.z-empty-return strong{color:var(--z-dark)}.z-product-cell{display:flex;align-items:center;gap:10px;min-width:280px}.z-product-cell img,.z-product-placeholder{width:42px;height:50px;object-fit:cover;background:var(--z-bg-alt);display:grid;place-items:center;border-radius:var(--z-radius);flex:none}.z-source{font-size:11px;padding:4px 8px;border:1px solid var(--z-gray-border);border-radius:20px}.z-source.online{color:#1769aa;background:#eef7ff}.z-source.offline{color:#6b4d00;background:#fff8df}.z-status{display:inline-flex;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:600}.z-status.pending{background:#fff4d6;color:#8a5b00}.z-status.waiting{background:#eaf5ff;color:#1769aa}.z-status.processing{background:#f2edff;color:#6440a4}.z-status.rejected{background:#ffeded;color:#b42318}.z-status.done{background:#eaf8ee;color:#217a3d}.z-small-btn{height:34px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;font-size:12px;white-space:nowrap}.z-list-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;color:var(--z-gray);font-size:12px}.z-page-button{min-width:68px;height:34px;padding:6px 12px}.z-page-label{display:inline-flex;align-items:center;padding:0 6px;color:var(--z-dark)}.z-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.z-modal-head h3{font-size:18px;font-weight:600;margin:0}.z-modal-head span{font-size:12px;color:var(--z-gray)}.z-return-detail-modal{max-width:860px}.z-return-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}.z-return-detail-grid section{min-width:0}.z-return-detail-grid h4,.z-evidence-section h4{font-size:13px;font-weight:700;margin:0 0 10px}.z-return-detail-grid dl{display:grid;grid-template-columns:125px 1fr;gap:7px 12px;font-size:13px}.z-return-detail-grid dt{font-weight:500;color:var(--z-gray)}.z-return-detail-grid dd{margin:0;overflow-wrap:anywhere}.z-evidence-section{border-top:1px solid var(--z-gray-border);padding-top:16px;margin-top:16px}.z-evidence-list{display:flex;gap:8px;overflow-x:auto}.z-evidence-list img{width:88px;height:104px;object-fit:cover;border:1px solid var(--z-gray-border);border-radius:var(--z-radius)}.z-process-state{display:flex;align-items:center;gap:10px;background:var(--z-bg-alt);padding:12px;margin-top:18px;font-size:12px;color:var(--z-gray)}.z-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px;padding-top:16px;border-top:1px solid var(--z-gray-border)}.z-danger-text{color:var(--z-danger)}.z-label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}.z-form-segment{display:grid;width:100%;height:42px}.z-form-segment button{height:34px;min-width:0}.z-form-segment button:not(.active){color:var(--z-gray)}
 @media(max-width:767px){.z-return-toolbar{align-items:stretch;flex-direction:column}.z-status-filter{width:100%}.z-result-count{margin:0}.z-return-detail-grid{grid-template-columns:1fr}.z-return-detail-modal{max-height:92vh;overflow-y:auto}.z-modal-actions{flex-wrap:wrap}.z-modal-actions button{flex:1;min-width:130px}}
 </style>

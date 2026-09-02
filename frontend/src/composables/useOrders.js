@@ -7,17 +7,20 @@ const loading = ref(false)
 export function useOrders() {
   const apiClient = api()
 
-  async function searchOrder(maHoaDon, soDienThoai = null) {
-    loading.value = true
+  async function searchOrder(maHoaDon, soDienThoai = null, options = {}) {
+    const silent = options.silent === true
+    if (!silent) loading.value = true
     try {
       const params = { maHoaDon, soDienThoai: soDienThoai || undefined }
       const res = await apiClient.searchOrder(params)
       currentOrder.value = res?.data || res
       return currentOrder.value
     } catch (err) {
-      console.error('Error searching order:', err)
+      if (!silent) console.error('Error searching order:', err)
       throw err
-    } finally { loading.value = false }
+    } finally {
+      if (!silent) loading.value = false
+    }
   }
 
   function resetState() {

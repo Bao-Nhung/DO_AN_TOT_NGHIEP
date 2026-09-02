@@ -25,7 +25,6 @@ public class PaymentController {
     private static final byte STATUS_PENDING = 0;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$", Pattern.CASE_INSENSITIVE);
     private static final Pattern PHONE_PATTERN = Pattern.compile("0[35789]\\d{8}");
-    private static final Pattern TAX_CODE_PATTERN = Pattern.compile("^\\d{10}(?:-\\d{3})?$");
     private static final Pattern CHECKOUT_REQUEST_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9:_-]{15,99}$");
     private static final int MAX_ORDER_LINES = 50;
     private static final int MAX_QUANTITY_PER_LINE = 100;
@@ -225,32 +224,6 @@ public class PaymentController {
             }
         } else if (emailKhachHang != null && !EMAIL_PATTERN.matcher(emailKhachHang).matches()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email khach hang khong hop le"));
-        }
-
-        boolean yeuCauVat = isTruthy(body.get("yeuCauVat")) || isTruthy(body.get("isVatRequested"));
-        String tenCongTyVat = cleanString(body.get("tenCongTyVat"));
-        String maSoThueVat = cleanString(body.get("maSoThueVat"));
-        String emailVat = cleanString(body.get("emailVat"));
-        String diaChiVat = cleanString(body.get("diaChiVat"));
-        if (yeuCauVat) {
-            if (tenCongTyVat == null || tenCongTyVat.length() < 2 || tenCongTyVat.length() > 255) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập tên công ty hợp lệ"));
-            }
-            if (maSoThueVat == null || !TAX_CODE_PATTERN.matcher(maSoThueVat).matches()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Mã số thuế phải gồm 10 số hoặc dạng 10 số-3 số"));
-            }
-            if (emailVat == null || emailVat.length() > 100 || !EMAIL_PATTERN.matcher(emailVat).matches()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập email nhận hóa đơn hợp lệ"));
-            }
-            if (diaChiVat == null || diaChiVat.length() < 5 || diaChiVat.length() > 500) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Vui lòng nhập địa chỉ xuất hóa đơn hợp lệ"));
-            }
-            emailVat = emailVat.toLowerCase(Locale.ROOT);
-        } else {
-            tenCongTyVat = null;
-            maSoThueVat = null;
-            emailVat = null;
-            diaChiVat = null;
         }
 
         String paymentMethod = normalizePaymentMethod(hinhThuc, staffDirectSale);
@@ -481,11 +454,6 @@ public class PaymentController {
                 .tenKhachHang(hoTen)
                 .soDienThoai(soDienThoai)
                 .emailKhachHang(emailKhachHang)
-                .yeuCauVat(yeuCauVat)
-                .tenCongTyVat(yeuCauVat ? tenCongTyVat : null)
-                .maSoThueVat(yeuCauVat ? maSoThueVat : null)
-                .emailVat(yeuCauVat ? emailVat : null)
-                .diaChiVat(yeuCauVat ? diaChiVat : null)
                 .build();
 
         hoaDon = hoaDonRepo.save(hoaDon);

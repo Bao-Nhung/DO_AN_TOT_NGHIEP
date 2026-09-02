@@ -133,22 +133,6 @@ public class HoaDon {
     @Column(name = "ngay_tao")
     private LocalDateTime ngayTao;
 
-    // Thông tin khách yêu cầu cửa hàng xuất hóa đơn VAT qua hệ thống hợp pháp bên ngoài.
-    @Column(name = "yeu_cau_vat")
-    private Boolean yeuCauVat;
-
-    @Column(name = "ten_cong_ty_vat", length = 255)
-    private String tenCongTyVat;
-
-    @Column(name = "ma_so_thue_vat", length = 50)
-    private String maSoThueVat;
-
-    @Column(name = "email_vat", length = 100)
-    private String emailVat;
-
-    @Column(name = "dia_chi_vat", length = 500)
-    private String diaChiVat;
-
     @JsonIgnore
     @OneToMany(mappedBy = "hoaDon")
     private List<HoaDonChiTiet> chiTiets;

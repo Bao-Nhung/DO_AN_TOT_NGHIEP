@@ -1,6 +1,6 @@
--- ============================================================
+﻿-- ============================================================
 -- ZESTIA DATABASE fashion_shop
--- File SQL chinh de RESET va cai dat du lieu demo hoan chinh cho du an.
+-- File SQL chinh de RESET va cai dat du lieu khoi tao hoan chinh cho du an.
 -- Cach dung: mo file nay trong SSMS/sqlcmd va Execute 1 lan.
 -- CANH BAO: file se xoa toan bo database fashion_shop hien co.
 -- Bat buoc backup database cu neu co du lieu can giu.
@@ -84,9 +84,9 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Nhan_vien])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Nhan_vien] ON;
 INSERT INTO [dbo].[Nhan_vien] ([id], [id_vai_tro], [ma_nhan_vien], [ho_va_ten], [gioi_tinh], [ngay_sinh], [so_dien_thoai], [dia_chi], [email], [ten_nguoi_dung], [mat_khau], [tinh_trang_lam_viec], [ngay_tao]) VALUES
-(1, 1, N'NV001', N'Nguyễn Tiến Thành', NULL, NULL, NULL, NULL, N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.193'),
-(2, 2, N'NV002', N'Trần Minh Tuấn', NULL, NULL, N'0901234567', NULL, N'tuan@zestia.vn', N'tuannv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.200'),
-(3, 2, N'NV003', N'Lê Hoàng Phúc', 1, '1997-09-12', N'0907654321', N'Quận 1, TP.HCM', N'phuc@zestia.vn', N'phucnv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-23T09:00:00.000');
+(1, 1, N'NV001', N'Nguyễn Tiến Thành', 1, '1998-01-10', N'0869167207', N'39 Nguyễn Thị Duệ, Yên Hòa, Cầu Giấy, Hà Nội', N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.193'),
+(2, 2, N'NV002', N'Trần Minh Tuấn', 1, '1999-04-18', N'0978126453', N'18 Trung Kính, Yên Hòa, Cầu Giấy, Hà Nội', N'tuan@zestia.vn', N'tuannv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T23:44:29.200'),
+(3, 2, N'NV003', N'Lê Hoàng Phúc', 1, '1997-09-12', N'0968352741', N'72 Trần Thái Tông, Dịch Vọng Hậu, Cầu Giấy, Hà Nội', N'phuc@zestia.vn', N'phucnv', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-23T09:00:00.000');
 SET IDENTITY_INSERT [dbo].[Nhan_vien] OFF;
 END
 GO
@@ -182,17 +182,17 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Khach_hang])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Khach_hang] ON;
 INSERT INTO [dbo].[Khach_hang] ([id], [ma_khach_hang], [ho_va_ten], [gioi_tinh], [ngay_sinh], [so_dien_thoai], [email], [mat_khau], [ngay_tao]) VALUES
-(1, N'KH001', N'Nguyễn Lan Anh', 0, '1995-03-15', N'0912345678', N'lananh@email.com', N'$2a$10$NgsNjrRb637ghlDZct04PeWt91d7ilCBmeRZYP2O6A/5QyvUIrhcu', '2026-06-10T23:44:29.206'),
-(2, N'KH002', N'Phạm Thị Hương', 1, '1998-07-22', N'0923456789', N'huong@email.com', N'$2a$10$ODu0aFkPU/3g7rm.k2CNMemX5S8xX1pQyK9wre2.m3H38pdJgO//K', '2026-06-10T23:44:29.206'),
-(3, N'KH003', N'Lê Văn Minh', 1, '1992-11-08', N'0934567890', N'minh@email.com', N'$2a$10$TtnHfT8nBplciIuAZBeBzeB5bCClZ3hYtKSgZXfyvNryoHVBa5SXS', '2026-06-10T23:44:29.206'),
-(4, N'KH00004', N'Test User', NULL, NULL, N'0901234567', N'test@zestia.vn', N'$2a$10$v57XvllkZqAlI0bAOZOZ4u5I/uXqKdzhesaLfCRhyRVj9FyUmBzxO', '2026-06-11T14:02:40.926'),
-(5, N'KH005', N'Nguyễn Gia Bảo', NULL, NULL, N'0900000005', N'nguyengiabaoo2008@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
-(6, N'KH006', N'Ngọc Anh', NULL, NULL, N'0900000006', N'ngocanh2701ss@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
-(7, N'KH007', N'Hoàng Anh Minh', NULL, NULL, N'0900000007', N'hoanganhminh110706@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
-(8, N'KH008', N'Thủy NP', NULL, NULL, N'0900000008', N'Thuynpth06788@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
-(9, N'KH009', N'Tony VN', NULL, NULL, N'0900000009', N'tonyvn081106@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
-(10, N'KH010', N'Nguyễn Thành', NULL, NULL, N'0900000010', N'nguyenthanh.hn090307@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
-(11, N'KH011', N'Bảo Nguyễn', NULL, NULL, N'0900000011', N'baongts01859@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000');
+(1, N'KH001', N'Nguyễn Lan Anh', 0, '1995-03-15', N'0918263745', N'lananh.nguyen@zestia.vn', N'$2a$10$NgsNjrRb637ghlDZct04PeWt91d7ilCBmeRZYP2O6A/5QyvUIrhcu', '2026-06-10T23:44:29.206'),
+(2, N'KH002', N'Phạm Thị Hương', 0, '1998-07-22', N'0983157462', N'huong.pham@zestia.vn', N'$2a$10$ODu0aFkPU/3g7rm.k2CNMemX5S8xX1pQyK9wre2.m3H38pdJgO//K', '2026-06-10T23:44:29.206'),
+(3, N'KH003', N'Lê Văn Minh', 1, '1992-11-08', N'0936724185', N'minh.le@zestia.vn', N'$2a$10$TtnHfT8nBplciIuAZBeBzeB5bCClZ3hYtKSgZXfyvNryoHVBa5SXS', '2026-06-10T23:44:29.206'),
+(4, N'KH004', N'Đỗ Minh Châu', 0, '2000-10-06', N'0962847315', N'minhchau.do@zestia.vn', N'$2a$10$v57XvllkZqAlI0bAOZOZ4u5I/uXqKdzhesaLfCRhyRVj9FyUmBzxO', '2026-06-11T14:02:40.926'),
+(5, N'KH005', N'Nguyễn Gia Bảo', 1, '2001-11-24', N'0982573146', N'nguyengiabaoo2008@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(6, N'KH006', N'Trần Ngọc Anh', 0, '2001-01-27', N'0917352684', N'ngocanh2701ss@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(7, N'KH007', N'Hoàng Anh Minh', 1, '2002-07-11', N'0965728431', N'hoanganhminh110706@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(8, N'KH008', N'Nguyễn Phương Thủy', 0, '2000-06-18', N'0934286157', N'Thuynpth06788@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(9, N'KH009', N'Trần Anh Tuấn', 1, '2001-11-08', N'0973615284', N'tonyvn081106@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(10, N'KH010', N'Nguyễn Thành', 1, '2003-03-09', N'0864273159', N'nguyenthanh.hn090307@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000'),
+(11, N'KH011', N'Nguyễn Bảo Nam', 1, '2001-05-19', N'0926384175', N'baongts01859@gmail.com', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:30:00.000');
 SET IDENTITY_INSERT [dbo].[Khach_hang] OFF;
 END
 GO
@@ -289,7 +289,7 @@ INSERT INTO [dbo].[loai_san_pham] ([id], [ten_loai_san_pham], [trang_thai], [mo_
 (2, N'Quần & Jeans', 1, N'Quần tây, quần jeans, quần culottes, quần short cao cấp', '2026-06-10T23:44:29.116'),
 (3, N'Váy & Đầm', 1, N'Váy dạ hội, đầm dạo phố, đầm xòe, đầm ôm thanh lịch', '2026-06-10T23:44:29.116'),
 (4, N'Phụ kiện thời trang', 1, N'Túi xách, thắt lưng, khăn lụa, mũ thời trang', '2026-06-10T23:44:29.116'),
-(5, N'Trang phục công sở', 1, N'Set trang phục công sở thanh lịch, chuyên nghiệp', '2026-06-10T23:44:29.116'),
+(5, N'Trang phục công sở', 1, N'Các thiết kế công sở riêng lẻ, thanh lịch và chuyên nghiệp', '2026-06-10T23:44:29.116'),
 (6, N'Trang phục dự tiệc', 1, N'Thiết kế dành cho tiệc tối, sinh nhật và các dịp gặp gỡ.', '2026-06-10T23:44:29.116'),
 (7, N'Áo khoác & Blazer', 1, N'Áo khoác dạ, blazer công sở, áo khoác mỏng cao cấp', '2026-06-10T23:44:29.116');
 SET IDENTITY_INSERT [dbo].[loai_san_pham] OFF;
@@ -429,8 +429,8 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Giam_gia])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Giam_gia] ON;
 INSERT INTO [dbo].[Giam_gia] ([id], [ma_giam_gia], [ten_giam_gia], [gia_tri_don_toi_thieu], [gio_tri_giam], [phan_tram_giam], [giam_toi_da], [so_luong], [ngay_bat_dau], [ngay_ket_thuc], [trang_thai], [ngay_tao]) VALUES
-(1, N'ZESTIA10', N'Giảm 10% đơn đầu tiên', 500000.00, NULL, 10.00, 200000.00, 100, '2025-01-01', '2026-08-31T23:59:59', 1, '2026-06-10T23:44:29.303'),
-(2, N'FREESHIP', N'Miễn phí vận chuyển', 300000.00, NULL, NULL, NULL, 200, '2025-01-01', '2026-08-31T23:59:59', 1, '2026-06-10T23:44:29.303'),
+(1, N'ZESTIA10', N'Giảm 10% đơn đầu tiên', 500000.00, NULL, 10.00, 200000.00, 100, '2025-01-01', '2026-09-30T23:59:59', 1, '2026-06-10T23:44:29.303'),
+(2, N'FREESHIP', N'Miễn phí vận chuyển', 300000.00, NULL, NULL, NULL, 200, '2025-01-01', '2026-09-30T23:59:59', 1, '2026-06-10T23:44:29.303'),
 (3, N'SUMMER20', N'Giảm 20% hè rực rỡ', 1000000.00, NULL, 20.00, 500000.00, 50, '2025-01-01', '2026-08-31T23:59:59', 1, '2026-06-10T23:44:29.303');
 SET IDENTITY_INSERT [dbo].[Giam_gia] OFF;
 END
@@ -463,7 +463,7 @@ INSERT INTO [dbo].[san_pham] ([id], [id_nha_cung_cap], [id_loai_san_pham], [id_c
 (2, 1, 2, 3, 1, N'QJN001', N'Quần Jeans Wide Leg Thời Trang', NULL, 1, N'Quần jeans ống rộng tôn dáng trẻ trung cá tính', '2026-06-10T23:44:29.150'),
 (3, 2, 3, 2, 2, N'VDH001', N'Váy Dạ Hội Gấm Hoàng Gia', NULL, 1, N'Váy dạ hội chất liệu gấm cao cấp cho những dịp đặc biệt', '2026-06-10T23:44:29.150'),
 (4, 1, 4, 4, 1, N'PKT001', N'Túi Xách Da Nữ Zestia Premium', NULL, 1, N'Túi xách da cao cấp phom dáng hiện đại sang trọng', '2026-06-10T23:44:29.150'),
-(5, 2, 5, 5, 3, N'TCS001', N'Set Áo Blazer & Quần Tây Công Sở', NULL, 1, N'Set trang phục công sở đũi cao cấp thoáng mát hiện đại', '2026-06-10T23:44:29.150'),
+(5, 2, 5, 5, 3, N'TCS001', N'Áo Blazer Đũi Công Sở Thanh Lịch', NULL, 1, N'Áo blazer đũi cao cấp, thoáng mát và hiện đại', '2026-06-10T23:44:29.150'),
 (6, 1, 6, 1, 2, N'DTP001', N'Đầm Dự Tiệc Lụa Trắng Tinh Khôi', NULL, 1, N'Đầm lụa tơ tằm trắng tinh tế, phong cách dự tiệc thanh lịch', '2026-06-10T23:44:29.150'),
 (9, 2, 1, 1, NULL, N'ASM002', N'Áo Kiểu Lụa Tơ Tằm Hoàng Gia', NULL, 1, N'Áo kiểu lụa tơ tằm cao cấp với họa tiết thêu thủ công tinh tế.', '2026-06-08T13:25:51.276'),
 (10, 1, 1, 2, NULL, N'ASM003', N'Áo Kiểu Voan Cách Điệu Nữ Tính', NULL, 1, N'Áo kiểu chất liệu voan mềm mại, thiết kế xếp nếp duyên dáng.', '2026-04-14T13:25:51.366'),
@@ -477,10 +477,10 @@ INSERT INTO [dbo].[san_pham] ([id], [id_nha_cung_cap], [id_loai_san_pham], [id_c
 (18, 1, 3, 1, NULL, N'VDH003', N'Váy Dạ Hội Đen Huyền Bí', NULL, 1, N'Sự quyến rũ của sắc đen trên nền lụa satin, tạo nên vẻ đẹp bí ẩn.', '2026-03-28T13:25:51.703'),
 (19, 2, 3, 2, NULL, N'VDH004', N'Váy Dạ Hội Xẻ Đùi Sang Trọng', NULL, 1, N'Thiết kế xẻ đùi gợi cảm nhưng vẫn giữ được sự thanh lịch.', '2026-05-03T13:25:51.734'),
 (20, 2, 3, 4, NULL, N'VDH005', N'Váy Dạ Hội Ren Trắng Ngà', NULL, 1, N'Ren trắng ngà tinh khiết, lý tưởng cho các sự kiện trang trọng.', '2026-04-29T13:25:51.773'),
-(21, 1, 5, 6, NULL, N'TCS002', N'Set Đầm Công Sở Thanh Lịch', NULL, 1, N'Thiết kế chuyên nghiệp, thoải mái suốt ngày làm việc.', '2026-05-19T13:25:51.834'),
-(22, 2, 5, 5, NULL, N'TCS003', N'Set Áo Kiểu & Quần Tây Công Sở', NULL, 1, N'Tôn dáng thanh lịch nhẹ nhàng trong mọi cuộc họp.', '2026-03-21T13:25:51.899'),
-(23, 2, 5, 1, NULL, N'TCS004', N'Set Trang Phục Kẻ Sọc Cao Cấp', NULL, 1, N'Họa tiết kẻ sọc cổ điển, phong cách Âu sang trọng.', '2026-05-07T13:25:51.940'),
-(24, 2, 5, 2, NULL, N'TCS005', N'Set Trang Phục Dáng Chữ A', NULL, 1, N'Dáng chữ A thanh thoát, phù hợp cho nhiều vóc dáng.', '2026-04-14T13:25:51.972'),
+(21, 1, 5, 6, NULL, N'TCS002', N'Đầm Công Sở Cổ Tròn Thanh Lịch', NULL, 1, N'Đầm liền thân chuyên nghiệp, thoải mái suốt ngày làm việc.', '2026-05-19T13:25:51.834'),
+(22, 2, 5, 5, NULL, N'TCS003', N'Áo Kiểu Cổ Đức Công Sở', NULL, 1, N'Áo kiểu tôn dáng thanh lịch, nhẹ nhàng trong mọi cuộc họp.', '2026-03-21T13:25:51.899'),
+(23, 2, 5, 1, NULL, N'TCS004', N'Áo Sơ Mi Kẻ Sọc Cao Cấp', NULL, 1, N'Áo sơ mi họa tiết kẻ sọc cổ điển, mang phong cách Âu thanh lịch.', '2026-05-07T13:25:51.940'),
+(24, 2, 5, 2, NULL, N'TCS005', N'Váy Công Sở Dáng Chữ A', NULL, 1, N'Váy chữ A thanh thoát, phù hợp với nhiều vóc dáng.', '2026-04-14T13:25:51.972'),
 (25, 1, 4, 1, NULL, N'PKT002', N'Túi Xách Lụa Thêu Hoa', NULL, 1, N'Túi xách lụa thêu thủ công cao cấp cho ngày trọng đại.', '2026-05-13T13:25:51.993'),
 (26, 1, 4, 4, NULL, N'PKT003', N'Thắt Lưng Da Nữ Zestia Gold', NULL, 1, N'Thắt lưng da cao cấp khóa mạ vàng tinh tế phong cách hoàng gia.', '2026-06-04T13:25:52.053'),
 (27, 1, 4, 2, NULL, N'PKT004', N'Khăn Lụa Vuông Zestia Signature', NULL, 1, N'Khăn lụa vuông họa tiết độc quyền tôn vóc dáng và thần thái.', '2026-04-26T13:25:52.095'),
@@ -514,11 +514,11 @@ INSERT INTO [dbo].[san_pham] ([id], [id_nha_cung_cap], [id_loai_san_pham], [id_c
 (55, 1, 1, 4, NULL, N'ASM012', N'Áo Sơ Mi Caro Preppy', NULL, 1, N'Cotton kẻ caro đỏ, phong cách preppy.', '2026-06-11T20:19:36.690'),
 (56, 2, 1, 4, NULL, N'ASM013', N'Áo Polo Thể Thao Nữ', NULL, 1, N'Cotton co giãn, thiết kế áo polo thể thao khỏe khoắn.', '2026-06-11T20:19:36.690'),
 (57, 1, 1, 3, NULL, N'ASM014', N'Áo Voan Nhẹ Mát Mùa Hè', NULL, 1, N'Voan nhẹ mát, phù hợp mùa hè.', '2026-06-11T20:19:36.690'),
-(58, 1, 5, 1, NULL, N'TCS006', N'Set Áo Lụa & Váy Bút Chì', NULL, 1, N'Lụa xanh navy cổ tim, phom ôm công sở thanh lịch.', '2026-06-11T20:19:36.723'),
-(59, 2, 5, 4, NULL, N'TCS007', N'Set Sơ Mi & Quần Tây Dáng A', NULL, 1, N'Set trang phục công sở dáng A, phù hợp mọi vóc dáng.', '2026-06-11T20:19:36.723'),
-(60, 1, 5, 3, NULL, N'TCS008', N'Set Voan Xếp Nếp Công Sở', NULL, 1, N'Voan xếp nếp tôn dáng, tông nude nhã nhặn công sở.', '2026-06-11T20:19:36.723'),
-(61, 2, 5, 5, NULL, N'TCS009', N'Set Đũi Cổ Tròn Công Sở', NULL, 1, N'Đũi nâu nhạt cổ tròn, đơn giản mà tinh tế.', '2026-06-11T20:19:36.723'),
-(62, 1, 5, 1, NULL, N'TCS010', N'Set Lụa Đen Sang Trọng Công Sở', NULL, 1, N'Lụa đen bóng mượt sang trọng hiện đại.', '2026-06-11T20:19:36.723');
+(58, 1, 5, 1, NULL, N'TCS006', N'Áo Lụa Cổ Tim Công Sở', NULL, 1, N'Áo lụa xanh navy cổ tim, phom ôm nhẹ thanh lịch.', '2026-06-11T20:19:36.723'),
+(59, 2, 5, 4, NULL, N'TCS007', N'Áo Sơ Mi Dáng A Thanh Lịch', NULL, 1, N'Áo sơ mi công sở dáng A, phù hợp với nhiều vóc dáng.', '2026-06-11T20:19:36.723'),
+(60, 1, 5, 3, NULL, N'TCS008', N'Áo Voan Xếp Nếp Công Sở', NULL, 1, N'Áo voan xếp nếp tôn dáng, tông nude nhã nhặn.', '2026-06-11T20:19:36.723'),
+(61, 2, 5, 5, NULL, N'TCS009', N'Đầm Đũi Cổ Tròn Công Sở', NULL, 1, N'Đầm đũi nâu nhạt cổ tròn, đơn giản mà tinh tế.', '2026-06-11T20:19:36.723'),
+(62, 1, 5, 1, NULL, N'TCS010', N'Đầm Lụa Dáng Suông Thanh Lịch', NULL, 1, N'Đầm lụa dáng suông bóng mượt, sang trọng và hiện đại.', '2026-06-11T20:19:36.723');
 SET IDENTITY_INSERT [dbo].[san_pham] OFF;
 END
 GO
@@ -1545,26 +1545,26 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Hoa_don])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Hoa_don] ON;
 INSERT INTO [dbo].[Hoa_don] ([id], [id_khach_hang], [id_giam_gia], [id_nhan_vien], [ma_hoa_don], [tong_tien], [phi_van_chuyen], [giam_gia_voucher], [hinh_thuc_nhan_hang], [dia_chi_giao_hang], [trang_thai], [hinh_thuc_thanh_toan], [phuong_thuc_thanh_toan_online], [ghi_chu], [ngay_tao], [da_thanh_toan]) VALUES
-(1, 1, NULL, 2, N'HD-2025-0001', 6070000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 0, N'MOMO', NULL, NULL, '2026-06-10T23:44:29.256', 0),
-(2, 1, NULL, 2, N'HD-2025-0002', 8580000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 1, N'COD', NULL, NULL, '2026-06-10T23:44:29.256', 0),
-(3, 2, NULL, 2, N'HD-2025-0003', 4290000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 2, N'Momo', NULL, NULL, '2026-06-10T23:44:29.256', 0),
-(4, 3, NULL, 2, N'HD-2025-0004', 1290000.00, 0.00, 0.00, 2, NULL, 4, N'Ti?n m?t', NULL, NULL, '2026-06-10T23:44:29.256', 0),
-(5, 2, NULL, 2, N'HD-2025-0005', 2780000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', 3, N'MOMO', NULL, NULL, '2026-06-10T23:44:29.256', 1),
-(6, NULL, NULL, NULL, N'HD2606111347176783', 2890000.00, 0.00, 0.00, 1, N'Ha Noi', 0, N'MOMO', NULL, NULL, '2026-06-11T13:47:17.973', 0),
-(7, 1, NULL, NULL, N'HD2606111353090522', 9960000.00, 0.00, 0.00, 1, N'123 Nguyen Hue, Quan 1, TP.HCM', 0, N'COD', NULL, N'', '2026-06-11T13:53:09.543', 0),
-(8, NULL, NULL, NULL, N'HD2606111354569125', 1590000.00, 0.00, 0.00, 1, N'456 Le Loi, Q1, HCM', 1, N'MOMO', N'MOMO', NULL, '2026-06-11T13:54:56.363', 1),
-(9, 2, NULL, NULL, N'HD2606111532350499', 8960000.00, 0.00, 0.00, 1, N'nguyen thi due', 0, N'MOMO', NULL, N'', '2026-06-11T15:32:35.619', 0),
-(10, 2, NULL, NULL, N'HD2606112024161968', 2890000.00, 0.00, 0.00, 1, N'Nguyen Thi Due', 0, N'MOMO', NULL, N'', '2026-06-11T20:24:16.605', 0),
-(11, 2, NULL, NULL, N'HD2606112025033498', 1590000.00, 0.00, 0.00, 1, N'dsgdsagsdfa', 0, N'COD', NULL, N'', '2026-06-11T20:25:03.378', 0),
-(12, 2, NULL, NULL, N'HD2606112025367305', 2290000.00, 0.00, 0.00, 1, N'sdfh', 0, N'MOMO', NULL, N'', '2026-06-11T20:25:36.473', 0),
-(13, 2, NULL, NULL, N'HD2606112042420187', 1590000.00, 0.00, 0.00, 1, N'rutyj', 0, N'MOMO', NULL, N'', '2026-06-11T20:42:42.031', 0),
-(14, 2, NULL, NULL, N'HD2606112100518437', 450000.00, 0.00, 0.00, 1, N'dfgbvv', 0, N'COD', NULL, N'', '2026-06-11T21:00:51.411', 0),
-(15, 2, NULL, NULL, N'HD2606132334116643', 2890000.00, 0.00, 0.00, 1, N'áduiygthjkns', 0, N'MOMO', NULL, N'', '2026-06-13T23:34:11.591', 0),
-(16, 2, NULL, NULL, N'HD2606132335439207', 2890000.00, 0.00, 0.00, 1, N'trygjhk', 0, N'MOMO', NULL, N'', '2026-06-13T23:35:44.008', 0),
-(17, NULL, NULL, NULL, N'HD2606132337193159', 4290000.00, 0.00, 0.00, 1, N'fdg', 0, N'MOMO', NULL, N'', '2026-06-13T23:37:19.247', 0),
-(18, NULL, NULL, NULL, N'HD2606132339031838', 4480000.00, 0.00, 0.00, 1, N'fsdhsdfhsdfh', 0, N'MOMO', NULL, N'', '2026-06-13T23:39:03.522', 0),
-(19, 2, NULL, NULL, N'HD2606141048179586', 2890000.00, 0.00, 0.00, 1, N'nịuodasfkugyhtadsfokjhig', 3, N'MOMO', NULL, N'', '2026-06-14T10:48:17.814', 1),
-(20, 2, NULL, NULL, N'HD2606160939088988', 2890000.00, 0.00, 0.00, 1, N'she', 0, N'MOMO', NULL, N'', '2026-06-16T09:39:08.022', 0);
+(1, 1, NULL, 2, N'HD260610084501', 6070000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 0, N'MOMO', NULL, N'Gọi trước khi giao hàng', '2026-06-10T08:45:29.256', 0),
+(2, 1, NULL, 2, N'HD260610101502', 8580000.00, 0.00, 0.00, 1, N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội', 1, N'COD', NULL, N'Giao trong giờ hành chính', '2026-06-10T10:15:29.256', 0),
+(3, 2, NULL, 2, N'HD260610134003', 4290000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Bến Nghé, Quận 1, TP. Hồ Chí Minh', 2, N'MOMO', NULL, N'Khách nhận hàng sau 17 giờ', '2026-06-10T13:40:29.256', 0),
+(4, 3, NULL, 2, N'HD260610160504', 1290000.00, 0.00, 0.00, 0, N'Mua trực tiếp tại cửa hàng', 4, N'Tiền mặt', NULL, N'Khách mua trực tiếp tại cửa hàng', '2026-06-10T16:05:29.256', 1),
+(5, 2, NULL, 2, N'HD260610182005', 2780000.00, 0.00, 0.00, 1, N'45 Nguyễn Huệ, Bến Nghé, Quận 1, TP. Hồ Chí Minh', 3, N'MOMO', N'MOMO', N'Giao hàng cẩn thận, tránh làm nhăn váy', '2026-06-10T18:20:29.256', 1),
+(6, 3, NULL, NULL, N'HD2606111347176783', 2890000.00, 0.00, 0.00, 1, N'39 Nguyễn Thị Duệ, Yên Hòa, Cầu Giấy, Hà Nội', 0, N'MOMO', NULL, N'Gọi trước khi giao hàng', '2026-06-11T13:47:17.973', 0),
+(7, 1, NULL, NULL, N'HD2606111353090522', 9960000.00, 0.00, 0.00, 1, N'18 Trung Kính, Yên Hòa, Cầu Giấy, Hà Nội', 0, N'COD', NULL, N'Giao trong giờ hành chính', '2026-06-11T13:53:09.543', 0),
+(8, 3, NULL, NULL, N'HD2606111354569125', 1590000.00, 0.00, 0.00, 1, N'72 Trần Thái Tông, Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 1, N'MOMO', N'MOMO', N'Để hàng tại quầy lễ tân', '2026-06-11T13:54:56.363', 1),
+(9, 2, NULL, NULL, N'HD2606111532350499', 8960000.00, 0.00, 0.00, 1, N'105 Nguyễn Khang, Yên Hòa, Cầu Giấy, Hà Nội', 0, N'MOMO', NULL, N'Liên hệ qua điện thoại trước khi giao', '2026-06-11T15:32:35.619', 0),
+(10, 2, NULL, NULL, N'HD2606112024161968', 2890000.00, 0.00, 0.00, 1, N'26 Thành Thái, Dịch Vọng, Cầu Giấy, Hà Nội', 0, N'MOMO', NULL, N'Giao trong giờ hành chính', '2026-06-11T20:24:16.605', 0),
+(11, 2, NULL, NULL, N'HD2606112025033498', 1590000.00, 0.00, 0.00, 1, N'88 Nguyễn Phong Sắc, Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 0, N'COD', NULL, N'Gọi trước khi giao hàng', '2026-06-11T20:25:03.378', 0),
+(12, 2, NULL, NULL, N'HD2606112025367305', 2290000.00, 0.00, 0.00, 1, N'34 Trần Quốc Vượng, Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 0, N'MOMO', NULL, N'Để hàng tại quầy lễ tân', '2026-06-11T20:25:36.473', 0),
+(13, 2, NULL, NULL, N'HD2606112042420187', 1590000.00, 0.00, 0.00, 1, N'62 Duy Tân, Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 0, N'MOMO', NULL, N'Khách nhận hàng sau 17 giờ', '2026-06-11T20:42:42.031', 0),
+(14, 2, NULL, NULL, N'HD2606112100518437', 450000.00, 0.00, 0.00, 1, N'15 Mạc Thái Tổ, Yên Hòa, Cầu Giấy, Hà Nội', 0, N'COD', NULL, N'Giao trong giờ hành chính', '2026-06-11T21:00:51.411', 0),
+(15, 2, NULL, NULL, N'HD2606132334116643', 2890000.00, 0.00, 0.00, 1, N'41 Trung Yên 11, Trung Hòa, Cầu Giấy, Hà Nội', 0, N'MOMO', NULL, N'Gọi trước khi giao hàng', '2026-06-13T23:34:11.591', 0),
+(16, 2, NULL, NULL, N'HD2606132335439207', 2890000.00, 0.00, 0.00, 1, N'20 Nguyễn Chánh, Trung Hòa, Cầu Giấy, Hà Nội', 0, N'MOMO', NULL, N'Giao trong giờ hành chính', '2026-06-13T23:35:44.008', 0),
+(17, 3, NULL, NULL, N'HD2606132337193159', 4290000.00, 0.00, 0.00, 1, N'12 Bạch Đằng, Thạch Thang, Hải Châu, Đà Nẵng', 0, N'MOMO', NULL, N'Liên hệ qua điện thoại trước khi giao', '2026-06-13T23:37:19.247', 0),
+(18, 1, NULL, NULL, N'HD2606132339031838', 4480000.00, 0.00, 0.00, 1, N'36 Hàng Bài, Hoàn Kiếm, Hà Nội', 0, N'MOMO', NULL, N'Giao hàng cẩn thận, tránh làm nhăn váy', '2026-06-13T23:39:03.522', 0),
+(19, 2, NULL, NULL, N'HD2606141048179586', 2890000.00, 0.00, 0.00, 1, N'90 Láng Hạ, Đống Đa, Hà Nội', 3, N'MOMO', N'MOMO', N'Khách nhận hàng sau 17 giờ', '2026-06-14T10:48:17.814', 1),
+(20, 2, NULL, NULL, N'HD2606160939088988', 2890000.00, 0.00, 0.00, 1, N'55 Thái Hà, Đống Đa, Hà Nội', 0, N'MOMO', NULL, N'Gọi trước khi giao hàng', '2026-06-16T09:39:08.022', 0);
 SET IDENTITY_INSERT [dbo].[Hoa_don] OFF;
 END
 GO
@@ -1639,11 +1639,11 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Lich_su_thanh_toan])
 BEGIN
 SET IDENTITY_INSERT [dbo].[Lich_su_thanh_toan] ON;
 INSERT INTO [dbo].[Lich_su_thanh_toan] ([id], [id_hoa_don], [so_tien], [phuong_thuc], [ma_giao_dich], [trang_thai], [noi_dung], [ngay_tao]) VALUES
-(1, 1, 6070000.00, N'MOMO', N'MOMO20250101001', N'success', NULL, '2026-06-10T23:44:29.296'),
-(2, 3, 4290000.00, N'Momo', N'MOMO20250115001', N'success', NULL, '2026-06-10T23:44:29.296'),
-(3, 4, 1290000.00, N'Tiền mặt', NULL, N'success', NULL, '2026-06-10T23:44:29.296'),
-(4, 5, 2780000.00, N'MOMO', N'MOMO20250120001', N'pending', NULL, '2026-06-10T23:44:29.296'),
-(5, 8, 1590000.00, N'MOMO', N'DEMO123456', N'SUCCESS', N'Thanh toán MoMo thành công - HD2606111354569125', '2026-06-11T13:55:09.146');
+(1, 1, 6070000.00, N'MOMO', N'MOMO260610085001', N'success', N'Thanh toán MoMo thành công', '2026-06-10T08:50:29.296'),
+(2, 3, 4290000.00, N'MOMO', N'MOMO260610134503', N'success', N'Thanh toán MoMo thành công', '2026-06-10T13:45:29.296'),
+(3, 4, 1290000.00, N'Tiền mặt', NULL, N'success', N'Đã thu tiền tại quầy', '2026-06-10T16:05:29.296'),
+(4, 5, 2780000.00, N'MOMO', N'MOMO260610182505', N'pending', N'Đang chờ kết quả thanh toán MoMo', '2026-06-10T18:25:29.296'),
+(5, 8, 1590000.00, N'MOMO', N'MOMO260611135509146', N'SUCCESS', N'Thanh toán MoMo thành công', '2026-06-11T13:55:09.146');
 SET IDENTITY_INSERT [dbo].[Lich_su_thanh_toan] OFF;
 END
 GO
@@ -1898,8 +1898,8 @@ END
 GO
 
 -- ============================================================
--- ZESTIA DEMO REFRESH 2026
--- Phan nay chuan hoa du lieu mau, role, voucher, don offline,
+-- ZESTIA INITIAL OPERATING DATA 2026
+-- Phan nay chuan hoa du lieu khoi tao, role, voucher, don offline,
 -- don thanh toan that bai va bien the san pham theo logic moi.
 -- ============================================================
 USE fashion_shop;
@@ -1908,8 +1908,8 @@ GO
 SET NOCOUNT ON;
 GO
 
-/* Zestia demo data refresh - 2026
-   Run after backing up the database. The shared demo password is "123456"
+/* Zestia initial operating data - 2026
+   Run after backing up the database. The shared local password is "123456"
    and every password value below is stored as a BCrypt hash.
 */
 
@@ -1961,7 +1961,7 @@ BEGIN
     INSERT INTO dbo.Nhan_vien
         (id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung, mat_khau, tinh_trang_lam_viec, ngay_tao)
     VALUES
-        (@adminRoleId, N'NV001', N'Nguyễn Tiến Thành', 1, '1998-01-10', N'0900000001', N'Hà Nội', N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T09:00:00');
+        (@adminRoleId, N'NV001', N'Nguyễn Tiến Thành', 1, '1998-01-10', N'0869167207', N'39 Nguyễn Thị Duệ, Yên Hòa, Cầu Giấy, Hà Nội', N'admin@zestia.vn', N'admin', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-06-10T09:00:00');
 END
 ELSE
 BEGIN
@@ -1978,7 +1978,7 @@ IF EXISTS (SELECT 1 FROM dbo.Nhan_vien WHERE ten_nguoi_dung = N'nv_pos')
 BEGIN
     UPDATE dbo.Nhan_vien
     SET id_vai_tro = @staffRoleId,
-        ho_va_ten = N'Linh Mai - Nhân viên bán hàng',
+        ho_va_ten = N'Mai Khánh Linh',
         ma_nhan_vien = CASE
             WHEN NOT EXISTS (
                 SELECT 1 FROM dbo.Nhan_vien nv_other
@@ -2002,7 +2002,7 @@ ELSE IF EXISTS (SELECT 1 FROM dbo.Nhan_vien WHERE ma_nhan_vien = N'NV004' OR ema
 BEGIN
     UPDATE dbo.Nhan_vien
     SET id_vai_tro = @staffRoleId,
-        ho_va_ten = N'Linh Mai - Nhân viên bán hàng',
+        ho_va_ten = N'Mai Khánh Linh',
         ma_nhan_vien = N'NV004',
         email = N'nv.pos@zestia.vn',
         ten_nguoi_dung = N'nv_pos',
@@ -2020,25 +2020,25 @@ BEGIN
     INSERT INTO dbo.Nhan_vien
         (id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung, mat_khau, tinh_trang_lam_viec, ngay_tao)
     VALUES
-        (@staffRoleId, N'NV004', N'Linh Mai - Nhân viên bán hàng', 0, '2001-05-18', N'0900000002', N'Zestia Flagship Store', N'nv.pos@zestia.vn', N'nv_pos', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-08-03T09:00:00');
+        (@staffRoleId, N'NV004', N'Mai Khánh Linh', 0, '2001-05-18', N'0962517843', N'105 Nguyễn Khang, Yên Hòa, Cầu Giấy, Hà Nội', N'nv.pos@zestia.vn', N'nv_pos', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', 1, '2026-08-03T09:00:00');
 END
 
-IF NOT EXISTS (SELECT 1 FROM dbo.Khach_hang WHERE email = N'khach.demo@zestia.vn')
+IF NOT EXISTS (SELECT 1 FROM dbo.Khach_hang WHERE email = N'minhanh.tran@zestia.vn')
 BEGIN
     INSERT INTO dbo.Khach_hang
         (ma_khach_hang, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, email, mat_khau, ngay_tao)
     VALUES
-        (N'KHDEMO', N'Minh Anh', 0, '2002-09-20', N'0911111111', N'khach.demo@zestia.vn', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:00:00');
+        (N'KH012', N'Trần Minh Anh', 0, '2002-09-20', N'0918572643', N'minhanh.tran@zestia.vn', N'$2a$10$csfRWdR./6P2bikv1yGV5uoJSBEiNQFgrdM9tqkWFv5CDE.BasFY6', '2026-07-10T09:00:00');
 END
 
-DECLARE @demoCustomerId INT = (SELECT TOP 1 id FROM dbo.Khach_hang WHERE email = N'khach.demo@zestia.vn');
-IF @demoCustomerId IS NOT NULL
-AND NOT EXISTS (SELECT 1 FROM dbo.Dia_chi WHERE id_khach_hang = @demoCustomerId AND mac_dinh = 1)
+DECLARE @primaryCustomerId INT = (SELECT TOP 1 id FROM dbo.Khach_hang WHERE email = N'minhanh.tran@zestia.vn');
+IF @primaryCustomerId IS NOT NULL
+AND NOT EXISTS (SELECT 1 FROM dbo.Dia_chi WHERE id_khach_hang = @primaryCustomerId AND mac_dinh = 1)
 BEGIN
     INSERT INTO dbo.Dia_chi
         (id_khach_hang, tinh_thanh_pho, quan_huyen, xa_phuong, duong, mac_dinh)
     VALUES
-        (@demoCustomerId, N'Thành phố Hà Nội', N'Quận Cầu Giấy', N'Phường Dịch Vọng', N'24 Xuân Thủy', 1);
+        (@primaryCustomerId, N'Thành phố Hà Nội', N'Quận Cầu Giấy', N'Phường Dịch Vọng', N'24 Xuân Thủy', 1);
 END
 
 UPDATE dbo.Giam_gia
@@ -2061,11 +2061,11 @@ WHEN MATCHED THEN
         giam_toi_da = src.giam_toi_da,
         so_luong = src.so_luong,
         ngay_bat_dau = CAST('2026-07-30T00:00:00' AS datetime2),
-        ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2),
+        ngay_ket_thuc = CAST('2026-09-30T23:59:59' AS datetime2),
         trang_thai = 1
 WHEN NOT MATCHED THEN
     INSERT (ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao)
-    VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, CAST('2026-07-30T00:00:00' AS datetime2), CAST('2026-08-31T23:59:59' AS datetime2), 1, '2026-07-30T09:00:00');
+    VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, CAST('2026-07-30T00:00:00' AS datetime2), CAST('2026-09-30T23:59:59' AS datetime2), 1, '2026-07-30T09:00:00');
 
 -- July 2026 Vouchers
 MERGE dbo.Giam_gia AS target
@@ -2096,7 +2096,7 @@ WHEN NOT MATCHED THEN
     INSERT (ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao)
     VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, src.ngay_bat_dau, src.ngay_ket_thuc, 1, '2026-06-25T09:00:00');
 
--- August 2026 vouchers cover both website checkout and POS demonstrations.
+-- August 2026 vouchers cover both website checkout and POS sales.
 MERGE dbo.Giam_gia AS target
 USING (VALUES
     (N'AUGUST10', N'Tháng 8 giảm 10% cho đơn từ 500K', 500000.00, NULL, 10.00, 150000.00, 240, '2026-08-01', '2026-08-31T23:59:59'),
@@ -2122,10 +2122,36 @@ WHEN NOT MATCHED THEN
     INSERT (ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao)
     VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, src.ngay_bat_dau, src.ngay_ket_thuc, 1, '2026-07-25T09:00:00');
 
+-- September 2026 vouchers keep website checkout and POS demonstrations active
+-- through the final day of the month without rewriting August history.
+MERGE dbo.Giam_gia AS target
+USING (VALUES
+    (N'SEPTEMBER10', N'Tháng 9 giảm 10% cho đơn từ 500K', 500000.00, NULL, 10.00, 150000.00, 260, '2026-09-01', '2026-09-30T23:59:59'),
+    (N'SEPTEMBER60', N'Tháng 9 giảm 60K cho đơn từ 900K', 900000.00, 60000.00, NULL, NULL, 200, '2026-09-01', '2026-09-30T23:59:59'),
+    (N'SEPTEMBERVIP', N'Khách hàng thân thiết tháng 9 giảm 15%', 1800000.00, NULL, 15.00, 450000.00, 100, '2026-09-01', '2026-09-30T23:59:59'),
+    (N'AUTUMNOFFICE', N'Ưu đãi trang phục công sở mùa thu', 800000.00, 90000.00, NULL, NULL, 180, '2026-09-01', '2026-09-30T23:59:59'),
+    (N'SEPPOS', N'Ưu đãi 30K khi mua tại quầy tháng 9', 500000.00, 30000.00, NULL, NULL, 320, '2026-09-01', '2026-09-30T23:59:59'),
+    (N'SEPFREESHIP', N'Hỗ trợ 30K phí giao hàng tháng 9', 300000.00, 30000.00, NULL, NULL, 280, '2026-09-01', '2026-09-30T23:59:59')
+) AS src(ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc)
+ON target.ma_giam_gia = src.ma_giam_gia
+WHEN MATCHED THEN
+    UPDATE SET
+        ten_giam_gia = src.ten_giam_gia,
+        gia_tri_don_toi_thieu = src.gia_tri_don_toi_thieu,
+        gio_tri_giam = src.gio_tri_giam,
+        phan_tram_giam = src.phan_tram_giam,
+        giam_toi_da = src.giam_toi_da,
+        so_luong = src.so_luong,
+        ngay_bat_dau = src.ngay_bat_dau,
+        ngay_ket_thuc = src.ngay_ket_thuc,
+        trang_thai = 1
+WHEN NOT MATCHED THEN
+    INSERT (ma_giam_gia, ten_giam_gia, gia_tri_don_toi_thieu, gio_tri_giam, phan_tram_giam, giam_toi_da, so_luong, ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao)
+    VALUES (src.ma_giam_gia, src.ten_giam_gia, src.gia_tri_don_toi_thieu, src.gio_tri_giam, src.phan_tram_giam, src.giam_toi_da, src.so_luong, src.ngay_bat_dau, src.ngay_ket_thuc, 1, '2026-08-28T09:00:00');
+
 UPDATE dbo.Giam_gia
 SET ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2)
 WHERE ma_giam_gia IN (
-    N'ZESTIA10', N'ZESTIA50', N'FREESHIP', N'SUMMER20',
     N'AUGUST10', N'AUGUST50', N'AUGUSTVIP', N'BACK2WORK', N'AUGPOS', N'AUGFREESHIP'
 )
   AND ngay_ket_thuc > CAST('2026-08-31T23:59:59' AS datetime2);
@@ -2164,6 +2190,48 @@ WHERE chieu_cao_nguoi_mau IS NULL
    OR can_nang_nguoi_mau IS NULL
    OR size_nguoi_mau IS NULL
    OR mo_ta_phom IS NULL;
+
+UPDATE dbo.loai_san_pham
+SET mo_ta = N'Các thiết kế công sở riêng lẻ, thanh lịch và chuyên nghiệp'
+WHERE id = 5;
+
+UPDATE product
+SET ten_san_pham = source.ten_san_pham,
+    mo_ta = source.mo_ta
+FROM dbo.san_pham product
+JOIN (VALUES
+    (5, N'Áo Blazer Đũi Công Sở Thanh Lịch', N'Áo blazer đũi cao cấp, thoáng mát và hiện đại'),
+    (11, N'Áo Khoác Blazer Gấm Nổi Bật', N'Áo blazer gấm cao cấp với đường may tinh tế, phong cách hiện đại.'),
+    (18, N'Váy Dạ Hội Satin Huyền Bí', N'Chất liệu lụa satin quyến rũ tạo nên vẻ đẹp bí ẩn.'),
+    (20, N'Váy Dạ Hội Ren Trang Nhã', N'Chất liệu ren tinh tế, lý tưởng cho các sự kiện trang trọng.'),
+    (21, N'Đầm Công Sở Cổ Tròn Thanh Lịch', N'Đầm liền thân chuyên nghiệp, thoải mái suốt ngày làm việc.'),
+    (22, N'Áo Kiểu Cổ Đức Công Sở', N'Áo kiểu tôn dáng thanh lịch, nhẹ nhàng trong mọi cuộc họp.'),
+    (23, N'Áo Sơ Mi Kẻ Sọc Cao Cấp', N'Áo sơ mi họa tiết kẻ sọc cổ điển, mang phong cách Âu thanh lịch.'),
+    (24, N'Váy Công Sở Dáng Chữ A', N'Váy chữ A thanh thoát, phù hợp với nhiều vóc dáng.'),
+    (31, N'Đầm Đi Tiệc Nhung Quý Phái', N'Chất nhung sang trọng, nổi bật trong đêm tiệc.'),
+    (32, N'Đầm Đi Tiệc Metallic Hiện Đại', N'Bề mặt metallic hiện đại, thu hút mọi ánh nhìn.'),
+    (33, N'Áo Sơ Mi Lụa Thêu Hoa', N'Lụa tơ tằm mềm mại với họa tiết thêu hoa tinh tế.'),
+    (34, N'Áo Khoác Blazer Gấm Hoàng Gia', N'Gấm dệt hoa văn cổ điển, phom blazer sang trọng.'),
+    (36, N'Áo Kiểu Voan Bay Bổng', N'Voan mỏng nhẹ bay bổng với họa tiết hoa nhỏ thanh nhã.'),
+    (37, N'Áo Khoác Dạ Nhung Quý Phái', N'Chất nhung mềm sang trọng, phù hợp dịp lễ hội thu đông.'),
+    (38, N'Áo Kiểu Lụa Ombre', N'Lụa loang màu ombre mềm mại và hiện đại.'),
+    (40, N'Áo Kiểu Voan Tay Phồng', N'Voan nhẹ với tay phồng và thiết kế cổ hiện đại.'),
+    (41, N'Áo Khoác Blazer Gấm Dáng Ngắn', N'Gấm dệt nổi bật với dáng blazer ngắn năng động.'),
+    (42, N'Quần Tây Đũi Vintage', N'Đũi mềm với nếp gấp cổ điển, mang phong cách vintage.'),
+    (43, N'Đầm Dạ Hội Đuôi Cá Sequin', N'Bề mặt sequin lấp lánh và phom đuôi cá quyến rũ.'),
+    (45, N'Váy Dạ Hội Nhung Xẻ Tà', N'Nhung sang trọng với đường xẻ tà cao thanh lịch.'),
+    (46, N'Váy Dạ Hội Lụa Đính Pha Lê', N'Lụa tơ tằm mềm mại với chi tiết đính pha lê tinh tế.'),
+    (47, N'Váy Dạ Hội Gấm Phượng Hoàng', N'Gấm cao cấp với hoa văn phượng hoàng nổi bật.'),
+    (49, N'Túi Xách Lụa Thêu Chỉ Vàng', N'Túi xách lụa thêu chỉ vàng thủ công.'),
+    (50, N'Cài Áo Gấm Truyền Thống Zestia', N'Cài áo gấm mang cảm hứng truyền thống trong thiết kế hiện đại.'),
+    (51, N'Mũ Nồi Nhung Tối Giản', N'Mũ nồi nhung tối giản và thanh lịch.'),
+    (55, N'Áo Sơ Mi Caro Preppy', N'Cotton kẻ caro trẻ trung theo phong cách preppy.'),
+    (58, N'Áo Lụa Cổ Tim Công Sở', N'Áo lụa cổ tim, phom ôm nhẹ thanh lịch.'),
+    (59, N'Áo Sơ Mi Dáng A Thanh Lịch', N'Áo sơ mi công sở dáng A, phù hợp với nhiều vóc dáng.'),
+    (60, N'Áo Voan Xếp Nếp Công Sở', N'Áo voan xếp nếp tôn dáng với phong thái công sở nhã nhặn.'),
+    (61, N'Đầm Đũi Cổ Tròn Công Sở', N'Đầm đũi cổ tròn, đơn giản mà tinh tế.'),
+    (62, N'Đầm Lụa Dáng Suông Thanh Lịch', N'Đầm lụa dáng suông bóng mượt, sang trọng và hiện đại.')
+) source(id, ten_san_pham, mo_ta) ON source.id = product.id;
 
 MERGE dbo.Huong_dan_kich_thuoc AS target
 USING (
@@ -2230,10 +2298,11 @@ SET hinh_thuc_nhan_hang = 0,
     dia_chi_giao_hang = N'Mua trực tiếp tại cửa hàng',
     id_nhan_vien = COALESCE(id_nhan_vien, @defaultStaffId),
     da_thanh_toan = 1,
-    ghi_chu = COALESCE(NULLIF(ghi_chu, N''), N'[Tại quầy] Dữ liệu demo đã chuẩn hóa')
+    ghi_chu = COALESCE(NULLIF(ghi_chu, N''), N'Khách mua trực tiếp tại cửa hàng')
 WHERE hinh_thuc_nhan_hang = 0
-   OR ghi_chu LIKE N'%Tại quầy%'
-   OR ghi_chu LIKE N'%tai quay%';
+   OR ghi_chu = N'Tại quầy'
+   OR ghi_chu LIKE N'[[]Tại quầy[]]%'
+   OR LOWER(LTRIM(RTRIM(ghi_chu))) = N'tai quay';
 
 UPDATE dbo.Hoa_don
 SET trang_thai = 7,
@@ -2242,12 +2311,12 @@ SET trang_thai = 7,
 WHERE phuong_thuc_thanh_toan_online = N'FAILED'
    OR (trang_thai = 5 AND hinh_thuc_thanh_toan IN (N'MOMO', N'ZALOPAY') AND ISNULL(da_thanh_toan, 0) = 0);
 
--- Historical demo orders did not reserve stock. Mark terminal/demo rows as
+-- Historical imported orders did not reserve stock. Mark terminal/imported rows as
 -- reconciled so a later retry cannot add their quantities back a second time.
 UPDATE dbo.Hoa_don
 SET da_hoan_ton_kho = 1
 WHERE ISNULL(da_hoan_ton_kho, 0) = 0
-  AND (trang_thai IN (5, 7, 9) OR ma_hoa_don LIKE N'HDS%');
+  AND (trang_thai IN (5, 7, 9) OR ma_yeu_cau LIKE N'LSGD26%');
 
 -- Merge duplicate carts left by older application versions.
 DECLARE @cart_map TABLE (duplicate_id INT PRIMARY KEY, canonical_id INT NOT NULL);
@@ -2545,23 +2614,22 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Lich_
 GO
 
 -- ============================================================
--- GENERATE SAMPLE ORDERS FOR CUSTOMERS (10 to 30 orders per customer)
+-- BUILD CUSTOMER ORDER HISTORY (10 to 30 orders per customer)
 -- Date range: 01/06/2026 to 12/07/2026
 -- ============================================================
 -- Normalize the seeded orders and orders created by older versions of the
--- demo generator. These updates are deliberately limited to demo data.
+-- order-history loader. These updates are deliberately limited to imported history.
 UPDATE hd
 SET ten_khach_hang = COALESCE(NULLIF(LTRIM(RTRIM(hd.ten_khach_hang)), N''),
                               NULLIF(LTRIM(RTRIM(kh.ho_va_ten)), N''), N'Khách lẻ'),
     so_dien_thoai = COALESCE(NULLIF(LTRIM(RTRIM(hd.so_dien_thoai)), N''),
-                             NULLIF(LTRIM(RTRIM(kh.so_dien_thoai)), N''),
-                             N'090000' + RIGHT(N'0000' + CONVERT(NVARCHAR(10), hd.id), 4)),
+                             NULLIF(LTRIM(RTRIM(kh.so_dien_thoai)), N'')),
     email_khach_hang = COALESCE(NULLIF(LTRIM(RTRIM(hd.email_khach_hang)), N''),
                                 NULLIF(LTRIM(RTRIM(kh.email)), N''))
 FROM dbo.Hoa_don hd
 LEFT JOIN dbo.Khach_hang kh ON kh.id = hd.id_khach_hang
 WHERE hd.id BETWEEN 1 AND 20
-   OR hd.ma_hoa_don LIKE N'HDS%';
+   OR hd.ma_yeu_cau LIKE N'LSGD26%';
 
 UPDATE hd
 SET hinh_thuc_nhan_hang = CASE WHEN hd.hinh_thuc_nhan_hang = 2 THEN 0 ELSE hd.hinh_thuc_nhan_hang END,
@@ -2578,7 +2646,7 @@ SET hinh_thuc_nhan_hang = CASE WHEN hd.hinh_thuc_nhan_hang = 2 THEN 0 ELSE hd.hi
     END
 FROM dbo.Hoa_don hd
 WHERE hd.id BETWEEN 1 AND 20
-   OR hd.ma_hoa_don LIKE N'HDS%';
+   OR hd.ma_yeu_cau LIKE N'LSGD26%';
 
 UPDATE hd
 SET phuong_thuc_thanh_toan_online = CASE
@@ -2587,7 +2655,7 @@ SET phuong_thuc_thanh_toan_online = CASE
     END
 FROM dbo.Hoa_don hd
 WHERE hd.id BETWEEN 1 AND 20
-   OR hd.ma_hoa_don LIKE N'HDS%';
+   OR hd.ma_yeu_cau LIKE N'LSGD26%';
 
 -- Current application code stores the actual selling price in don_gia. Older
 -- rows stored the pre-discount price and put the actual amount in thanh_tien.
@@ -2595,7 +2663,7 @@ UPDATE ct
 SET don_gia = ROUND(ct.thanh_tien / CONVERT(DECIMAL(15,2), ct.so_luong), 2)
 FROM dbo.Hoa_don_chi_tiet ct
 JOIN dbo.Hoa_don hd ON hd.id = ct.id_hoa_don
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND ct.so_luong > 0
   AND ct.thanh_tien IS NOT NULL
   AND ABS(ct.thanh_tien - (ct.don_gia * ct.so_luong)) > 0.01;
@@ -2604,7 +2672,7 @@ UPDATE ct
 SET thanh_tien = ct.don_gia * ct.so_luong
 FROM dbo.Hoa_don_chi_tiet ct
 JOIN dbo.Hoa_don hd ON hd.id = ct.id_hoa_don
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND (ct.thanh_tien IS NULL OR ABS(ct.thanh_tien - (ct.don_gia * ct.so_luong)) > 0.01);
 
 -- Preserve any old order-level discount that was not linked to a voucher.
@@ -2617,7 +2685,7 @@ UPDATE hd
 SET giam_gia_voucher = os.subtotal + COALESCE(hd.phi_van_chuyen, 0) - hd.tong_tien
 FROM dbo.Hoa_don hd
 JOIN order_subtotals os ON os.id_hoa_don = hd.id
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND hd.tong_tien < os.subtotal + COALESCE(hd.phi_van_chuyen, 0) - COALESCE(hd.giam_gia_voucher, 0);
 
 ;WITH order_subtotals AS (
@@ -2633,7 +2701,7 @@ SET tong_tien = CASE
 FROM dbo.Hoa_don hd
 JOIN order_subtotals os ON os.id_hoa_don = hd.id
 WHERE hd.id BETWEEN 1 AND 20
-   OR hd.ma_hoa_don LIKE N'HDS%';
+   OR hd.ma_yeu_cau LIKE N'LSGD26%';
 
 UPDATE ls
 SET trang_thai = UPPER(LTRIM(RTRIM(ls.trang_thai))),
@@ -2646,13 +2714,13 @@ SET trang_thai = UPPER(LTRIM(RTRIM(ls.trang_thai))),
 FROM dbo.Lich_su_thanh_toan ls
 JOIN dbo.Hoa_don hd ON hd.id = ls.id_hoa_don
 WHERE hd.id BETWEEN 1 AND 20
-   OR hd.ma_hoa_don LIKE N'HDS%';
+   OR hd.ma_yeu_cau LIKE N'LSGD26%';
 
 -- A successful payment record is authoritative for old seeded data.
 UPDATE hd
 SET da_thanh_toan = 1
 FROM dbo.Hoa_don hd
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND EXISTS (
       SELECT 1
       FROM dbo.Lich_su_thanh_toan ls
@@ -2660,7 +2728,7 @@ WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
         AND UPPER(ls.trang_thai) = N'SUCCESS'
   );
 
--- POS orders complete immediately. Cancelled demo POS orders remain unpaid.
+-- POS orders complete immediately. Cancelled historical POS orders remain unpaid.
 UPDATE dbo.Hoa_don
 SET trang_thai = 4,
     da_thanh_toan = 1,
@@ -2677,20 +2745,20 @@ SET trang_thai = 4,
         WHERE vt.ten_vai_tro = N'Nhân viên'
         ORDER BY nv.id
     ))
-WHERE ma_hoa_don LIKE N'HDS%'
+WHERE ma_yeu_cau LIKE N'LSGD26%'
   AND hinh_thuc_nhan_hang = 0
   AND trang_thai BETWEEN 0 AND 4;
 
 UPDATE dbo.Hoa_don
 SET da_thanh_toan = 0
-WHERE ma_hoa_don LIKE N'HDS%'
+WHERE ma_yeu_cau LIKE N'LSGD26%'
   AND hinh_thuc_nhan_hang = 0
   AND trang_thai IN (5, 6, 7);
 
 -- COD is paid only after delivery is complete.
 UPDATE dbo.Hoa_don
 SET da_thanh_toan = CASE WHEN trang_thai = 4 THEN 1 ELSE 0 END
-WHERE ma_hoa_don LIKE N'HDS%'
+WHERE ma_yeu_cau LIKE N'LSGD26%'
   AND hinh_thuc_nhan_hang = 1
   AND hinh_thuc_thanh_toan = N'COD';
 
@@ -2708,7 +2776,7 @@ SET trang_thai = CASE
         WHEN trang_thai = 7 THEN N'FAILED'
         ELSE hinh_thuc_thanh_toan
     END
-WHERE (id BETWEEN 1 AND 20 OR ma_hoa_don LIKE N'HDS%')
+WHERE (id BETWEEN 1 AND 20 OR ma_yeu_cau LIKE N'LSGD26%')
   AND hinh_thuc_nhan_hang = 1
   AND hinh_thuc_thanh_toan IN (N'MOMO', N'ZALOPAY');
 
@@ -2717,17 +2785,17 @@ WHERE (id BETWEEN 1 AND 20 OR ma_hoa_don LIKE N'HDS%')
 DELETE ls
 FROM dbo.Lich_su_thanh_toan ls
 JOIN dbo.Hoa_don hd ON hd.id = ls.id_hoa_don
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND hd.da_thanh_toan = 0
   AND UPPER(ls.trang_thai) = N'SUCCESS';
 
 UPDATE ls
 SET trang_thai = N'SUCCESS',
     so_tien = hd.tong_tien,
-    noi_dung = COALESCE(NULLIF(ls.noi_dung, N''), N'Thanh toán đơn hàng mẫu thành công')
+    noi_dung = COALESCE(NULLIF(ls.noi_dung, N''), N'Thanh toán đơn hàng thành công')
 FROM dbo.Lich_su_thanh_toan ls
 JOIN dbo.Hoa_don hd ON hd.id = ls.id_hoa_don
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND hd.da_thanh_toan = 1
   AND UPPER(ls.trang_thai) = N'PENDING'
   AND NOT EXISTS (
@@ -2739,10 +2807,10 @@ WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
 INSERT INTO dbo.Lich_su_thanh_toan
     (id_hoa_don, so_tien, phuong_thuc, ma_giao_dich, trang_thai, noi_dung, ngay_tao)
 SELECT hd.id, hd.tong_tien, hd.hinh_thuc_thanh_toan,
-       N'DEMO-SUCCESS-' + CONVERT(NVARCHAR(20), hd.id), N'SUCCESS',
-       N'Thanh toán đơn hàng mẫu thành công', COALESCE(hd.ngay_tao, GETDATE())
+       N'PAY-HIST-' + RIGHT(N'000000' + CONVERT(NVARCHAR(20), hd.id), 6), N'SUCCESS',
+       N'Thanh toán đơn hàng thành công', COALESCE(hd.ngay_tao, GETDATE())
 FROM dbo.Hoa_don hd
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND hd.da_thanh_toan = 1
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Lich_su_thanh_toan ls
@@ -2755,16 +2823,16 @@ SET so_tien = hd.tong_tien,
     phuong_thuc = hd.hinh_thuc_thanh_toan
 FROM dbo.Lich_su_thanh_toan ls
 JOIN dbo.Hoa_don hd ON hd.id = ls.id_hoa_don
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND UPPER(ls.trang_thai) = N'SUCCESS';
 
 INSERT INTO dbo.Lich_su_thanh_toan
     (id_hoa_don, so_tien, phuong_thuc, ma_giao_dich, trang_thai, noi_dung, ngay_tao)
 SELECT hd.id, 0, hd.hinh_thuc_thanh_toan,
-       N'DEMO-FAILED-' + CONVERT(NVARCHAR(20), hd.id), N'FAILED',
+       N'PAY-FAIL-' + RIGHT(N'000000' + CONVERT(NVARCHAR(20), hd.id), 6), N'FAILED',
        N'Thanh toán online thất bại - ' + hd.ma_hoa_don, COALESCE(hd.ngay_tao, GETDATE())
 FROM dbo.Hoa_don hd
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND hd.trang_thai = 7
   AND hd.hinh_thuc_thanh_toan IN (N'MOMO', N'ZALOPAY')
   AND NOT EXISTS (
@@ -2778,7 +2846,7 @@ SELECT hd.id, N'payment_failed',
        N'Thanh toán online thất bại. Đơn hàng không được phép xử lý tiếp.',
        COALESCE(hd.ngay_tao, GETDATE())
 FROM dbo.Hoa_don hd
-WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
+WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_yeu_cau LIKE N'LSGD26%')
   AND hd.trang_thai = 7
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Lich_su_tracking tracking
@@ -2786,9 +2854,9 @@ WHERE (hd.id BETWEEN 1 AND 20 OR hd.ma_hoa_don LIKE N'HDS%')
         AND tracking.trang_thai = N'payment_failed'
   );
 
-IF NOT EXISTS (SELECT 1 FROM dbo.Hoa_don WHERE ma_hoa_don LIKE 'HDS%')
+IF NOT EXISTS (SELECT 1 FROM dbo.Hoa_don WHERE ma_yeu_cau LIKE 'LSGD26%')
 BEGIN
-    PRINT N'Generating sample orders for customers...';
+    PRINT N'Preparing customer order history...';
 
     -- Declare variables
     DECLARE @customer_id INT;
@@ -2801,6 +2869,7 @@ BEGIN
     DECLARE @random_minutes INT;
     DECLARE @random_seconds INT;
     DECLARE @ma_hoa_don NVARCHAR(80);
+    DECLARE @ma_yeu_cau NVARCHAR(100);
     DECLARE @tong_tien DECIMAL(15,2);
     DECLARE @phi_van_chuyen DECIMAL(15,2);
     DECLARE @hinh_thuc_nhan_hang TINYINT;
@@ -2830,14 +2899,13 @@ BEGIN
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        -- Determine random order count between 10 and 30 for this customer
-        -- Seeded by RAND() or using CHECKSUM(NEWID())
+        -- Vary purchase frequency between customers so histories remain natural.
         SET @order_count = ABS(CHECKSUM(NEWID())) % 21 + 10;
         SET @order_index = 1;
 
         WHILE @order_index <= @order_count
         BEGIN
-            -- Generate random datetime in date range [2026-06-01, 2026-07-12]
+            -- Distribute purchases across the operating period [2026-06-01, 2026-07-12].
             SET @random_days = ABS(CHECKSUM(NEWID())) % (@days_range + 1);
             SET @random_hours = ABS(CHECKSUM(NEWID())) % 24;
             SET @random_minutes = ABS(CHECKSUM(NEWID())) % 60;
@@ -2848,12 +2916,15 @@ BEGIN
                                     DATEADD(HOUR, @random_hours, 
                                         DATEADD(DAY, @random_days, '2026-06-01 00:00:00'))));
 
-            -- Generate unique invoice code starting with HDS
-            SET @ma_hoa_don = 'HDS' 
-                + REPLACE(CONVERT(VARCHAR(10), @ngay_tao, 120), '-', '') 
-                + RIGHT('00' + CAST(@customer_id AS VARCHAR), 2) 
-                + RIGHT('00' + CAST(@order_index AS VARCHAR), 2)
-                + RIGHT('000' + CAST(ABS(CHECKSUM(NEWID())) % 1000 AS VARCHAR), 3);
+            -- Match the invoice format used by PaymentController in normal checkout.
+            SET @ma_hoa_don = N'HD'
+                + CONVERT(NVARCHAR(6), @ngay_tao, 12)
+                + REPLACE(CONVERT(NVARCHAR(8), @ngay_tao, 108), N':', N'')
+                + UPPER(LEFT(REPLACE(CONVERT(NVARCHAR(36), NEWID()), N'-', N''), 8));
+            SET @ma_yeu_cau = N'LSGD26'
+                + CONVERT(NVARCHAR(6), @ngay_tao, 12)
+                + RIGHT(N'000' + CONVERT(NVARCHAR(3), @customer_id), 3)
+                + RIGHT(N'000' + CONVERT(NVARCHAR(3), @order_index), 3);
 
             -- Shipping type: 0 (Direct at store), 1 (Delivery)
             DECLARE @rand_receive INT = ABS(CHECKSUM(NEWID())) % 100;
@@ -2868,7 +2939,7 @@ BEGIN
                 SET @hinh_thuc_nhan_hang = 1;
                 SET @phi_van_chuyen = CASE WHEN ABS(CHECKSUM(NEWID())) % 2 = 0 THEN 30000 ELSE 0 END;
                 
-                -- Get customer's default address if exists, otherwise generate a random one
+                -- Use the customer's default address, or another complete Vietnamese address.
                 SET @dia_chi_giao_hang = NULL;
                 SELECT TOP 1 @dia_chi_giao_hang = CONCAT(duong, N', ', xa_phuong, N', ', quan_huyen, N', ', tinh_thanh_pho)
                 FROM dbo.Dia_chi 
@@ -2876,7 +2947,7 @@ BEGIN
 
                 IF @dia_chi_giao_hang IS NULL
                 BEGIN
-                    -- Generate realistic Vietnamese address
+                    -- Select a complete address from the store's operating areas.
                     DECLARE @rand_addr INT = ABS(CHECKSUM(NEWID())) % 5;
                     IF @rand_addr = 0
                         SET @dia_chi_giao_hang = N'Số ' + CAST(ABS(CHECKSUM(NEWID())) % 150 + 1 AS VARCHAR) + N' Cầu Giấy, Phường Dịch Vọng, Quận Cầu Giấy, Hà Nội';
@@ -2904,7 +2975,7 @@ BEGIN
                 END;
             END
 
-            -- Keep generated states aligned with the real checkout workflows.
+            -- Keep historical states aligned with the real checkout workflows.
             DECLARE @rand_status INT = ABS(CHECKSUM(NEWID())) % 100;
             IF @hinh_thuc_nhan_hang = 0
             BEGIN
@@ -2950,9 +3021,9 @@ BEGIN
 
             -- Insert order
             INSERT INTO dbo.Hoa_don 
-                (id_khach_hang, id_giam_gia, id_nhan_vien, ma_hoa_don, tong_tien, phi_van_chuyen, giam_gia_voucher, hinh_thuc_nhan_hang, dia_chi_giao_hang, trang_thai, hinh_thuc_thanh_toan, phuong_thuc_thanh_toan_online, ghi_chu, ngay_tao, da_thanh_toan, ten_khach_hang, so_dien_thoai, email_khach_hang)
+                (id_khach_hang, id_giam_gia, id_nhan_vien, ma_hoa_don, ma_yeu_cau, tong_tien, phi_van_chuyen, giam_gia_voucher, hinh_thuc_nhan_hang, dia_chi_giao_hang, trang_thai, hinh_thuc_thanh_toan, phuong_thuc_thanh_toan_online, ghi_chu, ngay_tao, da_thanh_toan, ten_khach_hang, so_dien_thoai, email_khach_hang)
             VALUES
-                (@customer_id, NULL, CASE WHEN @hinh_thuc_nhan_hang = 0 THEN @pos_employee_id ELSE NULL END, @ma_hoa_don, 0, @phi_van_chuyen, 0, @hinh_thuc_nhan_hang, @dia_chi_giao_hang, @trang_thai, @hinh_thuc_thanh_toan, CASE WHEN @trang_thai = 7 THEN N'FAILED' WHEN @hinh_thuc_thanh_toan IN (N'MOMO', N'ZALOPAY') THEN @hinh_thuc_thanh_toan ELSE NULL END, N'Đơn hàng mẫu sinh tự động', @ngay_tao, @da_thanh_toan, @ten_khach_hang, @so_dien_thoai, @email_khach_hang);
+                (@customer_id, NULL, CASE WHEN @hinh_thuc_nhan_hang = 0 THEN @pos_employee_id ELSE NULL END, @ma_hoa_don, @ma_yeu_cau, 0, @phi_van_chuyen, 0, @hinh_thuc_nhan_hang, @dia_chi_giao_hang, @trang_thai, @hinh_thuc_thanh_toan, CASE WHEN @trang_thai = 7 THEN N'FAILED' WHEN @hinh_thuc_thanh_toan IN (N'MOMO', N'ZALOPAY') THEN @hinh_thuc_thanh_toan ELSE NULL END, CASE WHEN @hinh_thuc_nhan_hang = 0 THEN N'Khách mua trực tiếp tại cửa hàng' WHEN @order_index % 4 = 0 THEN N'Gọi trước khi giao hàng' WHEN @order_index % 4 = 1 THEN N'Giao trong giờ hành chính' WHEN @order_index % 4 = 2 THEN N'Để hàng tại quầy lễ tân' ELSE NULL END, @ngay_tao, @da_thanh_toan, @ten_khach_hang, @so_dien_thoai, @email_khach_hang);
 
             SET @new_hoa_don_id = SCOPE_IDENTITY();
 
@@ -2968,7 +3039,7 @@ BEGIN
 
             WHILE @item_index <= @item_count
             BEGIN
-                -- Get random variant
+                -- Select a varied active variant for the order.
                 SELECT TOP 1 @variant_id = id, @gia_ban = gia_ban, @gia_nhap = gia_nhap
                 FROM dbo.san_pham_chi_tiet
                 ORDER BY NEWID();
@@ -2996,7 +3067,7 @@ BEGIN
                 INSERT INTO dbo.Lich_su_thanh_toan
                     (id_hoa_don, so_tien, phuong_thuc, ma_giao_dich, trang_thai, noi_dung, ngay_tao)
                 VALUES
-                    (@new_hoa_don_id, @subtotal + @phi_van_chuyen, @hinh_thuc_thanh_toan, N'TXN-' + CONVERT(NVARCHAR(36), NEWID()), N'SUCCESS', N'Thanh toán đơn hàng mẫu', @ngay_tao);
+                    (@new_hoa_don_id, @subtotal + @phi_van_chuyen, @hinh_thuc_thanh_toan, N'TXN-' + CONVERT(NVARCHAR(36), NEWID()), N'SUCCESS', N'Thanh toán đơn hàng thành công', @ngay_tao);
             END
             ELSE IF @trang_thai = 7
             BEGIN
@@ -3018,7 +3089,7 @@ BEGIN
     CLOSE customer_cursor;
     DEALLOCATE customer_cursor;
 
-    PRINT N'Sample orders generated successfully.';
+    PRINT N'Customer order history prepared successfully.';
 END
 GO
 
@@ -3038,8 +3109,8 @@ WHERE dg.id_hoa_don IS NULL
           AND vct.id_san_pham = dg.id_san_pham
    );
 
-DECLARE @demo_review_texts TABLE (noi_dung NVARCHAR(400) PRIMARY KEY);
-INSERT INTO @demo_review_texts (noi_dung) VALUES
+DECLARE @review_texts TABLE (noi_dung NVARCHAR(400) PRIMARY KEY);
+INSERT INTO @review_texts (noi_dung) VALUES
     (N'Sản phẩm đúng hình, đường may gọn và tư vấn size phù hợp.'),
     (N'Mình đã mặc đi làm, phom lên đẹp và chất liệu dễ chịu.'),
     (N'Giao hàng cẩn thận, màu thực tế đúng với ảnh trên website.'),
@@ -3049,28 +3120,28 @@ INSERT INTO @demo_review_texts (noi_dung) VALUES
     (N'Chất vải ổn trong tầm giá, mình sẽ tiếp tục mua mẫu khác.'),
     (N'Nhận hàng đúng hẹn, nhân viên hỗ trợ đổi size nhanh và rõ ràng.');
 
--- Older revisions appended 48 demo reviews on every run. Trim only rows that
--- exactly match the known demo templates; customer-written reviews are kept.
-;WITH ranked_demo_reviews AS (
+-- Older revisions appended the same 48 reviews on every run. Trim only rows
+-- that exactly match the known review templates; customer-written reviews are kept.
+;WITH ranked_review_history AS (
     SELECT dg.id,
            ROW_NUMBER() OVER (ORDER BY dg.ngay_tao DESC, dg.id DESC) AS rn
     FROM dbo.Danh_gia dg
-    JOIN @demo_review_texts template ON template.noi_dung = dg.noi_dung
+    JOIN @review_texts template ON template.noi_dung = dg.noi_dung
     WHERE dg.anh_danh_gia IS NULL
 )
 DELETE dg
 FROM dbo.Danh_gia dg
-JOIN ranked_demo_reviews ranked ON ranked.id = dg.id
+JOIN ranked_review_history ranked ON ranked.id = dg.id
 WHERE ranked.rn > 48;
 
-DECLARE @demo_review_count INT = (
+DECLARE @review_history_count INT = (
     SELECT COUNT(*)
     FROM dbo.Danh_gia dg
-    JOIN @demo_review_texts template ON template.noi_dung = dg.noi_dung
+    JOIN @review_texts template ON template.noi_dung = dg.noi_dung
     WHERE dg.anh_danh_gia IS NULL
 );
-DECLARE @demo_reviews_needed INT = CASE
-    WHEN @demo_review_count < 48 THEN 48 - @demo_review_count
+DECLARE @reviews_needed INT = CASE
+    WHEN @review_history_count < 48 THEN 48 - @review_history_count
     ELSE 0
 END;
 
@@ -3096,7 +3167,7 @@ DELETE FROM duplicate_reviews WHERE rn > 1;
            ROW_NUMBER() OVER (ORDER BY pr.ngay_tao DESC, pr.id_hoa_don DESC, pr.id_san_pham) AS rn
     FROM purchased_raw pr
 ), review_candidates AS (
-    SELECT TOP (@demo_reviews_needed) pp.*
+    SELECT TOP (@reviews_needed) pp.*
     FROM purchased_products pp
     WHERE NOT EXISTS (
         SELECT 1 FROM dbo.Danh_gia dg
@@ -3141,22 +3212,22 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Danh_
 GO
 
 -- ============================================================
--- GENERATE EMPLOYEES AND WORK SHIFTS (06/07/2026 to 31/08/2026)
+-- GENERATE EMPLOYEES AND WORK SHIFTS (06/07/2026 to 30/09/2026)
 -- ============================================================
-PRINT N'Creating or refreshing demo employees and work schedule...';
+PRINT N'Preparing employees and work schedule...';
 
-DECLARE @demo_staff_role_id INT = (SELECT TOP 1 id FROM dbo.Vai_tro WHERE ten_vai_tro = N'Nhân viên' ORDER BY id);
+DECLARE @staff_role_id INT = (SELECT TOP 1 id FROM dbo.Vai_tro WHERE ten_vai_tro = N'Nhân viên' ORDER BY id);
 
 UPDATE dbo.Nhan_vien
-SET id_vai_tro = @demo_staff_role_id
+SET id_vai_tro = @staff_role_id
 WHERE ma_nhan_vien IN (N'NV003', N'NV007')
-  AND id_vai_tro <> @demo_staff_role_id;
+  AND id_vai_tro <> @staff_role_id;
 
 MERGE dbo.Nhan_vien AS target
 USING (VALUES
-    (@demo_staff_role_id, N'NV005', N'Nguyễn Văn Hùng', CAST(1 AS TINYINT), CAST('1999-05-12' AS DATE), N'0988777666', N'Cầu Giấy, Hà Nội', N'hungnv@zestia.vn', N'hungnv'),
-    (@demo_staff_role_id, N'NV006', N'Phạm Thanh Hương', CAST(0 AS TINYINT), CAST('2001-08-25' AS DATE), N'0977666555', N'Thanh Xuân, Hà Nội', N'huongnv@zestia.vn', N'huongnv'),
-    (@demo_staff_role_id, N'NV007', N'Đỗ Gia Bảo', CAST(1 AS TINYINT), CAST('1995-12-03' AS DATE), N'0966555444', N'Đống Đa, Hà Nội', N'baonv@zestia.vn', N'baonv')
+    (@staff_role_id, N'NV005', N'Nguyễn Văn Hùng', CAST(1 AS TINYINT), CAST('1999-05-12' AS DATE), N'0987642315', N'26 Thành Thái, Dịch Vọng, Cầu Giấy, Hà Nội', N'hungnv@zestia.vn', N'hungnv'),
+    (@staff_role_id, N'NV006', N'Phạm Thanh Hương', CAST(0 AS TINYINT), CAST('2001-08-25' AS DATE), N'0973156824', N'88 Nguyễn Trãi, Thượng Đình, Thanh Xuân, Hà Nội', N'huongnv@zestia.vn', N'huongnv'),
+    (@staff_role_id, N'NV007', N'Đỗ Gia Bảo', CAST(1 AS TINYINT), CAST('1995-12-03' AS DATE), N'0964287135', N'120 Tây Sơn, Quang Trung, Đống Đa, Hà Nội', N'baonv@zestia.vn', N'baonv')
 ) AS src(id_vai_tro, ma_nhan_vien, ho_va_ten, gioi_tinh, ngay_sinh, so_dien_thoai, dia_chi, email, ten_nguoi_dung)
 ON target.ma_nhan_vien = src.ma_nhan_vien
 WHEN MATCHED THEN
@@ -3178,7 +3249,7 @@ DECLARE @previous_datefirst INT = @@DATEFIRST;
 SET DATEFIRST 7;
 
 DECLARE @start_date DATE = '2026-07-06';
-DECLARE @end_date DATE = '2026-08-31';
+DECLARE @end_date DATE = '2026-09-30';
 DECLARE @curr_date DATE = @start_date;
 DECLARE @admin_id INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = N'NV001');
 DECLARE @emp2 INT = (SELECT id FROM dbo.Nhan_vien WHERE ma_nhan_vien = N'NV002');
@@ -3195,7 +3266,7 @@ WHERE ngay_lam BETWEEN @start_date AND @end_date
   AND ghi_chu = N'Bán hàng ca tối cuối tuần'
   AND DATEPART(WEEKDAY, ngay_lam) = 6;
 
-DECLARE @demo_schedule TABLE (
+DECLARE @work_schedule TABLE (
     id_nhan_vien INT NOT NULL,
     ngay_lam DATE NOT NULL,
     ca_lam NVARCHAR(50) NOT NULL,
@@ -3213,25 +3284,25 @@ BEGIN
 
     -- Admin works Monday through Friday.
     IF @wday BETWEEN 2 AND 6 AND @admin_id IS NOT NULL
-        INSERT INTO @demo_schedule VALUES (@admin_id, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Trực quản trị cửa hàng', 1);
+        INSERT INTO @work_schedule VALUES (@admin_id, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Trực quản trị cửa hàng', 1);
 
     DECLARE @inventory_staff INT = CASE WHEN @day_num % 2 = 0 THEN @emp3 ELSE @emp7 END;
     IF @inventory_staff IS NOT NULL
-        INSERT INTO @demo_schedule VALUES (@inventory_staff, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Kiểm tra hàng tồn kho và nhập xuất', 1);
+        INSERT INTO @work_schedule VALUES (@inventory_staff, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Kiểm tra hàng tồn kho và nhập xuất', 1);
 
     IF @day_num % 2 = 0
     BEGIN
-        IF @emp2 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp2, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1);
-        IF @emp5 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp5, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1);
-        IF @emp4 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp4, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Bán hàng tại quầy', 1);
-        IF @emp6 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp6, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn trực tuyến', 1);
+        IF @emp2 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp2, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1);
+        IF @emp5 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp5, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1);
+        IF @emp4 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp4, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Bán hàng tại quầy', 1);
+        IF @emp6 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp6, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn trực tuyến', 1);
     END
     ELSE
     BEGIN
-        IF @emp4 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp4, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1);
-        IF @emp6 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp6, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực tuyến', 1);
-        IF @emp2 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp2, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Bán hàng tại quầy', 1);
-        IF @emp5 IS NOT NULL INSERT INTO @demo_schedule VALUES (@emp5, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn trực quầy', 1);
+        IF @emp4 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp4, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực quầy', 1);
+        IF @emp6 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp6, @curr_date, N'Ca sáng', '08:00:00', '12:00:00', N'Tư vấn trực tuyến', 1);
+        IF @emp2 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp2, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Bán hàng tại quầy', 1);
+        IF @emp5 IS NOT NULL INSERT INTO @work_schedule VALUES (@emp5, @curr_date, N'Ca chiều', '13:00:00', '17:00:00', N'Tư vấn trực quầy', 1);
     END
 
     -- With DATEFIRST 7, Sunday is 1 and Saturday is 7.
@@ -3240,8 +3311,8 @@ BEGIN
         DECLARE @night_emp1 INT = CASE WHEN @day_num % 3 = 0 THEN @emp2 WHEN @day_num % 3 = 1 THEN @emp4 ELSE @emp5 END;
         DECLARE @night_emp2 INT = CASE WHEN @day_num % 3 = 0 THEN @emp6 WHEN @day_num % 3 = 1 THEN @emp5 ELSE @emp4 END;
 
-        IF @night_emp1 IS NOT NULL INSERT INTO @demo_schedule VALUES (@night_emp1, @curr_date, N'Ca tối', '18:00:00', '22:00:00', N'Bán hàng ca tối cuối tuần', 1);
-        IF @night_emp2 IS NOT NULL INSERT INTO @demo_schedule VALUES (@night_emp2, @curr_date, N'Ca tối', '18:00:00', '22:00:00', N'Bán hàng ca tối cuối tuần', 1);
+        IF @night_emp1 IS NOT NULL INSERT INTO @work_schedule VALUES (@night_emp1, @curr_date, N'Ca tối', '18:00:00', '22:00:00', N'Bán hàng ca tối cuối tuần', 1);
+        IF @night_emp2 IS NOT NULL INSERT INTO @work_schedule VALUES (@night_emp2, @curr_date, N'Ca tối', '18:00:00', '22:00:00', N'Bán hàng ca tối cuối tuần', 1);
     END
 
     SET @curr_date = DATEADD(DAY, 1, @curr_date);
@@ -3275,7 +3346,7 @@ JOIN duplicate_shifts duplicate_row ON duplicate_row.id = schedule.id
 WHERE duplicate_row.rn > 1;
 
 MERGE dbo.Lich_lam_viec AS target
-USING @demo_schedule AS src
+USING @work_schedule AS src
 ON target.id_nhan_vien = src.id_nhan_vien
    AND target.ngay_lam = src.ngay_lam
    AND target.ca_lam = src.ca_lam
@@ -3298,7 +3369,7 @@ IF NOT EXISTS (
         ON dbo.Lich_lam_viec(id_nhan_vien, ngay_lam, ca_lam);
 
 SET DATEFIRST @previous_datefirst;
-PRINT N'Demo employees and shifts refreshed successfully.';
+PRINT N'Employees and work schedule prepared successfully.';
 GO
 
 -- Keep the category and product-code contract aligned with the current fashion
@@ -3354,12 +3425,49 @@ UPDATE dbo.Hoa_don SET da_thanh_toan = 1 WHERE hinh_thuc_nhan_hang = 0 OR (trang
 UPDATE dbo.Hoa_don SET da_thanh_toan = 0 WHERE trang_thai = 7;
 UPDATE dbo.Danh_gia SET so_sao = CASE WHEN so_sao < 1 THEN 1 WHEN so_sao > 5 THEN 5 ELSE ISNULL(so_sao, 5) END;
 
--- Legacy demo galleries mixed shirt, pants and accessory placeholders into dress products.
+-- Legacy galleries mixed shirt, pants and accessory placeholders into dress products.
 -- Keep the correct dress cover; never remove images uploaded later from the admin UI.
 DELETE FROM dbo.Anh
 WHERE anh_url LIKE N'/images/products/shirt%.jpg'
    OR anh_url LIKE N'/images/products/pants%.jpg'
    OR anh_url LIKE N'/images/products/accessories%.jpg';
+
+-- The catalog-v2 convention keeps one model image per product and one isolated
+-- product image per real color. Disable only bundled legacy assets; admin uploads
+-- outside /images/products remain untouched.
+UPDATE dbo.Anh
+SET trang_thai = 0
+WHERE (id_san_pham BETWEEN 1 AND 6 OR id_san_pham BETWEEN 9 AND 62)
+  AND anh_url LIKE N'/images/products/%'
+  AND anh_url NOT LIKE N'/images/products/catalog-v2/%';
+
+MERGE dbo.Anh AS target
+USING (
+    SELECT
+        product.id AS id_san_pham,
+        N'/images/products/catalog-v2/sp'
+            + RIGHT(N'000' + CONVERT(nvarchar(3), product.id), 3)
+            + N'_main.webp' AS anh_url
+    FROM dbo.san_pham product
+    WHERE product.id BETWEEN 1 AND 6 OR product.id BETWEEN 9 AND 62
+) AS source
+ON target.id_san_pham = source.id_san_pham
+AND target.anh_url = source.anh_url
+WHEN MATCHED THEN
+    UPDATE SET trang_thai = 1
+WHEN NOT MATCHED THEN
+    INSERT (id_san_pham, anh_url, trang_thai, ngay_tao)
+    VALUES (source.id_san_pham, source.anh_url, 1, SYSDATETIME());
+
+UPDATE variant
+SET anh_url = N'/images/products/catalog-v2/sp'
+        + RIGHT(N'000' + CONVERT(nvarchar(3), variant.id_san_pham), 3)
+        + N'_color_'
+        + RIGHT(N'00' + CONVERT(nvarchar(2), variant.id_mau_sac), 2)
+        + N'.webp'
+FROM dbo.san_pham_chi_tiet variant
+WHERE (variant.id_san_pham BETWEEN 1 AND 6 OR variant.id_san_pham BETWEEN 9 AND 62)
+  AND variant.id_mau_sac IS NOT NULL;
 
 -- Backfill a deterministic color image from each product gallery. Explicit images
 -- uploaded from the admin screen are preserved because only NULL rows are updated.
@@ -3510,7 +3618,7 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID
 GO
 
 -- Reconcile real delivery-failed orders created before automatic restoration was added.
--- Demo HDS rows were never deducted and were marked reconciled earlier in this script.
+-- Imported historical rows were never deducted and were marked reconciled earlier in this script.
 IF OBJECT_ID(N'dbo.Ho_tro_chat', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Ho_tro_chat (
@@ -3560,7 +3668,7 @@ GO
     JOIN dbo.Hoa_don_chi_tiet hdct ON hdct.id_hoa_don = hd.id
     WHERE hd.trang_thai = 6
       AND ISNULL(hd.da_hoan_ton_kho, 0) = 0
-      AND hd.ma_hoa_don NOT LIKE N'HDS%'
+      AND ISNULL(hd.ma_yeu_cau, N'') NOT LIKE N'LSGD26%'
     GROUP BY hdct.id_san_pham_chi_tiet
 )
 UPDATE variant
@@ -3574,7 +3682,7 @@ GO
     FROM dbo.Hoa_don hd
     WHERE hd.trang_thai = 6
       AND ISNULL(hd.da_hoan_ton_kho, 0) = 0
-      AND hd.ma_hoa_don NOT LIKE N'HDS%'
+      AND ISNULL(hd.ma_yeu_cau, N'') NOT LIKE N'LSGD26%'
       AND hd.id_giam_gia IS NOT NULL
     GROUP BY hd.id_giam_gia
 )
@@ -3594,7 +3702,7 @@ GO
 -- Historical seed orders are reporting fixtures and never reserve live stock.
 UPDATE dbo.Hoa_don
 SET da_hoan_ton_kho = 1
-WHERE (id BETWEEN 1 AND 20 OR ma_hoa_don LIKE N'HDS%')
+WHERE (id BETWEEN 1 AND 20 OR ma_yeu_cau LIKE N'LSGD26%')
   AND trang_thai IN (5, 6, 7)
   AND ISNULL(da_hoan_ton_kho, 0) = 0;
 GO
@@ -3672,7 +3780,11 @@ USING (VALUES
     (N'WELCOME0726', N'Ưu đãi tháng 7', N'PERCENT', CAST(10 AS decimal(15,2)), CAST('2026-07-01T00:00:00' AS datetime2), CAST('2026-07-31T23:59:59' AS datetime2), 1, 10),
     (N'AUGUST26', N'Chào tháng 8', N'PERCENT', CAST(8 AS decimal(15,2)), CAST('2026-08-01T00:00:00' AS datetime2), CAST('2026-08-31T23:59:59' AS datetime2), 1, 20),
     (N'AUGOFFICE15', N'Tháng 8 thanh lịch nơi công sở', N'PERCENT', CAST(15 AS decimal(15,2)), CAST('2026-08-03T00:00:00' AS datetime2), CAST('2026-08-20T23:59:59' AS datetime2), 1, 30),
-    (N'AUGPARTY120', N'Dự tiệc cuối tháng 8', N'FIXED', CAST(120000 AS decimal(15,2)), CAST('2026-08-15T00:00:00' AS datetime2), CAST('2026-08-31T23:59:59' AS datetime2), 1, 40)
+    (N'AUGPARTY120', N'Dự tiệc cuối tháng 8', N'FIXED', CAST(120000 AS decimal(15,2)), CAST('2026-08-15T00:00:00' AS datetime2), CAST('2026-08-31T23:59:59' AS datetime2), 1, 40),
+    (N'SEPTEMBER26', N'Chào thu tháng 9', N'PERCENT', CAST(9 AS decimal(15,2)), CAST('2026-09-01T00:00:00' AS datetime2), CAST('2026-09-30T23:59:59' AS datetime2), 1, 20),
+    (N'SEPOFFICE15', N'Thanh lịch công sở tháng 9', N'PERCENT', CAST(15 AS decimal(15,2)), CAST('2026-09-01T00:00:00' AS datetime2), CAST('2026-09-20T23:59:59' AS datetime2), 1, 30),
+    (N'SEPPARTY150', N'Dự tiệc mùa thu', N'FIXED', CAST(150000 AS decimal(15,2)), CAST('2026-09-10T00:00:00' AS datetime2), CAST('2026-09-30T23:59:59' AS datetime2), 1, 40),
+    (N'SEPNAVY12', N'Sắc xanh tháng 9', N'PERCENT', CAST(12 AS decimal(15,2)), CAST('2026-09-15T00:00:00' AS datetime2), CAST('2026-09-30T23:59:59' AS datetime2), 1, 50)
 ) AS source(ma_dot, ten_dot, loai_giam, gia_tri_giam, ngay_bat_dau, ngay_ket_thuc, trang_thai, do_uu_tien)
 ON target.ma_dot = source.ma_dot
 WHEN MATCHED THEN UPDATE SET ten_dot = source.ten_dot, loai_giam = source.loai_giam,
@@ -3719,6 +3831,47 @@ IF NOT EXISTS (
     FROM dbo.Dot_khuyen_mai d
     CROSS JOIN dbo.loai_san_pham lv
     WHERE d.ma_dot = N'AUGPARTY120' AND lv.ten_loai_san_pham = N'Trang phục dự tiệc';
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.Pham_vi_khuyen_mai p
+    JOIN dbo.Dot_khuyen_mai d ON d.id = p.id_dot_khuyen_mai
+    WHERE d.ma_dot = N'SEPTEMBER26'
+)
+    INSERT INTO dbo.Pham_vi_khuyen_mai(id_dot_khuyen_mai)
+    SELECT id FROM dbo.Dot_khuyen_mai WHERE ma_dot = N'SEPTEMBER26';
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.Pham_vi_khuyen_mai p
+    JOIN dbo.Dot_khuyen_mai d ON d.id = p.id_dot_khuyen_mai
+    WHERE d.ma_dot = N'SEPOFFICE15'
+)
+    INSERT INTO dbo.Pham_vi_khuyen_mai(id_dot_khuyen_mai, id_loai_san_pham)
+    SELECT d.id, category.id
+    FROM dbo.Dot_khuyen_mai d
+    CROSS JOIN dbo.loai_san_pham category
+    WHERE d.ma_dot = N'SEPOFFICE15' AND category.ten_loai_san_pham = N'Trang phục công sở';
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.Pham_vi_khuyen_mai p
+    JOIN dbo.Dot_khuyen_mai d ON d.id = p.id_dot_khuyen_mai
+    WHERE d.ma_dot = N'SEPPARTY150'
+)
+    INSERT INTO dbo.Pham_vi_khuyen_mai(id_dot_khuyen_mai, id_loai_san_pham)
+    SELECT d.id, category.id
+    FROM dbo.Dot_khuyen_mai d
+    CROSS JOIN dbo.loai_san_pham category
+    WHERE d.ma_dot = N'SEPPARTY150' AND category.ten_loai_san_pham = N'Trang phục dự tiệc';
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.Pham_vi_khuyen_mai p
+    JOIN dbo.Dot_khuyen_mai d ON d.id = p.id_dot_khuyen_mai
+    WHERE d.ma_dot = N'SEPNAVY12'
+)
+    INSERT INTO dbo.Pham_vi_khuyen_mai(id_dot_khuyen_mai, id_mau_sac)
+    SELECT d.id, color.id
+    FROM dbo.Dot_khuyen_mai d
+    CROSS JOIN dbo.Mau_Sac color
+    WHERE d.ma_dot = N'SEPNAVY12' AND color.ten_mau_sac = N'Xanh Navy';
 GO
 -- Return/exchange requests are line-item based, preventing one request from
 -- accidentally changing the status or inventory of an entire mixed order.
@@ -3908,25 +4061,69 @@ JOIN dbo.Khach_hang kh ON kh.email = LOWER(NULLIF(LTRIM(RTRIM(hd.email_khach_han
 WHERE hd.id_khach_hang IS NULL AND kh.email IS NOT NULL;
 GO
 
--- Demonstrate that one customer can keep several structured addresses.
+-- Every customer has one complete default address for account checkout.
 INSERT INTO dbo.Dia_chi(id_khach_hang, tinh_thanh_pho, quan_huyen, xa_phuong, duong, mac_dinh)
-SELECT TOP (5) kh.id, N'Hà Nội', N'Quận Cầu Giấy', N'Phường Dịch Vọng',
-       N'Địa chỉ phụ ' + kh.ma_khach_hang, 0
-FROM dbo.Khach_hang kh
-WHERE kh.ma_khach_hang IS NOT NULL
-  AND NOT EXISTS (
-      SELECT 1 FROM dbo.Dia_chi dc
-      WHERE dc.id_khach_hang = kh.id AND dc.duong = N'Địa chỉ phụ ' + kh.ma_khach_hang
-  )
-ORDER BY kh.id;
+SELECT customer.id, source.tinh_thanh_pho, source.quan_huyen, source.xa_phuong, source.duong, 1
+FROM (VALUES
+    (N'KH004', N'Thành phố Hà Nội', N'Quận Cầu Giấy', N'Phường Yên Hòa', N'35 Vũ Phạm Hàm'),
+    (N'KH005', N'Thành phố Hà Nội', N'Quận Nam Từ Liêm', N'Phường Mỹ Đình 1', N'68 Nguyễn Hoàng'),
+    (N'KH006', N'Thành phố Hà Nội', N'Quận Ba Đình', N'Phường Ngọc Khánh', N'42 Kim Mã'),
+    (N'KH007', N'Thành phố Hồ Chí Minh', N'Quận Bình Thạnh', N'Phường 25', N'90 Nguyễn Gia Trí'),
+    (N'KH008', N'Thành phố Hà Nội', N'Quận Hai Bà Trưng', N'Phường Bạch Mai', N'117 Bạch Mai'),
+    (N'KH009', N'Thành phố Hà Nội', N'Quận Thanh Xuân', N'Phường Nhân Chính', N'56 Lê Văn Lương'),
+    (N'KH010', N'Thành phố Hà Nội', N'Quận Cầu Giấy', N'Phường Trung Hòa', N'29 Trần Duy Hưng'),
+    (N'KH011', N'Thành phố Hải Phòng', N'Quận Ngô Quyền', N'Phường Lạch Tray', N'73 Lạch Tray')
+) source(ma_khach_hang, tinh_thanh_pho, quan_huyen, xa_phuong, duong)
+JOIN dbo.Khach_hang customer ON customer.ma_khach_hang = source.ma_khach_hang
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM dbo.Dia_chi address
+    WHERE address.id_khach_hang = customer.id AND address.mac_dinh = 1
+);
+GO
+
+-- Add a second structured delivery address for regular customers.
+;WITH customer_addresses AS (
+    SELECT TOP (5)
+           ROW_NUMBER() OVER (ORDER BY kh.id) AS rn,
+           kh.id AS id_khach_hang
+    FROM dbo.Khach_hang kh
+    WHERE kh.ma_khach_hang IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1 FROM dbo.Dia_chi dc
+          WHERE dc.id_khach_hang = kh.id AND dc.mac_dinh = 0
+      )
+    ORDER BY kh.id
+)
+INSERT INTO dbo.Dia_chi(id_khach_hang, tinh_thanh_pho, quan_huyen, xa_phuong, duong, mac_dinh)
+SELECT id_khach_hang,
+       N'Hà Nội',
+       N'Quận Cầu Giấy',
+       CASE rn
+           WHEN 1 THEN N'Phường Yên Hòa'
+           WHEN 2 THEN N'Phường Dịch Vọng Hậu'
+           WHEN 3 THEN N'Phường Yên Hòa'
+           WHEN 4 THEN N'Phường Dịch Vọng'
+           ELSE N'Phường Dịch Vọng Hậu'
+       END,
+       CASE rn
+           WHEN 1 THEN N'18 Trung Kính'
+           WHEN 2 THEN N'72 Trần Thái Tông'
+           WHEN 3 THEN N'105 Nguyễn Khang'
+           WHEN 4 THEN N'26 Thành Thái'
+           ELSE N'88 Nguyễn Phong Sắc'
+       END,
+       0
+FROM customer_addresses;
 GO
 
 -- ============================================================
--- COMPLETE AUGUST 2026 DEMO DATA THROUGH 31/08/2026
--- 124 orders distributed as four orders on every day of August, with matching
+-- ORDER DATA FROM 01/08/2026 THROUGH 18:00 ON 01/09/2026
+-- 128 orders are distributed as four orders per day. The final order is fixed at
+-- exactly 18:00 on 01/09 so every order view has a clear, testable data cutoff.
 -- payment/tracking/audit rows, verified reviews,
 -- customer activity, support conversations and return requests.
--- All demo keys are deterministic so this block is repeat-safe.
+-- All operating-history keys are deterministic so this block is repeat-safe.
 -- ============================================================
 DECLARE @aug_customers TABLE (
     rn int NOT NULL PRIMARY KEY,
@@ -3952,32 +4149,32 @@ JOIN dbo.Vai_tro vt ON vt.id = nv.id_vai_tro
 WHERE nv.tinh_trang_lam_viec = 1
   AND vt.ten_vai_tro IN (N'Admin', N'Nhân viên');
 
--- Undo interactive stock restorations for deterministic demo orders first.
+-- Undo interactive stock restorations for the prepared operating-period orders first.
 -- A tester may have cancelled one of these orders since the previous refresh;
 -- keeping its HOAN_DON movement would make stock drift upward on every reset.
-;WITH prior_demo_restore AS (
+;WITH prior_order_restore AS (
     SELECT id_san_pham_chi_tiet, SUM(so_luong_thay_doi) AS total_change
     FROM dbo.Bien_dong_ton_kho
     WHERE loai_bien_dong = N'HOAN_DON'
-      AND ma_tham_chieu LIKE N'HDAUG26%'
+      AND ma_tham_chieu LIKE N'HD260[89]%'
     GROUP BY id_san_pham_chi_tiet
 )
 UPDATE variant
 SET so_luong = ISNULL(variant.so_luong, 0) - prior.total_change
 FROM dbo.san_pham_chi_tiet variant
-JOIN prior_demo_restore prior ON prior.id_san_pham_chi_tiet = variant.id;
+JOIN prior_order_restore prior ON prior.id_san_pham_chi_tiet = variant.id;
 
 DELETE FROM dbo.Bien_dong_ton_kho
 WHERE loai_bien_dong = N'HOAN_DON'
-  AND ma_tham_chieu LIKE N'HDAUG26%';
+  AND ma_tham_chieu LIKE N'HD260[89]%';
 
--- Reverse only the aggregate stock movement owned by the previous August seed
+-- Reverse only the aggregate stock movement owned by the previous order seed
 -- before selecting eligible variants for this refresh.
 ;WITH prior_seed_movement AS (
     SELECT id_san_pham_chi_tiet, SUM(so_luong_thay_doi) AS total_change
     FROM dbo.Bien_dong_ton_kho
-    WHERE loai_bien_dong = N'BAN_HANG_DEMO_T8'
-      AND ma_tham_chieu = N'AUGUST-2026-SEED'
+    WHERE loai_bien_dong = N'BAN_HANG_DOI_SOAT'
+      AND ma_tham_chieu = N'DS-20260901-1800'
     GROUP BY id_san_pham_chi_tiet
 )
 UPDATE variant
@@ -3986,8 +4183,24 @@ FROM dbo.san_pham_chi_tiet variant
 JOIN prior_seed_movement prior ON prior.id_san_pham_chi_tiet = variant.id;
 
 DELETE FROM dbo.Bien_dong_ton_kho
-WHERE loai_bien_dong = N'BAN_HANG_DEMO_T8'
-  AND ma_tham_chieu = N'AUGUST-2026-SEED';
+WHERE loai_bien_dong = N'BAN_HANG_DOI_SOAT'
+  AND ma_tham_chieu = N'DS-20260901-1800';
+
+;WITH prior_return_movement AS (
+    SELECT id_san_pham_chi_tiet, SUM(so_luong_thay_doi) AS total_change
+    FROM dbo.Bien_dong_ton_kho
+    WHERE loai_bien_dong = N'DOI_TRA_DOI_SOAT'
+      AND ma_tham_chieu IN (N'DTRA-20260827', N'DTRA-20260906')
+    GROUP BY id_san_pham_chi_tiet
+)
+UPDATE variant
+SET so_luong = ISNULL(variant.so_luong, 0) - prior.total_change
+FROM dbo.san_pham_chi_tiet variant
+JOIN prior_return_movement prior ON prior.id_san_pham_chi_tiet = variant.id;
+
+DELETE FROM dbo.Bien_dong_ton_kho
+WHERE loai_bien_dong = N'DOI_TRA_DOI_SOAT'
+  AND ma_tham_chieu IN (N'DTRA-20260827', N'DTRA-20260906');
 
 DECLARE @aug_variants TABLE (
     rn int NOT NULL PRIMARY KEY,
@@ -4008,43 +4221,45 @@ DECLARE @aug_customer_count int = (SELECT COUNT(*) FROM @aug_customers);
 DECLARE @aug_employee_count int = (SELECT COUNT(*) FROM @aug_employees);
 DECLARE @aug_variant_count int = (SELECT COUNT(*) FROM @aug_variants);
 IF @aug_customer_count = 0 OR @aug_employee_count = 0 OR @aug_variant_count = 0
-    THROW 51020, N'Không đủ khách hàng, nhân viên hoặc biến thể để tạo dữ liệu tháng 8.', 1;
+    THROW 51020, N'Không đủ khách hàng, nhân viên hoặc biến thể để tạo dữ liệu vận hành.', 1;
 
 DECLARE @aug_voucher_percent int = (SELECT id FROM dbo.Giam_gia WHERE ma_giam_gia = N'AUGUST10');
 DECLARE @aug_voucher_fixed int = (SELECT id FROM dbo.Giam_gia WHERE ma_giam_gia = N'AUGUST50');
+DECLARE @sep_voucher_percent int = (SELECT id FROM dbo.Giam_gia WHERE ma_giam_gia = N'SEPTEMBER10');
+DECLARE @sep_voucher_pos int = (SELECT id FROM dbo.Giam_gia WHERE ma_giam_gia = N'SEPPOS');
 
--- Rebuild all dependent August fixtures on every run. User-created history and
--- non-demo orders remain untouched.
+-- Rebuild all dependent operating history on every run. User-created
+-- orders outside this range remain untouched.
 DELETE return_image
 FROM dbo.Anh_doi_tra return_image
 JOIN dbo.Yeu_cau_doi_tra request ON request.id = return_image.id_yeu_cau
 JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 DELETE request
 FROM dbo.Yeu_cau_doi_tra request
 JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 DELETE review
 FROM dbo.Danh_gia review
 JOIN dbo.Hoa_don order_row ON order_row.id = review.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 DELETE payment
 FROM dbo.Lich_su_thanh_toan payment
 JOIN dbo.Hoa_don order_row ON order_row.id = payment.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 DELETE tracking
 FROM dbo.Lich_su_tracking tracking
 JOIN dbo.Hoa_don order_row ON order_row.id = tracking.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 DELETE audit
 FROM dbo.Hoa_don_audit_log audit
 JOIN dbo.Hoa_don order_row ON order_row.id = audit.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 DECLARE @aug_orders TABLE (
     seq int NOT NULL PRIMARY KEY,
@@ -4068,18 +4283,29 @@ DECLARE @aug_orders TABLE (
 ;WITH numbers AS (
     SELECT 1 AS seq
     UNION ALL
-    SELECT seq + 1 FROM numbers WHERE seq < 124
+    SELECT seq + 1 FROM numbers WHERE seq < 128
 ),
 base AS (
     SELECT
         seq,
-        CAST(CASE WHEN seq % 7 = 0 THEN 1 ELSE 0 END AS bit) AS is_offline,
+        CAST(CASE WHEN seq % 7 = 0 OR seq = 96 THEN 1 ELSE 0 END AS bit) AS is_offline,
         seq % 20 AS profile,
-        DATEADD(
-            MINUTE,
-            ((seq - 1) / 31) * 30,
-            DATEADD(HOUR, 8, CAST(DATEADD(DAY, (seq - 1) % 31, CAST('2026-08-01' AS date)) AS datetime2))
-        ) AS created_at
+        CASE WHEN seq = 128 THEN CAST('2026-09-01T18:00:00' AS datetime2)
+        ELSE DATEADD(
+                SECOND,
+                (seq * 13) % 60,
+                DATEADD(
+                    MINUTE,
+                    CASE (seq - 1) / 32
+                        WHEN 0 THEN 510 + (seq * 7) % 35
+                        WHEN 1 THEN 680 + (seq * 11) % 40
+                        WHEN 2 THEN 845 + (seq * 13) % 50
+                        ELSE 1100 + (seq * 17) % 70
+                    END,
+                    CAST(DATEADD(DAY, (seq - 1) % 32, CAST('2026-08-01' AS date)) AS datetime2)
+                )
+             )
+        END AS created_at
     FROM numbers
 ),
 classified AS (
@@ -4087,7 +4313,9 @@ classified AS (
         base.*,
         CAST(CASE
             WHEN is_offline = 1 THEN 4
-            WHEN seq > 93 THEN 4
+            WHEN CAST(created_at AS date) = CAST('2026-09-01' AS date) THEN
+                CASE (seq - 1) / 32 WHEN 0 THEN 4 WHEN 1 THEN 3 ELSE 0 END
+            WHEN seq > 81 THEN 4
             WHEN profile = 0 THEN 0
             WHEN profile = 1 THEN 1
             WHEN profile = 2 THEN 2
@@ -4110,10 +4338,20 @@ INSERT INTO @aug_orders (
 )
 SELECT
     classified.seq,
-    N'HDAUG26' + RIGHT(N'000' + CONVERT(nvarchar(3), classified.seq), 3),
+    N'HD'
+        + CONVERT(nvarchar(6), classified.created_at, 12)
+        + REPLACE(CONVERT(nvarchar(8), classified.created_at, 108), N':', N'')
+        + UPPER(LEFT(CONVERT(nvarchar(64), HASHBYTES(
+            'SHA2_256',
+            CONCAT(N'ZESTIA-', classified.seq, N'-', CONVERT(nvarchar(30), classified.created_at, 126))
+        ), 2), 8)),
     customer.id,
     CASE WHEN classified.is_offline = 1 THEN employee.id ELSE NULL END,
     CASE
+        WHEN CAST(classified.created_at AS date) = CAST('2026-09-01' AS date)
+             AND classified.seq = 96 THEN @sep_voucher_pos
+        WHEN CAST(classified.created_at AS date) = CAST('2026-09-01' AS date)
+             AND classified.order_status IN (1, 2, 3, 4) THEN @sep_voucher_percent
         WHEN classified.order_status IN (1, 2, 3, 4) AND classified.seq % 10 = 0 THEN @aug_voucher_fixed
         WHEN classified.order_status IN (1, 2, 3, 4) AND classified.seq % 6 = 0 THEN @aug_voucher_percent
         ELSE NULL
@@ -4121,9 +4359,14 @@ SELECT
     CASE WHEN classified.is_offline = 1 THEN 0 ELSE 1 END,
     CASE
         WHEN classified.is_offline = 1 THEN N'Mua trực tiếp tại cửa hàng'
-        WHEN classified.seq % 3 = 0 THEN N'39 Nguyễn Thị Duệ, Yên Hòa, Cầu Giấy, Hà Nội'
-        WHEN classified.seq % 3 = 1 THEN N'24 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội'
-        ELSE N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội'
+        ELSE COALESCE(
+            customer_address.full_address,
+            CASE (classified.seq + ((classified.seq - 1) / 32)) % 3
+                WHEN 0 THEN N'39 Nguyễn Thị Duệ, Yên Hòa, Cầu Giấy, Hà Nội'
+                WHEN 1 THEN N'24 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội'
+                ELSE N'128 Trần Hưng Đạo, Hoàn Kiếm, Hà Nội'
+            END
+        )
     END,
     classified.order_status,
     CASE
@@ -4152,7 +4395,14 @@ SELECT
 FROM classified
 JOIN @aug_customers customer ON customer.rn = ((classified.seq - 1) % @aug_customer_count) + 1
 JOIN @aug_employees employee ON employee.rn = ((classified.seq - 1) % @aug_employee_count) + 1
-OPTION (MAXRECURSION 124);
+OUTER APPLY (
+    SELECT TOP 1
+        CONCAT(address.duong, N', ', address.xa_phuong, N', ', address.quan_huyen, N', ', address.tinh_thanh_pho) AS full_address
+    FROM dbo.Dia_chi address
+    WHERE address.id_khach_hang = customer.id
+    ORDER BY ISNULL(address.mac_dinh, 0) DESC, address.id
+) customer_address
+OPTION (MAXRECURSION 128);
 
 MERGE dbo.Hoa_don AS target
 USING @aug_orders AS source
@@ -4162,10 +4412,13 @@ WHEN MATCHED THEN
         id_khach_hang = source.id_khach_hang,
         id_giam_gia = source.id_giam_gia,
         id_nhan_vien = source.id_nhan_vien,
-        ma_yeu_cau = N'DEMO-AUG-CHECKOUT-' + RIGHT(N'000' + CONVERT(nvarchar(3), source.seq), 3),
+        ma_yeu_cau = N'REQ' + LEFT(CONVERT(nvarchar(6), source.ngay_tao, 12), 4)
+            + RIGHT(N'0000' + CONVERT(nvarchar(4), source.seq), 4),
         ma_giao_dich_cong = CASE
             WHEN source.hinh_thuc_nhan_hang = 1 AND source.hinh_thuc_thanh_toan IN (N'MOMO', N'ZALOPAY')
-                THEN N'DEMO-AUG-GATEWAY-' + RIGHT(N'000' + CONVERT(nvarchar(3), source.seq), 3)
+                THEN CASE WHEN source.hinh_thuc_thanh_toan = N'MOMO' THEN N'MOMO-' ELSE N'ZLP-' END
+                     + LEFT(CONVERT(nvarchar(6), source.ngay_tao, 12), 4)
+                     + RIGHT(N'0000' + CONVERT(nvarchar(4), source.seq), 4)
             ELSE NULL
         END,
         phi_van_chuyen = CASE WHEN source.hinh_thuc_nhan_hang = 0 OR source.seq % 3 = 0 THEN 0 ELSE 30000 END,
@@ -4174,7 +4427,14 @@ WHEN MATCHED THEN
         trang_thai = source.trang_thai,
         hinh_thuc_thanh_toan = source.hinh_thuc_thanh_toan,
         phuong_thuc_thanh_toan_online = source.phuong_thuc_thanh_toan_online,
-        ghi_chu = N'Dữ liệu nghiệp vụ tháng 8/2026',
+        ghi_chu = CASE
+            WHEN source.hinh_thuc_nhan_hang = 0 THEN N'Khách mua trực tiếp tại cửa hàng'
+            WHEN source.seq % 5 = 0 THEN N'Gọi trước khi giao hàng'
+            WHEN source.seq % 5 = 1 THEN N'Giao trong giờ hành chính'
+            WHEN source.seq % 5 = 2 THEN N'Để hàng tại quầy lễ tân'
+            WHEN source.seq % 5 = 3 THEN N'Khách nhận hàng sau 17 giờ'
+            ELSE N'Liên hệ qua điện thoại trước khi giao'
+        END,
         ngay_tao = source.ngay_tao,
         da_thanh_toan = source.da_thanh_toan,
         da_hoan_ton_kho = source.da_hoan_ton_kho,
@@ -4192,10 +4452,13 @@ WHEN NOT MATCHED THEN
     )
     VALUES (
         source.id_khach_hang, source.id_giam_gia, source.id_nhan_vien, source.ma_hoa_don,
-        N'DEMO-AUG-CHECKOUT-' + RIGHT(N'000' + CONVERT(nvarchar(3), source.seq), 3),
+        N'REQ' + LEFT(CONVERT(nvarchar(6), source.ngay_tao, 12), 4)
+            + RIGHT(N'0000' + CONVERT(nvarchar(4), source.seq), 4),
         CASE
             WHEN source.hinh_thuc_nhan_hang = 1 AND source.hinh_thuc_thanh_toan IN (N'MOMO', N'ZALOPAY')
-                THEN N'DEMO-AUG-GATEWAY-' + RIGHT(N'000' + CONVERT(nvarchar(3), source.seq), 3)
+                THEN CASE WHEN source.hinh_thuc_thanh_toan = N'MOMO' THEN N'MOMO-' ELSE N'ZLP-' END
+                     + LEFT(CONVERT(nvarchar(6), source.ngay_tao, 12), 4)
+                     + RIGHT(N'0000' + CONVERT(nvarchar(4), source.seq), 4)
             ELSE NULL
         END,
         0,
@@ -4203,14 +4466,22 @@ WHEN NOT MATCHED THEN
         0,
         source.hinh_thuc_nhan_hang, source.dia_chi_giao_hang, source.trang_thai,
         source.hinh_thuc_thanh_toan, source.phuong_thuc_thanh_toan_online,
-        N'Dữ liệu nghiệp vụ tháng 8/2026', source.ngay_tao,
+        CASE
+            WHEN source.hinh_thuc_nhan_hang = 0 THEN N'Khách mua trực tiếp tại cửa hàng'
+            WHEN source.seq % 5 = 0 THEN N'Gọi trước khi giao hàng'
+            WHEN source.seq % 5 = 1 THEN N'Giao trong giờ hành chính'
+            WHEN source.seq % 5 = 2 THEN N'Để hàng tại quầy lễ tân'
+            WHEN source.seq % 5 = 3 THEN N'Khách nhận hàng sau 17 giờ'
+            ELSE N'Liên hệ qua điện thoại trước khi giao'
+        END,
+        source.ngay_tao,
         source.da_thanh_toan, source.da_hoan_ton_kho,
         source.ten_khach_hang, source.so_dien_thoai, source.email_khach_hang
     );
 
--- Reconcile the remaining quantity of August vouchers from their configured
+-- Reconcile the remaining quantity of campaign vouchers from their configured
 -- capacity and every order that still owns its reservation. This also removes
--- drift after a demo order was cancelled and later reset by this script.
+-- drift after an order was cancelled and later restored by this script.
 ;WITH voucher_capacity AS (
     SELECT * FROM (VALUES
         (N'AUGUST10', 240),
@@ -4218,7 +4489,13 @@ WHEN NOT MATCHED THEN
         (N'AUGUSTVIP', 80),
         (N'BACK2WORK', 150),
         (N'AUGPOS', 300),
-        (N'AUGFREESHIP', 260)
+        (N'AUGFREESHIP', 260),
+        (N'SEPTEMBER10', 260),
+        (N'SEPTEMBER60', 200),
+        (N'SEPTEMBERVIP', 100),
+        (N'AUTUMNOFFICE', 180),
+        (N'SEPPOS', 320),
+        (N'SEPFREESHIP', 280)
     ) source(ma_giam_gia, capacity)
 ), voucher_usage AS (
     SELECT order_row.id_giam_gia, COUNT(*) AS used_quantity
@@ -4238,7 +4515,7 @@ IF EXISTS (
     WHERE ma_giam_gia IN (N'AUGUST10', N'AUGUST50', N'AUGUSTVIP', N'BACK2WORK', N'AUGPOS', N'AUGFREESHIP')
       AND ISNULL(so_luong, 0) < 0
 )
-    THROW 51039, N'Số lượt voucher tháng 8 không đủ cho dữ liệu đơn hàng hiện có.', 1;
+    THROW 51039, N'Số lượt voucher không đủ cho dữ liệu đơn hàng hiện có.', 1;
 
 INSERT INTO dbo.Hoa_don_chi_tiet (
     id_hoa_don, id_san_pham_chi_tiet, so_luong, don_gia,
@@ -4286,7 +4563,7 @@ WHERE seed.seq % 3 = 0
     SELECT detail.id_hoa_don, SUM(detail.thanh_tien) AS subtotal
     FROM dbo.Hoa_don_chi_tiet detail
     JOIN dbo.Hoa_don order_row ON order_row.id = detail.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+    WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
     GROUP BY detail.id_hoa_don
 ),
 calculated AS (
@@ -4322,7 +4599,7 @@ SET giam_gia_voucher = CASE
 FROM dbo.Hoa_don order_row
 JOIN calculated ON calculated.id = order_row.id;
 
--- Apply inventory once for demo orders that still own stock. Ended orders are
+-- Apply inventory once for generated orders that still own stock. Ended orders are
 -- already represented as restored and therefore do not reduce live inventory.
 DECLARE @aug_stock TABLE (
     id_san_pham_chi_tiet int NOT NULL PRIMARY KEY,
@@ -4332,13 +4609,13 @@ INSERT INTO @aug_stock(id_san_pham_chi_tiet, quantity)
 SELECT detail.id_san_pham_chi_tiet, SUM(detail.so_luong)
 FROM dbo.Hoa_don order_row
 JOIN dbo.Hoa_don_chi_tiet detail ON detail.id_hoa_don = order_row.id
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND order_row.trang_thai NOT IN (5, 6, 7)
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Bien_dong_ton_kho movement
       WHERE movement.id_san_pham_chi_tiet = detail.id_san_pham_chi_tiet
-        AND movement.loai_bien_dong = N'BAN_HANG_DEMO_T8'
-        AND movement.ma_tham_chieu = N'AUGUST-2026-SEED'
+        AND movement.loai_bien_dong = N'BAN_HANG_DOI_SOAT'
+        AND movement.ma_tham_chieu = N'DS-20260901-1800'
   )
 GROUP BY detail.id_san_pham_chi_tiet;
 
@@ -4348,7 +4625,7 @@ IF EXISTS (
     JOIN dbo.san_pham_chi_tiet variant ON variant.id = seed.id_san_pham_chi_tiet
     WHERE ISNULL(variant.so_luong, 0) < seed.quantity
 )
-    THROW 51021, N'Tồn kho không đủ để tạo lịch sử bán hàng tháng 8.', 1;
+    THROW 51021, N'Tồn kho không đủ để tạo lịch sử bán hàng đến 18:00 ngày 01/09.', 1;
 
 INSERT INTO dbo.Bien_dong_ton_kho (
     id_san_pham_chi_tiet, so_luong_truoc, so_luong_thay_doi, so_luong_sau,
@@ -4356,8 +4633,8 @@ INSERT INTO dbo.Bien_dong_ton_kho (
 )
 SELECT
     variant.id, variant.so_luong, -seed.quantity, variant.so_luong - seed.quantity,
-    N'BAN_HANG_DEMO_T8', N'AUGUST-2026-SEED', N'Hệ thống dữ liệu mẫu',
-    N'Tổng hợp lượng bán của dữ liệu tháng 8/2026', '2026-08-31T22:30:00'
+    N'BAN_HANG_DOI_SOAT', N'DS-20260901-1800', N'Nguyễn Tiến Thành',
+    N'Đối soát lượng bán và tồn kho đến 18:00 ngày 01/09/2026', '2026-09-01T18:00:00'
 FROM @aug_stock seed
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = seed.id_san_pham_chi_tiet;
 
@@ -4372,11 +4649,17 @@ INSERT INTO dbo.Lich_su_thanh_toan (
 )
 SELECT
     order_row.id, order_row.tong_tien, order_row.hinh_thuc_thanh_toan,
-    N'AUG-SUCCESS-' + order_row.ma_hoa_don,
-    N'SUCCESS', N'Thanh toán dữ liệu mẫu tháng 8 thành công',
+    N'PAY-' + order_row.ma_hoa_don,
+    N'SUCCESS', CASE order_row.hinh_thuc_thanh_toan
+        WHEN N'MOMO' THEN N'Thanh toán MoMo thành công'
+        WHEN N'ZALOPAY' THEN N'Thanh toán ZaloPay thành công'
+        WHEN N'Tiền mặt' THEN N'Đã thu tiền tại quầy'
+        WHEN N'COD' THEN N'Đã thu tiền khi giao hàng'
+        ELSE N'Thanh toán thành công'
+    END,
     DATEADD(MINUTE, 5, order_row.ngay_tao)
 FROM dbo.Hoa_don order_row
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND order_row.da_thanh_toan = 1
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Lich_su_thanh_toan payment
@@ -4389,11 +4672,15 @@ INSERT INTO dbo.Lich_su_thanh_toan (
 )
 SELECT
     order_row.id, 0, order_row.hinh_thuc_thanh_toan,
-    N'AUG-FAILED-' + order_row.ma_hoa_don,
-    N'FAILED', N'Thanh toán dữ liệu mẫu tháng 8 thất bại',
+    N'PAY-FAIL-' + order_row.ma_hoa_don,
+    N'FAILED', CASE order_row.hinh_thuc_thanh_toan
+        WHEN N'MOMO' THEN N'Thanh toán MoMo không thành công'
+        WHEN N'ZALOPAY' THEN N'Thanh toán ZaloPay không thành công'
+        ELSE N'Thanh toán không thành công'
+    END,
     DATEADD(MINUTE, 5, order_row.ngay_tao)
 FROM dbo.Hoa_don order_row
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND order_row.trang_thai = 7
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Lich_su_thanh_toan payment
@@ -4406,9 +4693,9 @@ INSERT INTO dbo.Lich_su_thanh_toan (
 )
 SELECT
     order_row.id, -ABS(first_detail.thanh_tien), N'REFUND',
-    N'AUG-REFUND-' + order_row.ma_hoa_don,
-    N'REFUND_SUCCESS', N'Hoàn tiền dữ liệu mẫu tháng 8',
-    DATEADD(MINUTE, 60, order_row.ngay_tao)
+    N'RF-' + order_row.ma_hoa_don,
+    N'REFUND_SUCCESS', N'Đã hoàn tiền theo yêu cầu trả hàng',
+    DATEADD(DAY, 6, order_row.ngay_tao)
 FROM dbo.Hoa_don order_row
 JOIN @aug_orders seed_order ON seed_order.ma_hoa_don = order_row.ma_hoa_don
 CROSS APPLY (
@@ -4417,7 +4704,7 @@ CROSS APPLY (
     WHERE detail.id_hoa_don = order_row.id
     ORDER BY detail.id
 ) first_detail
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND seed_order.seq % 20 = 15
   AND order_row.id % 2 = 1
   AND NOT EXISTS (
@@ -4434,10 +4721,24 @@ SELECT
         WHEN 6 THEN N'failed' WHEN 7 THEN N'payment_failed'
         ELSE N'pending'
     END,
-    N'Trạng thái dữ liệu nghiệp vụ tháng 8/2026',
-    DATEADD(HOUR, 2, order_row.ngay_tao)
+    CASE order_row.trang_thai
+        WHEN 0 THEN N'Đơn hàng đang chờ xác nhận'
+        WHEN 1 THEN N'Đơn hàng đã được xác nhận'
+        WHEN 2 THEN N'Đơn hàng đang được chuẩn bị'
+        WHEN 3 THEN N'Đơn hàng đã bàn giao cho đơn vị vận chuyển'
+        WHEN 4 THEN N'Đơn hàng đã giao thành công'
+        WHEN 5 THEN N'Đơn hàng đã được hủy'
+        WHEN 6 THEN N'Giao hàng không thành công'
+        WHEN 7 THEN N'Thanh toán không thành công'
+        ELSE N'Đơn hàng đang chờ xử lý'
+    END,
+    CASE
+        WHEN DATEADD(HOUR, 2, order_row.ngay_tao) > CAST('2026-09-01T18:00:00' AS datetime2)
+            THEN CAST('2026-09-01T18:00:00' AS datetime2)
+        ELSE DATEADD(HOUR, 2, order_row.ngay_tao)
+    END
 FROM dbo.Hoa_don order_row
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Lich_su_tracking tracking
       WHERE tracking.id_hoa_don = order_row.id
@@ -4448,15 +4749,25 @@ INSERT INTO dbo.Hoa_don_audit_log (
     nguoi_thuc_hien, vai_tro, ghi_chu, ngay_tao
 )
 SELECT
-    order_row.id, N'TAO_DU_LIEU_DEMO', NULL, order_row.trang_thai,
-    COALESCE(employee.ho_va_ten, N'Hệ thống'), N'SYSTEM',
-    N'Khởi tạo dữ liệu nghiệp vụ tháng 8/2026', order_row.ngay_tao
+    order_row.id,
+    CASE WHEN order_row.hinh_thuc_nhan_hang = 0 THEN N'TAO_DON_TAI_QUAY' ELSE N'DAT_HANG_ONLINE' END,
+    NULL,
+    order_row.trang_thai,
+    CASE WHEN order_row.hinh_thuc_nhan_hang = 0
+         THEN COALESCE(employee.ho_va_ten, N'Nguyễn Tiến Thành')
+         ELSE order_row.ten_khach_hang END,
+    CASE WHEN order_row.hinh_thuc_nhan_hang = 0 THEN N'Nhân viên' ELSE N'Khách hàng' END,
+    CASE WHEN order_row.hinh_thuc_nhan_hang = 0
+         THEN N'Nhân viên tạo đơn và xác nhận thanh toán tại quầy'
+         ELSE N'Khách hàng hoàn tất đặt hàng trên website' END,
+    order_row.ngay_tao
 FROM dbo.Hoa_don order_row
 LEFT JOIN dbo.Nhan_vien employee ON employee.id = order_row.id_nhan_vien
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Hoa_don_audit_log audit
-      WHERE audit.id_hoa_don = order_row.id AND audit.hanh_dong = N'TAO_DU_LIEU_DEMO'
+      WHERE audit.id_hoa_don = order_row.id
+        AND audit.hanh_dong IN (N'TAO_DON_TAI_QUAY', N'DAT_HANG_ONLINE')
   );
 
 INSERT INTO dbo.Danh_gia (
@@ -4486,7 +4797,7 @@ CROSS APPLY (
     ORDER BY detail.id
 ) first_detail
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = first_detail.id_san_pham_chi_tiet
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND order_row.trang_thai = 4
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Danh_gia review
@@ -4496,15 +4807,99 @@ WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
   )
 ORDER BY order_row.ngay_tao;
 
+-- A second purchased line is reviewed across September. Every review remains
+-- linked to a delivered order and a real customer/product combination.
+;WITH september_review_candidates AS (
+    SELECT TOP (30)
+        order_row.id AS id_hoa_don,
+        order_row.id_khach_hang,
+        variant.id_san_pham,
+        variant.anh_url,
+        ROW_NUMBER() OVER (ORDER BY order_row.ngay_tao, order_row.id) AS rn
+    FROM dbo.Hoa_don order_row
+    CROSS APPLY (
+        SELECT detail.id_san_pham_chi_tiet,
+               ROW_NUMBER() OVER (ORDER BY detail.id) AS line_number
+        FROM dbo.Hoa_don_chi_tiet detail
+        WHERE detail.id_hoa_don = order_row.id
+    ) purchased_line
+    JOIN dbo.san_pham_chi_tiet variant ON variant.id = purchased_line.id_san_pham_chi_tiet
+    WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
+      AND order_row.trang_thai = 4
+      AND purchased_line.line_number = 2
+    ORDER BY order_row.ngay_tao, order_row.id
+)
+MERGE dbo.Danh_gia AS target
+USING september_review_candidates AS source
+ON target.id_khach_hang = source.id_khach_hang
+AND target.id_san_pham = source.id_san_pham
+AND target.id_hoa_don = source.id_hoa_don
+WHEN MATCHED THEN UPDATE SET
+    so_sao = CASE source.rn % 8 WHEN 0 THEN 3 WHEN 1 THEN 4 ELSE 5 END,
+    noi_dung = CASE source.rn % 6
+        WHEN 0 THEN N'Chất liệu đứng phom, màu thực tế hài hòa và mặc cả ngày vẫn thoải mái.'
+        WHEN 1 THEN N'Mình chọn theo bảng size nên sản phẩm vừa vặn, phần vai và eo đều cân đối.'
+        WHEN 2 THEN N'Đường may chắc chắn, sản phẩm đúng hình và đóng gói rất cẩn thận.'
+        WHEN 3 THEN N'Mẫu này phối đi làm dễ, màu sắc trang nhã và không bị nhăn nhiều.'
+        WHEN 4 THEN N'Nhân viên tư vấn kỹ, giao đúng hẹn và sản phẩm phù hợp với dịp mình cần.'
+        ELSE N'Phom lên đẹp, chất vải dễ chịu và mình hài lòng với trải nghiệm mua hàng.'
+    END,
+    anh_danh_gia = CASE WHEN source.rn % 5 = 0 THEN source.anh_url ELSE NULL END,
+    trang_thai = 1,
+    ngay_tao = DATEADD(DAY, source.rn - 1, CAST('2026-09-01T19:15:00' AS datetime2))
+WHEN NOT MATCHED THEN INSERT (
+    id_khach_hang, id_san_pham, id_hoa_don, so_sao,
+    noi_dung, anh_danh_gia, trang_thai, ngay_tao
+) VALUES (
+    source.id_khach_hang, source.id_san_pham, source.id_hoa_don,
+    CASE source.rn % 8 WHEN 0 THEN 3 WHEN 1 THEN 4 ELSE 5 END,
+    CASE source.rn % 6
+        WHEN 0 THEN N'Chất liệu đứng phom, màu thực tế hài hòa và mặc cả ngày vẫn thoải mái.'
+        WHEN 1 THEN N'Mình chọn theo bảng size nên sản phẩm vừa vặn, phần vai và eo đều cân đối.'
+        WHEN 2 THEN N'Đường may chắc chắn, sản phẩm đúng hình và đóng gói rất cẩn thận.'
+        WHEN 3 THEN N'Mẫu này phối đi làm dễ, màu sắc trang nhã và không bị nhăn nhiều.'
+        WHEN 4 THEN N'Nhân viên tư vấn kỹ, giao đúng hẹn và sản phẩm phù hợp với dịp mình cần.'
+        ELSE N'Phom lên đẹp, chất vải dễ chịu và mình hài lòng với trải nghiệm mua hàng.'
+    END,
+    CASE WHEN source.rn % 5 = 0 THEN source.anh_url ELSE NULL END,
+    1,
+    DATEADD(DAY, source.rn - 1, CAST('2026-09-01T19:15:00' AS datetime2))
+);
+
 ;WITH newsletter_seed AS (
-    SELECT order_seed.seq AS rn,
-           COALESCE(
-               LOWER(customer.email),
-               N'august-newsletter-' + RIGHT(N'00' + CONVERT(nvarchar(2), order_seed.seq), 2) + N'@zestia.demo'
-           ) AS email
-    FROM @aug_orders order_seed
-    LEFT JOIN @aug_customers customer ON customer.rn = order_seed.seq
-    WHERE order_seed.seq <= 31
+    SELECT * FROM (VALUES
+        (1, N'lananh.nguyen@zestia.vn'),
+        (2, N'huong.pham@zestia.vn'),
+        (3, N'minh.le@zestia.vn'),
+        (4, N'minhchau.do@zestia.vn'),
+        (5, N'nguyengiabaoo2008@gmail.com'),
+        (6, N'ngocanh2701ss@gmail.com'),
+        (7, N'hoanganhminh110706@gmail.com'),
+        (8, N'thuynpth06788@gmail.com'),
+        (9, N'tonyvn081106@gmail.com'),
+        (10, N'nguyenthanh.hn090307@gmail.com'),
+        (11, N'baongts01859@gmail.com'),
+        (12, N'minhanh.tran@zestia.vn'),
+        (13, N'thuha.nguyen@zestia.vn'),
+        (14, N'phuonglinh.tran@zestia.vn'),
+        (15, N'khanhvy.le@zestia.vn'),
+        (16, N'ngocmai.pham@zestia.vn'),
+        (17, N'thanhha.do@zestia.vn'),
+        (18, N'quynhanh.bui@zestia.vn'),
+        (19, N'huyenmy.hoang@zestia.vn'),
+        (20, N'dieulinh.vu@zestia.vn'),
+        (21, N'minhthu.ngo@zestia.vn'),
+        (22, N'tramanh.dang@zestia.vn'),
+        (23, N'baochau.dinh@zestia.vn'),
+        (24, N'thuyduong.phan@zestia.vn'),
+        (25, N'kimngan.vo@zestia.vn'),
+        (26, N'nhatle.trinh@zestia.vn'),
+        (27, N'thuylinh.mai@zestia.vn'),
+        (28, N'anhthu.ly@zestia.vn'),
+        (29, N'minhnguyet.dao@zestia.vn'),
+        (30, N'tuongvy.cao@zestia.vn'),
+        (31, N'phuongthao.luu@zestia.vn')
+    ) contacts(rn, email)
 )
 MERGE dbo.Newsletter_subscriber AS target
 USING (
@@ -4593,7 +4988,7 @@ INSERT INTO dbo.Ho_tro_chat (
     ngay_tao, ngay_nhan, ngay_dong, ngay_cap_nhat
 )
 SELECT
-    N'AUG-CHAT-' + RIGHT(N'00' + CONVERT(nvarchar(2), numbers.seq), 2),
+    N'HT2608-' + RIGHT(N'00' + CONVERT(nvarchar(2), numbers.seq), 2),
     customer.id,
     CASE WHEN numbers.seq % 3 = 1 THEN NULL ELSE employee.id END,
     CASE numbers.seq % 3
@@ -4611,7 +5006,7 @@ JOIN @aug_customers customer ON customer.rn = ((numbers.seq - 1) % @aug_customer
 JOIN @aug_employees employee ON employee.rn = ((numbers.seq - 1) % @aug_employee_count) + 1
 WHERE NOT EXISTS (
     SELECT 1 FROM dbo.Ho_tro_chat chat
-    WHERE chat.ma_phien = N'AUG-CHAT-' + RIGHT(N'00' + CONVERT(nvarchar(2), numbers.seq), 2)
+    WHERE chat.ma_phien = N'HT2608-' + RIGHT(N'00' + CONVERT(nvarchar(2), numbers.seq), 2)
 )
 OPTION (MAXRECURSION 31);
 
@@ -4627,7 +5022,7 @@ CROSS APPLY (
     SELECT DATEADD(MINUTE, ((parsed.seq - 1) / 31) * 30,
         DATEADD(DAY, (parsed.seq - 1) % 31, CAST('2026-08-01T09:00:00' AS datetime2))) AS created_at
 ) fixture
-WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
+WHERE chat.ma_phien LIKE N'HT2608-%'
   AND parsed.seq IS NOT NULL;
 
 INSERT INTO dbo.Tin_nhan_ho_tro(id_ho_tro_chat, loai_nguoi_gui, ten_nguoi_gui, noi_dung, ngay_tao)
@@ -4635,27 +5030,198 @@ SELECT
     chat.id, message.loai_nguoi_gui, message.ten_nguoi_gui, message.noi_dung,
     DATEADD(MINUTE, message.minute_offset, chat.ngay_tao)
 FROM dbo.Ho_tro_chat chat
+JOIN dbo.Khach_hang customer ON customer.id = chat.id_khach_hang
+LEFT JOIN dbo.Nhan_vien employee ON employee.id = chat.id_nhan_vien
 CROSS APPLY (VALUES
-    (N'CUSTOMER', N'Khách hàng', N'Mình cần nhân viên hỗ trợ thêm về sản phẩm và đơn hàng.', 0),
-    (N'SYSTEM', N'Zestia', N'Yêu cầu đã được ghi nhận và chuyển tới nhân viên đang trong ca.', 1)
+    (N'CUSTOMER', customer.ho_va_ten,
+        CASE chat.tieu_de
+            WHEN N'Tư vấn chọn size' THEN N'Mình cần tư vấn size phù hợp với số đo đã cung cấp.'
+            WHEN N'Hỏi tình trạng đơn hàng' THEN N'Mình muốn kiểm tra thời gian dự kiến giao đơn hàng.'
+            ELSE N'Mình muốn biết voucher nào phù hợp với sản phẩm đang chọn.'
+        END, 0),
+    (N'SYSTEM', COALESCE(employee.ho_va_ten, N'Zestia'),
+        N'Yêu cầu đã được ghi nhận và chuyển tới nhân viên đang trong ca.', 1)
 ) message(loai_nguoi_gui, ten_nguoi_gui, noi_dung, minute_offset)
-WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
+WHERE chat.ma_phien LIKE N'HT2608-%'
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Tin_nhan_ho_tro existing
       WHERE existing.id_ho_tro_chat = chat.id
   );
 
-;WITH ordered_demo_messages AS (
+;WITH ordered_messages AS (
     SELECT message.id, chat.ngay_tao,
            ROW_NUMBER() OVER (PARTITION BY message.id_ho_tro_chat ORDER BY message.id) - 1 AS minute_offset
     FROM dbo.Tin_nhan_ho_tro message
     JOIN dbo.Ho_tro_chat chat ON chat.id = message.id_ho_tro_chat
-    WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
+    WHERE chat.ma_phien LIKE N'HT2608-%'
 )
 UPDATE message
 SET ngay_tao = DATEADD(MINUTE, ordered.minute_offset, ordered.ngay_tao)
 FROM dbo.Tin_nhan_ho_tro message
-JOIN ordered_demo_messages ordered ON ordered.id = message.id;
+JOIN ordered_messages ordered ON ordered.id = message.id;
+
+-- September customer activity spans every day of the month. These rows use
+-- independent business keys, so they preserve the complete August history.
+;WITH september_newsletter AS (
+    SELECT * FROM (VALUES
+        (1, N'thanhtruc.nguyen@gmail.com'), (2, N'ngocdiep.pham@gmail.com'),
+        (3, N'khanhlinh.tran@gmail.com'), (4, N'thuytien.le@gmail.com'),
+        (5, N'maihuong.do@gmail.com'), (6, N'quynhchi.nguyen@gmail.com'),
+        (7, N'phuonganh.bui@gmail.com'), (8, N'nhungpham.hn@gmail.com'),
+        (9, N'anhthu.tran@gmail.com'), (10, N'dieulinh.ngo@gmail.com'),
+        (11, N'minhngoc.vo@gmail.com'), (12, N'thuha.dinh@gmail.com'),
+        (13, N'lanphuong.mai@gmail.com'), (14, N'baoanh.hoang@gmail.com'),
+        (15, N'kimngan.trinh@gmail.com'), (16, N'haianh.vu@gmail.com'),
+        (17, N'tramnguyen.hn@gmail.com'), (18, N'thuyduong.cao@gmail.com'),
+        (19, N'phuongthao.ly@gmail.com'), (20, N'nguyetanh.dang@gmail.com'),
+        (21, N'thanhmai.luu@gmail.com'), (22, N'nhatle.phan@gmail.com'),
+        (23, N'uyenlinh.nguyen@gmail.com'), (24, N'thuquynh.le@gmail.com'),
+        (25, N'minhthu.pham@gmail.com'), (26, N'khanhvy.tran@gmail.com'),
+        (27, N'ngocmai.bui@gmail.com'), (28, N'huyenmy.do@gmail.com'),
+        (29, N'tuongvy.ngo@gmail.com'), (30, N'linhchi.hoang@gmail.com')
+    ) contacts(rn, email)
+)
+MERGE dbo.Newsletter_subscriber AS target
+USING september_newsletter AS source
+ON target.email = source.email
+WHEN MATCHED THEN UPDATE SET
+    trang_thai = 1,
+    ngay_dang_ky = DATEADD(DAY, source.rn - 1, CAST('2026-09-01T08:10:00' AS datetime2)),
+    ngay_cap_nhat = DATEADD(DAY, source.rn - 1, CAST('2026-09-01T08:15:00' AS datetime2))
+WHEN NOT MATCHED THEN INSERT (email, trang_thai, ngay_dang_ky, ngay_cap_nhat)
+    VALUES (
+        source.email, 1,
+        DATEADD(DAY, source.rn - 1, CAST('2026-09-01T08:10:00' AS datetime2)),
+        DATEADD(DAY, source.rn - 1, CAST('2026-09-01T08:15:00' AS datetime2))
+    );
+
+;WITH september_favorites AS (
+    SELECT TOP (60)
+        customer.id AS id_khach_hang,
+        product.id AS id_san_pham,
+        ROW_NUMBER() OVER (ORDER BY product.id, customer.id) AS rn
+    FROM @aug_customers customer
+    CROSS JOIN dbo.san_pham product
+    WHERE product.trang_thai = 1
+      AND (customer.id + product.id) % 7 = 1
+    ORDER BY product.id, customer.id
+)
+MERGE dbo.San_pham_yeu_thich AS target
+USING september_favorites AS source
+ON target.id_khach_hang = source.id_khach_hang
+AND target.id_san_pham = source.id_san_pham
+WHEN MATCHED THEN UPDATE SET
+    ngay_tao = DATEADD(HOUR, source.rn % 10, DATEADD(DAY, (source.rn - 1) % 30, CAST('2026-09-01T09:00:00' AS datetime2)))
+WHEN NOT MATCHED THEN INSERT (id_khach_hang, id_san_pham, ngay_tao)
+    VALUES (
+        source.id_khach_hang, source.id_san_pham,
+        DATEADD(HOUR, source.rn % 10, DATEADD(DAY, (source.rn - 1) % 30, CAST('2026-09-01T09:00:00' AS datetime2)))
+    );
+
+;WITH september_history AS (
+    SELECT TOP (90)
+        customer.id AS id_khach_hang,
+        product.id AS id_san_pham,
+        ROW_NUMBER() OVER (ORDER BY customer.id DESC, product.id) AS rn
+    FROM @aug_customers customer
+    CROSS JOIN dbo.san_pham product
+    WHERE product.trang_thai = 1
+      AND (customer.id + product.id) % 5 = 1
+    ORDER BY customer.id DESC, product.id
+)
+MERGE dbo.Lich_su_xem AS target
+USING september_history AS source
+ON target.id_khach_hang = source.id_khach_hang
+AND target.id_san_pham = source.id_san_pham
+WHEN MATCHED THEN UPDATE SET
+    ngay_xem = DATEADD(HOUR, source.rn % 12, DATEADD(DAY, (source.rn - 1) % 30, CAST('2026-09-01T07:30:00' AS datetime2)))
+WHEN NOT MATCHED THEN INSERT (id_khach_hang, id_san_pham, ngay_xem)
+    VALUES (
+        source.id_khach_hang, source.id_san_pham,
+        DATEADD(HOUR, source.rn % 12, DATEADD(DAY, (source.rn - 1) % 30, CAST('2026-09-01T07:30:00' AS datetime2)))
+    );
+
+INSERT INTO dbo.Thong_bao (
+    tieu_de, noi_dung, loai, trang_thai,
+    da_doc, gui_email, da_gui, ngay_gui, ngay_tao
+)
+SELECT source.tieu_de, source.noi_dung, source.loai, 1, 0, 0, 0, source.ngay_tao, source.ngay_tao
+FROM (VALUES
+    (N'Chào thu tháng 9 cùng Zestia', N'Bộ sưu tập mùa thu và voucher tháng 9 đã sẵn sàng trên website và tại cửa hàng.', N'Voucher', CAST('2026-09-01T08:00:00' AS datetime2)),
+    (N'Lookbook công sở đầu thu', N'Khám phá các thiết kế dễ phối cho ngày đi làm, được sắp xếp theo phom và bảng size.', N'SanPham', CAST('2026-09-05T09:00:00' AS datetime2)),
+    (N'Gợi ý trang phục theo dịp', N'Chọn nhanh trang phục đi làm, dự tiệc, cưới hỏi hoặc hẹn hò trong mục Lookbook.', N'SanPham', CAST('2026-09-10T09:30:00' AS datetime2)),
+    (N'Ưu đãi dự tiệc mùa thu', N'Đợt ưu đãi trang phục dự tiệc được áp dụng đến hết ngày 30/09.', N'Voucher', CAST('2026-09-15T10:00:00' AS datetime2)),
+    (N'Bảo quản trang phục mùa thu', N'Xem hướng dẫn giặt, là và bảo quản theo từng chất liệu để sản phẩm giữ phom lâu hơn.', N'HeThong', CAST('2026-09-23T08:30:00' AS datetime2)),
+    (N'Khép lại tháng 9 cùng Zestia', N'Voucher và vòng quay tháng 9 còn hiệu lực đến 23:59 hôm nay.', N'HeThong', CAST('2026-09-30T08:00:00' AS datetime2))
+) source(tieu_de, noi_dung, loai, ngay_tao)
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Thong_bao notification
+    WHERE notification.tieu_de = source.tieu_de
+);
+
+DELETE message
+FROM dbo.Tin_nhan_ho_tro message
+JOIN dbo.Ho_tro_chat chat ON chat.id = message.id_ho_tro_chat
+WHERE chat.ma_phien LIKE N'HT2609-%'
+  AND chat.ngay_tao >= CAST('2026-09-02T00:00:00' AS datetime2);
+
+DELETE FROM dbo.Ho_tro_chat
+WHERE ma_phien LIKE N'HT2609-%'
+  AND ngay_tao >= CAST('2026-09-02T00:00:00' AS datetime2);
+
+;WITH september_chat_numbers AS (
+    SELECT 1 AS seq
+)
+INSERT INTO dbo.Ho_tro_chat (
+    ma_phien, id_khach_hang, id_nhan_vien, tieu_de, trang_thai,
+    ngay_tao, ngay_nhan, ngay_dong, ngay_cap_nhat
+)
+SELECT
+    N'HT2609-' + RIGHT(N'00' + CONVERT(nvarchar(2), numbers.seq), 2),
+    customer.id,
+    CASE WHEN numbers.seq % 4 = 1 THEN NULL ELSE employee.id END,
+    CASE numbers.seq % 4
+        WHEN 0 THEN N'Tư vấn chọn size'
+        WHEN 1 THEN N'Hỏi tình trạng đơn hàng'
+        WHEN 2 THEN N'Tư vấn sản phẩm theo dịp'
+        ELSE N'Tư vấn voucher phù hợp'
+    END,
+    CASE numbers.seq % 4 WHEN 0 THEN N'CLOSED' WHEN 1 THEN N'WAITING' ELSE N'ACTIVE' END,
+    DATEADD(DAY, numbers.seq - 1, CAST('2026-09-01T09:00:00' AS datetime2)),
+    CASE WHEN numbers.seq % 4 = 1 THEN NULL ELSE DATEADD(MINUTE, 3, DATEADD(DAY, numbers.seq - 1, CAST('2026-09-01T09:00:00' AS datetime2))) END,
+    CASE WHEN numbers.seq % 4 = 0 THEN DATEADD(MINUTE, 18, DATEADD(DAY, numbers.seq - 1, CAST('2026-09-01T09:00:00' AS datetime2))) ELSE NULL END,
+    DATEADD(MINUTE, 12, DATEADD(DAY, numbers.seq - 1, CAST('2026-09-01T09:00:00' AS datetime2)))
+FROM september_chat_numbers numbers
+JOIN @aug_customers customer ON customer.rn = ((numbers.seq - 1) % @aug_customer_count) + 1
+JOIN @aug_employees employee ON employee.rn = ((numbers.seq - 1) % @aug_employee_count) + 1
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Ho_tro_chat chat
+    WHERE chat.ma_phien = N'HT2609-' + RIGHT(N'00' + CONVERT(nvarchar(2), numbers.seq), 2)
+);
+
+INSERT INTO dbo.Tin_nhan_ho_tro(id_ho_tro_chat, loai_nguoi_gui, ten_nguoi_gui, noi_dung, ngay_tao)
+SELECT
+    chat.id, message.loai_nguoi_gui, message.ten_nguoi_gui, message.noi_dung,
+    DATEADD(MINUTE, message.minute_offset, chat.ngay_tao)
+FROM dbo.Ho_tro_chat chat
+JOIN dbo.Khach_hang customer ON customer.id = chat.id_khach_hang
+LEFT JOIN dbo.Nhan_vien employee ON employee.id = chat.id_nhan_vien
+CROSS APPLY (VALUES
+    (N'CUSTOMER', customer.ho_va_ten,
+        CASE chat.tieu_de
+            WHEN N'Tư vấn chọn size' THEN N'Mình cần tư vấn size theo số đo và phom sản phẩm.'
+            WHEN N'Hỏi tình trạng đơn hàng' THEN N'Mình muốn biết đơn hàng dự kiến được xử lý khi nào.'
+            WHEN N'Tư vấn sản phẩm theo dịp' THEN N'Mình cần gợi ý trang phục phù hợp cho buổi tiệc sắp tới.'
+            ELSE N'Mình muốn chọn voucher có lợi nhất cho giỏ hàng hiện tại.'
+        END, 0),
+    (N'SYSTEM', COALESCE(employee.ho_va_ten, N'Zestia'),
+        N'Yêu cầu đã được ghi nhận và chuyển tới nhân viên phụ trách.', 1)
+) message(loai_nguoi_gui, ten_nguoi_gui, noi_dung, minute_offset)
+WHERE chat.ma_phien LIKE N'HT2609-%'
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.Tin_nhan_ho_tro existing
+      WHERE existing.id_ho_tro_chat = chat.id
+  );
 
 INSERT INTO dbo.Yeu_cau_doi_tra (
     id_hoa_don, id_hoa_don_chi_tiet, id_bien_the_doi,
@@ -4682,17 +5248,39 @@ SELECT
     1,
     CASE WHEN order_row.id % 2 = 0 THEN N'Cần đổi sang size phù hợp hơn.' ELSE N'Sản phẩm không phù hợp với dịp sử dụng.' END,
     N'Sản phẩm còn nguyên tem, chưa qua giặt và có ảnh tình trạng kèm theo.',
-    CASE WHEN order_row.id % 2 = 1 THEN N'VCB - 9869167207 - NGUYEN TIEN THANH' ELSE NULL END,
+    CASE WHEN order_row.id % 2 = 1 THEN
+        CASE order_row.id % 3
+            WHEN 0 THEN N'VCB - '
+            WHEN 1 THEN N'MB BANK - '
+            ELSE N'TECHCOMBANK - '
+        END
+        + REPLACE(REPLACE(COALESCE(order_row.so_dien_thoai, customer.so_dien_thoai), N'+84', N'0'), N' ', N'')
+        + N' - ' + UPPER(order_row.ten_khach_hang)
+        ELSE NULL
+    END,
     CASE WHEN order_row.id % 2 = 1 THEN first_detail.thanh_tien ELSE NULL END,
-    CASE WHEN seed_order.seq % 20 = 15 AND order_row.id % 2 = 1 THEN N'AUG-REFUND-' + order_row.ma_hoa_don ELSE NULL END,
-    CASE WHEN seed_order.seq % 20 = 15 THEN N'Đã hoàn tất xử lý dữ liệu mẫu.' ELSE N'Đang chờ bước xử lý tiếp theo.' END,
+    CASE WHEN seed_order.seq % 20 = 15 AND order_row.id % 2 = 1 THEN N'RF-' + order_row.ma_hoa_don ELSE NULL END,
+    CASE
+        WHEN seed_order.seq % 20 = 15 AND order_row.id % 2 = 0 THEN N'Đã kiểm tra hàng và hoàn tất đổi sang biến thể mới.'
+        WHEN seed_order.seq % 20 = 15 THEN N'Đã nhận lại hàng và hoàn tất hoàn tiền cho khách.'
+        WHEN order_row.id % 2 = 0 THEN N'Đang chờ khách mang sản phẩm tới cửa hàng để kiểm tra.'
+        ELSE N'Đang chờ khách gửi sản phẩm về cửa hàng.'
+    END,
     CASE WHEN seed_order.seq % 20 = 15 THEN 1 ELSE 0 END,
-    DATEADD(MINUTE, 30, order_row.ngay_tao),
-    CASE WHEN seed_order.seq % 20 = 15 THEN DATEADD(MINUTE, 60, order_row.ngay_tao) ELSE NULL END,
-    CASE WHEN seed_order.seq % 20 = 15 THEN DATEADD(MINUTE, 90, order_row.ngay_tao) ELSE NULL END,
-    CASE WHEN seed_order.seq % 20 = 15 THEN DATEADD(MINUTE, 120, order_row.ngay_tao) ELSE NULL END
+    DATEADD(DAY, 2, order_row.ngay_tao),
+    CASE
+        WHEN seed_order.seq % 20 IN (14, 15) THEN DATEADD(DAY, 3, order_row.ngay_tao)
+        ELSE NULL
+    END,
+    CASE
+        WHEN seed_order.seq % 20 = 15 OR (seed_order.seq % 20 = 14 AND order_row.id % 2 = 1)
+            THEN DATEADD(DAY, 5, order_row.ngay_tao)
+        ELSE NULL
+    END,
+    CASE WHEN seed_order.seq % 20 = 15 THEN DATEADD(DAY, 6, order_row.ngay_tao) ELSE NULL END
 FROM dbo.Hoa_don order_row
 JOIN @aug_orders seed_order ON seed_order.ma_hoa_don = order_row.ma_hoa_don
+JOIN dbo.Khach_hang customer ON customer.id = order_row.id_khach_hang
 CROSS APPLY (
     SELECT TOP 1 detail.*
     FROM dbo.Hoa_don_chi_tiet detail
@@ -4709,10 +5297,16 @@ OUTER APPLY (
     ORDER BY candidate.id
 ) replacement
 CROSS APPLY (
-    SELECT TOP 1 id FROM dbo.Nhan_vien WHERE tinh_trang_lam_viec = 1 ORDER BY id
+    SELECT TOP 1 employee.id
+    FROM dbo.Nhan_vien employee
+    JOIN dbo.Vai_tro role ON role.id = employee.id_vai_tro
+    WHERE employee.tinh_trang_lam_viec = 1
+      AND role.ten_vai_tro = N'Nhân viên'
+    ORDER BY employee.id
 ) employee
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND seed_order.seq % 20 IN (14, 15)
+  AND order_row.ngay_tao < '2026-09-01'
   AND order_row.id_khach_hang IS NOT NULL
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Yeu_cau_doi_tra request
@@ -4728,14 +5322,14 @@ FROM dbo.Yeu_cau_doi_tra request
 JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
 JOIN dbo.Hoa_don_chi_tiet detail ON detail.id = request.id_hoa_don_chi_tiet
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = detail.id_san_pham_chi_tiet
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   AND request.nguon = N'ONLINE'
   AND NOT EXISTS (
       SELECT 1 FROM dbo.Anh_doi_tra image
       WHERE image.id_yeu_cau = request.id
   );
 
--- Completed demo returns restore the purchased variant. Completed exchanges
+-- Completed returns restore the purchased variant. Completed exchanges
 -- also reserve the replacement variant, matching the runtime inventory flow.
 DECLARE @aug_return_stock TABLE (
     id_san_pham_chi_tiet int NOT NULL PRIMARY KEY,
@@ -4749,7 +5343,7 @@ FROM (
     FROM dbo.Yeu_cau_doi_tra request
     JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
     JOIN dbo.Hoa_don_chi_tiet detail ON detail.id = request.id_hoa_don_chi_tiet
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+    WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
       AND request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN')
 
     UNION ALL
@@ -4757,7 +5351,7 @@ FROM (
     SELECT request.id_bien_the_doi, -request.so_luong
     FROM dbo.Yeu_cau_doi_tra request
     JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+    WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
       AND request.trang_thai = N'DA_DOI'
       AND request.id_bien_the_doi IS NOT NULL
 ) movement
@@ -4770,7 +5364,7 @@ IF EXISTS (
     JOIN dbo.san_pham_chi_tiet variant ON variant.id = adjustment.id_san_pham_chi_tiet
     WHERE variant.so_luong + adjustment.quantity_change < 0
 )
-    THROW 51041, N'Tồn kho không đủ để tạo lịch sử đổi hàng tháng 8.', 1;
+    THROW 51041, N'Tồn kho không đủ để tạo lịch sử đổi hàng trong giai đoạn dữ liệu.', 1;
 
 INSERT INTO dbo.Bien_dong_ton_kho (
     id_san_pham_chi_tiet, so_luong_truoc, so_luong_thay_doi, so_luong_sau,
@@ -4781,11 +5375,11 @@ SELECT
     variant.so_luong,
     adjustment.quantity_change,
     variant.so_luong + adjustment.quantity_change,
-    N'DOI_TRA_DEMO_T8',
-    N'AUGUST-2026-RETURNS',
-    N'Hệ thống dữ liệu mẫu',
-    N'Đối soát tồn kho đổi/trả hoàn tất trong tháng 8/2026',
-    CAST('2026-08-31T22:45:00' AS datetime2)
+    N'DOI_TRA_DOI_SOAT',
+    N'DTRA-20260906',
+    N'Nguyễn Tiến Thành',
+    N'Đối soát tồn kho đổi/trả hoàn tất đến 06/09/2026',
+    CAST('2026-09-06T18:00:00' AS datetime2)
 FROM @aug_return_stock adjustment
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = adjustment.id_san_pham_chi_tiet;
 
@@ -4794,39 +5388,64 @@ SET so_luong = variant.so_luong + adjustment.quantity_change
 FROM dbo.san_pham_chi_tiet variant
 JOIN @aug_return_stock adjustment ON adjustment.id_san_pham_chi_tiet = variant.id;
 
--- Normalize every insert-only demo row as well. This makes the script repair
+-- Normalize every imported row as well. This makes the script repair
 -- data created by an older sqlcmd run that did not use UTF-8 input.
 UPDATE payment
 SET payment.noi_dung = CASE UPPER(payment.trang_thai)
-        WHEN N'SUCCESS' THEN N'Thanh toán dữ liệu mẫu tháng 8 thành công'
-        WHEN N'FAILED' THEN N'Thanh toán dữ liệu mẫu tháng 8 thất bại'
-        WHEN N'REFUND_SUCCESS' THEN N'Hoàn tiền dữ liệu mẫu tháng 8'
+        WHEN N'SUCCESS' THEN CASE order_row.hinh_thuc_thanh_toan
+            WHEN N'MOMO' THEN N'Thanh toán MoMo thành công'
+            WHEN N'ZALOPAY' THEN N'Thanh toán ZaloPay thành công'
+            WHEN N'Tiền mặt' THEN N'Đã thu tiền tại quầy'
+            WHEN N'COD' THEN N'Đã thu tiền khi giao hàng'
+            ELSE N'Thanh toán thành công'
+        END
+        WHEN N'FAILED' THEN CASE order_row.hinh_thuc_thanh_toan
+            WHEN N'MOMO' THEN N'Thanh toán MoMo không thành công'
+            WHEN N'ZALOPAY' THEN N'Thanh toán ZaloPay không thành công'
+            ELSE N'Thanh toán không thành công'
+        END
+        WHEN N'REFUND_SUCCESS' THEN N'Đã hoàn tiền theo yêu cầu trả hàng'
         ELSE payment.noi_dung
     END,
     payment.ngay_tao = CASE WHEN UPPER(payment.trang_thai) = N'REFUND_SUCCESS'
-        THEN DATEADD(MINUTE, 60, order_row.ngay_tao)
+        THEN DATEADD(DAY, 6, order_row.ngay_tao)
         ELSE DATEADD(MINUTE, 5, order_row.ngay_tao) END
 FROM dbo.Lich_su_thanh_toan payment
 JOIN dbo.Hoa_don order_row ON order_row.id = payment.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-  AND payment.ma_giao_dich LIKE N'AUG-%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
+  AND (payment.ma_giao_dich LIKE N'PAY-%' OR payment.ma_giao_dich LIKE N'RF-%');
 
 UPDATE tracking
-SET tracking.mo_ta = N'Trạng thái dữ liệu nghiệp vụ tháng 8/2026',
+SET tracking.mo_ta = CASE order_row.trang_thai
+        WHEN 0 THEN N'Đơn hàng đang chờ xác nhận'
+        WHEN 1 THEN N'Đơn hàng đã được xác nhận'
+        WHEN 2 THEN N'Đơn hàng đang được chuẩn bị'
+        WHEN 3 THEN N'Đơn hàng đã bàn giao cho đơn vị vận chuyển'
+        WHEN 4 THEN N'Đơn hàng đã giao thành công'
+        WHEN 5 THEN N'Đơn hàng đã được hủy'
+        WHEN 6 THEN N'Giao hàng không thành công'
+        WHEN 7 THEN N'Thanh toán không thành công'
+        ELSE N'Đơn hàng đang chờ xử lý'
+    END,
     tracking.ngay_cap_nhat = DATEADD(HOUR, 2, order_row.ngay_tao)
 FROM dbo.Lich_su_tracking tracking
 JOIN dbo.Hoa_don order_row ON order_row.id = tracking.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 UPDATE audit
-SET audit.nguoi_thuc_hien = COALESCE(employee.ho_va_ten, N'Hệ thống'),
-    audit.ghi_chu = N'Khởi tạo dữ liệu nghiệp vụ tháng 8/2026',
+SET audit.hanh_dong = CASE WHEN order_row.hinh_thuc_nhan_hang = 0 THEN N'TAO_DON_TAI_QUAY' ELSE N'DAT_HANG_ONLINE' END,
+    audit.nguoi_thuc_hien = CASE WHEN order_row.hinh_thuc_nhan_hang = 0
+        THEN COALESCE(employee.ho_va_ten, N'Nguyễn Tiến Thành')
+        ELSE order_row.ten_khach_hang END,
+    audit.vai_tro = CASE WHEN order_row.hinh_thuc_nhan_hang = 0 THEN N'Nhân viên' ELSE N'Khách hàng' END,
+    audit.ghi_chu = CASE WHEN order_row.hinh_thuc_nhan_hang = 0
+        THEN N'Nhân viên tạo đơn và xác nhận thanh toán tại quầy'
+        ELSE N'Khách hàng hoàn tất đặt hàng trên website' END,
     audit.ngay_tao = order_row.ngay_tao
 FROM dbo.Hoa_don_audit_log audit
 JOIN dbo.Hoa_don order_row ON order_row.id = audit.id_hoa_don
 LEFT JOIN dbo.Nhan_vien employee ON employee.id = order_row.id_nhan_vien
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-  AND audit.hanh_dong = N'TAO_DU_LIEU_DEMO';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 UPDATE review
 SET review.noi_dung = CASE order_row.id % 5
@@ -4839,9 +5458,10 @@ SET review.noi_dung = CASE order_row.id % 5
     review.ngay_tao = DATEADD(HOUR, 3, order_row.ngay_tao)
 FROM dbo.Danh_gia review
 JOIN dbo.Hoa_don order_row ON order_row.id = review.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
+  AND review.ngay_tao < CAST('2026-09-01T00:00:00' AS datetime2);
 
--- HDS orders are generated fixtures as well, not customer-authored reviews.
+-- Normalize imported review history while preserving customer-authored reviews.
 UPDATE review
 SET review.noi_dung = CASE review.id % 8
         WHEN 0 THEN N'Sản phẩm đúng hình, đường may gọn và tư vấn size phù hợp.'
@@ -4855,7 +5475,7 @@ SET review.noi_dung = CASE review.id % 8
     END
 FROM dbo.Danh_gia review
 JOIN dbo.Hoa_don order_row ON order_row.id = review.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDS%';
+WHERE order_row.ma_yeu_cau LIKE N'LSGD26%';
 
 UPDATE notification
 SET notification.tieu_de = source.tieu_de,
@@ -4934,20 +5554,26 @@ SET chat.tieu_de = CASE CONVERT(int, RIGHT(chat.ma_phien, 2)) % 3
         ELSE N'Tư vấn voucher phù hợp'
     END
 FROM dbo.Ho_tro_chat chat
-WHERE chat.ma_phien LIKE N'AUG-CHAT-%';
+WHERE chat.ma_phien LIKE N'HT2608-%';
 
 UPDATE message
 SET message.ten_nguoi_gui = CASE message.loai_nguoi_gui
-        WHEN N'CUSTOMER' THEN N'Khách hàng'
-        ELSE N'Zestia'
+        WHEN N'CUSTOMER' THEN customer.ho_va_ten
+        ELSE COALESCE(employee.ho_va_ten, N'Zestia')
     END,
     message.noi_dung = CASE message.loai_nguoi_gui
-        WHEN N'CUSTOMER' THEN N'Mình cần nhân viên hỗ trợ thêm về sản phẩm và đơn hàng.'
+        WHEN N'CUSTOMER' THEN CASE chat.tieu_de
+            WHEN N'Tư vấn chọn size' THEN N'Mình cần tư vấn size phù hợp với số đo đã cung cấp.'
+            WHEN N'Hỏi tình trạng đơn hàng' THEN N'Mình muốn kiểm tra thời gian dự kiến giao đơn hàng.'
+            ELSE N'Mình muốn biết voucher nào phù hợp với sản phẩm đang chọn.'
+        END
         ELSE N'Yêu cầu đã được ghi nhận và chuyển tới nhân viên đang trong ca.'
     END
 FROM dbo.Tin_nhan_ho_tro message
 JOIN dbo.Ho_tro_chat chat ON chat.id = message.id_ho_tro_chat
-WHERE chat.ma_phien LIKE N'AUG-CHAT-%';
+JOIN dbo.Khach_hang customer ON customer.id = chat.id_khach_hang
+LEFT JOIN dbo.Nhan_vien employee ON employee.id = chat.id_nhan_vien
+WHERE chat.ma_phien LIKE N'HT2608-%';
 
 UPDATE request
 SET request.ly_do = CASE request.loai_yeu_cau
@@ -4956,45 +5582,125 @@ SET request.ly_do = CASE request.loai_yeu_cau
     END,
     request.tinh_trang_hang = N'Sản phẩm còn nguyên tem, chưa qua giặt và có ảnh tình trạng kèm theo.',
     request.ghi_chu_nhan_vien = CASE
-        WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN') THEN N'Đã hoàn tất xử lý dữ liệu mẫu.'
-        ELSE N'Đang chờ bước xử lý tiếp theo.'
+        WHEN request.trang_thai = N'DA_DOI' THEN N'Đã kiểm tra hàng và hoàn tất đổi sang biến thể mới.'
+        WHEN request.trang_thai = N'DA_HOAN_TIEN' THEN N'Đã nhận lại hàng và hoàn tất hoàn tiền cho khách.'
+        WHEN request.loai_yeu_cau = N'DOI' THEN N'Đang chờ khách mang sản phẩm tới cửa hàng để kiểm tra.'
+        ELSE N'Đang chờ khách gửi sản phẩm về cửa hàng.'
     END,
-    request.ngay_tao = DATEADD(MINUTE, 30, order_row.ngay_tao),
-    request.ngay_duyet = CASE WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN') THEN DATEADD(MINUTE, 60, order_row.ngay_tao) ELSE NULL END,
-    request.ngay_nhan_hang = CASE WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN') THEN DATEADD(MINUTE, 90, order_row.ngay_tao) ELSE NULL END,
-    request.ngay_hoan_tat = CASE WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN') THEN DATEADD(MINUTE, 120, order_row.ngay_tao) ELSE NULL END
+    request.ngay_tao = DATEADD(DAY, 2, order_row.ngay_tao),
+    request.ngay_duyet = CASE
+        WHEN request.trang_thai IN (N'CHO_NHAN_HANG', N'CHO_XAC_NHAN_HOAN_TIEN', N'DA_DOI', N'DA_HOAN_TIEN')
+            THEN DATEADD(DAY, 3, order_row.ngay_tao)
+        ELSE NULL
+    END,
+    request.ngay_nhan_hang = CASE
+        WHEN request.trang_thai IN (N'CHO_XAC_NHAN_HOAN_TIEN', N'DA_DOI', N'DA_HOAN_TIEN')
+            THEN DATEADD(DAY, 5, order_row.ngay_tao)
+        ELSE NULL
+    END,
+    request.ngay_hoan_tat = CASE
+        WHEN request.trang_thai IN (N'DA_DOI', N'DA_HOAN_TIEN')
+            THEN DATEADD(DAY, 6, order_row.ngay_tao)
+        ELSE NULL
+    END
 FROM dbo.Yeu_cau_doi_tra request
 JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 UPDATE return_image
 SET return_image.ngay_tao = DATEADD(MINUTE, 2, request.ngay_tao)
 FROM dbo.Anh_doi_tra return_image
 JOIN dbo.Yeu_cau_doi_tra request ON request.id = return_image.id_yeu_cau
 JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
-WHERE order_row.ma_hoa_don LIKE N'HDAUG26%';
+WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 UPDATE movement
-SET movement.nguoi_thuc_hien = N'Hệ thống dữ liệu mẫu',
-    movement.ghi_chu = N'Tổng hợp lượng bán của dữ liệu tháng 8/2026',
-    movement.ngay_tao = CAST('2026-08-31T22:30:00' AS datetime2)
+SET movement.nguoi_thuc_hien = N'Nguyễn Tiến Thành',
+    movement.ghi_chu = N'Đối soát lượng bán và tồn kho đến 18:00 ngày 01/09/2026',
+    movement.ngay_tao = CAST('2026-09-01T18:00:00' AS datetime2)
 FROM dbo.Bien_dong_ton_kho movement
-WHERE movement.loai_bien_dong = N'BAN_HANG_DEMO_T8'
-  AND movement.ma_tham_chieu = N'AUGUST-2026-SEED';
+WHERE movement.loai_bien_dong = N'BAN_HANG_DOI_SOAT'
+  AND movement.ma_tham_chieu = N'DS-20260901-1800';
+
+-- One late-September request keeps the pending return workflow available for
+-- demonstration while still respecting the 30-day return window.
+;WITH return_candidate AS (
+    SELECT TOP (1)
+        order_row.id AS id_hoa_don,
+        detail.id AS id_hoa_don_chi_tiet,
+        order_row.id_khach_hang,
+        detail.thanh_tien,
+        order_row.so_dien_thoai,
+        order_row.ten_khach_hang
+    FROM dbo.Hoa_don order_row
+    JOIN dbo.Hoa_don_chi_tiet detail ON detail.id_hoa_don = order_row.id
+    WHERE order_row.ma_hoa_don LIKE N'HD2608%'
+      AND order_row.hinh_thuc_nhan_hang = 1
+      AND order_row.trang_thai = 4
+      AND order_row.ngay_tao >= CAST('2026-08-29T00:00:00' AS datetime2)
+      AND order_row.ngay_tao < CAST('2026-09-01T00:00:00' AS datetime2)
+    ORDER BY order_row.ngay_tao DESC, detail.id
+)
+INSERT INTO dbo.Yeu_cau_doi_tra (
+    id_hoa_don, id_hoa_don_chi_tiet, id_bien_the_doi,
+    id_khach_hang, id_nhan_vien_xu_ly, loai_yeu_cau, nguon,
+    trang_thai, so_luong, ly_do, tinh_trang_hang,
+    thong_tin_hoan_tien, so_tien_hoan, ma_giao_dich_hoan,
+    ghi_chu_nhan_vien, da_hoan_ton_kho, ngay_tao,
+    ngay_duyet, ngay_nhan_hang, ngay_hoan_tat
+)
+SELECT
+    candidate.id_hoa_don, candidate.id_hoa_don_chi_tiet, NULL,
+    candidate.id_khach_hang, NULL, N'TRA', N'ONLINE',
+    N'CHO_DUYET', 1, N'Sản phẩm không phù hợp với sự kiện đã dự định.',
+    N'Sản phẩm còn nguyên tem, chưa giặt và được đóng lại trong túi bảo quản.',
+    N'VCB - ' + REPLACE(REPLACE(candidate.so_dien_thoai, N'+84', N'0'), N' ', N'')
+        + N' - ' + UPPER(candidate.ten_khach_hang),
+    candidate.thanh_tien, NULL, NULL, 0, CAST('2026-09-28T10:20:00' AS datetime2),
+    NULL, NULL, NULL
+FROM return_candidate candidate
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Yeu_cau_doi_tra existing
+    WHERE existing.id_hoa_don_chi_tiet = candidate.id_hoa_don_chi_tiet
+);
+
+INSERT INTO dbo.Anh_doi_tra(id_yeu_cau, anh_url, ngay_tao)
+SELECT request.id, COALESCE(variant.anh_url, N'/images/products/dress1.jpg'),
+       CAST('2026-09-28T10:22:00' AS datetime2)
+FROM dbo.Yeu_cau_doi_tra request
+JOIN dbo.Hoa_don_chi_tiet detail ON detail.id = request.id_hoa_don_chi_tiet
+JOIN dbo.san_pham_chi_tiet variant ON variant.id = detail.id_san_pham_chi_tiet
+WHERE request.ngay_tao = CAST('2026-09-28T10:20:00' AS datetime2)
+  AND request.trang_thai = N'CHO_DUYET'
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.Anh_doi_tra image WHERE image.id_yeu_cau = request.id
+  );
 
 UPDATE address
 SET address.tinh_thanh_pho = N'Hà Nội',
     address.quan_huyen = N'Quận Cầu Giấy',
-    address.xa_phuong = N'Phường Dịch Vọng',
-    address.duong = N'Địa chỉ phụ ' + customer.ma_khach_hang
+    address.xa_phuong = CASE customer.id % 5
+        WHEN 0 THEN N'Phường Dịch Vọng Hậu'
+        WHEN 1 THEN N'Phường Yên Hòa'
+        WHEN 2 THEN N'Phường Dịch Vọng Hậu'
+        WHEN 3 THEN N'Phường Yên Hòa'
+        ELSE N'Phường Dịch Vọng'
+    END,
+    address.duong = CASE customer.id % 5
+        WHEN 0 THEN N'88 Nguyễn Phong Sắc'
+        WHEN 1 THEN N'18 Trung Kính'
+        WHEN 2 THEN N'72 Trần Thái Tông'
+        WHEN 3 THEN N'105 Nguyễn Khang'
+        ELSE N'26 Thành Thái'
+    END
 FROM dbo.Dia_chi address
 JOIN dbo.Khach_hang customer ON customer.id = address.id_khach_hang
 WHERE address.mac_dinh = 0
   AND customer.ma_khach_hang IS NOT NULL
-  AND RIGHT(address.duong, LEN(customer.ma_khach_hang)) = customer.ma_khach_hang;
+  AND (address.duong IS NULL OR address.duong LIKE N'Địa chỉ phụ %');
 
--- Mixed August shift states make confirm/unavailable/admin-review screens
--- demonstrable without corrupting check-in/check-out history.
+-- Mixed August and September shift states cover confirmation, absence and admin-review workflows
+-- without corrupting check-in/check-out history.
 UPDATE dbo.Lich_lam_viec
 SET trang_thai = CASE
         WHEN DAY(ngay_lam) % 13 = 0 THEN 2
@@ -5026,7 +5732,7 @@ SET trang_thai = CASE
         ELSE NULL
     END,
     nguoi_duyet = CASE WHEN DAY(ngay_lam) % 13 = 0 THEN N'Admin' ELSE NULL END
-WHERE ngay_lam BETWEEN '2026-08-01' AND '2026-08-31';
+WHERE ngay_lam BETWEEN '2026-08-01' AND '2026-09-30';
 GO
 
 -- Normalize legacy busy requests created before admin review became mandatory.
@@ -5094,7 +5800,12 @@ SET detail.thanh_tien = detail.don_gia * detail.so_luong,
     detail.ten_san_pham_snapshot = COALESCE(detail.ten_san_pham_snapshot, product.ten_san_pham),
     detail.mau_sac_snapshot = COALESCE(detail.mau_sac_snapshot, color.ten_mau_sac),
     detail.kich_thuoc_snapshot = COALESCE(detail.kich_thuoc_snapshot, size.ten_kich_thuoc),
-    detail.anh_url_snapshot = COALESCE(detail.anh_url_snapshot, variant.anh_url, gallery.anh_url)
+    detail.anh_url_snapshot = CASE
+        WHEN detail.anh_url_snapshot IS NULL
+          OR detail.anh_url_snapshot NOT LIKE N'/images/products/catalog-v2/%'
+            THEN COALESCE(variant.anh_url, gallery.anh_url, detail.anh_url_snapshot)
+        ELSE detail.anh_url_snapshot
+    END
 FROM dbo.Hoa_don_chi_tiet detail
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = detail.id_san_pham_chi_tiet
 JOIN dbo.san_pham product ON product.id = variant.id_san_pham
@@ -5211,15 +5922,20 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.Luot_
     CREATE INDEX IX_Luot_quay_trang_thai ON dbo.Luot_quay_may_man(id_chien_dich, trang_thai_nhan, ngay_quay DESC);
 
 MERGE dbo.Vong_quay_may_man AS target
-USING (VALUES (
-    N'VQ-THANG8-2026',
-    N'Vòng quay rực rỡ tháng 8',
-    N'Mỗi đơn đã giao thành công từ 1.000.000đ nhận một lượt quay. Quà tặng là hiện vật và nhận tại showroom Zestia.',
-    CAST(1000000 AS decimal(15,2)),
-    CAST('2026-08-01T00:00:00' AS datetime2),
-    CAST('2026-08-31T23:59:59' AS datetime2),
-    CAST(1 AS tinyint)
-)) AS source(ma_chien_dich, ten_chien_dich, mo_ta, gia_tri_don_toi_thieu, ngay_bat_dau, ngay_ket_thuc, trang_thai)
+USING (VALUES
+    (
+        N'VQ-THANG8-2026', N'Vòng quay rực rỡ tháng 8',
+        N'Mỗi đơn đã giao thành công từ 1.000.000đ nhận một lượt quay. Quà tặng là hiện vật và nhận tại showroom Zestia.',
+        CAST(1000000 AS decimal(15,2)), CAST('2026-08-01T00:00:00' AS datetime2),
+        CAST('2026-08-31T23:59:59' AS datetime2), CAST(1 AS tinyint)
+    ),
+    (
+        N'VQ-THANG9-2026', N'Vòng quay sắc thu tháng 9',
+        N'Mỗi đơn đã giao thành công từ 1.000.000đ nhận một lượt quay. Quà tặng là hiện vật và nhận tại showroom Zestia.',
+        CAST(1000000 AS decimal(15,2)), CAST('2026-09-01T00:00:00' AS datetime2),
+        CAST('2026-09-30T23:59:59' AS datetime2), CAST(1 AS tinyint)
+    )
+) AS source(ma_chien_dich, ten_chien_dich, mo_ta, gia_tri_don_toi_thieu, ngay_bat_dau, ngay_ket_thuc, trang_thai)
 ON target.ma_chien_dich = source.ma_chien_dich
 WHEN MATCHED THEN UPDATE SET
     ten_chien_dich = source.ten_chien_dich,
@@ -5233,11 +5949,17 @@ WHEN NOT MATCHED THEN INSERT (
     ngay_bat_dau, ngay_ket_thuc, trang_thai, ngay_tao
 ) VALUES (
     source.ma_chien_dich, source.ten_chien_dich, source.mo_ta, source.gia_tri_don_toi_thieu,
-    source.ngay_bat_dau, source.ngay_ket_thuc, source.trang_thai, CAST('2026-08-01T09:00:00' AS datetime2)
+    source.ngay_bat_dau, source.ngay_ket_thuc, source.trang_thai,
+    CASE WHEN source.ma_chien_dich = N'VQ-THANG8-2026'
+         THEN CAST('2026-08-01T09:00:00' AS datetime2)
+         ELSE CAST('2026-08-28T09:00:00' AS datetime2) END
 );
 
 DECLARE @aug_lucky_campaign int = (
     SELECT id FROM dbo.Vong_quay_may_man WHERE ma_chien_dich = N'VQ-THANG8-2026'
+);
+DECLARE @sep_lucky_campaign int = (
+    SELECT id FROM dbo.Vong_quay_may_man WHERE ma_chien_dich = N'VQ-THANG9-2026'
 );
 
 MERGE dbo.Phan_thuong_vong_quay AS target
@@ -5249,7 +5971,15 @@ USING (VALUES
     (@aug_lucky_campaign, N'Khăn lụa Zestia', N'VAT_PHAM', 14, 10, N'#4F627E', N'bi-gem', CAST(NULL AS nvarchar(500)), 5, CAST(1 AS tinyint)),
     (@aug_lucky_campaign, N'Gương trang điểm', N'VAT_PHAM', 25, 18, N'#935F79', N'bi-circle-half', CAST(NULL AS nvarchar(500)), 6, CAST(1 AS tinyint)),
     (@aug_lucky_campaign, N'Ô gấp Zestia', N'VAT_PHAM', 30, 25, N'#5D6A58', N'bi-umbrella', CAST(NULL AS nvarchar(500)), 7, CAST(1 AS tinyint)),
-    (@aug_lucky_campaign, N'Chúc bạn may mắn lần sau', N'KHONG_TRUNG', NULL, 70, N'#A15A52', N'bi-stars', CAST(NULL AS nvarchar(500)), 8, CAST(1 AS tinyint))
+    (@aug_lucky_campaign, N'Chúc bạn may mắn lần sau', N'KHONG_TRUNG', NULL, 70, N'#A15A52', N'bi-stars', CAST(NULL AS nvarchar(500)), 8, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'iPhone 16', N'VAT_PHAM', 1, 1, N'#17171A', N'bi-phone', CAST(NULL AS nvarchar(500)), 1, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'Nước hoa mini Zestia', N'VAT_PHAM', 10, 8, N'#7C2F4A', N'bi-droplet', CAST(NULL AS nvarchar(500)), 2, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'Balo thời trang Zestia', N'VAT_PHAM', 14, 12, N'#C64F47', N'bi-backpack', CAST(NULL AS nvarchar(500)), 3, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'Túi tote Zestia', N'VAT_PHAM', 24, 16, N'#2F6F73', N'bi-bag-heart', CAST(NULL AS nvarchar(500)), 4, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'Khăn lụa Zestia', N'VAT_PHAM', 16, 10, N'#4F627E', N'bi-gem', CAST(NULL AS nvarchar(500)), 5, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'Gương trang điểm', N'VAT_PHAM', 28, 18, N'#935F79', N'bi-circle-half', CAST(NULL AS nvarchar(500)), 6, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'Ô gấp Zestia', N'VAT_PHAM', 35, 25, N'#5D6A58', N'bi-umbrella', CAST(NULL AS nvarchar(500)), 7, CAST(1 AS tinyint)),
+    (@sep_lucky_campaign, N'Chúc bạn may mắn lần sau', N'KHONG_TRUNG', NULL, 65, N'#A15A52', N'bi-stars', CAST(NULL AS nvarchar(500)), 8, CAST(1 AS tinyint))
 ) AS source(id_chien_dich, ten_phan_thuong, loai_phan_thuong, so_luong_ban_dau, trong_so, mau_hien_thi, bieu_tuong, anh_bieu_tuong, thu_tu, trang_thai)
 ON target.id_chien_dich = source.id_chien_dich
 AND target.ten_phan_thuong = source.ten_phan_thuong
@@ -5482,9 +6212,9 @@ IF EXISTS (SELECT 1 FROM dbo.Hoa_don WHERE trang_thai IN (5, 6, 7) AND ISNULL(da
 IF EXISTS (
     SELECT 1 FROM dbo.Bien_dong_ton_kho
     WHERE loai_bien_dong = N'HOAN_DON'
-      AND ma_tham_chieu LIKE N'HDAUG26%'
+      AND ma_tham_chieu LIKE N'HD260[89]%'
 )
-    THROW 51040, N'Dữ liệu refresh còn sót bút toán hoàn kho của đơn tháng 8.', 1;
+    THROW 51040, N'Đối soát còn sót bút toán hoàn kho của đơn trong giai đoạn dữ liệu.', 1;
 IF EXISTS (SELECT 1 FROM dbo.Lich_lam_viec WHERE gio_check_out IS NOT NULL AND (gio_check_in IS NULL OR gio_check_out < gio_check_in))
     THROW 51017, N'Dữ liệu check-in/check-out của ca làm không hợp lệ.', 1;
 IF EXISTS (SELECT 1 FROM dbo.Lich_lam_viec WHERE gio_ket_thuc <= gio_bat_dau)
@@ -5561,16 +6291,26 @@ IF NOT EXISTS (
     WHERE campaign.ma_chien_dich = N'VQ-THANG8-2026'
       AND campaign.gia_tri_don_toi_thieu = 1000000
 )
-    THROW 51031, N'Dữ liệu chiến dịch vòng quay tháng 8 chưa đúng.', 1;
+   OR NOT EXISTS (
+    SELECT 1 FROM dbo.Vong_quay_may_man campaign
+    WHERE campaign.ma_chien_dich = N'VQ-THANG9-2026'
+      AND campaign.gia_tri_don_toi_thieu = 1000000
+      AND campaign.ngay_bat_dau = CAST('2026-09-01T00:00:00' AS datetime2)
+      AND campaign.ngay_ket_thuc = CAST('2026-09-30T23:59:59' AS datetime2)
+)
+    THROW 51031, N'Dữ liệu chiến dịch vòng quay tháng 8 hoặc tháng 9 chưa đúng.', 1;
 IF COL_LENGTH(N'dbo.Phan_thuong_vong_quay', N'anh_bieu_tuong') IS NULL
     THROW 51033, N'Thiếu cột ảnh biểu tượng phần thưởng vòng quay.', 1;
-IF (
-    SELECT COUNT(*)
-    FROM dbo.Phan_thuong_vong_quay prize
-    JOIN dbo.Vong_quay_may_man campaign ON campaign.id = prize.id_chien_dich
-    WHERE campaign.ma_chien_dich = N'VQ-THANG8-2026' AND prize.trang_thai = 1
-) < 8
-    THROW 51034, N'Chiến dịch vòng quay tháng 8 phải có ít nhất 8 lựa chọn quà.', 1;
+IF EXISTS (
+    SELECT expected.ma_chien_dich
+    FROM (VALUES (N'VQ-THANG8-2026'), (N'VQ-THANG9-2026')) expected(ma_chien_dich)
+    LEFT JOIN dbo.Vong_quay_may_man campaign ON campaign.ma_chien_dich = expected.ma_chien_dich
+    LEFT JOIN dbo.Phan_thuong_vong_quay prize
+      ON prize.id_chien_dich = campaign.id AND prize.trang_thai = 1
+    GROUP BY expected.ma_chien_dich
+    HAVING COUNT(prize.id) < 8
+)
+    THROW 51034, N'Mỗi chiến dịch vòng quay tháng 8 và tháng 9 phải có ít nhất 8 lựa chọn quà.', 1;
 IF EXISTS (
     SELECT 1 FROM dbo.Phan_thuong_vong_quay
     WHERE anh_bieu_tuong IS NOT NULL
@@ -5583,163 +6323,166 @@ IF EXISTS (
     HAVING COUNT(*) > 1
 )
     THROW 51032, N'Một đơn hàng đang có nhiều hơn một lượt quay trong cùng chiến dịch.', 1;
-IF (SELECT COUNT(*) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HDAUG26%') <> 124
-    THROW 51023, N'Dữ liệu tháng 8 phải có đúng 124 đơn hàng mẫu.', 1;
+IF (SELECT COUNT(*) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HD260[89]%') <> 128
+    THROW 51023, N'Giai đoạn từ 01/08 đến 18:00 ngày 01/09 phải có đúng 128 đơn hàng.', 1;
 IF (
     SELECT COUNT(DISTINCT CAST(ngay_tao AS date))
     FROM dbo.Hoa_don
-    WHERE ma_hoa_don LIKE N'HDAUG26%'
-) <> 31
-    THROW 51024, N'Dữ liệu đơn hàng tháng 8 phải phủ đủ 31 ngày.', 1;
+    WHERE ma_hoa_don LIKE N'HD260[89]%'
+) <> 32
+    THROW 51024, N'Dữ liệu đơn hàng phải phủ đủ 32 ngày từ 01/08 đến 01/09.', 1;
 
-DECLARE @demo_data_cutoff datetime2(7) = CAST('2026-09-01T00:00:00' AS datetime2);
+DECLARE @order_data_cutoff datetime2(7) = CAST('2026-09-01T18:00:00' AS datetime2);
 IF EXISTS (
-    SELECT order_row.id FROM dbo.Hoa_don order_row
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND order_row.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT payment.id FROM dbo.Lich_su_thanh_toan payment
-    JOIN dbo.Hoa_don order_row ON order_row.id = payment.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND payment.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT tracking.id FROM dbo.Lich_su_tracking tracking
-    JOIN dbo.Hoa_don order_row ON order_row.id = tracking.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND tracking.ngay_cap_nhat >= @demo_data_cutoff
-    UNION ALL
-    SELECT audit.id FROM dbo.Hoa_don_audit_log audit
-    JOIN dbo.Hoa_don order_row ON order_row.id = audit.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND audit.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT review.id FROM dbo.Danh_gia review
-    JOIN dbo.Hoa_don order_row ON order_row.id = review.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND review.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT request.id FROM dbo.Yeu_cau_doi_tra request
-    JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-      AND (request.ngay_tao >= @demo_data_cutoff OR request.ngay_duyet >= @demo_data_cutoff
-           OR request.ngay_nhan_hang >= @demo_data_cutoff OR request.ngay_hoan_tat >= @demo_data_cutoff)
-    UNION ALL
-    SELECT return_image.id FROM dbo.Anh_doi_tra return_image
-    JOIN dbo.Yeu_cau_doi_tra request ON request.id = return_image.id_yeu_cau
-    JOIN dbo.Hoa_don order_row ON order_row.id = request.id_hoa_don
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%' AND return_image.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT movement.id FROM dbo.Bien_dong_ton_kho movement
-    WHERE movement.ma_tham_chieu IN (N'AUGUST-2026-SEED', N'AUGUST-2026-RETURNS')
-      AND movement.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT chat.id FROM dbo.Ho_tro_chat chat
-    WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
-      AND (chat.ngay_tao >= @demo_data_cutoff OR chat.ngay_nhan >= @demo_data_cutoff
-           OR chat.ngay_dong >= @demo_data_cutoff OR chat.ngay_cap_nhat >= @demo_data_cutoff)
-    UNION ALL
-    SELECT message.id FROM dbo.Tin_nhan_ho_tro message
-    JOIN dbo.Ho_tro_chat chat ON chat.id = message.id_ho_tro_chat
-    WHERE chat.ma_phien LIKE N'AUG-CHAT-%' AND message.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT subscriber.id FROM dbo.Newsletter_subscriber subscriber
-    WHERE (subscriber.ngay_dang_ky >= @demo_data_cutoff OR subscriber.ngay_cap_nhat >= @demo_data_cutoff)
-      AND (subscriber.ngay_dang_ky < '2026-10-01' OR subscriber.ngay_cap_nhat < '2026-10-01')
-    UNION ALL
-    SELECT favorite.id FROM dbo.San_pham_yeu_thich favorite
-    WHERE favorite.ngay_tao >= @demo_data_cutoff AND favorite.ngay_tao < '2026-10-01'
-    UNION ALL
-    SELECT history.id FROM dbo.Lich_su_xem history
-    WHERE history.ngay_xem >= @demo_data_cutoff AND history.ngay_xem < '2026-10-01'
-    UNION ALL
-    SELECT notification.id FROM dbo.Thong_bao notification
-    WHERE notification.tieu_de IN (
-        N'Chào tháng 8 cùng Zestia', N'Lookbook đi làm tháng 8',
-        N'Chọn size dễ hơn cùng Zestia', N'Ưu đãi dự tiệc cuối tháng',
-        N'Giữ váy đẹp lâu hơn', N'Khép lại tháng 8 cùng Zestia'
-    ) AND notification.ngay_tao >= @demo_data_cutoff
-    UNION ALL
-    SELECT voucher.id FROM dbo.Giam_gia voucher
-    WHERE voucher.ma_giam_gia IN (N'ZESTIA10', N'ZESTIA50', N'FREESHIP', N'SUMMER20', N'AUGUST10', N'AUGUST50', N'AUGUSTVIP', N'BACK2WORK', N'AUGPOS', N'AUGFREESHIP')
-      AND voucher.ngay_ket_thuc >= @demo_data_cutoff
-    UNION ALL
-    SELECT campaign.id FROM dbo.Dot_khuyen_mai campaign
-    WHERE campaign.ma_dot IN (N'AUGUST26', N'AUGOFFICE15', N'AUGPARTY120')
-      AND (campaign.ngay_bat_dau >= @demo_data_cutoff OR campaign.ngay_ket_thuc >= @demo_data_cutoff)
-    UNION ALL
-    SELECT wheel.id FROM dbo.Vong_quay_may_man wheel
-    WHERE wheel.ma_chien_dich = N'VQ-THANG8-2026'
-      AND (wheel.ngay_bat_dau >= @demo_data_cutoff OR wheel.ngay_ket_thuc >= @demo_data_cutoff)
+    SELECT 1 FROM dbo.Hoa_don
+    WHERE ngay_tao > @order_data_cutoff
 )
-    THROW 51038, N'Dữ liệu demo tháng 8 không được có thời điểm từ 01/09/2026 trở đi.', 1;
-IF (SELECT MIN(CAST(ngay_tao AS date)) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HDAUG26%') <> CAST('2026-08-01' AS date)
-   OR (SELECT MAX(CAST(ngay_tao AS date)) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HDAUG26%') <> CAST('2026-08-31' AS date)
-   OR (
+    THROW 51051, N'Không được có đơn hàng sau 18:00 ngày 01/09/2026.', 1;
+
+IF (SELECT MIN(ngay_tao) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HD260[89]%') < CAST('2026-08-01T00:00:00' AS datetime2)
+   OR (SELECT MAX(ngay_tao) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HD260[89]%') <> @order_data_cutoff
+    THROW 51038, N'Mốc đầu hoặc mốc cuối của dữ liệu đơn hàng chưa đúng.', 1;
+
+IF EXISTS (
+    SELECT CAST(ngay_tao AS date) AS order_date
+    FROM dbo.Hoa_don
+    WHERE ma_hoa_don LIKE N'HD260[89]%'
+    GROUP BY CAST(ngay_tao AS date)
+    HAVING COUNT(*) <> 4
+)
+    THROW 51048, N'Mỗi ngày trong giai đoạn dữ liệu phải có đúng 4 đơn hàng.', 1;
+IF (
        SELECT COUNT(DISTINCT CAST(payment.ngay_tao AS date))
        FROM dbo.Lich_su_thanh_toan payment
        JOIN dbo.Hoa_don order_row ON order_row.id = payment.id_hoa_don
-       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-   ) <> 31
+       WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
+         AND payment.ngay_tao < CAST('2026-09-02T00:00:00' AS datetime2)
+   ) <> 32
    OR (
        SELECT COUNT(DISTINCT CAST(tracking.ngay_cap_nhat AS date))
        FROM dbo.Lich_su_tracking tracking
        JOIN dbo.Hoa_don order_row ON order_row.id = tracking.id_hoa_don
-       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-   ) <> 31
+       WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
+         AND tracking.ngay_cap_nhat < CAST('2026-09-02T00:00:00' AS datetime2)
+   ) <> 32
    OR (
        SELECT COUNT(DISTINCT CAST(audit.ngay_tao AS date))
        FROM dbo.Hoa_don_audit_log audit
        JOIN dbo.Hoa_don order_row ON order_row.id = audit.id_hoa_don
-       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-   ) <> 31
-   OR (
-       SELECT COUNT(DISTINCT CAST(review.ngay_tao AS date))
-       FROM dbo.Danh_gia review
-       JOIN dbo.Hoa_don order_row ON order_row.id = review.id_hoa_don
-       WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
-   ) <> 31
-    THROW 51048, N'Đơn hàng, thanh toán, tracking, audit và đánh giá phải có dữ liệu trong đủ 31 ngày tháng 8.', 1;
+       WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
+   ) <> 32
+    THROW 51048, N'Thanh toán, tracking và audit phải phủ đủ giai đoạn đơn hàng.', 1;
+
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Hoa_don order_row
+    WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
+      AND order_row.trang_thai = 4
+      AND NOT EXISTS (
+          SELECT 1 FROM dbo.Danh_gia review
+          WHERE review.id_hoa_don = order_row.id
+      )
+)
+    THROW 51052, N'Đơn đã giao trong dữ liệu vận hành phải có đánh giá đã mua hợp lệ.', 1;
+
 IF (
        SELECT COUNT(DISTINCT CAST(chat.ngay_tao AS date))
        FROM dbo.Ho_tro_chat chat
-       WHERE chat.ma_phien LIKE N'AUG-CHAT-%'
+       WHERE chat.ma_phien LIKE N'HT2608-%'
    ) <> 31
+   OR (
+       SELECT COUNT(DISTINCT CAST(chat.ngay_tao AS date))
+       FROM dbo.Ho_tro_chat chat
+       WHERE chat.ma_phien LIKE N'HT2609-%'
+   ) <> 1
    OR (
        SELECT COUNT(DISTINCT CAST(subscriber.ngay_dang_ky AS date))
        FROM dbo.Newsletter_subscriber subscriber
-       WHERE subscriber.ngay_dang_ky >= '2026-08-01' AND subscriber.ngay_dang_ky < '2026-09-01'
-   ) <> 31
+       WHERE subscriber.ngay_dang_ky >= '2026-09-01' AND subscriber.ngay_dang_ky < '2026-10-01'
+   ) <> 30
    OR (
        SELECT COUNT(DISTINCT CAST(favorite.ngay_tao AS date))
        FROM dbo.San_pham_yeu_thich favorite
-       WHERE favorite.ngay_tao >= '2026-08-01' AND favorite.ngay_tao < '2026-09-01'
-   ) <> 31
+       WHERE favorite.ngay_tao >= '2026-09-01' AND favorite.ngay_tao < '2026-10-01'
+   ) <> 30
    OR (
        SELECT COUNT(DISTINCT CAST(history.ngay_xem AS date))
        FROM dbo.Lich_su_xem history
-       WHERE history.ngay_xem >= '2026-08-01' AND history.ngay_xem < '2026-09-01'
-   ) <> 31
-    THROW 51049, N'Chat hỗ trợ, newsletter, yêu thích và lịch sử xem phải phủ đủ 31 ngày tháng 8.', 1;
+       WHERE history.ngay_xem >= '2026-09-01' AND history.ngay_xem < '2026-10-01'
+   ) <> 30
+   OR (
+       SELECT COUNT(DISTINCT CAST(review.ngay_tao AS date))
+       FROM dbo.Danh_gia review
+       WHERE review.ngay_tao >= '2026-09-01' AND review.ngay_tao < '2026-10-01'
+   ) <> 30
+    THROW 51049, N'Dữ liệu tương tác khách hàng không đúng phạm vi tháng 8 và tháng 9 đã cấu hình.', 1;
+
 IF NOT EXISTS (
     SELECT 1 FROM dbo.Thong_bao
-    WHERE tieu_de = N'Chào tháng 8 cùng Zestia' AND CAST(ngay_tao AS date) = '2026-08-01'
+    WHERE tieu_de = N'Chào thu tháng 9 cùng Zestia' AND CAST(ngay_tao AS date) = '2026-09-01'
 )
    OR NOT EXISTS (
     SELECT 1 FROM dbo.Thong_bao
-    WHERE tieu_de = N'Khép lại tháng 8 cùng Zestia' AND CAST(ngay_tao AS date) = '2026-08-31'
+    WHERE tieu_de = N'Khép lại tháng 9 cùng Zestia' AND CAST(ngay_tao AS date) = '2026-09-30'
 )
    OR EXISTS (
     SELECT 1 FROM dbo.Giam_gia
     WHERE ma_giam_gia IN (N'AUGUST10', N'AUGUST50', N'AUGUSTVIP', N'BACK2WORK', N'AUGPOS', N'AUGFREESHIP')
       AND CAST(ngay_ket_thuc AS date) <> CAST('2026-08-31' AS date)
 )
+   OR EXISTS (
+    SELECT 1 FROM dbo.Giam_gia
+    WHERE ma_giam_gia IN (
+        N'ZESTIA10', N'ZESTIA50', N'FREESHIP',
+        N'SEPTEMBER10', N'SEPTEMBER60', N'SEPTEMBERVIP', N'AUTUMNOFFICE', N'SEPPOS', N'SEPFREESHIP'
+    )
+      AND CAST(ngay_ket_thuc AS date) <> CAST('2026-09-30' AS date)
+)
    OR NOT EXISTS (
     SELECT 1 FROM dbo.Dot_khuyen_mai
-    WHERE ma_dot = N'AUGPARTY120' AND ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2)
+    WHERE ma_dot = N'SEPPARTY150' AND ngay_ket_thuc = CAST('2026-09-30T23:59:59' AS datetime2)
 )
    OR NOT EXISTS (
     SELECT 1 FROM dbo.Vong_quay_may_man
-    WHERE ma_chien_dich = N'VQ-THANG8-2026' AND ngay_ket_thuc = CAST('2026-08-31T23:59:59' AS datetime2)
+    WHERE ma_chien_dich = N'VQ-THANG9-2026' AND ngay_ket_thuc = CAST('2026-09-30T23:59:59' AS datetime2)
 )
-    THROW 51050, N'Thông báo, voucher, đợt giảm giá hoặc vòng quay chưa phủ đến hết 31/08/2026.', 1;
-IF (SELECT COUNT(*) FROM dbo.Lich_lam_viec WHERE ngay_lam BETWEEN '2026-08-01' AND '2026-08-31') < 31
-   OR (SELECT COUNT(DISTINCT ngay_lam) FROM dbo.Lich_lam_viec WHERE ngay_lam BETWEEN '2026-08-01' AND '2026-08-31') <> 31
-    THROW 51027, N'Dữ liệu ca làm tháng 8 phải phủ đủ 31 ngày.', 1;
+    THROW 51050, N'Thông báo, voucher, đợt giảm giá hoặc vòng quay chưa phủ đến hết 30/09/2026.', 1;
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM dbo.Pham_vi_khuyen_mai scope
+    JOIN dbo.Dot_khuyen_mai campaign ON campaign.id = scope.id_dot_khuyen_mai
+    WHERE campaign.ma_dot = N'SEPTEMBER26'
+)
+   OR NOT EXISTS (
+    SELECT 1
+    FROM dbo.Pham_vi_khuyen_mai scope
+    JOIN dbo.Dot_khuyen_mai campaign ON campaign.id = scope.id_dot_khuyen_mai
+    WHERE campaign.ma_dot = N'SEPOFFICE15' AND scope.id_loai_san_pham IS NOT NULL
+)
+   OR NOT EXISTS (
+    SELECT 1
+    FROM dbo.Pham_vi_khuyen_mai scope
+    JOIN dbo.Dot_khuyen_mai campaign ON campaign.id = scope.id_dot_khuyen_mai
+    WHERE campaign.ma_dot = N'SEPNAVY12' AND scope.id_mau_sac IS NOT NULL
+)
+    THROW 51060, N'Phạm vi đợt khuyến mãi tháng 9 chưa đúng.', 1;
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM dbo.Yeu_cau_doi_tra request
+    WHERE request.trang_thai = N'CHO_DUYET'
+      AND request.nguon = N'ONLINE'
+      AND CAST(request.ngay_tao AS date) = CAST('2026-09-28' AS date)
+      AND EXISTS (
+          SELECT 1 FROM dbo.Anh_doi_tra image WHERE image.id_yeu_cau = request.id
+      )
+)
+    THROW 51061, N'Thiếu yêu cầu trả hàng trực tuyến đang chờ xử lý trong tháng 9.', 1;
+
+IF (SELECT COUNT(*) FROM dbo.Lich_lam_viec WHERE ngay_lam BETWEEN '2026-09-01' AND '2026-09-30') < 30
+   OR (SELECT COUNT(DISTINCT ngay_lam) FROM dbo.Lich_lam_viec WHERE ngay_lam BETWEEN '2026-09-01' AND '2026-09-30') <> 30
+    THROW 51027, N'Dữ liệu ca làm tháng 9 phải phủ đủ 30 ngày.', 1;
 IF EXISTS (
     SELECT id_nhan_vien, ngay_lam, ca_lam
     FROM dbo.Lich_lam_viec
@@ -5750,17 +6493,17 @@ IF EXISTS (
 IF EXISTS (
     SELECT 1
     FROM dbo.Hoa_don order_row
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+    WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
       AND NOT EXISTS (
           SELECT 1 FROM dbo.Hoa_don_chi_tiet detail
           WHERE detail.id_hoa_don = order_row.id
       )
 )
-    THROW 51025, N'Có đơn hàng tháng 8 chưa có chi tiết sản phẩm.', 1;
+    THROW 51025, N'Có đơn hàng trong giai đoạn dữ liệu chưa có chi tiết sản phẩm.', 1;
 IF EXISTS (
     SELECT 1
     FROM dbo.Hoa_don order_row
-    WHERE order_row.ma_hoa_don LIKE N'HDAUG26%'
+    WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
       AND order_row.da_thanh_toan = 1
       AND NOT EXISTS (
           SELECT 1 FROM dbo.Lich_su_thanh_toan payment
@@ -5768,7 +6511,112 @@ IF EXISTS (
             AND UPPER(payment.trang_thai) = N'SUCCESS'
       )
 )
-    THROW 51026, N'Có đơn hàng tháng 8 đã thanh toán nhưng thiếu giao dịch thành công.', 1;
+    THROW 51026, N'Có đơn hàng trong giai đoạn dữ liệu đã thanh toán nhưng thiếu giao dịch thành công.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Khach_hang customer
+    WHERE customer.ho_va_ten IS NULL
+       OR LTRIM(RTRIM(customer.ho_va_ten)) = N''
+       OR customer.ho_va_ten LIKE N'%Test%'
+       OR customer.ma_khach_hang = N'KHDEMO'
+       OR customer.email LIKE N'%demo%'
+       OR customer.email LIKE N'%test%'
+       OR customer.email LIKE N'%.demo'
+       OR customer.so_dien_thoai LIKE N'090000%'
+       OR customer.gioi_tinh IS NULL
+       OR customer.ngay_sinh IS NULL
+)
+    THROW 51052, N'Hồ sơ khách hàng còn thông tin thử nghiệm hoặc chưa đầy đủ.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Nhan_vien employee
+    WHERE employee.ho_va_ten IS NULL
+       OR LTRIM(RTRIM(employee.ho_va_ten)) = N''
+       OR employee.ngay_sinh IS NULL
+       OR employee.gioi_tinh IS NULL
+       OR employee.so_dien_thoai IS NULL
+       OR employee.so_dien_thoai LIKE N'090000%'
+       OR employee.dia_chi IS NULL
+       OR LTRIM(RTRIM(employee.dia_chi)) = N''
+       OR employee.email IS NULL
+)
+    THROW 51055, N'Hồ sơ nhân viên còn thiếu thông tin vận hành cần thiết.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Dia_chi address
+    WHERE address.tinh_thanh_pho IS NULL
+       OR address.quan_huyen IS NULL
+       OR address.xa_phuong IS NULL
+       OR address.duong IS NULL
+       OR address.duong LIKE N'Địa chỉ phụ %'
+)
+    THROW 51056, N'Địa chỉ khách hàng còn thiếu cấu trúc hoặc nội dung tạm.', 1;
+IF EXISTS (
+    SELECT customer.id
+    FROM dbo.Khach_hang customer
+    LEFT JOIN dbo.Dia_chi address
+      ON address.id_khach_hang = customer.id AND address.mac_dinh = 1
+    GROUP BY customer.id
+    HAVING COUNT(address.id) <> 1
+)
+    THROW 51057, N'Mỗi khách hàng phải có đúng một địa chỉ mặc định.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Hoa_don order_row
+    WHERE order_row.hinh_thuc_nhan_hang = 0
+      AND (
+          order_row.id_nhan_vien IS NULL
+          OR order_row.dia_chi_giao_hang <> N'Mua trực tiếp tại cửa hàng'
+          OR ISNULL(order_row.da_thanh_toan, 0) <> 1
+          OR order_row.trang_thai <> 4
+      )
+)
+    THROW 51058, N'Đơn tại quầy phải có nhân viên tạo, đã thanh toán và ở trạng thái hoàn thành.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Hoa_don order_row
+    WHERE (order_row.ma_yeu_cau LIKE N'LSGD26%' OR order_row.ma_hoa_don LIKE N'HD260[89]%')
+      AND (
+          LEN(order_row.ma_hoa_don) <> 22
+          OR LEFT(order_row.ma_hoa_don, 2) <> N'HD'
+          OR TRY_CONVERT(bigint, SUBSTRING(order_row.ma_hoa_don, 3, 12)) IS NULL
+          OR UPPER(SUBSTRING(order_row.ma_hoa_don, 15, 8)) LIKE N'%[^0-9A-F]%'
+      )
+)
+    THROW 51059, N'Mã hóa đơn lịch sử chưa đúng định dạng của hệ thống.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Hoa_don order_row
+    WHERE order_row.dia_chi_giao_hang IN (N'dsgdsagsdfa', N'sdfh', N'rutyj', N'dfgbvv', N'áduiygthjkns', N'trygjhk', N'fdg', N'fsdhsdfhsdfh', N'nịuodasfkugyhtadsfokjhig', N'she')
+       OR order_row.ghi_chu LIKE N'%dữ liệu mẫu%'
+       OR order_row.ghi_chu LIKE N'%dữ liệu demo%'
+       OR order_row.ghi_chu LIKE N'%sinh tự động%'
+)
+    THROW 51053, N'Đơn hàng còn địa chỉ hoặc ghi chú thử nghiệm.', 1;
+IF EXISTS (
+    SELECT 1 FROM dbo.Lich_su_thanh_toan
+    WHERE ma_giao_dich LIKE N'%DEMO%'
+       OR noi_dung LIKE N'%dữ liệu mẫu%'
+       OR noi_dung LIKE N'%dữ liệu demo%'
+       OR noi_dung LIKE N'%đơn hàng mẫu%'
+)
+   OR EXISTS (
+    SELECT 1 FROM dbo.Hoa_don_audit_log
+    WHERE hanh_dong LIKE N'%DEMO%'
+       OR ghi_chu LIKE N'%dữ liệu mẫu%'
+       OR ghi_chu LIKE N'%dữ liệu demo%'
+)
+   OR EXISTS (
+    SELECT 1 FROM dbo.Bien_dong_ton_kho
+    WHERE loai_bien_dong LIKE N'%DEMO%'
+       OR ma_tham_chieu LIKE N'%SEED%'
+       OR nguoi_thuc_hien LIKE N'%dữ liệu mẫu%'
+)
+   OR EXISTS (
+    SELECT 1 FROM dbo.Newsletter_subscriber
+    WHERE email LIKE N'%.demo' OR email LIKE N'%newsletter-%'
+)
+    THROW 51054, N'Lịch sử vận hành còn mã hoặc nội dung mang tính thử nghiệm.', 1;
 -- ===== BẢNG LƯU VẾT AI CHAT (Ai_chat_log) =====
 IF OBJECT_ID(N'dbo.Ai_chat_log','U') IS NULL
 BEGIN
@@ -5805,9 +6653,56 @@ CREATE TABLE [dbo].[Ai_visual_search_log] (
 END
 GO
 
+INSERT INTO dbo.Ai_chat_log (
+    id_khach_hang, mode, user_prompt, ai_response,
+    model_name, execution_time_ms, ngay_tao
+)
+SELECT customer.id, source.mode, source.user_prompt, source.ai_response,
+       N'gpt-4.1-mini', source.execution_time_ms, source.ngay_tao
+FROM (VALUES
+    (N'product', N'Mình cao 1m60, nặng 50kg thì nên chọn size nào?', N'Bạn nên đối chiếu thêm vòng ngực, eo và mông trong bảng size của từng sản phẩm. Với số đo hiện tại, size S hoặc M thường phù hợp tùy phom.', 842, CAST('2026-09-01T20:10:00' AS datetime2)),
+    (N'voucher', N'Giỏ hàng 1.200.000đ có voucher nào phù hợp?', N'Bạn có thể so sánh SEPTEMBER10 và SEPTEMBER60; hệ thống thanh toán sẽ tự chọn mã mang lại số tiền giảm tốt nhất nếu đủ điều kiện.', 731, CAST('2026-09-10T19:25:00' AS datetime2)),
+    (N'product', N'Gợi ý giúp mình trang phục đi tiệc cưới buổi tối.', N'Bạn có thể ưu tiên nhóm trang phục dự tiệc, phom chữ A hoặc dáng dài, màu xanh navy và các biến thể còn đúng size trong kho.', 918, CAST('2026-09-20T21:05:00' AS datetime2)),
+    (N'product', N'Mẫu công sở màu xanh navy nào còn size M?', N'Mình sẽ lọc trực tiếp theo danh mục công sở, màu xanh navy, size M và chỉ hiển thị những biến thể còn hàng.', 805, CAST('2026-09-30T17:40:00' AS datetime2))
+) source(mode, user_prompt, ai_response, execution_time_ms, ngay_tao)
+CROSS APPLY (
+    SELECT TOP (1) id FROM dbo.Khach_hang ORDER BY id
+) customer
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Ai_chat_log existing
+    WHERE existing.user_prompt = source.user_prompt
+      AND existing.ngay_tao = source.ngay_tao
+);
+
+INSERT INTO dbo.Ai_visual_search_log (
+    id_khach_hang, image_filename, detected_category, detected_color,
+    matched_product_ids, highest_score, ngay_tao
+)
+SELECT customer.id, source.image_filename, source.detected_category, source.detected_color,
+       CONVERT(nvarchar(20), product.id), source.highest_score, source.ngay_tao
+FROM (VALUES
+    (N'vay-cong-so-xanh-navy.jpg', N'Trang phục công sở', N'Xanh Navy', 92, CAST('2026-09-06T14:20:00' AS datetime2)),
+    (N'dam-du-tiec-do.jpg', N'Trang phục dự tiệc', N'Đỏ', 89, CAST('2026-09-18T20:15:00' AS datetime2)),
+    (N'ao-khoac-thu.jpg', N'Áo khoác & Blazer', N'Be', 87, CAST('2026-09-30T16:35:00' AS datetime2))
+) source(image_filename, detected_category, detected_color, highest_score, ngay_tao)
+CROSS APPLY (SELECT TOP (1) id FROM dbo.Khach_hang ORDER BY id DESC) customer
+CROSS APPLY (
+    SELECT TOP (1) product.id
+    FROM dbo.san_pham product
+    JOIN dbo.loai_san_pham category ON category.id = product.id_loai_san_pham
+    WHERE product.trang_thai = 1
+      AND category.ten_loai_san_pham = source.detected_category
+    ORDER BY product.id
+) product
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.Ai_visual_search_log existing
+    WHERE existing.image_filename = source.image_filename
+      AND existing.ngay_tao = source.ngay_tao
+);
+
 IF XACT_STATE() <> 1
     THROW 51099, N'Cài đặt dữ liệu đã bị lỗi và không thể commit. Không có thông báo thành công giả.', 1;
 COMMIT TRANSACTION;
 SET NOCOUNT OFF;
-PRINT N'Zestia demo data refresh completed.';
+PRINT N'Zestia operating data installation completed.';
 GO

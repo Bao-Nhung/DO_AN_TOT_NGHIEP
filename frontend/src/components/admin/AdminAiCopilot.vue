@@ -96,7 +96,7 @@
                     </div>
                     <div class="z-low-stock-list">
                       <div v-for="(item, iIdx) in card.items" :key="iIdx" class="z-low-stock-item">
-                        <img :src="item.image || '/images/products/shirt1.jpg'" :alt="item.name" class="z-mini-thumb" @error="onCardImgError" />
+                        <img :src="item.image || '/images/products/catalog-v2/sp001_main.webp'" :alt="item.name" class="z-mini-thumb" @error="onCardImgError" />
                         <div class="z-mini-info flex-grow-1">
                           <div class="fw-bold z-mini-title">{{ item.name }}</div>
                           <div class="z-mini-sub">{{ item.code }} · {{ item.color }} / {{ item.size }}</div>
@@ -118,7 +118,7 @@
                     <strong class="d-block mb-1">{{ card.title }}</strong>
                     <div class="z-outfit-mini-grid">
                       <div v-for="(item, iIdx) in card.items" :key="iIdx" class="z-outfit-mini-box" @click="addSingleToPos(item)">
-                        <img :src="item.image || '/images/products/shirt1.jpg'" :alt="item.name" @error="onCardImgError" />
+                        <img :src="item.image || '/images/products/catalog-v2/sp001_main.webp'" :alt="item.name" @error="onCardImgError" />
                         <div class="z-mini-box-text">
                           <div class="z-mini-box-name">{{ item.name }}</div>
                           <div class="z-mini-box-price">{{ fmtPrice(item.price) }}</div>
@@ -138,7 +138,7 @@
 
                   <!-- Product Card -->
                   <div v-else-if="card.type === 'product'" class="z-product-card-mini">
-                    <img :src="card.image || '/images/products/shirt1.jpg'" :alt="card.name" class="z-mini-thumb" @error="onCardImgError" />
+                    <img :src="card.image || '/images/products/catalog-v2/sp001_main.webp'" :alt="card.name" class="z-mini-thumb" @error="onCardImgError" />
                     <div class="z-mini-info">
                       <div class="fw-bold z-mini-title">{{ card.name }}</div>
                       <div class="z-mini-sub">{{ card.code }} · <span class="z-stock-tag">Tồn: {{ card.stock ?? 'Sẵn hàng' }}</span></div>
@@ -371,7 +371,7 @@ function sendQuickPrompt(promptText) {
 }
 
 function onCardImgError(e) {
-  e.target.src = '/images/products/shirt1.jpg'
+  e.target.src = '/images/products/catalog-v2/sp001_main.webp'
 }
 
 function goToAdminProducts() {

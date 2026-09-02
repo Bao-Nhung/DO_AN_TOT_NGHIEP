@@ -270,8 +270,11 @@ async function scrollBottom() {
 .z-support-messages { flex: 1; padding: 20px; overflow-y: auto; background: var(--z-bg); }
 .z-support-message { display: flex; margin-bottom: 12px; }
 .z-support-message > div { max-width: min(76%, 620px); padding: 9px 12px; border: 1px solid var(--z-gray-border); background: var(--z-white); }
+.z-support-message.customer > div { color: var(--z-dark); }
+.z-support-message.customer small { color: var(--z-gray); opacity: 1; }
 .z-support-message.employee { justify-content: flex-end; }
 .z-support-message.employee > div { border-color: var(--z-dark); background: var(--z-dark); color: var(--z-white); }
+.z-support-message.employee small { color: rgba(255, 255, 255, .82); opacity: 1; }
 .z-support-message.system { justify-content: center; }
 .z-support-message.system > div { padding: 6px 10px; border: 0; background: transparent; color: var(--z-gray); text-align: center; }
 .z-support-message small, .z-support-message time { display: block; font-size: 9px; opacity: .7; }

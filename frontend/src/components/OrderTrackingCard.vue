@@ -14,7 +14,7 @@
     </div>
 
     <!-- 5-Step Visual Stepper -->
-    <div v-if="!isCancelledOrFailed" class="mb-4 pb-3 border-bottom">
+    <div v-if="showProgress && !isCancelledOrFailed" class="mb-4 pb-3 border-bottom">
       <div class="d-flex justify-content-between align-items-center position-relative px-2">
         <div class="position-absolute top-50 start-0 end-0 translate-middle-y bg-light" style="height:4px; z-index:1; margin: 0 30px;">
           <div class="bg-success h-100 transition-all" :style="{ width: stepProgressPercent + '%' }"></div>
@@ -53,7 +53,8 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  order: { type: Object, required: true }
+  order: { type: Object, required: true },
+  showProgress: { type: Boolean, default: true }
 })
 
 // Map trạng thái số sang tracking key chuẩn 7 bước

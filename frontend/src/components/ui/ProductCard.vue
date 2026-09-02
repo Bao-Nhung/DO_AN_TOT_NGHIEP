@@ -57,11 +57,12 @@ watch(() => props.product.image, newImg => { imgSrc.value = newImg })
 
 function onImgError() {
   const cat = String(props.product.category || '').toLowerCase()
-  if (cat.includes('quần') || cat.includes('jeans')) imgSrc.value = '/images/products/pants1.jpg'
-  else if (cat.includes('áo khoác') || cat.includes('blazer')) imgSrc.value = '/images/products/shirt5.jpg'
-  else if (cat.includes('áo') || cat.includes('sơ mi')) imgSrc.value = '/images/products/shirt1.jpg'
-  else if (cat.includes('phụ kiện')) imgSrc.value = '/images/products/accessories1.jpg'
-  else imgSrc.value = '/images/products/dress1.jpg'
+  if (cat.includes('quần') || cat.includes('jeans')) imgSrc.value = '/images/products/catalog-v2/sp002_main.webp'
+  else if (cat.includes('áo khoác') || cat.includes('blazer')) imgSrc.value = '/images/products/catalog-v2/sp011_main.webp'
+  else if (cat.includes('áo') || cat.includes('sơ mi')) imgSrc.value = '/images/products/catalog-v2/sp001_main.webp'
+  else if (cat.includes('phụ kiện')) imgSrc.value = '/images/products/catalog-v2/sp048_main.webp'
+  else if (cat.includes('công sở')) imgSrc.value = '/images/products/catalog-v2/sp021_main.webp'
+  else imgSrc.value = '/images/products/catalog-v2/sp003_main.webp'
 }
 
 // Bỏ hàm addItem, chỉ giữ lại formatPrice

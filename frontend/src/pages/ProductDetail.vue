@@ -15,14 +15,10 @@
         <div class="col-lg-6">
           <div class="d-grid gap-3" style="grid-template-columns:72px 1fr">
             <div class="d-flex flex-column gap-2">
-              <div v-for="(img, i) in galleryImages" :key="i"
+              <div v-for="(img, i) in galleryImages" :key="img"
                    @click="activeThumb = i" style="cursor:pointer;aspect-ratio:3/4;overflow:hidden;border-radius:var(--z-radius);transition:all 0.3s"
                    :style="activeThumb === i ? 'box-shadow:0 0 0 2px var(--z-accent)' : ''">
-                <img v-if="img" :src="img" :alt="'Ảnh ' + (i+1)" style="width:100%;height:100%;object-fit:cover" />
-                <div v-else class="w-100 h-100 d-flex align-items-center justify-content-center"
-                     style="background:linear-gradient(160deg,#F3E8E6,#D4A99E);font-family:var(--z-font-display);font-size:16px;color:rgba(255,255,255,0.3);font-style:italic">
-                  {{ i + 1 }}
-                </div>
+                <img :src="img" :alt="`${product.tenSanPham} - ảnh ${i + 1}`" style="width:100%;height:100%;object-fit:cover" />
               </div>
             </div>
             <div style="aspect-ratio:3/4;position:relative;overflow:hidden;border-radius:var(--z-radius-lg)">
@@ -150,8 +146,9 @@
               <div class="d-flex align-items-center gap-3 flex-wrap">
                 <div v-for="(item, index) in frequentlyBoughtTogether.items" :key="item.id" class="d-flex align-items-center gap-3">
                   <div class="text-center" style="max-width: 140px;">
-                    <img :src="item.image || '/images/products/dress1.jpg'" :alt="item.name" class="rounded-3 border mb-2" style="width: 100px; height: 120px; object-fit: cover;" />
+                    <img :src="item.image || '/images/products/catalog-v2/sp003_main.webp'" :alt="item.name" class="rounded-3 border mb-2" style="width: 100px; height: 120px; object-fit: cover;" />
                     <div class="text-truncate fw-bold" style="font-size: 12px;" :title="item.name">{{ item.name }}</div>
+                    <div class="z-bundle-variant">{{ bundleVariantLabel(item) }}</div>
                     <div class="text-danger fw-bold" style="font-size: 13px;">{{ fmtPrice(item.price) }}</div>
                   </div>
                   <div v-if="index < frequentlyBoughtTogether.items.length - 1" class="fs-4 text-muted fw-bold">+</div>
@@ -346,18 +343,21 @@ const galleryImages = computed(() => {
   const colorImage = colorName
     ? variants.find(variant => variant.mauSac === colorName && variant.anhUrl)?.anhUrl
     : null
+  const variantImages = colorNames
+    .map(name => variants.find(variant => variant.mauSac === name && variant.anhUrl)?.anhUrl)
+    .filter(Boolean)
   const productImages = [product.value.anhUrl, ...(product.value.danhSachAnh || [])].filter(Boolean)
-  const uniqueImages = [...new Set([colorImage, ...productImages].filter(Boolean))]
+  const uniqueImages = [...new Set([colorImage, ...productImages, ...variantImages].filter(Boolean))]
   if (uniqueImages.length === 0) {
     const cat = String(product.value.loaiSanPham || '').toLowerCase()
-    if (cat.includes('quần') || cat.includes('jeans')) uniqueImages.push('/images/products/pants1.jpg')
-    else if (cat.includes('áo khoác') || cat.includes('blazer')) uniqueImages.push('/images/products/shirt5.jpg')
-    else if (cat.includes('áo') || cat.includes('sơ mi')) uniqueImages.push('/images/products/shirt1.jpg')
-    else if (cat.includes('phụ kiện')) uniqueImages.push('/images/products/accessories1.jpg')
-    else uniqueImages.push('/images/products/dress1.jpg')
+    if (cat.includes('quần') || cat.includes('jeans')) uniqueImages.push('/images/products/catalog-v2/sp002_main.webp')
+    else if (cat.includes('áo khoác') || cat.includes('blazer')) uniqueImages.push('/images/products/catalog-v2/sp011_main.webp')
+    else if (cat.includes('áo') || cat.includes('sơ mi')) uniqueImages.push('/images/products/catalog-v2/sp001_main.webp')
+    else if (cat.includes('phụ kiện')) uniqueImages.push('/images/products/catalog-v2/sp048_main.webp')
+    else if (cat.includes('công sở')) uniqueImages.push('/images/products/catalog-v2/sp021_main.webp')
+    else uniqueImages.push('/images/products/catalog-v2/sp003_main.webp')
   }
-  while (uniqueImages.length < 4) uniqueImages.push(null)
-  return uniqueImages.slice(0, 4)
+  return uniqueImages
 })
 
 const productName = computed(() => {
@@ -433,23 +433,35 @@ async function loadFrequentlyBoughtTogether(id) {
 }
 
 async function addBundleToCart() {
-  if (!frequentlyBoughtTogether.value?.items?.length) return
-  for (const item of frequentlyBoughtTogether.value.items) {
-    const variantId = item.variantId
-    if (!variantId) {
-      showToast(`Sản phẩm "${item.name}" chưa có biến thể còn hàng để thêm vào giỏ`)
-      return
-    }
-    await addItem({
+  const items = frequentlyBoughtTogether.value?.items || []
+  if (!items.length) return
+
+  const invalidItem = items.find(item => !Number(item.variantId) || !item.color || !item.size)
+  if (invalidItem) {
+    showToast(`Sản phẩm "${invalidItem.name}" chưa có biến thể màu và kích thước hợp lệ`, 'warning')
+    return
+  }
+
+  for (const item of items) {
+    addItem({
       id: item.id,
-      variantId: variantId,
+      productId: item.id,
+      variantId: Number(item.variantId),
       name: item.name,
       price: item.price,
       image: item.image,
+      color: item.color,
+      size: item.size,
+      variant: bundleVariantLabel(item),
+      maxQty: Number(item.stock || 0),
       qty: 1
     })
   }
-  showToast('Đã thêm các sản phẩm gợi ý vào giỏ hàng')
+  showToast('Đã thêm các sản phẩm gợi ý cùng màu và kích thước vào giỏ hàng', 'success')
+}
+
+function bundleVariantLabel(item) {
+  return [item?.color, item?.size ? `Size ${item.size}` : ''].filter(Boolean).join(' · ')
 }
 
 async function loadProductPage() {
@@ -580,6 +592,15 @@ function toggleWish() {
 </script>
 
 <style scoped>
+.z-bundle-variant {
+  min-height: 16px;
+  margin: 2px 0;
+  overflow: hidden;
+  color: var(--z-gray);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .z-detail-wish-btn {
   width: 52px;
   min-height: 42px;

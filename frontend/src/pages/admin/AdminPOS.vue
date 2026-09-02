@@ -5,11 +5,6 @@
         <h1 class="z-display mb-1" style="font-size:26px;font-weight:500;color:var(--z-dark)">Bán hàng tại quầy</h1>
         <p style="font-size:14px;color:var(--z-gray);margin:0">Tạo đơn hàng trực tiếp cho khách tại cửa hàng</p>
       </div>
-      <div class="d-flex align-items-center gap-2">
-        <button class="lm-btn-secondary" style="padding:8px 16px;font-size:13px" @click="openShiftSummaryModal">
-          <i class="bi bi-cash-stack me-1"></i> Báo cáo ca & Bàn giao két
-        </button>
-      </div>
     </div>
 
     <div class="row g-3">
@@ -273,29 +268,6 @@
               <input v-model="note" class="lm-input" placeholder="Ghi chú đơn hàng..." style="font-size:13px;padding:8px 12px">
             </div>
 
-            <!-- POS VAT Invoice Request Section -->
-            <div class="p-3 mb-3 border rounded bg-light">
-              <div class="form-check form-switch mb-1">
-                <input v-model="posVat.isRequested" class="form-check-input" type="checkbox" id="posVatSwitch" style="cursor: pointer;" />
-                <label class="form-check-label fw-bold text-dark" for="posVatSwitch" style="cursor: pointer; font-size: 13px;">
-                  <i class="bi bi-receipt text-danger me-1"></i> Xuất Hóa Đơn VAT doanh nghiệp
-                </label>
-              </div>
-
-              <div v-if="posVat.isRequested" class="mt-2 pt-2 border-top">
-                <input v-model="posVat.tenCongTy" class="lm-input mb-2" placeholder="Tên công ty xuất hóa đơn *" style="font-size: 12px; padding: 6px 10px;" />
-                <div class="row g-2 mb-2">
-                  <div class="col-6">
-                    <input v-model="posVat.maSoThue" class="lm-input" placeholder="Mã số thuế (MST) *" style="font-size: 12px; padding: 6px 10px;" />
-                  </div>
-                  <div class="col-6">
-                    <input v-model="posVat.email" type="email" class="lm-input" placeholder="Email nhận HD *" style="font-size: 12px; padding: 6px 10px;" />
-                  </div>
-                </div>
-                <input v-model="posVat.diaChi" class="lm-input" placeholder="Địa chỉ công ty *" style="font-size: 12px; padding: 6px 10px;" />
-              </div>
-            </div>
-
             <!-- Totals -->
             <div class="pt-3 mb-3" style="border-top:2px solid var(--z-dark)">
               <div class="d-flex justify-content-between mb-1" style="font-size:13px;color:var(--z-gray)">
@@ -385,83 +357,6 @@
       </div>
     </div>
 
-    <!-- Modal Báo cáo ca làm & Bàn giao két tiền -->
-    <div v-if="showShiftReportModal" class="z-modal-overlay" @click.self="showShiftReportModal = false">
-      <div class="z-modal" style="max-width:550px">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h3 style="font-size:18px;font-weight:600;margin:0">
-            <i class="bi bi-shield-check text-success me-2"></i>Báo cáo ca làm & Bàn giao két tiền
-          </h3>
-          <button type="button" class="z-icon-btn" @click="showShiftReportModal = false"><i class="bi bi-x-lg"></i></button>
-        </div>
-
-        <div v-if="loadingShiftReport" class="text-center py-4">
-          <div class="spinner-border spinner-border-sm text-secondary"></div>
-        </div>
-
-        <div v-else class="d-flex flex-column gap-3">
-          <div class="p-3 bg-light rounded border">
-            <div class="d-flex justify-content-between mb-1" style="font-size:13px">
-              <span class="text-muted">Nhân viên ca trực:</span>
-              <span class="fw-bold">{{ activeShiftReport?.tenNhanVien || 'Nhân viên POS' }}</span>
-            </div>
-            <div class="d-flex justify-content-between mb-1" style="font-size:13px">
-              <span class="text-muted">Ca làm:</span>
-              <span>{{ activeShiftReport?.caLam || 'Ca hiện tại' }}</span>
-            </div>
-            <div class="d-flex justify-content-between" style="font-size:13px">
-              <span class="text-muted">Giờ Check-in:</span>
-              <span>{{ activeShiftReport?.gioCheckIn ? new Date(activeShiftReport.gioCheckIn).toLocaleTimeString('vi-VN') : 'Đã check-in' }}</span>
-            </div>
-          </div>
-
-          <div class="row g-2 text-center">
-            <div class="col-6">
-              <div class="p-3 border rounded bg-white">
-                <div style="font-size:12px;color:var(--z-gray)">Tổng đơn POS đã tạo</div>
-                <div style="font-size:20px;font-weight:600;color:var(--z-dark)">{{ activeShiftReport?.soDon ?? 0 }} đơn</div>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="p-3 border rounded bg-white">
-                <div style="font-size:12px;color:var(--z-gray)">Tổng doanh thu ca</div>
-                <div style="font-size:20px;font-weight:600;color:var(--z-accent)">{{ fmtPrice(activeShiftReport?.doanhThu || 0) }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="table-responsive border rounded">
-            <table class="table table-sm table-borderless mb-0 align-middle" style="font-size:13px">
-              <tbody>
-                <tr class="border-bottom">
-                  <td class="ps-3 py-2"><i class="bi bi-cash-coin text-success me-2"></i>Tiền mặt thu trực tiếp</td>
-                  <td class="pe-3 py-2 text-end fw-bold text-success">{{ fmtPrice(activeShiftReport?.tienMatBanGiao || 0) }}</td>
-                </tr>
-                <tr class="border-bottom">
-                  <td class="ps-3 py-2"><i class="bi bi-qr-code-scan text-primary me-2"></i>Chuyển khoản / VietQR</td>
-                  <td class="pe-3 py-2 text-end fw-bold text-primary">{{ fmtPrice(activeShiftReport?.tienChuyenKhoan || 0) }}</td>
-                </tr>
-                <tr class="bg-light">
-                  <td class="ps-3 py-2 fw-bold"><i class="bi bi-bank me-2"></i>Tổng tiền két bàn giao cuối ca</td>
-                  <td class="pe-3 py-2 text-end fw-bold text-danger fs-6">{{ fmtPrice(activeShiftReport?.tienMatBanGiao || 0) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="alert alert-info py-2 px-3 m-0" style="font-size:12px">
-            <i class="bi bi-info-circle me-1"></i> Nhân viên đối soát số tiền mặt thực tế trong két trước khi bàn giao ca cho nhân viên tiếp theo.
-          </div>
-
-          <div class="d-flex justify-content-end gap-2 mt-2">
-            <button class="lm-btn-secondary" @click="showShiftReportModal = false">Đóng</button>
-            <button class="lm-btn-primary" @click="confirmHandover">
-              <i class="bi bi-check-circle me-1"></i> Xác nhận bàn giao két
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </AdminLayout>
 </template>
 
@@ -478,34 +373,6 @@ import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
 const { showToast } = useToast()
 const { confirmDialog } = useConfirm()
 const { getUser } = useAuth()
-
-// Shift Summary & Cash Handover State
-const showShiftReportModal = ref(false)
-const loadingShiftReport = ref(false)
-const activeShiftReport = ref(null)
-
-async function openShiftSummaryModal() {
-  showShiftReportModal.value = true
-  loadingShiftReport.value = true
-  try {
-    const status = await api().getWorkShiftStatus().catch(() => null)
-    if (status && status.currentShift && status.currentShift.id) {
-      const report = await api().getShiftReport(status.currentShift.id).catch(() => null)
-      if (report) {
-        activeShiftReport.value = report
-      }
-    }
-  } catch (err) {
-    console.error('Lỗi lấy báo cáo ca làm:', err)
-  } finally {
-    loadingShiftReport.value = false
-  }
-}
-
-function confirmHandover() {
-  showShiftReportModal.value = false
-  showToast('Đã xác nhận bàn giao két tiền ca làm thành công!')
-}
 
 const search = ref('')
 const activeFilter = ref('Tất cả')
@@ -538,14 +405,6 @@ const transferMethod = ref('vietqr')
 const tienKhachDua = ref(null)
 const note = ref('')
 const creating = ref(false)
-
-const posVat = ref({
-  isRequested: false,
-  tenCongTy: '',
-  maSoThue: '',
-  email: '',
-  diaChi: ''
-})
 
 // Variant Selection Modal State
 const showVariantModal = ref(false)
@@ -1188,16 +1047,6 @@ async function createOrder() {
     showToast('Số điện thoại phải có 10 chữ số và bắt đầu bằng 03, 05, 07, 08 hoặc 09')
     return
   }
-  if (posVat.value.isRequested) {
-    if (posVat.value.tenCongTy.trim().length < 2) return showToast('Vui lòng nhập tên công ty xuất hóa đơn')
-    if (!/^\d{10}(?:-\d{3})?$/.test(posVat.value.maSoThue.trim())) {
-      return showToast('Mã số thuế phải gồm 10 số hoặc dạng 10 số-3 số')
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(posVat.value.email.trim())) {
-      return showToast('Email nhận hóa đơn không hợp lệ')
-    }
-    if (posVat.value.diaChi.trim().length < 5) return showToast('Vui lòng nhập địa chỉ xuất hóa đơn')
-  }
   if (!await confirmDialog({
     title: 'Xác nhận thanh toán POS',
     message: `Hoàn tất đơn tại quầy với tổng tiền ${fmtPrice(finalTotal.value)} bằng ${paymentLabel()}?`,
@@ -1234,12 +1083,7 @@ async function createOrder() {
       email: customerEmail.value.trim() || null,
       customerId: selectedCustomerId.value,
       posReservationToken: reservationToken.value,
-      checkoutRequestId: `POS:${reservationToken.value}`,
-      yeuCauVat: posVat.value.isRequested,
-      tenCongTyVat: posVat.value.isRequested ? posVat.value.tenCongTy.trim() : null,
-      maSoThueVat: posVat.value.isRequested ? posVat.value.maSoThue.trim() : null,
-      emailVat: posVat.value.isRequested ? posVat.value.email.trim().toLowerCase() : null,
-      diaChiVat: posVat.value.isRequested ? posVat.value.diaChi.trim() : null
+      checkoutRequestId: `POS:${reservationToken.value}`
     }
     await api().createOrder(orderData)
     showToast('Tạo đơn & thanh toán thành công!')
@@ -1255,7 +1099,6 @@ async function createOrder() {
     paymentConfirmed.value = false
     autoVoucherDisabled.value = false
     bestVoucherCode.value = ''
-    posVat.value = { isRequested: false, tenCongTy: '', maSoThue: '', email: '', diaChi: '' }
     await loadProducts()
   } catch (e) {
     showToast('Lỗi: ' + (e.error || e.message || 'Không thể tạo đơn'))

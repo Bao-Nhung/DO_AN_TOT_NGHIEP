@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -161,5 +162,41 @@ class LuckyWheelServiceTests {
         assertThrows(org.springframework.web.server.ResponseStatusException.class,
                 () -> service.savePrize(1, null, body));
         verify(prizeRepository, never()).save(any());
+    }
+
+    @Test
+    void adminMarkDeliveredPersistsAndReturnsUpdatedStatus() {
+        PhanThuongVongQuay prize = PhanThuongVongQuay.builder()
+                .id(7)
+                .chienDich(campaign)
+                .tenPhanThuong("Balo Zestia")
+                .loaiPhanThuong(PhanThuongVongQuay.PHYSICAL)
+                .trangThai((byte) 1)
+                .build();
+        LuotQuayMayMan spin = LuotQuayMayMan.builder()
+                .id(99)
+                .chienDich(campaign)
+                .phanThuong(prize)
+                .maHoaDon("HD-TEST")
+                .tenKhachHang("Khách test")
+                .soDienThoai("0912345678")
+                .giaTriDon(new BigDecimal("1250000"))
+                .tenKetQua("Balo Zestia")
+                .trungThuong(true)
+                .maNhanThuong("ZST-TEST")
+                .trangThaiNhan(LuotQuayMayMan.WAITING)
+                .ngayQuay(LocalDateTime.now())
+                .build();
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("admin");
+        when(spinRepository.findByIdForUpdate(99)).thenReturn(Optional.of(spin));
+        when(spinRepository.saveAndFlush(spin)).thenReturn(spin);
+
+        Map<String, Object> result = service.markDelivered(99, authentication);
+
+        assertEquals(LuotQuayMayMan.DELIVERED, result.get("trangThaiNhan"));
+        assertEquals("admin", result.get("nguoiTrao"));
+        assertNotNull(result.get("ngayTrao"));
+        verify(spinRepository).saveAndFlush(spin);
     }
 }

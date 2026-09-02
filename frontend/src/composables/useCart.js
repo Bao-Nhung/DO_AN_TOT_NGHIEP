@@ -15,13 +15,28 @@ function loadSaved() {
 function normalizeCartItem(item) {
   const variantId = Number(item?.variantId || 0)
   const numericId = Number(item?.id)
+  const color = cleanAttribute(item?.color ?? item?.mauSac)
+  const size = cleanAttribute(item?.size ?? item?.kichThuoc)
+  const resolvedVariant = buildVariantLabel({ color, size }) || cleanAttribute(item?.variant) || ''
   return {
     ...item,
     id: variantId > 0 ? `variant-${variantId}` : String(item?.id || ''),
     productId: Number(item?.productId || (Number.isFinite(numericId) ? numericId : 0)),
     variantId,
+    color,
+    size,
+    variant: resolvedVariant,
     qty: Math.max(1, Number(item?.qty || 1))
   }
+}
+
+function cleanAttribute(value) {
+  const normalized = String(value ?? '').trim()
+  return normalized || null
+}
+
+function buildVariantLabel(item) {
+  return [item?.color, item?.size ? `Size ${item.size}` : ''].filter(Boolean).join(' · ')
 }
 
 const state = reactive({
@@ -49,7 +64,7 @@ function openCart()  { state.isOpen = true;  document.body.style.overflow = 'hid
 function closeCart() { state.isOpen = false; document.body.style.overflow = '' }
 
 function addItem(product) {
-  const normalized = { ...product }
+  const normalized = normalizeCartItem(product)
   const variantId = Number(normalized.variantId || 0)
   if (variantId > 0) {
     normalized.productId = Number(normalized.productId || normalized.id)
@@ -105,6 +120,9 @@ function refreshItems(loadProduct) {
         item.name = product?.tenSanPham || item.name
         item.image = variant?.anhUrl || product?.anhUrl || item.image || null
         item.price = currentPrice
+        item.color = cleanAttribute(variant?.mauSac)
+        item.size = cleanAttribute(variant?.kichThuoc)
+        item.variant = buildVariantLabel(item)
         delete item.originalPrice
         item.maxQty = availableStock
         item.qty = Math.min(Number(item.qty || 1), availableStock)
@@ -262,7 +280,7 @@ async function syncCartNow() {
     })).filter(item => item.variantId > 0))
     applyingServerState = true
     try {
-      state.items.splice(0, state.items.length, ...(serverItems || []))
+      state.items.splice(0, state.items.length, ...(serverItems || []).map(normalizeCartItem))
       await nextTick()
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items))
     } finally {

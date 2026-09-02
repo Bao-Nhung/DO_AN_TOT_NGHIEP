@@ -267,7 +267,7 @@ public class LuckyWheelService {
         spin.setTrangThaiNhan(LuotQuayMayMan.DELIVERED);
         spin.setNgayTrao(LocalDateTime.now());
         spin.setNguoiTrao(authentication != null ? authentication.getName() : "Admin");
-        return adminSpin(spinRepository.save(spin));
+        return adminSpin(spinRepository.saveAndFlush(spin));
     }
 
     private VongQuayMayMan currentCampaign() {

@@ -69,7 +69,7 @@
             <th>Thanh toán</th>
             <th>Trạng thái</th>
             <th>Ngày tạo</th>
-            <th style="width:140px; text-align: right; padding-right: 20px;">Thao tác</th>
+            <th style="width:90px; text-align: right; padding-right: 20px;">Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -80,9 +80,6 @@
                 <button type="button" class="btn btn-sm btn-light border py-0 px-1" style="font-size:10px" title="Sao chép mã đơn" @click.stop="copyOrderCode(o.id)">
                   <i class="bi bi-clipboard"></i>
                 </button>
-                <span v-if="o.raw?.yeuCauVat" class="badge bg-danger ms-1" style="font-size: 10px;" title="Khách yêu cầu Hóa Đơn VAT">
-                  <i class="bi bi-file-earmark-text"></i> VAT
-                </span>
               </div>
             </td>
             <td>
@@ -106,12 +103,6 @@
             <td><span class="z-status" :class="o.statusClass">{{ o.status }}</span></td>
             <td style="color:var(--z-gray)">{{ o.date }}</td>
             <td @click.stop style="text-align: right; padding-right: 20px;">
-              <a :href="'/tracking?code=' + (o.maHoaDon || o.id) + '&phone=' + (o.phone || '')" target="_blank" class="btn btn-sm btn-outline-secondary me-1 py-1 px-2 text-decoration-none" style="font-size:11px;" title="Tra cứu công khai trên Website" aria-label="Tra cứu đơn hàng trên Website">
-                <i class="bi bi-search me-1"></i> Tra cứu
-              </a>
-              <span v-if="o.raw?.yeuCauVat" class="badge bg-warning text-dark me-1" title="Khách có yêu cầu xuất hóa đơn VAT">
-                <i class="bi bi-receipt me-1"></i>Yêu cầu VAT
-              </span>
               <button type="button" class="z-action-btn d-inline-block" title="Xem & Xử lý" :aria-label="`Xem và xử lý đơn ${o.maHoaDon || o.id}`" @click="openDetail(o)">
                 <i class="bi bi-pencil-square"></i>
               </button>
@@ -221,20 +212,6 @@
                     <div v-if="detailData.diaChiGiaoHang && detailData.hinhThucNhanHang !== 0" class="col-12 mt-2">
                       <div style="font-size:12px;color:var(--z-gray);margin-bottom:2px">Địa chỉ giao hàng</div>
                       <div style="font-size:14px;font-weight:500"><i class="bi bi-geo-alt me-1"></i>{{ detailData.diaChiGiaoHang }}</div>
-                    </div>
-                  </div>
-
-                  <div v-if="detailData.yeuCauVat" class="mb-4 p-3 border border-warning rounded bg-light">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                      <strong><i class="bi bi-file-earmark-text me-1"></i>Thông tin yêu cầu xuất hóa đơn VAT</strong>
-                      <span class="badge bg-warning text-dark">Đã ghi nhận</span>
-                    </div>
-                    <div style="font-size: 13px;">
-                      <div><strong>Tên công ty:</strong> {{ detailData.tenCongTyVat || detailData.tenKhachHang }}</div>
-                      <div><strong>Mã số thuế:</strong> {{ detailData.maSoThueVat || 'Không cung cấp' }}</div>
-                      <div><strong>Email nhận HD:</strong> {{ detailData.emailVat || detailData.emailKhachHang }}</div>
-                      <div><strong>Địa chỉ:</strong> {{ detailData.diaChiVat || detailData.diaChiGiaoHang }}</div>
-                      <div class="mt-2 text-muted">Nhân viên đối chiếu thông tin và phát hành bằng hệ thống hóa đơn điện tử hợp pháp của cửa hàng.</div>
                     </div>
                   </div>
 
@@ -660,7 +637,7 @@ function confirmCancel(o) {
 function offlineOrderStatus(order) {
   if (order.returnRequestStatus === 'DA_HOAN_TIEN') return { label: 'Đã hoàn tiền', cls: 'refunded', icon: 'bi-arrow-counterclockwise' }
   if (order.returnRequestStatus === 'DA_DOI') return { label: 'Đã đổi hàng', cls: 'paid', icon: 'bi-arrow-left-right' }
-  if (['CHO_DUYET', 'CHO_NHAN_HANG', 'CHO_HOAN_TAT'].includes(order.returnRequestStatus)) return { label: 'Đang xử lý đổi/trả', cls: 'pending', icon: 'bi-arrow-repeat' }
+  if (['CHO_DUYET', 'CHO_NHAN_HANG', 'CHO_HOAN_TAT', 'CHO_XAC_NHAN_HOAN_TIEN'].includes(order.returnRequestStatus)) return { label: 'Đang xử lý đổi/trả', cls: 'pending', icon: 'bi-arrow-repeat' }
   if (order.returnRequestStatus === 'TU_CHOI' || order.returnRequestStatus === 'TRA_LAI_KHACH') return { label: 'Đổi/trả không được duyệt', cls: 'cancelled', icon: 'bi-x-circle' }
   if (Number(order.trangThai) === 5) return { label: 'Đã huỷ', cls: 'cancelled', icon: 'bi-x-circle' }
   if (order.daThanhToan) return { label: 'Đã thanh toán tại quầy', cls: 'paid', icon: 'bi-check-circle' }
@@ -837,7 +814,7 @@ async function openDetail(o) {
   overflow-wrap: anywhere;
 }
 
-/* Nút Primary (Giống nút Tra cứu) - Màu cam */
+/* Nút Primary - Màu cam */
 .z-btn-primary {
   background-color: var(--z-accent, #e85d04);
   color: #ffffff !important;

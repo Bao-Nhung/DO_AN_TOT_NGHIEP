@@ -173,6 +173,7 @@ public class AiVisualSearchService {
         item.put("image", firstNonBlank(variant.getAnhUrl(), productImages.get(product.getId())));
         item.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
         item.put("size", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
+        item.put("stock", variant.getSoLuong());
         items.add(item);
     }
 

@@ -288,7 +288,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useOrders } from '@/composables/useOrders'
 import { useToast } from '@/composables/useToast'
@@ -320,6 +320,9 @@ const otpMessage = ref('Mã OTP sẽ được gửi đến email nhận hóa đ�
 const sendingOtp = ref(false)
 const cancelling = ref(false)
 const payingId = ref(null)
+const ORDER_REFRESH_INTERVAL_MS = 2000
+let trackingRefreshTimer
+let trackingRefreshInFlight = false
 
 onMounted(() => {
   const maHoaDon = route.query.maHoaDon ? String(route.query.maHoaDon) : ''
@@ -329,7 +332,26 @@ onMounted(() => {
   if (maHoaDon && soDienThoai) {
     handleSearch()
   }
+  trackingRefreshTimer = window.setInterval(refreshTrackedOrder, ORDER_REFRESH_INTERVAL_MS)
 })
+
+onBeforeUnmount(() => clearInterval(trackingRefreshTimer))
+
+async function refreshTrackedOrder() {
+  const maHoaDon = form.value.maHoaDon.trim()
+  const soDienThoai = form.value.soDienThoai.trim()
+  if (!currentOrder.value || !maHoaDon || !soDienThoai || trackingRefreshInFlight || loading.value
+    || sendingOtp.value || cancelling.value || payingId.value || document.visibilityState === 'hidden') return
+
+  trackingRefreshInFlight = true
+  try {
+    await searchOrder(maHoaDon, soDienThoai, { silent: true })
+  } catch {
+    // Giữ dữ liệu gần nhất khi backend tạm thời chưa phản hồi trong lúc tự cập nhật.
+  } finally {
+    trackingRefreshInFlight = false
+  }
+}
 
 async function handleSearch() {
   if (!form.value.maHoaDon.trim()) {

@@ -230,7 +230,7 @@ import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 
 const toast = useToast()
-const { confirm: confirmDialog } = useConfirm()
+const { confirmDialog } = useConfirm()
 const campaigns = ref([])
 const spins = ref([])
 const selectedCampaignId = ref(null)
@@ -424,8 +424,10 @@ async function deliverPrize(spin) {
   const accepted = await confirmDialog({ title: 'Xác nhận đã trao quà', message: `Xác nhận đã trao “${spin.tenKetQua}” cho ${spin.tenKhachHang}?`, confirmText: 'Đã trao quà' })
   if (!accepted) return
   try {
-    await api().deliverLuckyWheelPrize(spin.id)
-    await loadData()
+    const updated = await api().deliverLuckyWheelPrize(spin.id)
+    spins.value = spins.value.map(item => Number(item.id) === Number(spin.id) ? { ...item, ...updated } : item)
+    const refreshedCampaigns = await api().getLuckyWheelCampaignsAdmin().catch(() => null)
+    if (refreshedCampaigns) campaigns.value = refreshedCampaigns
     toast.showToast('Đã ghi nhận trao quà', 'success')
   } catch (error) { toast.showToast(error.error || 'Không thể cập nhật trao quà', 'error') }
 }
@@ -446,7 +448,7 @@ function claimStatus(spin) {
   return {
     CHO_NHAN: { label: 'Chờ trao quà', cls: 'warning' }, DA_TRA: { label: 'Đã trao quà', cls: 'success' },
     KHONG_TRUNG: { label: 'Không trúng', cls: 'pending' }
-  }[spin.trangThaiNhan] || { label: spin.trangThaiNhan, cls: 'pending' }
+  }[spin.trangThaiNhan] || { label: 'Chưa xác định', cls: 'pending' }
 }
 function money(value) { return Number(value || 0).toLocaleString('vi-VN') + 'đ' }
 function moneyInput(value) { return value == null || value === '' ? '' : Number(value).toLocaleString('vi-VN') }

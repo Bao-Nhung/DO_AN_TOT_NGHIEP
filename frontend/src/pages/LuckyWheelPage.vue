@@ -90,7 +90,7 @@
                 <label for="lucky-order-code">Mã đơn hàng</label>
                 <div class="z-input-with-icon">
                   <i class="bi bi-upc-scan" aria-hidden="true"></i>
-                  <input id="lucky-order-code" v-model.trim="form.orderCode" class="lm-input" maxlength="80" placeholder="Ví dụ: HDAUG26001" autocomplete="off" @input="clearEligibility">
+                  <input id="lucky-order-code" v-model.trim="form.orderCode" class="lm-input" maxlength="80" placeholder="Ví dụ: HD260827183624AE52BEFA" autocomplete="off" @input="clearEligibility">
                 </div>
               </div>
               <div>

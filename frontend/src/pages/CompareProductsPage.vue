@@ -61,7 +61,11 @@
               <tr>
                 <th scope="row">{{ t('compare.price') }}</th>
                 <td v-for="product in comparedProducts" :key="`price-${product.id}`" class="z-compare-price">
-                  {{ fmtPrice(product.giaBan) }}
+                  <ProductPrice
+                    :price="product.giaBan"
+                    :original-price="product.giaBanCoSo"
+                    size="compact"
+                  />
                 </td>
               </tr>
               <tr>
@@ -131,8 +135,8 @@ import { onMounted, ref, watch } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import { api } from '@/composables/useApi'
 import { useCompare } from '@/composables/useCompare'
-import { fmtPrice } from '@/composables/useProducts'
 import { useI18n } from '@/composables/useI18n'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 
 const { ids, removeProduct, clear, maxProducts } = useCompare()
 const { t } = useI18n()
@@ -222,7 +226,8 @@ onMounted(loadComparison)
   box-shadow: 0 2px 8px rgba(0,0,0,.1);
 }
 .z-compare-remove:hover { background: var(--z-accent); color: var(--z-white); }
-.z-compare-price { color: var(--z-accent); font-size: 16px !important; font-weight: 700; }
+.z-compare-price { font-size: 16px !important; font-weight: 700; }
+.z-compare-price :deep(.z-product-price) { justify-content: flex-start; font-size: 14px; }
 .z-compare-sizes { display: flex; flex-wrap: wrap; gap: 6px; }
 .z-compare-sizes span { min-width: 30px; padding: 4px 8px; border: 1px solid var(--z-gray-border); text-align: center; }
 .z-compare-sizes em { color: var(--z-gray); font-style: normal; }

@@ -195,7 +195,12 @@
                   <div class="z-order-item-qty">x{{ item.qty }}</div>
                 </div>
                 <div class="z-order-item-price">
-                  <span>{{ formatPrice(Number(item.price) * item.qty) }}</span>
+                  <ProductPrice
+                    :price="item.price"
+                    :original-price="item.originalPrice"
+                    :quantity="item.qty"
+                    size="compact"
+                  />
                 </div>
               </div>
             </div>
@@ -319,6 +324,7 @@ import { useToast } from '@/composables/useToast'
 import { api, useAuth } from '@/composables/useApi'
 import { useI18n } from '@/composables/useI18n'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 
 const router = useRouter()
 const { state, totalCount, subtotal, formatPrice, clearCart, refreshItems, syncCartNow } = useCart()
@@ -1023,12 +1029,7 @@ function isValidEmail(value) {
 .z-order-item-variant { font-size: 12px; color: var(--z-gray); }
 .z-order-item-qty { font-size: 12px; color: var(--z-gray); }
 .z-order-item-price {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
+  min-width: 102px;
 }
 .z-saved-address-list { display: grid; gap: 8px; }
 .z-saved-address {

@@ -130,14 +130,24 @@
                             <img :src="item.image || '/images/products/catalog-v2/sp001_main.webp'" :alt="item.name" @error="onCardImgError" />
                             <div class="z-outfit-mini-info">
                               <span class="z-outfit-mini-name">{{ item.name }}</span>
-                              <span class="z-outfit-mini-price">{{ formatPrice(item.price) }}</span>
+                              <ProductPrice
+                                class="z-outfit-mini-price"
+                                :price="item.price"
+                                :original-price="item.originalPrice"
+                                size="compact"
+                              />
                             </div>
                           </div>
                         </div>
                         <div class="z-outfit-footer">
                           <div class="d-flex align-items-center justify-content-between">
                             <div class="z-outfit-pricing">
-                              <span class="z-outfit-combo-price">{{ formatPrice(card.totalPrice) }}</span>
+                              <ProductPrice
+                                class="z-outfit-combo-price"
+                                :price="card.totalPrice"
+                                :original-price="card.totalOriginalPrice"
+                                size="compact"
+                              />
                             </div>
                             <span class="text-muted" style="font-size:11px">Tổng giá hiện tại</span>
                           </div>
@@ -157,7 +167,12 @@
                       <div class="z-card-info">
                         <div class="z-card-name" :title="card.name" @click="goToProduct(card.id)">{{ card.name }}</div>
                         <div class="d-flex align-items-center justify-content-between mt-1">
-                          <span class="z-card-price">{{ formatPrice(card.price) }}</span>
+                          <ProductPrice
+                            class="z-card-price"
+                            :price="card.price"
+                            :original-price="card.originalPrice"
+                            size="compact"
+                          />
                           <span v-if="card.stock" class="z-card-stock">Còn {{ card.stock }}</span>
                         </div>
                         <div class="d-flex gap-1 mt-2">
@@ -286,6 +301,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/composables/useApi'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 
@@ -506,6 +522,7 @@ async function handleImageUpload(e) {
       variantId: p.variantId,
       name: p.tenSanPham || p.name,
       price: p.giaCuoi || p.price,
+      originalPrice: p.giaGoc || p.originalPrice,
       image: p.anhChinh || p.image,
       category: p.danhMuc || p.category || 'Thời trang'
     }))
@@ -578,6 +595,9 @@ function quickAddToCart(card) {
     variantId: card.variantId,
     name: card.name,
     price: card.price,
+    originalPrice: card.originalPrice,
+    promotionActive: card.promotionActive,
+    campaign: card.campaign,
     image: card.image,
     color: card.color,
     size: card.size,
@@ -600,6 +620,9 @@ function addOutfitToCart(outfitCard) {
       variantId: item.variantId,
       name: item.name,
       price: item.price,
+      originalPrice: item.originalPrice,
+      promotionActive: item.promotionActive,
+      campaign: item.campaign,
       image: item.image,
       color: item.color,
       size: item.size,
@@ -1179,13 +1202,13 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.z-outfit-mini-price { color: var(--z-accent-dark); font-size: 10px; font-weight: 700; }
+.z-outfit-mini-price { justify-content: flex-start; font-size: 10px; }
 .z-outfit-footer {
   margin-top: 10px;
   padding-top: 9px;
   border-top: 1px solid var(--z-gray-border);
 }
-.z-outfit-combo-price { color: var(--z-dark); font-size: 13px; font-weight: 700; }
+.z-outfit-combo-price { justify-content: flex-start; font-size: 13px; }
 .z-outfit-add-btn {
   min-height: 36px;
   justify-content: center;
@@ -1231,7 +1254,7 @@ onBeforeUnmount(() => {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-.z-card-price { color: var(--z-accent-dark); font-size: 12px; font-weight: 700; }
+.z-card-price { justify-content: flex-start; font-size: 12px; }
 .z-card-stock { color: #217A3D; font-size: 10px; font-weight: 600; }
 .z-card-view-btn { min-height: 32px; justify-content: center; padding: 5px 9px; font-size: 10px; }
 .z-card-cart-btn { width: 32px; height: 32px; flex-basis: 32px; }

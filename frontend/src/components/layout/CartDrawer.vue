@@ -49,7 +49,13 @@
                 <span class="lm-qty-num">{{ item.qty }}</span>
                 <button type="button" class="lm-qty-btn" :aria-label="`Tăng số lượng ${item.name}`" :disabled="item.unavailable || item.qty >= item.maxQty" @click="cart.changeQty(item.id, 1)">+</button>
               </div>
-              <div v-if="!item.unavailable" class="lm-cart-item-price">{{ cart.formatPrice(Number(item.price)) }}</div>
+              <ProductPrice
+                v-if="!item.unavailable"
+                class="lm-cart-item-price"
+                :price="item.price"
+                :original-price="item.originalPrice"
+                size="compact"
+              />
             </div>
           </div>
         </div>
@@ -83,6 +89,7 @@
 import { computed, onMounted } from 'vue'
 import { useCart } from '@/composables/useCart'
 import { api } from '@/composables/useApi'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 
 const cart = useCart()
 const hasUnavailableItems = computed(() => cart.state.items.some(item => item.unavailable))
@@ -95,17 +102,7 @@ onMounted(() => {
 <style scoped>
 .lm-cart-item-price {
   min-width: 100px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-.lm-cart-item-price {
-  color: var(--z-dark);
-  font-family: var(--z-font-display);
-  font-size: 18px;
-  font-weight: 400;
+  max-width: 190px;
 }
 .z-cart-item-unavailable { opacity: .72; }
 .z-cart-item-warning { margin: -7px 0 9px; color: var(--z-danger); font-size: 11px; font-weight: 600; }

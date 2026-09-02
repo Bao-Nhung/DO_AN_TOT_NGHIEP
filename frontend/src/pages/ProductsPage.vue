@@ -366,6 +366,8 @@ const sortedProducts = computed(() => {
         name: item.tenSanPham || item.name,
         code: item.maSanPham || item.code,
         price: Number(item.giaCuoi || item.price || item.giaGoc || 0),
+        basePrice: Number(item.giaGoc || item.giaCuoi || item.price || 0),
+        promotionActive: Number(item.giaGoc || 0) > Number(item.giaCuoi || item.price || 0),
         category: item.danhMuc || original?.category || 'Thời trang',
         image: item.anhChinh || original?.image || '/images/products/catalog-v2/sp003_main.webp',
         badge: `${item.matchScore}% gần màu`

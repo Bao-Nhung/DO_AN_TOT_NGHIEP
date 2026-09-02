@@ -124,13 +124,13 @@ public class AiVisualSearchService {
         SanPham mainProduct = sanPhamRepository.findById(productId)
                 .filter(product -> Byte.valueOf((byte) 1).equals(product.getTrangThai()))
                 .orElse(null);
-        if (mainProduct == null) return Map.of("items", List.of(), "totalPrice", BigDecimal.ZERO);
+        if (mainProduct == null) return emptyFrequentlyBoughtTogether();
 
         List<Integer> suggestedIds = orderDetailRepository
                 .findFrequentlyBoughtProductIds(productId, PageRequest.of(0, 3)).stream()
                 .map(row -> ((Number) row[0]).intValue())
                 .toList();
-        if (suggestedIds.isEmpty()) return Map.of("items", List.of(), "totalPrice", BigDecimal.ZERO);
+        if (suggestedIds.isEmpty()) return emptyFrequentlyBoughtTogether();
 
         List<Integer> allIds = new ArrayList<>();
         allIds.add(productId);
@@ -147,12 +147,19 @@ public class AiVisualSearchService {
         for (Integer suggestedId : suggestedIds) {
             appendProductItem(items, productsById.get(suggestedId), variantsByProduct, productImages);
         }
-        if (items.size() < 2) return Map.of("items", List.of(), "totalPrice", BigDecimal.ZERO);
+        if (items.size() < 2) return emptyFrequentlyBoughtTogether();
 
         BigDecimal totalPrice = items.stream()
                 .map(item -> (BigDecimal) item.getOrDefault("price", BigDecimal.ZERO))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return Map.of("items", items, "totalPrice", totalPrice);
+        BigDecimal totalOriginalPrice = items.stream()
+                .map(item -> (BigDecimal) item.getOrDefault("originalPrice", item.getOrDefault("price", BigDecimal.ZERO)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return Map.of(
+                "items", items,
+                "totalPrice", totalPrice,
+                "totalOriginalPrice", totalOriginalPrice
+        );
     }
 
     private void appendProductItem(List<Map<String, Object>> items,
@@ -170,11 +177,22 @@ public class AiVisualSearchService {
         item.put("variantId", variant.getId());
         item.put("name", product.getTenSanPham());
         item.put("price", quote.effectivePrice());
+        item.put("originalPrice", quote.basePrice());
+        item.put("promotionActive", quote.discounted());
+        item.put("campaign", quote.campaignName());
         item.put("image", firstNonBlank(variant.getAnhUrl(), productImages.get(product.getId())));
         item.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
         item.put("size", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
         item.put("stock", variant.getSoLuong());
         items.add(item);
+    }
+
+    private Map<String, Object> emptyFrequentlyBoughtTogether() {
+        return Map.of(
+                "items", List.of(),
+                "totalPrice", BigDecimal.ZERO,
+                "totalOriginalPrice", BigDecimal.ZERO
+        );
     }
 
     private BufferedImage readValidatedImage(MultipartFile file) {

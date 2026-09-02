@@ -17,6 +17,11 @@ function normalizeCartItem(item) {
   const numericId = Number(item?.id)
   const color = cleanAttribute(item?.color ?? item?.mauSac)
   const size = cleanAttribute(item?.size ?? item?.kichThuoc)
+  const price = Math.max(0, Number(item?.price ?? item?.giaBan) || 0)
+  const originalPriceValue = Math.max(0, Number(
+    item?.originalPrice ?? item?.basePrice ?? item?.giaBanCoSo ?? price
+  ) || 0)
+  const originalPrice = originalPriceValue > price ? originalPriceValue : null
   const resolvedVariant = buildVariantLabel({ color, size }) || cleanAttribute(item?.variant) || ''
   return {
     ...item,
@@ -26,6 +31,10 @@ function normalizeCartItem(item) {
     color,
     size,
     variant: resolvedVariant,
+    price,
+    originalPrice,
+    promotionActive: originalPrice !== null,
+    campaign: cleanAttribute(item?.campaign ?? item?.dotKhuyenMai),
     qty: Math.max(1, Number(item?.qty || 1))
   }
 }
@@ -114,6 +123,9 @@ function refreshItems(loadProduct) {
           continue
         }
         const currentPrice = Number(variant?.giaBan ?? product?.giaBan ?? item.price) || 0
+        const currentBasePrice = Number(
+          variant?.giaBanCoSo ?? product?.giaBanCoSo ?? currentPrice
+        ) || currentPrice
 
         item.unavailable = false
         delete item.unavailableReason
@@ -123,7 +135,11 @@ function refreshItems(loadProduct) {
         item.color = cleanAttribute(variant?.mauSac)
         item.size = cleanAttribute(variant?.kichThuoc)
         item.variant = buildVariantLabel(item)
-        delete item.originalPrice
+        item.originalPrice = currentBasePrice > currentPrice ? currentBasePrice : null
+        item.promotionActive = item.originalPrice !== null
+        item.campaign = item.promotionActive
+          ? cleanAttribute(variant?.dotKhuyenMai ?? product?.dotKhuyenMai)
+          : null
         item.maxQty = availableStock
         item.qty = Math.min(Number(item.qty || 1), availableStock)
       }

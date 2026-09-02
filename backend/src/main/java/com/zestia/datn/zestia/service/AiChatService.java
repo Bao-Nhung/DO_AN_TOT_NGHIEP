@@ -990,12 +990,16 @@ public class AiChatService {
         BigDecimal totalPrice = items.stream()
                 .map(i -> (BigDecimal) i.getOrDefault("price", BigDecimal.ZERO))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalOriginalPrice = items.stream()
+                .map(i -> (BigDecimal) i.getOrDefault("originalPrice", i.getOrDefault("price", BigDecimal.ZERO)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         Map<String, Object> outfit = new java.util.HashMap<>();
         outfit.put("type", "outfit");
         outfit.put("title", title);
         outfit.put("occasion", occasion);
         outfit.put("items", items);
         outfit.put("totalPrice", totalPrice);
+        outfit.put("totalOriginalPrice", totalOriginalPrice);
         return outfit;
     }
 
@@ -1016,7 +1020,8 @@ public class AiChatService {
                 .min(Comparator.comparing(variant -> promotionPricingService.quote(variant).effectivePrice()))
                 .orElse(null);
         if (selectedVariant == null) return Map.of();
-        BigDecimal price = promotionPricingService.quote(selectedVariant).effectivePrice();
+        PromotionPricingService.PriceQuote quote = promotionPricingService.quote(selectedVariant);
+        BigDecimal price = quote.effectivePrice();
         String img = productImage(variants, "/images/products/dress1.jpg");
         int stock = Optional.ofNullable(selectedVariant.getSoLuong()).orElse(0);
         java.util.Map<String, Object> card = new java.util.HashMap<>();
@@ -1025,6 +1030,9 @@ public class AiChatService {
         card.put("variantId", selectedVariant.getId());
         card.put("name", safe(v.getTenSanPham()));
         card.put("price", price);
+        card.put("originalPrice", quote.basePrice());
+        card.put("promotionActive", quote.discounted());
+        card.put("campaign", quote.campaignName());
         card.put("image", img);
         card.put("category", v.getLoaiSanPham() != null ? safe(v.getLoaiSanPham().getTenLoaiSanPham()) : "Thời trang");
         card.put("stock", stock);

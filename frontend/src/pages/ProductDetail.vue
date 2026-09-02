@@ -47,11 +47,16 @@
             <span data-no-i18n style="font-size:13px;color:var(--z-gray)">{{ ratingStockLabel }}</span>
           </div>
 
-          <div class="d-flex align-items-baseline gap-3 mb-4 pb-4" style="border-bottom:1px solid var(--z-gray-border)">
-            <div class="z-display" style="font-size:32px;font-weight:500;color:var(--z-dark)">{{ fmtPrice(product.giaBan) }}</div>
-            <div v-if="product.dotKhuyenMai"
+          <div class="z-product-detail-price-row mb-4 pb-4" style="border-bottom:1px solid var(--z-gray-border)">
+            <ProductPrice
+              :price="displayPrice"
+              :original-price="displayOriginalPrice"
+              size="detail"
+              show-discount
+            />
+            <div v-if="displayCampaign"
                  style="font-size:12px;font-weight:600;color:var(--z-accent);background:var(--z-accent-soft);padding:4px 12px;border-radius:20px">
-              {{ product.dotKhuyenMai }}
+              {{ displayCampaign }}
             </div>
           </div>
 
@@ -149,7 +154,12 @@
                     <img :src="item.image || '/images/products/catalog-v2/sp003_main.webp'" :alt="item.name" class="rounded-3 border mb-2" style="width: 100px; height: 120px; object-fit: cover;" />
                     <div class="text-truncate fw-bold" style="font-size: 12px;" :title="item.name">{{ item.name }}</div>
                     <div class="z-bundle-variant">{{ bundleVariantLabel(item) }}</div>
-                    <div class="text-danger fw-bold" style="font-size: 13px;">{{ fmtPrice(item.price) }}</div>
+                    <ProductPrice
+                      class="z-bundle-price"
+                      :price="item.price"
+                      :original-price="item.originalPrice"
+                      size="compact"
+                    />
                   </div>
                   <div v-if="index < frequentlyBoughtTogether.items.length - 1" class="fs-4 text-muted fw-bold">+</div>
                 </div>
@@ -158,7 +168,12 @@
             
             <div class="col-md-4 text-end border-start ps-md-4">
               <div style="font-size: 12px; color: var(--z-gray);">Tổng tiền các sản phẩm:</div>
-              <div class="display-6 fw-bold text-danger my-3" style="font-size: 24px;">{{ fmtPrice(frequentlyBoughtTogether.totalPrice) }}</div>
+              <ProductPrice
+                class="z-bundle-total my-3"
+                :price="frequentlyBoughtTogether.totalPrice"
+                :original-price="frequentlyBoughtTogether.totalOriginalPrice"
+                size="compact"
+              />
               
               <button type="button" class="btn btn-danger w-100 py-2 font-weight-bold shadow-sm d-flex align-items-center justify-content-center gap-2" @click="addBundleToCart">
                 <i class="bi bi-cart-plus-fill"></i> Thêm các sản phẩm vào giỏ
@@ -269,6 +284,7 @@ import { fmtPrice } from '@/composables/useProducts'
 import { useWishlist } from '@/composables/useWishlist'
 import { useI18n } from '@/composables/useI18n'
 import PageSizeSelect from '@/components/ui/PageSizeSelect.vue'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -411,6 +427,29 @@ const selectedVariant = computed(() => {
   return activeVariants.value.find(bt => bt.mauSac === colorName && bt.kichThuoc === activeSize.value) || null
 })
 
+const displayPriceSource = computed(() => {
+  if (selectedVariant.value) return selectedVariant.value
+  if (activeColor.value !== null) {
+    const colorName = colors.value[activeColor.value]?.name
+    const colorVariants = activeVariants.value.filter(variant => variant.mauSac === colorName)
+    if (colorVariants.length) {
+      return [...colorVariants].sort((a, b) => Number(a.giaBan || 0) - Number(b.giaBan || 0))[0]
+    }
+  }
+  return product.value
+})
+
+const displayPrice = computed(() => Number(displayPriceSource.value?.giaBan ?? product.value.giaBan) || 0)
+const displayOriginalPrice = computed(() => {
+  const basePrice = Number(
+    displayPriceSource.value?.giaBanCoSo ?? product.value.giaBanCoSo ?? displayPrice.value
+  ) || displayPrice.value
+  return basePrice > displayPrice.value ? basePrice : null
+})
+const displayCampaign = computed(() => displayOriginalPrice.value
+  ? (displayPriceSource.value?.dotKhuyenMai || product.value.dotKhuyenMai || '')
+  : '')
+
 watch(activeColor, () => {
   activeThumb.value = 0
   if (activeSize.value && !sizes.value.some(s => s.label === activeSize.value && !s.soldOut)) {
@@ -449,6 +488,9 @@ async function addBundleToCart() {
       variantId: Number(item.variantId),
       name: item.name,
       price: item.price,
+      originalPrice: item.originalPrice,
+      promotionActive: item.promotionActive,
+      campaign: item.campaign,
       image: item.image,
       color: item.color,
       size: item.size,
@@ -564,6 +606,7 @@ function addToCart() {
   const idx = (p.id || 0) % letters.length
   const colorName = colors.value[activeColor.value]?.name || ''
   const currentPrice = Number(variantMatch.giaBan ?? p.giaBan) || 0
+  const currentBasePrice = Number(variantMatch.giaBanCoSo ?? p.giaBanCoSo ?? currentPrice) || currentPrice
   
   // TẠO ID DUY NHẤT ĐỂ GIỎ HÀNG KHÔNG GỘP CHUNG SẢN PHẨM KHÁC SIZE/MÀU
   const uniqueCartId = `variant-${variantMatch.id}`
@@ -576,6 +619,9 @@ function addToCart() {
     color: colorName,       // Lưu màu vào giỏ
     variant: [colorName, `Size ${activeSize.value}`].filter(Boolean).join(' · '),
     price: currentPrice,
+    originalPrice: currentBasePrice > currentPrice ? currentBasePrice : null,
+    promotionActive: currentBasePrice > currentPrice,
+    campaign: currentBasePrice > currentPrice ? (variantMatch.dotKhuyenMai || p.dotKhuyenMai || null) : null,
     maxQty: Number(variantMatch.soLuong || 0),
     variantId: variantMatch.id,
     image: variantMatch.anhUrl || p.anhUrl || p.danhSachAnh?.[0] || null,
@@ -592,6 +638,17 @@ function toggleWish() {
 </script>
 
 <style scoped>
+.z-product-detail-price-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.z-bundle-price { justify-content: center; }
+.z-bundle-total {
+  justify-content: flex-end;
+  font-size: 24px;
+}
 .z-bundle-variant {
   min-height: 16px;
   margin: 2px 0;

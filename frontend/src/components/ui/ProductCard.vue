@@ -37,16 +37,21 @@
 
     <div class="lm-product-cat">{{ product.category }}</div>
     <div class="lm-product-name">{{ product.name }}</div>
-    <div class="lm-product-price">{{ formatPrice(product.price) }}</div>
+    <ProductPrice
+      class="lm-product-price"
+      :price="product.price"
+      :original-price="product.basePrice"
+      size="card"
+    />
   </article>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 import { useWishlist } from '@/composables/useWishlist'
 import { useCompare } from '@/composables/useCompare'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 
 const props = defineProps({
   product: { type: Object, required: true }
@@ -65,8 +70,6 @@ function onImgError() {
   else imgSrc.value = '/images/products/catalog-v2/sp003_main.webp'
 }
 
-// Bỏ hàm addItem, chỉ giữ lại formatPrice
-const { formatPrice } = useCart()
 const { showToast } = useToast()
 const { isInWishlist, toggleWishlist } = useWishlist()
 const { hasProduct, toggleProduct, maxProducts } = useCompare()

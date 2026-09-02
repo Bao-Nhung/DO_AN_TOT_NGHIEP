@@ -145,9 +145,15 @@
               {{ r.letter }}
             </div>
           </div>
-          <div>
+          <div class="z-search-item-copy">
             <div style="font-weight:500;font-size:14px;color:var(--z-dark)">{{ r.name }}</div>
-            <div style="font-size:12px;color:var(--z-gray)">{{ r.category }} · {{ formatPrice(r.price) }}</div>
+            <div style="font-size:12px;color:var(--z-gray)">{{ r.category }}</div>
+            <ProductPrice
+              class="z-search-item-price"
+              :price="r.price"
+              :original-price="r.basePrice"
+              size="compact"
+            />
           </div>
         </button>
       </div>
@@ -186,9 +192,10 @@ import { products, loadProducts } from '@/composables/useProducts'
 import { api, useAuth } from '@/composables/useApi'
 import { useI18n } from '@/composables/useI18n'
 import { useCompare } from '@/composables/useCompare'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 
 const router = useRouter()
-const { openCart, totalCount, formatPrice } = useCart()
+const { openCart, totalCount } = useCart()
 const { isLoggedIn, getUser } = useAuth()
 const isStaffUser = computed(() => {
   if (!isLoggedIn()) return false
@@ -409,6 +416,8 @@ function saveGuestReadBefore(value) {
 </script>
 
 <style scoped>
+.z-search-item-copy { min-width: 0; }
+.z-search-item-price { justify-content: flex-start; margin-top: 2px; }
 .z-nav-shell { padding-inline: 24px; }
 .z-notif-dropdown {
   position: absolute;

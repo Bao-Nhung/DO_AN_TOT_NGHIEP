@@ -168,6 +168,10 @@ public class CustomerDataService {
         map.put("size", variant.getKichThuoc() != null ? variant.getKichThuoc().getTenKichThuoc() : null);
         map.put("color", variant.getMauSac() != null ? variant.getMauSac().getTenMauSac() : null);
         map.put("price", quote.effectivePrice());
+        map.put("originalPrice", quote.discounted() ? quote.basePrice() : null);
+        map.put("promotionActive", quote.discounted());
+        map.put("campaign", quote.campaignName());
+        map.put("campaignCode", quote.campaignCode());
         map.put("qty", item.getSoLuong());
         map.put("maxQty", Optional.ofNullable(variant.getSoLuong()).orElse(0));
         map.put("image", variant.getAnhUrl() != null ? variant.getAnhUrl() : firstImages.get(product.getId()));

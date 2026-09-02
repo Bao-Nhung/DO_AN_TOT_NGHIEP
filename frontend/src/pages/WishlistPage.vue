@@ -27,7 +27,12 @@
             </div>
             <div class="lm-product-cat">{{ item.category }}</div>
             <div class="lm-product-name">{{ item.name }}</div>
-            <div class="lm-product-price">{{ formatPrice(item.price) }}</div>
+            <ProductPrice
+              class="lm-product-price"
+              :price="item.price"
+              :original-price="item.basePrice"
+              size="card"
+            />
           </div>
         </div>
 
@@ -49,8 +54,8 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import ProductPrice from '@/components/ui/ProductPrice.vue'
 import { useToast } from '@/composables/useToast'
-import { useCart }  from '@/composables/useCart'
 import { useWishlist } from '@/composables/useWishlist'
 import { products, loadProducts } from '@/composables/useProducts'
 import { useI18n } from '@/composables/useI18n'
@@ -58,7 +63,6 @@ import { useI18n } from '@/composables/useI18n'
 onMounted(() => loadProducts())
 
 const { showToast } = useToast()
-const { formatPrice } = useCart()
 const { wishlistIds, removeFromWishlist: removeWl } = useWishlist()
 const { isEn } = useI18n()
 

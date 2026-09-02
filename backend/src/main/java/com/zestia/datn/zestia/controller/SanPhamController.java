@@ -845,7 +845,11 @@ public class SanPhamController {
             Double averageRating,
             Long reviewCount
     ) {
-        List<PromotionPricingService.PriceQuote> priceQuotes = bienThe.stream()
+        List<SanPhamChiTiet> availableVariants = bienThe.stream()
+                .filter(variant -> Optional.ofNullable(variant.getSoLuong()).orElse(0) > 0)
+                .toList();
+        List<SanPhamChiTiet> priceSource = availableVariants.isEmpty() ? bienThe : availableVariants;
+        List<PromotionPricingService.PriceQuote> priceQuotes = priceSource.stream()
                 .map(promotionPricingService::quote)
                 .toList();
         PromotionPricingService.PriceQuote bestQuote = priceQuotes.stream()

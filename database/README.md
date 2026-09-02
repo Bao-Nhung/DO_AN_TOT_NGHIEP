@@ -23,11 +23,13 @@ Canh bao: file nay xoa toan bo database `fashion_shop` hien co va tao lai du lie
 
 File duoc viet theo huong idempotent: co the chay lai, du lieu chuan duoc them/cap
 nhat theo khoa nghiep vu va cac bat bien du lieu duoc kiem tra truoc khi in thong
-bao thanh cong. Du lieu don hang phu tu 01/08/2026 den dung 18:00 ngay 01/09/2026.
-Moi ngay co 4 don hang (tong 128 don), kem giao dich, tracking, audit va danh gia hop le.
-Chat ho tro, newsletter, yeu thich, lich su xem, danh gia, thong bao va lich lam viec
-duoc bo sung den het 30/09/2026. Voucher, dot khuyen mai va vong quay co bo du lieu
-rieng cho thang 9; cac chuong trinh thang 8 van duoc giu lai dung nhu lich su da het han.
+bao thanh cong. Du lieu don hang phu tu 01/08/2026 den dung 08:00 ngay 03/09/2026.
+Moi ngay den het 02/09 co 4 don, ngay 03/09 co 1 don luc 08:00 (tong 133 don), kem
+giao dich, tracking va audit hop le. Danh gia da mua duoc bo sung den dung 08:00
+ngay 03/09/2026 va khong co danh gia nao sau moc nay. Chat ho tro, newsletter, yeu
+thich, lich su xem, thong bao va lich lam viec duoc bo sung den het 30/09/2026.
+Voucher, dot khuyen mai va vong quay co bo du lieu rieng cho thang 9; cac chuong
+trinh thang 8 van duoc giu lai dung nhu lich su da het han.
 
 Luon giu `-f 65001` khi chay bang `sqlcmd`. File cung co khoi chuan hoa de tu sua
 nhung dong lich su tung bi sai ma hoa boi mot lan chay cu.

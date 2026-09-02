@@ -4118,13 +4118,16 @@ FROM customer_addresses;
 GO
 
 -- ============================================================
--- ORDER DATA FROM 01/08/2026 THROUGH 18:00 ON 01/09/2026
--- 128 orders are distributed as four orders per day. The final order is fixed at
--- exactly 18:00 on 01/09 so every order view has a clear, testable data cutoff.
+-- ORDER DATA FROM 01/08/2026 THROUGH 08:00 ON 03/09/2026
+-- Four orders are distributed per day through 02/09, followed by one order at
+-- exactly 08:00 on 03/09. Existing 128 deterministic order keys stay unchanged
+-- so rerunning an older database refresh adds only the five newer orders.
 -- payment/tracking/audit rows, verified reviews,
 -- customer activity, support conversations and return requests.
 -- All operating-history keys are deterministic so this block is repeat-safe.
 -- ============================================================
+DECLARE @operating_data_cutoff datetime2(7) = CAST('2026-09-03T08:00:00' AS datetime2);
+
 DECLARE @aug_customers TABLE (
     rn int NOT NULL PRIMARY KEY,
     id int NOT NULL,
@@ -4174,7 +4177,7 @@ WHERE loai_bien_dong = N'HOAN_DON'
     SELECT id_san_pham_chi_tiet, SUM(so_luong_thay_doi) AS total_change
     FROM dbo.Bien_dong_ton_kho
     WHERE loai_bien_dong = N'BAN_HANG_DOI_SOAT'
-      AND ma_tham_chieu = N'DS-20260901-1800'
+      AND ma_tham_chieu IN (N'DS-20260901-1800', N'DS-20260903-0800')
     GROUP BY id_san_pham_chi_tiet
 )
 UPDATE variant
@@ -4184,7 +4187,7 @@ JOIN prior_seed_movement prior ON prior.id_san_pham_chi_tiet = variant.id;
 
 DELETE FROM dbo.Bien_dong_ton_kho
 WHERE loai_bien_dong = N'BAN_HANG_DOI_SOAT'
-  AND ma_tham_chieu = N'DS-20260901-1800';
+  AND ma_tham_chieu IN (N'DS-20260901-1800', N'DS-20260903-0800');
 
 ;WITH prior_return_movement AS (
     SELECT id_san_pham_chi_tiet, SUM(so_luong_thay_doi) AS total_change
@@ -4283,15 +4286,22 @@ DECLARE @aug_orders TABLE (
 ;WITH numbers AS (
     SELECT 1 AS seq
     UNION ALL
-    SELECT seq + 1 FROM numbers WHERE seq < 128
+    SELECT seq + 1 FROM numbers WHERE seq < 133
 ),
 base AS (
     SELECT
         seq,
-        CAST(CASE WHEN seq % 7 = 0 OR seq = 96 THEN 1 ELSE 0 END AS bit) AS is_offline,
+        CAST(CASE WHEN seq <> 133 AND (seq % 7 = 0 OR seq = 96) THEN 1 ELSE 0 END AS bit) AS is_offline,
         seq % 20 AS profile,
-        CASE WHEN seq = 128 THEN CAST('2026-09-01T18:00:00' AS datetime2)
-        ELSE DATEADD(
+        CASE
+            WHEN seq = 128 THEN CAST('2026-09-01T18:00:00' AS datetime2)
+            WHEN seq BETWEEN 129 AND 132 THEN DATEADD(
+                MINUTE,
+                CASE seq WHEN 129 THEN 500 WHEN 130 THEN 695 WHEN 131 THEN 880 ELSE 1090 END,
+                CAST('2026-09-02T00:00:00' AS datetime2)
+            )
+            WHEN seq = 133 THEN @operating_data_cutoff
+            ELSE DATEADD(
                 SECOND,
                 (seq * 13) % 60,
                 DATEADD(
@@ -4304,7 +4314,7 @@ base AS (
                     END,
                     CAST(DATEADD(DAY, (seq - 1) % 32, CAST('2026-08-01' AS date)) AS datetime2)
                 )
-             )
+            )
         END AS created_at
     FROM numbers
 ),
@@ -4313,6 +4323,9 @@ classified AS (
         base.*,
         CAST(CASE
             WHEN is_offline = 1 THEN 4
+            WHEN CAST(created_at AS date) = CAST('2026-09-03' AS date) THEN 0
+            WHEN CAST(created_at AS date) = CAST('2026-09-02' AS date) THEN
+                CASE seq WHEN 129 THEN 4 WHEN 130 THEN 3 WHEN 131 THEN 2 ELSE 1 END
             WHEN CAST(created_at AS date) = CAST('2026-09-01' AS date) THEN
                 CASE (seq - 1) / 32 WHEN 0 THEN 4 WHEN 1 THEN 3 ELSE 0 END
             WHEN seq > 81 THEN 4
@@ -4348,9 +4361,9 @@ SELECT
     customer.id,
     CASE WHEN classified.is_offline = 1 THEN employee.id ELSE NULL END,
     CASE
-        WHEN CAST(classified.created_at AS date) = CAST('2026-09-01' AS date)
-             AND classified.seq = 96 THEN @sep_voucher_pos
-        WHEN CAST(classified.created_at AS date) = CAST('2026-09-01' AS date)
+        WHEN CAST(classified.created_at AS date) >= CAST('2026-09-01' AS date)
+             AND classified.is_offline = 1 THEN @sep_voucher_pos
+        WHEN CAST(classified.created_at AS date) >= CAST('2026-09-01' AS date)
              AND classified.order_status IN (1, 2, 3, 4) THEN @sep_voucher_percent
         WHEN classified.order_status IN (1, 2, 3, 4) AND classified.seq % 10 = 0 THEN @aug_voucher_fixed
         WHEN classified.order_status IN (1, 2, 3, 4) AND classified.seq % 6 = 0 THEN @aug_voucher_percent
@@ -4402,7 +4415,7 @@ OUTER APPLY (
     WHERE address.id_khach_hang = customer.id
     ORDER BY ISNULL(address.mac_dinh, 0) DESC, address.id
 ) customer_address
-OPTION (MAXRECURSION 128);
+OPTION (MAXRECURSION 133);
 
 MERGE dbo.Hoa_don AS target
 USING @aug_orders AS source
@@ -4615,7 +4628,7 @@ WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
       SELECT 1 FROM dbo.Bien_dong_ton_kho movement
       WHERE movement.id_san_pham_chi_tiet = detail.id_san_pham_chi_tiet
         AND movement.loai_bien_dong = N'BAN_HANG_DOI_SOAT'
-        AND movement.ma_tham_chieu = N'DS-20260901-1800'
+        AND movement.ma_tham_chieu = N'DS-20260903-0800'
   )
 GROUP BY detail.id_san_pham_chi_tiet;
 
@@ -4625,7 +4638,7 @@ IF EXISTS (
     JOIN dbo.san_pham_chi_tiet variant ON variant.id = seed.id_san_pham_chi_tiet
     WHERE ISNULL(variant.so_luong, 0) < seed.quantity
 )
-    THROW 51021, N'Tồn kho không đủ để tạo lịch sử bán hàng đến 18:00 ngày 01/09.', 1;
+    THROW 51021, N'Tồn kho không đủ để tạo lịch sử bán hàng đến 08:00 ngày 03/09.', 1;
 
 INSERT INTO dbo.Bien_dong_ton_kho (
     id_san_pham_chi_tiet, so_luong_truoc, so_luong_thay_doi, so_luong_sau,
@@ -4633,8 +4646,8 @@ INSERT INTO dbo.Bien_dong_ton_kho (
 )
 SELECT
     variant.id, variant.so_luong, -seed.quantity, variant.so_luong - seed.quantity,
-    N'BAN_HANG_DOI_SOAT', N'DS-20260901-1800', N'Nguyễn Tiến Thành',
-    N'Đối soát lượng bán và tồn kho đến 18:00 ngày 01/09/2026', '2026-09-01T18:00:00'
+    N'BAN_HANG_DOI_SOAT', N'DS-20260903-0800', N'Nguyễn Tiến Thành',
+    N'Đối soát lượng bán và tồn kho đến 08:00 ngày 03/09/2026', @operating_data_cutoff
 FROM @aug_stock seed
 JOIN dbo.san_pham_chi_tiet variant ON variant.id = seed.id_san_pham_chi_tiet;
 
@@ -4733,8 +4746,8 @@ SELECT
         ELSE N'Đơn hàng đang chờ xử lý'
     END,
     CASE
-        WHEN DATEADD(HOUR, 2, order_row.ngay_tao) > CAST('2026-09-01T18:00:00' AS datetime2)
-            THEN CAST('2026-09-01T18:00:00' AS datetime2)
+        WHEN DATEADD(HOUR, 2, order_row.ngay_tao) > @operating_data_cutoff
+            THEN @operating_data_cutoff
         ELSE DATEADD(HOUR, 2, order_row.ngay_tao)
     END
 FROM dbo.Hoa_don order_row
@@ -4807,8 +4820,12 @@ WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
   )
 ORDER BY order_row.ngay_tao;
 
--- A second purchased line is reviewed across September. Every review remains
--- linked to a delivered order and a real customer/product combination.
+-- A second purchased line is reviewed from 01/09 through 08:00 on 03/09.
+-- Every review remains linked to a delivered order and a real customer/product
+-- combination; the final candidate lands exactly on the data cutoff.
+DECLARE @review_data_start datetime2(7) = CAST('2026-09-01T08:15:00' AS datetime2);
+DECLARE @review_data_span_minutes int = DATEDIFF(MINUTE, @review_data_start, @operating_data_cutoff);
+
 ;WITH september_review_candidates AS (
     SELECT TOP (30)
         order_row.id AS id_hoa_don,
@@ -4846,7 +4863,7 @@ WHEN MATCHED THEN UPDATE SET
     END,
     anh_danh_gia = CASE WHEN source.rn % 5 = 0 THEN source.anh_url ELSE NULL END,
     trang_thai = 1,
-    ngay_tao = DATEADD(DAY, source.rn - 1, CAST('2026-09-01T19:15:00' AS datetime2))
+    ngay_tao = DATEADD(MINUTE, ((source.rn - 1) * @review_data_span_minutes) / 29, @review_data_start)
 WHEN NOT MATCHED THEN INSERT (
     id_khach_hang, id_san_pham, id_hoa_don, so_sao,
     noi_dung, anh_danh_gia, trang_thai, ngay_tao
@@ -4863,7 +4880,7 @@ WHEN NOT MATCHED THEN INSERT (
     END,
     CASE WHEN source.rn % 5 = 0 THEN source.anh_url ELSE NULL END,
     1,
-    DATEADD(DAY, source.rn - 1, CAST('2026-09-01T19:15:00' AS datetime2))
+    DATEADD(MINUTE, ((source.rn - 1) * @review_data_span_minutes) / 29, @review_data_start)
 );
 
 ;WITH newsletter_seed AS (
@@ -5427,7 +5444,11 @@ SET tracking.mo_ta = CASE order_row.trang_thai
         WHEN 7 THEN N'Thanh toán không thành công'
         ELSE N'Đơn hàng đang chờ xử lý'
     END,
-    tracking.ngay_cap_nhat = DATEADD(HOUR, 2, order_row.ngay_tao)
+    tracking.ngay_cap_nhat = CASE
+        WHEN DATEADD(HOUR, 2, order_row.ngay_tao) > @operating_data_cutoff
+            THEN @operating_data_cutoff
+        ELSE DATEADD(HOUR, 2, order_row.ngay_tao)
+    END
 FROM dbo.Lich_su_tracking tracking
 JOIN dbo.Hoa_don order_row ON order_row.id = tracking.id_hoa_don
 WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
@@ -5616,11 +5637,11 @@ WHERE order_row.ma_hoa_don LIKE N'HD260[89]%';
 
 UPDATE movement
 SET movement.nguoi_thuc_hien = N'Nguyễn Tiến Thành',
-    movement.ghi_chu = N'Đối soát lượng bán và tồn kho đến 18:00 ngày 01/09/2026',
-    movement.ngay_tao = CAST('2026-09-01T18:00:00' AS datetime2)
+    movement.ghi_chu = N'Đối soát lượng bán và tồn kho đến 08:00 ngày 03/09/2026',
+    movement.ngay_tao = @operating_data_cutoff
 FROM dbo.Bien_dong_ton_kho movement
 WHERE movement.loai_bien_dong = N'BAN_HANG_DOI_SOAT'
-  AND movement.ma_tham_chieu = N'DS-20260901-1800';
+  AND movement.ma_tham_chieu = N'DS-20260903-0800';
 
 -- One late-September request keeps the pending return workflow available for
 -- demonstration while still respecting the 30-day return window.
@@ -6323,21 +6344,21 @@ IF EXISTS (
     HAVING COUNT(*) > 1
 )
     THROW 51032, N'Một đơn hàng đang có nhiều hơn một lượt quay trong cùng chiến dịch.', 1;
-IF (SELECT COUNT(*) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HD260[89]%') <> 128
-    THROW 51023, N'Giai đoạn từ 01/08 đến 18:00 ngày 01/09 phải có đúng 128 đơn hàng.', 1;
+IF (SELECT COUNT(*) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HD260[89]%') <> 133
+    THROW 51023, N'Giai đoạn từ 01/08 đến 08:00 ngày 03/09 phải có đúng 133 đơn hàng.', 1;
 IF (
     SELECT COUNT(DISTINCT CAST(ngay_tao AS date))
     FROM dbo.Hoa_don
     WHERE ma_hoa_don LIKE N'HD260[89]%'
-) <> 32
-    THROW 51024, N'Dữ liệu đơn hàng phải phủ đủ 32 ngày từ 01/08 đến 01/09.', 1;
+) <> 34
+    THROW 51024, N'Dữ liệu đơn hàng phải phủ đủ 34 ngày từ 01/08 đến 03/09.', 1;
 
-DECLARE @order_data_cutoff datetime2(7) = CAST('2026-09-01T18:00:00' AS datetime2);
+DECLARE @order_data_cutoff datetime2(7) = CAST('2026-09-03T08:00:00' AS datetime2);
 IF EXISTS (
     SELECT 1 FROM dbo.Hoa_don
     WHERE ngay_tao > @order_data_cutoff
 )
-    THROW 51051, N'Không được có đơn hàng sau 18:00 ngày 01/09/2026.', 1;
+    THROW 51051, N'Không được có đơn hàng sau 08:00 ngày 03/09/2026.', 1;
 
 IF (SELECT MIN(ngay_tao) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HD260[89]%') < CAST('2026-08-01T00:00:00' AS datetime2)
    OR (SELECT MAX(ngay_tao) FROM dbo.Hoa_don WHERE ma_hoa_don LIKE N'HD260[89]%') <> @order_data_cutoff
@@ -6348,29 +6369,46 @@ IF EXISTS (
     FROM dbo.Hoa_don
     WHERE ma_hoa_don LIKE N'HD260[89]%'
     GROUP BY CAST(ngay_tao AS date)
-    HAVING COUNT(*) <> 4
+    HAVING COUNT(*) <> CASE
+        WHEN CAST(ngay_tao AS date) = CAST('2026-09-03' AS date) THEN 1
+        ELSE 4
+    END
 )
-    THROW 51048, N'Mỗi ngày trong giai đoạn dữ liệu phải có đúng 4 đơn hàng.', 1;
+    THROW 51048, N'Mỗi ngày đến 02/09 phải có 4 đơn; ngày 03/09 có 1 đơn lúc 08:00.', 1;
+
+DECLARE @review_data_cutoff datetime2(7) = CAST('2026-09-03T08:00:00' AS datetime2);
+IF EXISTS (SELECT 1 FROM dbo.Danh_gia WHERE ngay_tao > @review_data_cutoff)
+    THROW 51062, N'Không được có đánh giá sau 08:00 ngày 03/09/2026.', 1;
+IF (SELECT MAX(ngay_tao) FROM dbo.Danh_gia) <> @review_data_cutoff
+    THROW 51063, N'Mốc cuối dữ liệu đánh giá phải đúng 08:00 ngày 03/09/2026.', 1;
+IF EXISTS (
+    SELECT 1
+    FROM dbo.Danh_gia review
+    JOIN dbo.Hoa_don order_row ON order_row.id = review.id_hoa_don
+    WHERE review.ngay_tao < order_row.ngay_tao
+)
+    THROW 51064, N'Có đánh giá được tạo trước thời điểm mua hàng.', 1;
+
 IF (
        SELECT COUNT(DISTINCT CAST(payment.ngay_tao AS date))
        FROM dbo.Lich_su_thanh_toan payment
        JOIN dbo.Hoa_don order_row ON order_row.id = payment.id_hoa_don
        WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
-         AND payment.ngay_tao < CAST('2026-09-02T00:00:00' AS datetime2)
-   ) <> 32
+         AND payment.ngay_tao < CAST('2026-09-03T00:00:00' AS datetime2)
+   ) <> 33
    OR (
        SELECT COUNT(DISTINCT CAST(tracking.ngay_cap_nhat AS date))
        FROM dbo.Lich_su_tracking tracking
        JOIN dbo.Hoa_don order_row ON order_row.id = tracking.id_hoa_don
        WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
-         AND tracking.ngay_cap_nhat < CAST('2026-09-02T00:00:00' AS datetime2)
-   ) <> 32
+         AND tracking.ngay_cap_nhat <= @order_data_cutoff
+   ) <> 34
    OR (
        SELECT COUNT(DISTINCT CAST(audit.ngay_tao AS date))
        FROM dbo.Hoa_don_audit_log audit
        JOIN dbo.Hoa_don order_row ON order_row.id = audit.id_hoa_don
        WHERE order_row.ma_hoa_don LIKE N'HD260[89]%'
-   ) <> 32
+   ) <> 34
     THROW 51048, N'Thanh toán, tracking và audit phải phủ đủ giai đoạn đơn hàng.', 1;
 
 IF EXISTS (
@@ -6414,7 +6452,7 @@ IF (
        SELECT COUNT(DISTINCT CAST(review.ngay_tao AS date))
        FROM dbo.Danh_gia review
        WHERE review.ngay_tao >= '2026-09-01' AND review.ngay_tao < '2026-10-01'
-   ) <> 30
+   ) <> 3
     THROW 51049, N'Dữ liệu tương tác khách hàng không đúng phạm vi tháng 8 và tháng 9 đã cấu hình.', 1;
 
 IF NOT EXISTS (

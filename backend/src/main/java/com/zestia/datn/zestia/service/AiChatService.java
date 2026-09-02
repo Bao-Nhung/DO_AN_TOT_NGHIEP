@@ -19,6 +19,7 @@ import com.zestia.datn.zestia.repository.KhachHangRepository;
 import com.zestia.datn.zestia.repository.SanPhamChiTietRepository;
 import com.zestia.datn.zestia.repository.SanPhamRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
@@ -50,6 +51,7 @@ import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AiChatService {
     private static final Set<String> SEARCH_STOP_WORDS = Set.of(
             "toi", "minh", "muon", "can", "tim", "san", "pham", "cho", "va", "voi",
@@ -118,25 +120,25 @@ public class AiChatService {
         // Gọi OpenAI
         try {
             ObjectNode requestBody = mapper.createObjectNode();
-            requestBody.put("model", model);
+            requestBody.put("model", model.trim());
             requestBody.put("instructions", systemInstructions(resolvedMode));
             requestBody.put("input", buildInput(message, history, context, user, resolvedMode));
             requestBody.put("max_output_tokens", 600);
 
-            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint.trim()))
                     .timeout(Duration.ofSeconds(timeoutSeconds))
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + apiKey.trim())
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(requestBody), StandardCharsets.UTF_8))
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                Map<String, Object> fallback = "staff".equals(resolvedMode)
-                    ? buildStaffAiResponse(message, context, user)
-                    : buildCustomerAiResponse(message, context, user, resolvedMode);
-                Map<String, Object> result = fallback != null ? fallback
-                    : Map.of("reply", "AI đang tạm thời không kết nối được. Vui lòng thử lại sau.", "configured", true);
+                String requestId = safeDiagnostic(response.headers().firstValue("x-request-id").orElse("missing"));
+                log.warn("OpenAI request failed: status={}, requestId={}, error={}",
+                        response.statusCode(), requestId, openAiErrorCode(response.body()));
+                Map<String, Object> result = providerFallback(message, context, user, resolvedMode,
+                        "AI đang tạm thời không kết nối được. Đang dùng chế độ tra cứu nội bộ.");
                 return logAndReturn(resolvedMode, message, user, startedAt, "internal-rag", result);
             }
 
@@ -151,13 +153,12 @@ public class AiChatService {
             result.put("reply", text);
             result.put("configured", true);
             if (!aiCards.isEmpty()) result.put("cards", aiCards);
-            return logAndReturn(resolvedMode, message, user, startedAt, model, result);
+            result.put("providerAvailable", true);
+            return logAndReturn(resolvedMode, message, user, startedAt, model.trim(), result);
         } catch (Exception e) {
-            Map<String, Object> fallback = "staff".equals(resolvedMode)
-                ? buildStaffAiResponse(message, context, user)
-                : buildCustomerAiResponse(message, context, user, resolvedMode);
-            Map<String, Object> result = fallback != null ? fallback
-                : Map.of("reply", "AI gặp sự cố kết nối. Đang dùng chế độ tra cứu nội bộ.", "configured", true);
+            log.warn("OpenAI request failed before a usable response: {}", e.getClass().getSimpleName());
+            Map<String, Object> result = providerFallback(message, context, user, resolvedMode,
+                    "AI gặp sự cố kết nối. Đang dùng chế độ tra cứu nội bộ.");
             return logAndReturn(resolvedMode, message, user, startedAt, "internal-rag", result);
         }
     }
@@ -183,6 +184,36 @@ public class AiChatService {
 
     private boolean configured() {
         return apiKey != null && !apiKey.isBlank();
+    }
+
+    private Map<String, Object> providerFallback(String message, String context, ChatUser user,
+                                                  String resolvedMode, String defaultReply) {
+        Map<String, Object> fallback = "staff".equals(resolvedMode)
+                ? buildStaffAiResponse(message, context, user)
+                : buildCustomerAiResponse(message, context, user, resolvedMode);
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (fallback != null) result.putAll(fallback);
+        result.putIfAbsent("reply", defaultReply);
+        result.put("configured", true);
+        result.put("providerAvailable", false);
+        result.put("fallback", true);
+        return result;
+    }
+
+    private String openAiErrorCode(String responseBody) {
+        try {
+            JsonNode error = mapper.readTree(responseBody).path("error");
+            String type = safeDiagnostic(error.path("type").asText("unknown"));
+            String code = safeDiagnostic(error.path("code").asText("unknown"));
+            return type + "/" + code;
+        } catch (Exception ignored) {
+            return "unparseable";
+        }
+    }
+
+    private String safeDiagnostic(String value) {
+        String safe = value == null ? "unknown" : value.replaceAll("[^a-zA-Z0-9_.:-]", "_");
+        return safe.substring(0, Math.min(120, safe.length()));
     }
 
     private String systemInstructions(String mode) {

@@ -10,6 +10,7 @@ import com.zestia.datn.zestia.service.RequestRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -42,6 +43,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/payment")
 @RequiredArgsConstructor
+@Slf4j
 public class GatewayPaymentController {
     private final HoaDonRepository hoaDonRepo;
     private final JwtUtil jwtUtil;
@@ -62,9 +64,11 @@ public class GatewayPaymentController {
     private String momoSecretKey;
     @Value("${payment.momo.endpoint:https://test-payment.momo.vn/v2/gateway/api/create}")
     private String momoEndpoint;
+    @Value("${payment.momo.enabled:false}")
+    private boolean momoEnabled;
 
-    @Value("${payment.zalopay.app-id:2553}")
-    private int zaloAppId;
+    @Value("${payment.zalopay.app-id:}")
+    private String zaloAppId;
     @Value("${payment.zalopay.key1:}")
     private String zaloKey1;
     @Value("${payment.zalopay.key2:}")
@@ -73,6 +77,8 @@ public class GatewayPaymentController {
     private String zaloEndpoint;
     @Value("${payment.zalopay.query-endpoint:https://sb-openapi.zalopay.vn/v2/query}")
     private String zaloQueryEndpoint;
+    @Value("${payment.zalopay.enabled:false}")
+    private boolean zaloEnabled;
 
     @Value("${app.backend-url:http://localhost:8080}")
     private String backendBaseUrl;
@@ -81,6 +87,16 @@ public class GatewayPaymentController {
 
     // ============================ MoMo ============================
 
+    /** Public capability check. This never exposes gateway credentials. */
+    @GetMapping("/methods")
+    public Map<String, Object> paymentMethods() {
+        return Map.of(
+                "COD", Map.of("available", true, "sandbox", false),
+                "MOMO", Map.of("available", momoAvailable(), "sandbox", isSandboxEndpoint(momoEndpoint)),
+                "ZALOPAY", Map.of("available", zaloAvailable(), "sandbox", isSandboxEndpoint(zaloEndpoint))
+        );
+    }
+
     @PostMapping("/momo/create")
     @Transactional
     public ResponseEntity<?> createMomo(@RequestBody Map<String, Object> body,
@@ -88,6 +104,7 @@ public class GatewayPaymentController {
                                         Authentication authentication,
                                         HttpServletRequest request) {
         if (!allowPaymentStart(request)) return tooManyPaymentStarts();
+        if (!momoAvailable()) return gatewayUnavailable("MoMo");
         if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         Integer orderId = toInt(body.get("orderId"));
         Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findByIdForUpdate(orderId) : Optional.empty();
@@ -113,11 +130,12 @@ public class GatewayPaymentController {
             hd.setHinhThucThanhToan("MOMO");
             hd.setMaGiaoDichCong(momoOrderId);
             hd.setUrlThanhToan(payUrl);
-            hd.setThanhToanHetHan(LocalDateTime.now().plusMinutes(25));
+            hd.setThanhToanHetHan(LocalDateTime.now().plusMinutes(14));
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", payUrl));
         } catch (Exception e) {
-            String message = "Lỗi gọi MoMo: " + e.getMessage();
+            log.warn("MoMo payment start failed for order {}: {}", hd.getId(), e.getClass().getSimpleName());
+            String message = "Không thể kết nối MoMo lúc này";
             return ResponseEntity.internalServerError().body(paymentStartFailedBody(hd, message, -1));
         }
     }
@@ -125,6 +143,7 @@ public class GatewayPaymentController {
     /** POS: tạo QR cổng MoMo theo số tiền (không gắn đơn — nhân viên xác nhận tại quầy). */
     @PostMapping("/momo/qr")
     public ResponseEntity<?> momoQr(@RequestBody Map<String, Object> body) {
+        if (!momoAvailable()) return gatewayUnavailable("MoMo");
         if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         long amount = toLong(body.get("amount"));
         if (amount < 1000) return ResponseEntity.badRequest().body(Map.of("error", "Số tiền không hợp lệ"));
@@ -197,7 +216,7 @@ public class GatewayPaymentController {
         GatewayPaymentResultService.PaymentOutcome outcome = null;
         if (valid) {
             outcome = paymentResultService.applyByCode(maHoaDon, "MOMO", parseAmount(q.get("amount")),
-                    q.get("transId"), "0".equals(q.get("resultCode")));
+                    q.get("transId"), "0".equals(q.get("resultCode")), q.get("orderId"));
         }
         String status = !valid ? "pending" : (outcome != null && outcome.success() ? "success" : "failed");
         response.sendRedirect(paymentResultUrl + "?status=" + status
@@ -207,10 +226,9 @@ public class GatewayPaymentController {
     }
 
     @PostMapping("/momo/ipn")
-    public ResponseEntity<?> momoIpn(@RequestBody(required = false) Map<String, String> body) {
-        // IPN không tới được localhost; để đầy đủ vẫn trả 200.
+    public ResponseEntity<Void> momoIpn(@RequestBody(required = false) Map<String, String> body) {
         if (body == null || body.isEmpty()) {
-            return ResponseEntity.ok(Map.of("RspCode", "99", "Message", "Empty body"));
+            return ResponseEntity.badRequest().build();
         }
         boolean valid = verifyMomo(body);
         String maHoaDon = decodeBase64(body.get("extraData"));
@@ -221,9 +239,9 @@ public class GatewayPaymentController {
         }
         if (valid) {
             paymentResultService.applyByCode(maHoaDon, "MOMO", parseAmount(body.get("amount")),
-                    body.get("transId"), "0".equals(body.get("resultCode")));
+                    body.get("transId"), "0".equals(body.get("resultCode")), body.get("orderId"));
         }
-        return ResponseEntity.ok(Map.of("RspCode", valid ? "00" : "97", "Message", valid ? "Success" : "Invalid signature"));
+        return ResponseEntity.noContent().build();
     }
 
     private boolean verifyMomo(Map<String, String> q) {
@@ -255,6 +273,7 @@ public class GatewayPaymentController {
                                         Authentication authentication,
                                         HttpServletRequest request) {
         if (!allowPaymentStart(request)) return tooManyPaymentStarts();
+        if (!zaloAvailable()) return gatewayUnavailable("ZaloPay");
         if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         Integer orderId = toInt(body.get("orderId"));
         Optional<HoaDon> opt = orderId != null ? hoaDonRepo.findByIdForUpdate(orderId) : Optional.empty();
@@ -279,11 +298,12 @@ public class GatewayPaymentController {
             hd.setHinhThucThanhToan("ZALOPAY");
             hd.setMaGiaoDichCong(appTransId);
             hd.setUrlThanhToan(orderUrl);
-            hd.setThanhToanHetHan(LocalDateTime.now().plusMinutes(25));
+            hd.setThanhToanHetHan(LocalDateTime.now().plusMinutes(14));
             hoaDonRepo.save(hd);
             return ResponseEntity.ok(Map.of("payUrl", orderUrl));
         } catch (Exception e) {
-            String message = "Lỗi gọi ZaloPay: " + e.getMessage();
+            log.warn("ZaloPay payment start failed for order {}: {}", hd.getId(), e.getClass().getSimpleName());
+            String message = "Không thể kết nối ZaloPay lúc này";
             return ResponseEntity.internalServerError().body(paymentStartFailedBody(hd, message, -1));
         }
     }
@@ -291,6 +311,7 @@ public class GatewayPaymentController {
     /** POS: tạo QR cổng ZaloPay theo số tiền. */
     @PostMapping("/zalopay/qr")
     public ResponseEntity<?> zaloQr(@RequestBody Map<String, Object> body) {
+        if (!zaloAvailable()) return gatewayUnavailable("ZaloPay");
         if (body == null) return ResponseEntity.badRequest().body(Map.of("error", "Dữ liệu thanh toán không hợp lệ"));
         long amount = toLong(body.get("amount"));
         if (amount < 1000) return ResponseEntity.badRequest().body(Map.of("error", "Số tiền không hợp lệ"));
@@ -319,7 +340,7 @@ public class GatewayPaymentController {
 
     /** Gọi API tạo đơn ZaloPay, trả nguyên response. */
     private JsonNode zaloCreate(long amount, String appTransId, long appTime, String description) throws Exception {
-        requireConfigured(String.valueOf(zaloAppId), "ZALOPAY_APP_ID");
+        String appId = configuredZaloAppId();
         requireConfigured(zaloKey1, "ZALOPAY_KEY1");
         String item = "[]";
         String redirectUrl = backendBaseUrl + "/api/payment/zalopay/return";
@@ -328,12 +349,12 @@ public class GatewayPaymentController {
         String appUser = "zestia_user";
 
         // mac = HMAC256(key1, app_id|app_trans_id|app_user|amount|app_time|embed_data|item)
-        String macData = zaloAppId + "|" + appTransId + "|" + appUser + "|" + amount + "|"
+        String macData = appId + "|" + appTransId + "|" + appUser + "|" + amount + "|"
                 + appTime + "|" + embedData + "|" + item;
         String mac = hmacHex("HmacSHA256", zaloKey1, macData);
 
         Map<String, String> form = new LinkedHashMap<>();
-        form.put("app_id", String.valueOf(zaloAppId));
+        form.put("app_id", appId);
         form.put("app_trans_id", appTransId);
         form.put("app_user", appUser);
         form.put("app_time", String.valueOf(appTime));
@@ -343,6 +364,7 @@ public class GatewayPaymentController {
         form.put("description", description);
         form.put("bank_code", "");
         form.put("callback_url", callbackUrl);
+        form.put("expire_duration_seconds", "900");
         form.put("mac", mac);
 
         return postForm(zaloEndpoint, form);
@@ -368,11 +390,11 @@ public class GatewayPaymentController {
                         amount = queryResult.path("amount").asText("0");
                         transactionId = queryResult.path("zp_trans_id").asText(appTransId);
                         var outcome = paymentResultService.applyById(hoaDonId, "ZALOPAY",
-                                parseAmount(amount), transactionId, true);
+                                parseAmount(amount), transactionId, true, appTransId);
                         status = outcome.success() ? "success" : "failed";
                     } else if (returnCode == 2 && !processing) {
                         var outcome = paymentResultService.applyById(hoaDonId, "ZALOPAY",
-                                BigDecimal.ZERO, appTransId, false);
+                                BigDecimal.ZERO, appTransId, false, appTransId);
                         status = outcome.success() ? "success" : "failed";
                     }
                 } catch (Exception ignored) {
@@ -394,18 +416,20 @@ public class GatewayPaymentController {
             String data = node.path("data").asText("");
             String mac = node.path("mac").asText("");
             boolean ok = !isBlank(zaloKey2) && hmacHex("HmacSHA256", zaloKey2, data).equals(mac);
+            boolean applied = false;
             if (ok) {
                 JsonNode dataNode = mapper.readTree(data);
                 String appTransId = dataNode.path("app_trans_id").asText("");
                 Integer hoaDonId = extractHoaDonIdFromZaloTransId(appTransId);
                 if (hoaDonId != null) {
-                    paymentResultService.applyById(hoaDonId, "ZALOPAY",
+                    var outcome = paymentResultService.applyById(hoaDonId, "ZALOPAY",
                             new BigDecimal(dataNode.path("amount").asText("0")),
-                            dataNode.path("zp_trans_id").asText(appTransId), true);
+                            dataNode.path("zp_trans_id").asText(appTransId), true, appTransId);
+                    applied = outcome.success() || outcome.idempotent();
                 }
             }
-            return ResponseEntity.ok(Map.of("return_code", ok ? 1 : -1,
-                    "return_message", ok ? "success" : "mac not equal"));
+            return ResponseEntity.ok(Map.of("return_code", ok && applied ? 1 : (ok ? 0 : -1),
+                    "return_message", ok && applied ? "success" : (ok ? "order not applied" : "mac not equal")));
         } catch (Exception e) {
             return ResponseEntity.ok(Map.of("return_code", 0, "return_message", "error"));
         }
@@ -414,11 +438,11 @@ public class GatewayPaymentController {
     // ============================ Helpers ============================
 
     private JsonNode queryZaloOrder(String appTransId) throws Exception {
-        requireConfigured(String.valueOf(zaloAppId), "ZALOPAY_APP_ID");
+        String appId = configuredZaloAppId();
         requireConfigured(zaloKey1, "ZALOPAY_KEY1");
-        String macData = zaloAppId + "|" + appTransId + "|" + zaloKey1;
+        String macData = appId + "|" + appTransId + "|" + zaloKey1;
         Map<String, String> form = new LinkedHashMap<>();
-        form.put("app_id", String.valueOf(zaloAppId));
+        form.put("app_id", appId);
         form.put("app_trans_id", appTransId);
         form.put("mac", hmacHex("HmacSHA256", zaloKey1, macData));
         return postForm(zaloQueryEndpoint, form);
@@ -600,22 +624,58 @@ public class GatewayPaymentController {
     }
 
     private Map<String, Object> paymentStartFailedBody(HoaDon hd, String message, int code) {
-        String method = cleanString(hd.getHinhThucThanhToan());
-        String transactionId = (method != null ? method : "PAYMENT")
-                + "-START-FAILED-" + hd.getId() + "-" + System.currentTimeMillis();
-        GatewayPaymentResultService.PaymentOutcome outcome = paymentResultService.applyById(
-                hd.getId(), method, BigDecimal.ZERO, transactionId, false
-        );
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("error", message);
-        body.put("paymentFailed", true);
-        body.put("retryable", false);
+        body.put("paymentFailed", false);
+        body.put("retryable", true);
         body.put("orderId", hd.getId());
         body.put("maHoaDon", hd.getMaHoaDon());
         body.put("amount", hd.getTongTien());
         body.put("resultCode", code);
-        body.put("message", outcome.message());
+        body.put("message", "Đơn hàng vẫn đang chờ thanh toán; bạn có thể thử lại");
         return body;
+    }
+
+    private ResponseEntity<Map<String, Object>> gatewayUnavailable(String gateway) {
+        return ResponseEntity.status(503).body(Map.of(
+                "error", gateway + " hiện chưa sẵn sàng. Vui lòng chọn phương thức khác hoặc thử lại sau",
+                "paymentFailed", false,
+                "retryable", true
+        ));
+    }
+
+    private boolean momoAvailable() {
+        return momoEnabled
+                && !isBlank(momoPartnerCode)
+                && !isBlank(momoAccessKey)
+                && !isBlank(momoSecretKey)
+                && isHttpsEndpoint(momoEndpoint);
+    }
+
+    private boolean zaloAvailable() {
+        if (!zaloEnabled || isBlank(zaloKey1) || isBlank(zaloKey2) || !isHttpsEndpoint(zaloEndpoint)) {
+            return false;
+        }
+        try {
+            return Integer.parseInt(Objects.requireNonNull(cleanString(zaloAppId))) > 0;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isHttpsEndpoint(String value) {
+        try {
+            URI uri = URI.create(value);
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isSandboxEndpoint(String value) {
+        if (!isHttpsEndpoint(value)) return false;
+        String host = URI.create(value).getHost().toLowerCase(Locale.ROOT);
+        return host.contains("test") || host.startsWith("sb-") || host.contains("sandbox");
     }
 
     private static Integer toInt(Object obj) {
@@ -627,6 +687,18 @@ public class GatewayPaymentController {
     private static void requireConfigured(String value, String name) {
         if (isBlank(value)) {
             throw new IllegalStateException("Chua cau hinh bien moi truong " + name);
+        }
+    }
+
+    private String configuredZaloAppId() {
+        String appId = cleanString(zaloAppId);
+        try {
+            if (appId == null || Integer.parseInt(appId) <= 0) {
+                throw new NumberFormatException();
+            }
+            return appId;
+        } catch (NumberFormatException exception) {
+            throw new IllegalStateException("Chua cau hinh bien moi truong ZALOPAY_APP_ID hop le");
         }
     }
 

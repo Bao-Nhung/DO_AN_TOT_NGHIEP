@@ -43,6 +43,7 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers("/api/auth/login", "/api/auth/google", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/san-pham/stock-movements").hasAnyAuthority(ADMIN_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/san-pham", "/api/san-pham/paged", "/api/san-pham/search", "/api/san-pham/{id}").permitAll()
@@ -65,6 +66,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/lucky-wheel/campaign").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/lucky-wheel/check", "/api/lucky-wheel/spin").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payment/create-order", "/api/payment/apply-voucher", "/api/payment/best-voucher").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/payment/methods").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payment/momo/create", "/api/payment/zalopay/create").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/payment/momo/return", "/api/payment/zalopay/return").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payment/momo/ipn", "/api/payment/zalopay/callback").permitAll()

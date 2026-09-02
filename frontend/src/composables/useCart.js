@@ -1,4 +1,4 @@
-import { reactive, computed, watch } from 'vue'
+import { reactive, computed, nextTick, watch } from 'vue'
 import { api, useAuth } from '@/composables/useApi'
 
 const STORAGE_KEY = 'zestia_cart'
@@ -32,6 +32,10 @@ let refreshPromise = null
 let syncReady = false
 let syncTimer = null
 let applyingServerState = false
+let cartHydrationPending = false
+let cartHydrationSucceeded = true
+let resolveCartHydration = null
+let cartHydrationPromise = Promise.resolve(true)
 
 watch(() => state.items, (items) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
@@ -138,6 +142,59 @@ function clearCart() {
   closeCart()
 }
 
+async function removePurchasedItems(purchasedItems = []) {
+  const purchasedByVariant = new Map()
+  for (const item of Array.isArray(purchasedItems) ? purchasedItems : []) {
+    const variantId = Number(item?.variantId || 0)
+    const qty = Number(item?.qty || 0)
+    if (variantId > 0 && qty > 0) {
+      purchasedByVariant.set(variantId, (purchasedByVariant.get(variantId) || 0) + qty)
+    }
+  }
+
+  const nextItems = []
+  for (const item of state.items) {
+    const purchasedQty = purchasedByVariant.get(Number(item.variantId)) || 0
+    const remainingQty = Number(item.qty || 0) - purchasedQty
+    if (remainingQty > 0) nextItems.push({ ...item, qty: remainingQty })
+  }
+
+  applyingServerState = true
+  try {
+    state.items.splice(0, state.items.length, ...nextItems)
+    await nextTick()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items))
+  } finally {
+    applyingServerState = false
+  }
+  if (!nextItems.length) closeCart()
+}
+
+function beginCartHydration() {
+  if (cartHydrationPending) return cartHydrationPromise
+  cartHydrationPending = true
+  cartHydrationSucceeded = false
+  cartHydrationPromise = new Promise(resolve => {
+    resolveCartHydration = resolve
+  })
+  return cartHydrationPromise
+}
+
+function completeCartHydration(succeeded = true) {
+  cartHydrationPending = false
+  cartHydrationSucceeded = Boolean(succeeded)
+  resolveCartHydration?.(cartHydrationSucceeded)
+  resolveCartHydration = null
+  return cartHydrationSucceeded
+}
+
+async function awaitCartHydration() {
+  if (cartHydrationPending) return cartHydrationPromise
+  const user = useAuth().getUser()
+  if (!user || user.role !== 'KhachHang') return true
+  return syncReady && cartHydrationSucceeded
+}
+
 function formatPrice(n) {
   return Number(n || 0).toLocaleString('vi-VN') + 'đ'
 }
@@ -150,8 +207,12 @@ async function hydrateCart(remoteItems = [], userId) {
   const merged = sameOwner ? incoming : mergeGuestAndServer(guestItems, incoming)
 
   applyingServerState = true
-  state.items.splice(0, state.items.length, ...merged.map(normalizeCartItem))
-  applyingServerState = false
+  try {
+    state.items.splice(0, state.items.length, ...merged.map(normalizeCartItem))
+    await nextTick()
+  } finally {
+    applyingServerState = false
+  }
   localStorage.setItem(OWNER_KEY, String(userId))
   syncReady = true
 
@@ -188,10 +249,10 @@ function scheduleServerSync() {
 }
 
 async function syncCartNow() {
-  if (!syncReady) return
   const user = useAuth().getUser()
-  if (!user || user.role !== 'KhachHang') return
-  if (state.items.some(item => item.unavailable)) return
+  if (!user || user.role !== 'KhachHang') return true
+  if (!syncReady) return false
+  if (state.items.some(item => item.unavailable)) return false
   if (syncTimer) clearTimeout(syncTimer)
   syncTimer = null
   try {
@@ -200,18 +261,25 @@ async function syncCartNow() {
       qty: Number(item.qty || 1)
     })).filter(item => item.variantId > 0))
     applyingServerState = true
-    state.items.splice(0, state.items.length, ...(serverItems || []))
-    applyingServerState = false
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items))
+    try {
+      state.items.splice(0, state.items.length, ...(serverItems || []))
+      await nextTick()
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.items))
+    } finally {
+      applyingServerState = false
+    }
+    return true
   } catch (error) {
     console.warn('Không thể đồng bộ giỏ hàng với tài khoản', error)
+    return false
   }
 }
 
 export function useCart() {
   return {
     state, totalCount, subtotal, openCart, closeCart, addItem, refreshItems,
-    changeQty, removeItem, clearCart, formatPrice, hydrateCart,
-    resetCartForGuest, syncCartNow
+    changeQty, removeItem, clearCart, removePurchasedItems, formatPrice, hydrateCart,
+    resetCartForGuest, syncCartNow, beginCartHydration, completeCartHydration,
+    awaitCartHydration
   }
 }

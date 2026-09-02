@@ -38,8 +38,15 @@ const route = useRoute()
 const isLoginPage = computed(() => route.name === 'login')
 const isAdminPage = computed(() => route.path.startsWith('/admin'))
 const { getUser } = useAuth()
-const { hydrateCart, resetCartForGuest } = useCart()
+const {
+  hydrateCart,
+  resetCartForGuest,
+  beginCartHydration,
+  completeCartHydration
+} = useCart()
 const { hydrateWishlist, resetWishlistForGuest } = useWishlist()
+
+if (getUser()?.role === 'KhachHang') beginCartHydration()
 
 watch(isAdminPage, (val) => {
   document.body.classList.toggle('z-admin-active', val)
@@ -59,18 +66,24 @@ function onAuthChanged() {
 async function hydrateAccountData(initialLoad) {
   const user = getUser()
   if (!user || user.role !== 'KhachHang') {
+    completeCartHydration(true)
     if (!initialLoad) {
       resetCartForGuest()
       resetWishlistForGuest()
     }
     return
   }
+  beginCartHydration()
+  let cartHydrated = false
   try {
     const data = await api().getCustomerData()
     await hydrateCart(data?.cart || [], user.userId)
+    cartHydrated = true
     hydrateWishlist(data?.wishlistIds || [], user.userId)
   } catch (error) {
     console.warn('Không thể tải dữ liệu mua sắm của tài khoản', error)
+  } finally {
+    completeCartHydration(cartHydrated)
   }
 }
 </script>

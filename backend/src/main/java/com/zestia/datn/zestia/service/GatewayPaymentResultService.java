@@ -38,23 +38,35 @@ public class GatewayPaymentResultService {
     @Transactional
     public PaymentOutcome applyById(Integer orderId, String method, BigDecimal amount,
                                     String transactionId, boolean successful) {
+        return applyById(orderId, method, amount, transactionId, successful, null);
+    }
+
+    @Transactional
+    public PaymentOutcome applyById(Integer orderId, String method, BigDecimal amount,
+                                    String transactionId, boolean successful, String expectedAttemptId) {
         if (orderId == null) return PaymentOutcome.notFound();
         return hoaDonRepo.findByIdForUpdate(orderId)
-                .map(order -> applyLocked(order, method, amount, transactionId, successful))
+                .map(order -> applyLocked(order, method, amount, transactionId, successful, expectedAttemptId))
                 .orElseGet(PaymentOutcome::notFound);
     }
 
     @Transactional
     public PaymentOutcome applyByCode(String orderCode, String method, BigDecimal amount,
                                       String transactionId, boolean successful) {
+        return applyByCode(orderCode, method, amount, transactionId, successful, null);
+    }
+
+    @Transactional
+    public PaymentOutcome applyByCode(String orderCode, String method, BigDecimal amount,
+                                      String transactionId, boolean successful, String expectedAttemptId) {
         if (orderCode == null || orderCode.isBlank()) return PaymentOutcome.notFound();
         return hoaDonRepo.findByMaHoaDonForUpdate(orderCode.trim())
-                .map(order -> applyLocked(order, method, amount, transactionId, successful))
+                .map(order -> applyLocked(order, method, amount, transactionId, successful, expectedAttemptId))
                 .orElseGet(PaymentOutcome::notFound);
     }
 
     private PaymentOutcome applyLocked(HoaDon order, String method, BigDecimal amount,
-                                       String transactionId, boolean successful) {
+                                       String transactionId, boolean successful, String expectedAttemptId) {
         String normalizedMethod = normalizeMethod(method);
         String safeTransactionId = normalizeTransactionId(transactionId, normalizedMethod, order.getId());
 
@@ -78,6 +90,12 @@ public class GatewayPaymentResultService {
             }
             return new PaymentOutcome(Boolean.TRUE.equals(order.getDaThanhToan()), true,
                     order.getMaHoaDon(), order.getTongTien(), "Kết quả thanh toán đã được xử lý");
+        }
+
+        if (expectedAttemptId != null && !expectedAttemptId.isBlank()
+                && !expectedAttemptId.equals(order.getMaGiaoDichCong())) {
+            return new PaymentOutcome(false, false, order.getMaHoaDon(), order.getTongTien(),
+                    "Kết quả không thuộc phiên thanh toán hiện hành");
         }
 
         if (Boolean.TRUE.equals(order.getDaThanhToan())) {

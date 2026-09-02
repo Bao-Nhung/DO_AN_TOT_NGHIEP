@@ -40,7 +40,7 @@ public class PaymentRefundService {
             .build();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    @Value("${payment.refund.remote-enabled:true}")
+    @Value("${payment.refund.remote-enabled:false}")
     private boolean remoteEnabled;
     @Value("${payment.momo.partner-code:MOMO}")
     private String momoPartnerCode;
@@ -50,8 +50,8 @@ public class PaymentRefundService {
     private String momoSecretKey;
     @Value("${payment.momo.refund-endpoint:https://test-payment.momo.vn/v2/gateway/api/refund}")
     private String momoRefundEndpoint;
-    @Value("${payment.zalopay.app-id:2553}")
-    private int zaloAppId;
+    @Value("${payment.zalopay.app-id:}")
+    private String zaloAppId;
     @Value("${payment.zalopay.key1:}")
     private String zaloKey1;
     @Value("${payment.zalopay.refund-endpoint:https://sb-openapi.zalopay.vn/v2/refund}")
@@ -67,7 +67,7 @@ public class PaymentRefundService {
             return manualRefund(request, amount, manualReference, method);
         }
         if (!remoteEnabled) {
-            return RefundOutcome.confirmed("LOCAL-" + UUID.randomUUID(), "Chế độ test: hoàn tiền được mô phỏng thành công");
+            return manualRefund(request, amount, manualReference, method);
         }
 
         LichSuThanhToan original = paymentHistoryRepo
@@ -157,7 +157,7 @@ public class PaymentRefundService {
 
     private RefundOutcome refundZalo(YeuCauDoiTra request, LichSuThanhToan original,
                                      BigDecimal amount) throws Exception {
-        requireConfigured(String.valueOf(zaloAppId), "ZALOPAY_APP_ID");
+        String appId = configuredZaloAppId();
         requireConfigured(zaloKey1, "ZALOPAY_KEY1");
         if (clean(request.getMaGiaoDichHoan()) != null) {
             return queryZaloRefund(request.getMaGiaoDichHoan());
@@ -168,13 +168,13 @@ public class PaymentRefundService {
                 ("zestia-refund-" + request.getId()).getBytes(StandardCharsets.UTF_8)
         ).toString().replace("-", "").substring(0, 16);
         String refundId = createdAt.format(DateTimeFormatter.ofPattern("yyMMdd"))
-                + "_" + zaloAppId + "_" + stableSuffix;
+                + "_" + appId + "_" + stableSuffix;
         long timestamp = System.currentTimeMillis();
         String description = "Hoan tien " + request.getHoaDon().getMaHoaDon();
-        String macData = zaloAppId + "|" + original.getMaGiaoDich() + "|" + amount.longValue()
+        String macData = appId + "|" + original.getMaGiaoDich() + "|" + amount.longValue()
                 + "|" + description + "|" + timestamp;
         Map<String, String> form = new LinkedHashMap<>();
-        form.put("app_id", String.valueOf(zaloAppId));
+        form.put("app_id", appId);
         form.put("m_refund_id", refundId);
         form.put("zp_trans_id", original.getMaGiaoDich());
         form.put("amount", String.valueOf(amount.longValue()));
@@ -191,10 +191,11 @@ public class PaymentRefundService {
     }
 
     private RefundOutcome queryZaloRefund(String refundId) throws Exception {
+        String appId = configuredZaloAppId();
         long timestamp = System.currentTimeMillis();
-        String macData = zaloAppId + "|" + refundId + "|" + timestamp;
+        String macData = appId + "|" + refundId + "|" + timestamp;
         Map<String, String> form = new LinkedHashMap<>();
-        form.put("app_id", String.valueOf(zaloAppId));
+        form.put("app_id", appId);
         form.put("m_refund_id", refundId);
         form.put("timestamp", String.valueOf(timestamp));
         form.put("mac", hmacHex("HmacSHA256", zaloKey1, macData));
@@ -272,6 +273,18 @@ public class PaymentRefundService {
         if (value == null) return null;
         String result = value.trim();
         return result.isEmpty() ? null : result;
+    }
+
+    private String configuredZaloAppId() {
+        String appId = clean(zaloAppId);
+        try {
+            if (appId == null || Integer.parseInt(appId) <= 0) {
+                throw new NumberFormatException();
+            }
+            return appId;
+        } catch (NumberFormatException exception) {
+            throw new IllegalStateException("Chua cau hinh bien moi truong ZALOPAY_APP_ID hop le");
+        }
     }
 
     public record RefundOutcome(boolean confirmed, boolean pending, String reference, String message) {

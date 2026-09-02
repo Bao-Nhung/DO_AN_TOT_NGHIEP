@@ -33,13 +33,23 @@
           </p>
         </template>
 
+        <template v-else-if="status === 'verifying'">
+          <div class="z-result-icon z-pending">
+            <i class="bi bi-arrow-repeat z-result-spin"></i>
+          </div>
+          <h2 class="z-result-title">Đang xác minh thanh toán</h2>
+          <p class="z-result-desc">
+            Zestia đang đọc trạng thái đơn hàng từ máy chủ. Vui lòng chờ trong giây lát.
+          </p>
+        </template>
+
         <template v-else-if="status === 'pending'">
           <div class="z-result-icon z-pending">
             <i class="bi bi-hourglass-split"></i>
           </div>
           <h2 class="z-result-title">Đang đối soát thanh toán</h2>
           <p class="z-result-desc">
-            Zestia chưa nhận được kết quả có chữ ký hợp lệ từ cổng thanh toán. Đơn hàng chưa được xác nhận và giỏ hàng vẫn được giữ nguyên.
+            {{ pendingMessage }}
           </p>
         </template>
 
@@ -51,6 +61,10 @@
           <h2 class="z-result-title">Đã xảy ra lỗi</h2>
           <p class="z-result-desc">{{ errorMsg }}</p>
         </template>
+
+        <div v-if="cartCleanupMessage" class="alert alert-warning py-2 px-3 mb-4" style="font-size:12px">
+          {{ cartCleanupMessage }}
+        </div>
 
         <!-- Order details -->
         <div v-if="orderId" class="z-result-details">
@@ -105,52 +119,210 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import { api } from '@/composables/useApi'
 import { useCart } from '@/composables/useCart'
 import { useToast } from '@/composables/useToast'
 
+const ONLINE_METHODS = new Set(['MOMO', 'ZALOPAY'])
+const MAX_STATUS_CHECKS = 4
+const STATUS_CHECK_DELAY_MS = 2000
+
 const route = useRoute()
-const { clearCart, syncCartNow } = useCart()
+const { removePurchasedItems, syncCartNow, awaitCartHydration } = useCart()
 const { showToast } = useToast()
+const pendingPayment = readPendingPayment()
+const verifiedContext = ref(null)
+const verifiedOrder = ref(null)
+const onlineStatus = ref('verifying')
+const verificationError = ref('')
+const pendingMessage = ref('Zestia đang kiểm tra trạng thái giao dịch với máy chủ.')
+const cartCleanupMessage = ref('')
+let verificationCancelled = false
+
+const queryMethod = computed(() => normalizeMethod(route.query.method))
+const isOnlineReturn = computed(() => ONLINE_METHODS.has(queryMethod.value))
+const status = computed(() => {
+  if (isOnlineReturn.value) return onlineStatus.value
+  if (queryMethod.value === 'COD' && route.query.status === 'success') return 'success'
+  if (queryMethod.value === 'COD' && route.query.status === 'failed') return 'failed'
+  return 'error'
+})
+const orderId = computed(() => isOnlineReturn.value
+  ? (verifiedOrder.value?.maHoaDon || verifiedContext.value?.orderCode || '')
+  : String(route.query.orderId || ''))
+const amount = computed(() => isOnlineReturn.value
+  ? (verifiedOrder.value?.tongTien || '')
+  : route.query.amount || '')
+const txn = computed(() => isOnlineReturn.value ? '' : route.query.txn || '')
+const method = computed(() => isOnlineReturn.value
+  ? (normalizeMethod(verifiedOrder.value?.hinhThucThanhToan) || queryMethod.value)
+  : queryMethod.value)
 
 function copyOrderCode(codeVal) {
   if (!codeVal) return
-  navigator.clipboard.writeText(codeVal)
+  navigator.clipboard.writeText(codeVal).catch(() => {})
   showToast(`Đã sao chép mã đơn hàng "${codeVal}"!`)
 }
 
-const status = computed(() => route.query.status || 'error')
-const orderId = computed(() => route.query.orderId || '')
-const amount = computed(() => route.query.amount || '')
-const txn = computed(() => route.query.txn || '')
-const method = computed(() => route.query.method || '')
-const code = computed(() => route.query.code || '')
-
-const errorMsg = computed(() => {
-  if (code.value === 'INVALID_SIGNATURE') return 'Chữ ký giao dịch không hợp lệ.'
-  if (code.value === 'UNVERIFIED_RETURN') return 'Chưa xác minh được chữ ký phản hồi của cổng thanh toán.'
-  if (code.value === 'PAYMENT_PENDING') return 'Cổng thanh toán vẫn đang xử lý giao dịch.'
-  if (code.value === 'ORDER_NOT_FOUND') return 'Không tìm thấy đơn hàng.'
-  return 'Đã có lỗi xảy ra trong quá trình xử lý.'
-})
+const errorMsg = computed(() => verificationError.value
+  || 'Không thể xác minh kết quả thanh toán. Giỏ hàng của bạn không bị thay đổi.')
 
 onMounted(async () => {
-  if (status.value === 'failed') {
-    sessionStorage.removeItem('zestia_pending_payment')
-    sessionStorage.removeItem('zestia_checkout_request')
+  if (isOnlineReturn.value) await verifyOnlinePayment()
+})
+
+onBeforeUnmount(() => {
+  verificationCancelled = true
+})
+
+async function verifyOnlinePayment() {
+  if (!pendingMatchesReturn(pendingPayment)) {
+    onlineStatus.value = 'error'
+    verificationError.value = 'Phiên thanh toán không khớp hoặc đã hết. Vui lòng tra cứu đơn hàng để xem trạng thái chính xác.'
     return
   }
-  if (status.value !== 'success') return
-  const pending = readPendingPayment()
-  if (!pending || !orderId.value || pending.orderCode === orderId.value) {
-    clearCart()
-    await syncCartNow()
-    sessionStorage.removeItem('zestia_pending_payment')
-    sessionStorage.removeItem('zestia_checkout_request')
+
+  verifiedContext.value = pendingPayment
+  let lastError = null
+  for (let attempt = 0; attempt < MAX_STATUS_CHECKS && !verificationCancelled; attempt++) {
+    try {
+      const order = await api().searchOrder({
+        maHoaDon: pendingPayment.orderCode,
+        soDienThoai: pendingPayment.phone
+      })
+      if (verificationCancelled) return
+      if (!orderMatchesPending(order, pendingPayment)) {
+        onlineStatus.value = 'error'
+        verificationError.value = 'Thông tin đơn hàng trả về không khớp phiên thanh toán hiện tại.'
+        return
+      }
+
+      verifiedOrder.value = order
+      lastError = null
+      const canonicalStatus = paymentStatusFromOrder(order)
+      if (canonicalStatus === 'success') {
+        onlineStatus.value = 'success'
+        await finishSuccessfulPayment(pendingPayment)
+        return
+      }
+      if (canonicalStatus === 'failed') {
+        onlineStatus.value = 'failed'
+        clearMatchingPendingPayment(pendingPayment)
+        return
+      }
+      onlineStatus.value = 'pending'
+      pendingMessage.value = 'Cổng thanh toán vẫn đang xử lý giao dịch. Zestia sẽ kiểm tra lại trong giây lát.'
+    } catch (error) {
+      lastError = error
+      onlineStatus.value = 'pending'
+      pendingMessage.value = 'Chưa kết nối được máy chủ để xác minh. Giỏ hàng vẫn được giữ nguyên.'
+    }
+
+    if (attempt < MAX_STATUS_CHECKS - 1) await delay(STATUS_CHECK_DELAY_MS)
   }
-})
+
+  if (!verificationCancelled) {
+    onlineStatus.value = 'pending'
+    pendingMessage.value = lastError
+      ? 'Tạm thời chưa xác minh được giao dịch. Vui lòng tra cứu lại đơn hàng sau ít phút.'
+      : 'Giao dịch vẫn đang được xử lý. Vui lòng tra cứu lại đơn hàng sau ít phút.'
+  }
+}
+
+async function finishSuccessfulPayment(pending) {
+  if (pending.origin === 'checkout') {
+    const hydrated = await awaitCartHydration()
+    if (verificationCancelled) return
+    if (!hydrated) {
+      cartCleanupMessage.value = 'Thanh toán đã được xác nhận nhưng giỏ hàng chưa thể đồng bộ. Vui lòng tải lại trang khi kết nối ổn định.'
+      return
+    }
+    const purchasedItems = verifiedPurchasedItems(verifiedOrder.value, pending.purchasedItems)
+    if (!purchasedItems.length) {
+      cartCleanupMessage.value = 'Thanh toán đã được xác nhận nhưng sản phẩm trong phiên thanh toán không khớp đơn hàng. Giỏ hàng được giữ nguyên.'
+      return
+    }
+    await removePurchasedItems(purchasedItems)
+    const synced = await syncCartNow()
+    if (!synced) {
+      cartCleanupMessage.value = 'Thanh toán đã được xác nhận nhưng giỏ hàng chưa thể đồng bộ hoàn tất.'
+      return
+    }
+  }
+  clearMatchingPendingPayment(pending)
+}
+
+function pendingMatchesReturn(pending) {
+  if (!pending || !['checkout', 'repayment'].includes(pending.origin)) return false
+  const queryOrderCode = normalizeOrderCode(route.query.orderId)
+  const pendingOrderCode = normalizeOrderCode(pending.orderCode)
+  const pendingMethod = normalizeMethod(pending.method)
+  const pendingOrderId = Number(pending.orderId)
+  const pendingAmount = Number(pending.amount)
+  return Boolean(queryOrderCode
+    && pendingOrderCode
+    && normalizePhone(pending.phone)
+    && Number.isInteger(pendingOrderId)
+    && pendingOrderId > 0
+    && Number.isFinite(pendingAmount)
+    && pendingAmount > 0
+    && queryOrderCode === pendingOrderCode
+    && queryMethod.value === pendingMethod
+    && ONLINE_METHODS.has(pendingMethod))
+}
+
+function orderMatchesPending(order, pending) {
+  if (!order) return false
+  return Number(order.id) === Number(pending.orderId)
+    && Number(order.tongTien) === Number(pending.amount)
+    && normalizeOrderCode(order.maHoaDon) === normalizeOrderCode(pending.orderCode)
+    && normalizeMethod(order.hinhThucThanhToan) === normalizeMethod(pending.method)
+}
+
+function verifiedPurchasedItems(order, pendingItems) {
+  const authoritativeItems = normalizePurchasedItems(order?.chiTiets, 'soLuong')
+  const storedItems = normalizePurchasedItems(pendingItems, 'qty')
+  if (!authoritativeItems.length || JSON.stringify(authoritativeItems) !== JSON.stringify(storedItems)) return []
+  return authoritativeItems
+}
+
+function normalizePurchasedItems(items, quantityKey) {
+  if (!Array.isArray(items) || !items.length) return []
+  const quantities = new Map()
+  for (const item of items) {
+    const variantId = Number(item?.variantId)
+    const qty = Number(item?.[quantityKey])
+    if (!(variantId > 0) || !(qty > 0)) return []
+    quantities.set(variantId, (quantities.get(variantId) || 0) + qty)
+  }
+  return [...quantities.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([variantId, qty]) => ({ variantId, qty }))
+}
+
+function paymentStatusFromOrder(order) {
+  const onlineResult = normalizeMethod(order.phuongThucThanhToanOnline)
+  if (onlineResult === 'FAILED'
+      || [5, 7].includes(Number(order.trangThai))
+      || order.trangThaiTracking === 'payment_failed') return 'failed'
+  if (order.daThanhToan === true
+      && onlineResult === normalizeMethod(order.hinhThucThanhToan)) return 'success'
+  return 'pending'
+}
+
+function clearMatchingPendingPayment(pending) {
+  const current = readPendingPayment()
+  if (!current
+      || normalizeOrderCode(current.orderCode) !== normalizeOrderCode(pending.orderCode)
+      || normalizeMethod(current.method) !== normalizeMethod(pending.method)
+      || normalizePhone(current.phone) !== normalizePhone(pending.phone)
+      || current.origin !== pending.origin) return
+  sessionStorage.removeItem('zestia_pending_payment')
+  if (pending.origin === 'checkout') sessionStorage.removeItem('zestia_checkout_request')
+}
 
 function readPendingPayment() {
   try {
@@ -158,6 +330,23 @@ function readPendingPayment() {
   } catch {
     return null
   }
+}
+
+function normalizeMethod(value) {
+  return String(value || '').trim().toUpperCase()
+}
+
+function normalizeOrderCode(value) {
+  return String(value || '').trim().toUpperCase()
+}
+
+function normalizePhone(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  return digits.startsWith('84') && digits.length >= 11 ? `0${digits.slice(2)}` : digits
+}
+
+function delay(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
 const formatAmount = computed(() => {
@@ -199,6 +388,8 @@ const methodLabel = computed(() => {
 .z-success { background: #E8F5E9; color: #2E7D32; }
 .z-failed  { background: #FFEBEE; color: #C62828; }
 .z-pending { background: #FFF7E0; color: #B26A00; }
+.z-result-spin { animation: z-result-spin 0.9s linear infinite; }
+@keyframes z-result-spin { to { transform: rotate(360deg); } }
 
 .z-result-title {
   font-family: var(--z-font-display);

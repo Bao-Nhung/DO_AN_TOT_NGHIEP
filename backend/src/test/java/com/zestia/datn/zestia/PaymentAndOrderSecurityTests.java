@@ -255,6 +255,31 @@ class PaymentAndOrderSecurityTests {
     }
 
     @Test
+    void staleGatewayAttemptCannotMutateOrder() {
+        HoaDon order = hoaDonRepository.save(HoaDon.builder()
+                .maHoaDon("HDTESTSTALEATTEMPT")
+                .maGiaoDichCong("CURRENT-ATTEMPT")
+                .tongTien(BigDecimal.valueOf(420000))
+                .hinhThucThanhToan("MOMO")
+                .trangThai((byte) 0)
+                .daThanhToan(false)
+                .daHoanTonKho(false)
+                .ngayTao(LocalDateTime.now())
+                .build());
+
+        var result = paymentResultService.applyById(
+                order.getId(), "MOMO", order.getTongTien(), "PROVIDER-TXN", true, "OLD-ATTEMPT");
+
+        HoaDon unchanged = hoaDonRepository.findById(order.getId()).orElseThrow();
+        assertThat(result.success()).isFalse();
+        assertThat(result.idempotent()).isFalse();
+        assertThat(unchanged.getTrangThai()).isZero();
+        assertThat(unchanged.getDaThanhToan()).isFalse();
+        assertThat(unchanged.getDaHoanTonKho()).isFalse();
+        assertThat(paymentHistoryRepository.findByHoaDonId(order.getId())).isEmpty();
+    }
+
+    @Test
     void gatewayAmountMismatchFailsOrderAndRestoresOnlyOnce() {
         HoaDon order = hoaDonRepository.save(HoaDon.builder()
                 .maHoaDon("HDTESTAMOUNT")

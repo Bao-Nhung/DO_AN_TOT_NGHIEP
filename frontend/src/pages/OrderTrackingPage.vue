@@ -353,13 +353,27 @@ async function handleSearch() {
 async function repayOrder(order) {
   payingId.value = order.id
   try {
+    const phone = String(order.soDienThoai || form.value.soDienThoai || '').trim()
+    if (!phone) {
+      showToast('Không tìm thấy số điện thoại để xác minh đơn hàng.', 'error')
+      return
+    }
     let res = null
     if (order.hinhThucThanhToan === 'MOMO') {
-      res = await api().createMomoPayment(order.id, order.maHoaDon, order.soDienThoai)
+      res = await api().createMomoPayment(order.id, order.maHoaDon, phone)
     } else if (order.hinhThucThanhToan === 'ZALOPAY') {
-      res = await api().createZaloPayment(order.id, order.maHoaDon, order.soDienThoai)
+      res = await api().createZaloPayment(order.id, order.maHoaDon, phone)
     }
     if (res && res.payUrl) {
+      sessionStorage.setItem('zestia_pending_payment', JSON.stringify({
+        orderId: order.id,
+        orderCode: order.maHoaDon,
+        method: order.hinhThucThanhToan,
+        amount: order.tongTien,
+        origin: 'repayment',
+        phone,
+        purchasedItems: []
+      }))
       window.location.href = res.payUrl
     } else {
       showToast(res?.error || 'Không thể kết nối cổng thanh toán, vui lòng thử lại sau!', 'error')

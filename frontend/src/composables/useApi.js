@@ -1,6 +1,14 @@
 import { currentLocale } from '@/i18n'
 
-export const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api').replace(/\/$/, '')
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.trim()
+
+if (import.meta.env.PROD && !configuredApiBase) {
+  throw new Error(
+    'Thiếu VITE_API_BASE_URL. Hãy cấu hình URL backend trong Netlify trước khi deploy.'
+  )
+}
+
+export const API_BASE = (configuredApiBase || 'http://localhost:8080/api').replace(/\/+$/, '')
 
 function getToken() {
   return localStorage.getItem('zestia_token')
@@ -356,6 +364,7 @@ export function api() {
     getNhaCungCap: () => request('/thuoc-tinh/nha-cung-cap'),
 
     // Payment
+    getPaymentMethods: () => request('/payment/methods'),
     createOrder: (data) =>
       request('/payment/create-order', { method: 'POST', body: JSON.stringify(data) }),
     createMomoPayment: (orderId, maHoaDon, soDienThoai) =>

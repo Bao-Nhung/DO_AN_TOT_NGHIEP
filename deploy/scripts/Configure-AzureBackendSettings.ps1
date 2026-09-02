@@ -219,7 +219,7 @@ try {
         CLOUDINARY_CLOUD_NAME = $CloudinaryCloudName
         CLOUDINARY_API_KEY = $cloudinaryApiKey
         CLOUDINARY_API_SECRET = $cloudinaryApiSecret
-        JAVA_OPTS = '-Xms128m -Xmx512m -Duser.timezone=Asia/Ho_Chi_Minh -Dfile.encoding=UTF-8'
+        JAVA_OPTS = '-Xms128m -Xmx384m -Duser.timezone=Asia/Ho_Chi_Minh -Dfile.encoding=UTF-8'
         JPA_DDL_AUTO = 'validate'
         JPA_SHOW_SQL = 'false'
         PASSWORD_RESET_TOKEN_MINUTES = '30'

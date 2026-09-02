@@ -92,7 +92,10 @@ if (-not $PSCmdlet.ShouldProcess($target, "Cau hinh Java startup va deploy $JarP
     return
 }
 
-$startupCommand = 'java $JAVA_OPTS -jar /home/site/wwwroot/app.jar --server.port=80'
+# Azure App Service Java SE executes the custom startup command directly, so shell
+# variables such as $JAVA_OPTS are not expanded here. Keep the options explicit;
+# otherwise Java treats the literal "$JAVA_OPTS" text as the main class and exits.
+$startupCommand = 'java -Xms128m -Xmx384m -Duser.timezone=Asia/Ho_Chi_Minh -Dfile.encoding=UTF-8 -jar /home/site/wwwroot/app.jar --server.port=80'
 $currentStartupCommand = (& $az webapp config show --resource-group $ResourceGroup --name $AppName `
     --query 'appCommandLine' --output tsv --only-show-errors | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) {

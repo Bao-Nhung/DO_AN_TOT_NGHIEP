@@ -115,8 +115,11 @@
             </h3>
 
             <div class="z-payment-options">
-              <label class="z-payment-option" :class="{ active: form.hinhThuc === 'MOMO' }">
-                <input type="radio" v-model="form.hinhThuc" value="MOMO" />
+              <label class="z-payment-option"
+                     :class="{ active: form.hinhThuc === 'MOMO', disabled: !paymentMethodAvailable('MOMO') }"
+                     :aria-disabled="!paymentMethodAvailable('MOMO')">
+                <input type="radio" v-model="form.hinhThuc" value="MOMO"
+                       :disabled="!paymentMethodAvailable('MOMO')" />
                 <div class="z-payment-option-content">
                   <div class="z-payment-option-icon">
                     <svg viewBox="0 0 40 40" width="32" height="32">
@@ -126,13 +129,16 @@
                   </div>
                   <div>
                     <strong>Ví MoMo</strong>
-                    <p>Quét mã QR qua ứng dụng MoMo (thanh toán test)</p>
+                    <p>{{ paymentMethodStatus('MOMO') }}</p>
                   </div>
                 </div>
               </label>
 
-              <label class="z-payment-option" :class="{ active: form.hinhThuc === 'ZALOPAY' }">
-                <input type="radio" v-model="form.hinhThuc" value="ZALOPAY" />
+              <label class="z-payment-option"
+                     :class="{ active: form.hinhThuc === 'ZALOPAY', disabled: !paymentMethodAvailable('ZALOPAY') }"
+                     :aria-disabled="!paymentMethodAvailable('ZALOPAY')">
+                <input type="radio" v-model="form.hinhThuc" value="ZALOPAY"
+                       :disabled="!paymentMethodAvailable('ZALOPAY')" />
                 <div class="z-payment-option-content">
                   <div class="z-payment-option-icon">
                     <svg viewBox="0 0 40 40" width="32" height="32">
@@ -142,7 +148,7 @@
                   </div>
                   <div>
                     <strong>Ví ZaloPay</strong>
-                    <p>Quét mã QR qua ứng dụng ZaloPay (sandbox)</p>
+                    <p>{{ paymentMethodStatus('ZALOPAY') }}</p>
                   </div>
                 </div>
               </label>
@@ -163,6 +169,9 @@
                 </div>
               </label>
             </div>
+            <p v-if="paymentMethodsError" class="z-payment-status-error mb-0 mt-2">
+              <i class="bi bi-info-circle me-1"></i>{{ paymentMethodsError }}. COD vẫn khả dụng.
+            </p>
           </div>
 
           <div class="z-checkout-section mt-4">
@@ -346,7 +355,7 @@ import { useI18n } from '@/composables/useI18n'
 import AppFooter from '@/components/layout/AppFooter.vue'
 
 const router = useRouter()
-const { state, totalCount, subtotal, formatPrice, clearCart, refreshItems } = useCart()
+const { state, totalCount, subtotal, formatPrice, clearCart, refreshItems, syncCartNow } = useCart()
 const { showToast } = useToast()
 const { getUser } = useAuth()
 const { isEn, translateUiText } = useI18n()
@@ -360,19 +369,64 @@ const checkoutActionLabel = computed(() => {
 })
 
 const loading = ref(false)
+const paymentMethodsLoading = ref(true)
+const paymentMethodsError = ref('')
+const paymentCapabilities = ref({
+  COD: { available: true, sandbox: false },
+  MOMO: { available: false, sandbox: false },
+  ZALOPAY: { available: false, sandbox: false }
+})
 
 const form = ref({
   hoTen: '',
   soDienThoai: '',
   email: '',
   ghiChu: '',
-  hinhThuc: 'MOMO',
+  hinhThuc: 'COD',
   isVatRequested: false,
   tenCongTyVat: '',
   maSoThueVat: '',
   emailVat: '',
   diaChiVat: ''
 })
+
+function paymentMethodAvailable(method) {
+  return method === 'COD' || paymentCapabilities.value[method]?.available === true
+}
+
+function paymentMethodStatus(method) {
+  if (paymentMethodsLoading.value) return 'Đang kiểm tra trạng thái cổng thanh toán...'
+  if (!paymentMethodAvailable(method)) return 'Hiện chưa khả dụng — vui lòng chọn phương thức khác'
+  return paymentCapabilities.value[method]?.sandbox
+    ? 'Sẵn sàng (môi trường sandbox/test)'
+    : 'Sẵn sàng thanh toán'
+}
+
+async function loadPaymentMethods() {
+  paymentMethodsLoading.value = true
+  paymentMethodsError.value = ''
+  try {
+    const response = await api().getPaymentMethods()
+    const methods = response?.methods || response || {}
+    paymentCapabilities.value = {
+      COD: { available: true, sandbox: false },
+      MOMO: {
+        available: methods.MOMO?.available === true,
+        sandbox: methods.MOMO?.sandbox === true
+      },
+      ZALOPAY: {
+        available: methods.ZALOPAY?.available === true,
+        sandbox: methods.ZALOPAY?.sandbox === true
+      }
+    }
+    if (!paymentMethodAvailable(form.value.hinhThuc)) form.value.hinhThuc = 'COD'
+  } catch (error) {
+    paymentMethodsError.value = error?.error || 'Không kiểm tra được trạng thái cổng thanh toán'
+    form.value.hinhThuc = 'COD'
+  } finally {
+    paymentMethodsLoading.value = false
+  }
+}
 const phoneTouched = ref(false)
 const phoneError = computed(() => {
   const phone = form.value.soDienThoai
@@ -696,6 +750,9 @@ const checkoutRequestId = ref('')
 
 function handlePlaceOrder() {
   if (loading.value) return
+  if (!paymentMethodAvailable(form.value.hinhThuc)) {
+    return showToast('Phương thức thanh toán này hiện chưa khả dụng. Vui lòng chọn phương thức khác')
+  }
   if (state.items.some(item => item.unavailable)) return showToast('Vui lòng xóa sản phẩm không còn khả dụng khỏi giỏ hàng')
   if (!state.items.length) return showToast('Giỏ hàng đang trống')
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
@@ -725,6 +782,7 @@ function confirmAndPlaceOrder() {
 }
 
 onMounted(async () => {
+  loadPaymentMethods()
   await refreshItems(productId => api().getSanPhamById(productId))
 
   const { isLoggedIn } = useAuth()
@@ -765,6 +823,9 @@ onMounted(async () => {
 
 async function placeOrder() {
   if (loading.value) return
+  if (!paymentMethodAvailable(form.value.hinhThuc)) {
+    return showToast('Phương thức thanh toán này hiện chưa khả dụng. Vui lòng chọn phương thức khác')
+  }
   if (!form.value.hoTen.trim()) return showToast('Vui lòng nhập họ và tên')
   phoneTouched.value = true
   if (phoneError.value) return showToast(phoneError.value)
@@ -839,7 +900,9 @@ async function placeOrder() {
 
     if (form.value.hinhThuc === 'COD') {
       clearCart()
+      await syncCartNow()
       sessionStorage.removeItem('zestia_checkout_request')
+      sessionStorage.removeItem('zestia_pending_payment')
       router.push({
         path: '/payment-result',
         query: { status: 'success', orderId: order.maHoaDon, amount: order.tongTien, method: 'COD' }
@@ -857,7 +920,12 @@ async function placeOrder() {
           orderId: order.orderId,
           orderCode: order.maHoaDon,
           method: form.value.hinhThuc,
-          amount: order.tongTien
+          amount: order.tongTien,
+          origin: 'checkout',
+          phone: form.value.soDienThoai,
+          purchasedItems: state.items
+            .map(item => ({ variantId: Number(item.variantId), qty: Number(item.qty) }))
+            .filter(item => item.variantId > 0 && item.qty > 0)
         }))
         window.location.href = res.payUrl
         return
@@ -941,6 +1009,12 @@ function isValidEmail(value) {
   border-color: var(--z-accent);
   background: var(--z-accent-soft);
 }
+.z-payment-option.disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  background: var(--z-bg);
+}
+.z-payment-option.disabled:hover { border-color: var(--z-gray-border); }
 .z-payment-option input { position: absolute; opacity: 0; }
 .z-payment-option-content {
   display: flex;
@@ -956,6 +1030,10 @@ function isValidEmail(value) {
   font-size: 12px;
   color: var(--z-gray);
   margin: 2px 0 0;
+}
+.z-payment-status-error {
+  color: #9a6700;
+  font-size: 12px;
 }
 
 .z-order-summary {
